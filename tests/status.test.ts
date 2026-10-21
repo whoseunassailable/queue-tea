@@ -6,9 +6,9 @@ import { makeTask } from './helpers'
 test('statusText', () => {
   const task = makeTask({ title: 'Retry button' })
 
-  expect(statusText(task, 72, { percent: 62.4, resetsAt: null }, true)).toBe('Queue-tie: checking your message…')
-  expect(statusText(task, 72, { percent: 62.4, resetsAt: null }, false)).toBe('Queue-tie: Retry button · 1h 12m · 5h 62%')
-  expect(statusText(task, 72, null, false)).toBe('Queue-tie: Retry button · 1h 12m')
+  expect(statusText(task, 72, { percent: 62.4, resetsAt: null }, true)).toBe('Queue-tea: checking your message…')
+  expect(statusText(task, 72, { percent: 62.4, resetsAt: null }, false)).toBe('Queue-tea: Retry button · 1h 12m · 5h 62%')
+  expect(statusText(task, 72, null, false)).toBe('Queue-tea: Retry button · 1h 12m')
   expect(statusText(null, 0, null, false)).toBeUndefined()
 })
 

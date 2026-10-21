@@ -1,8 +1,8 @@
 {
-  "name": "queue-tie",
+  "name": "queue-tea",
   "owner": { "name": "Rohan Bhande" },
   "metadata": {
-    "description": "Queue-tie: one task at a time per project, a priority queue, a branch per task, and a record of time and effort."
+    "description": "Queue-tea: one task at a time per project, a priority queue, a branch per task, and a record of time and effort."
   },
-  "plugins": [{ "name": "queue-tie", "source": "./" }]
+  "plugins": [{ "name": "queue-tea", "source": "./" }]
 }

@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { isCommitOrPush } from '../hooks/guard'
 
-const TEXT = 'Queue-tie: commits and pushes are yours to make.'
+const TEXT = 'Queue-tea: commits and pushes are yours to make.'
 
 const refused = [
   'git commit -m "x"',

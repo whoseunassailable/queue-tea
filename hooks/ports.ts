@@ -7,28 +7,28 @@ import { hostOf } from './host'
 import { currentTask } from './queue'
 import { statusText } from './ui/status'
 
-const recordAtom = atom({ plugin: 'queue-tie', key: 'record' } as const, null)
-const loadAtom = atom({ plugin: 'queue-tie', key: 'load' } as const, 'loading')
-const holdAtom = atom({ plugin: 'queue-tie', key: 'hold' } as const, null)
-const bandAtom = atom({ plugin: 'queue-tie', key: 'band' } as const, { kind: 'none' } as View['band'])
-const isAskingDoneAtom = atom({ plugin: 'queue-tie', key: 'isAskingDone' } as const, false)
-const isChoosingNextAtom = atom({ plugin: 'queue-tie', key: 'isChoosingNext' } as const, false)
-const openRowAtom = atom({ plugin: 'queue-tie', key: 'openRow' } as const, null)
-const isCheckingAtom = atom({ plugin: 'queue-tie', key: 'isChecking' } as const, false)
-const allowanceAtom = atom({ plugin: 'queue-tie', key: 'allowance' } as const, null)
-const noticeAtom = atom({ plugin: 'queue-tie', key: 'notice' } as const, null)
-const spinAtom = atom({ plugin: 'queue-tie', key: 'spin' } as const, 0)
-const canContinueAtom = atom({ plugin: 'queue-tie', key: 'canContinue' } as const, false)
-const mismatchAtom = atom({ plugin: 'queue-tie', key: 'mismatch' } as const, null)
-const bandQueueAtom = atom({ plugin: 'queue-tie', key: 'bandQueue' } as const, [] as View['bandQueue'])
-const checkedAtom = atom({ plugin: 'queue-tie', key: 'checked' } as const, null)
-const busyAtom = atom({ plugin: 'queue-tie', key: 'busy' } as const, null)
-const warningAtom = atom({ plugin: 'queue-tie', key: 'warning' } as const, null)
-const isPaletteOpenAtom = atom({ plugin: 'queue-tie', key: 'isPaletteOpen' } as const, false)
-const blockingAtom = atom({ plugin: 'queue-tie', key: 'blocking' } as const, null)
-const budgetAtom = atom({ plugin: 'queue-tie', key: 'budget' } as const, null)
-const driftAtom = atom({ plugin: 'queue-tie', key: 'drift' } as const, [] as View['drift'])
-const othersAtom = atom({ plugin: 'queue-tie', key: 'others' } as const, [] as View['others'])
+const recordAtom = atom({ plugin: 'queue-tea', key: 'record' } as const, null)
+const loadAtom = atom({ plugin: 'queue-tea', key: 'load' } as const, 'loading')
+const holdAtom = atom({ plugin: 'queue-tea', key: 'hold' } as const, null)
+const bandAtom = atom({ plugin: 'queue-tea', key: 'band' } as const, { kind: 'none' } as View['band'])
+const isAskingDoneAtom = atom({ plugin: 'queue-tea', key: 'isAskingDone' } as const, false)
+const isChoosingNextAtom = atom({ plugin: 'queue-tea', key: 'isChoosingNext' } as const, false)
+const openRowAtom = atom({ plugin: 'queue-tea', key: 'openRow' } as const, null)
+const isCheckingAtom = atom({ plugin: 'queue-tea', key: 'isChecking' } as const, false)
+const allowanceAtom = atom({ plugin: 'queue-tea', key: 'allowance' } as const, null)
+const noticeAtom = atom({ plugin: 'queue-tea', key: 'notice' } as const, null)
+const spinAtom = atom({ plugin: 'queue-tea', key: 'spin' } as const, 0)
+const canContinueAtom = atom({ plugin: 'queue-tea', key: 'canContinue' } as const, false)
+const mismatchAtom = atom({ plugin: 'queue-tea', key: 'mismatch' } as const, null)
+const bandQueueAtom = atom({ plugin: 'queue-tea', key: 'bandQueue' } as const, [] as View['bandQueue'])
+const checkedAtom = atom({ plugin: 'queue-tea', key: 'checked' } as const, null)
+const busyAtom = atom({ plugin: 'queue-tea', key: 'busy' } as const, null)
+const warningAtom = atom({ plugin: 'queue-tea', key: 'warning' } as const, null)
+const isPaletteOpenAtom = atom({ plugin: 'queue-tea', key: 'isPaletteOpen' } as const, false)
+const blockingAtom = atom({ plugin: 'queue-tea', key: 'blocking' } as const, null)
+const budgetAtom = atom({ plugin: 'queue-tea', key: 'budget' } as const, null)
+const driftAtom = atom({ plugin: 'queue-tea', key: 'drift' } as const, [] as View['drift'])
+const othersAtom = atom({ plugin: 'queue-tea', key: 'others' } as const, [] as View['others'])
 
 export function debug($: EngineInterface, what: string, err: unknown) {
   $.ui.log(`${what}: ${err instanceof Error ? err.message : String(err)}`, { to: 'debug' })
@@ -160,7 +160,7 @@ export function portsOf($: EngineInterface): Ports {
     now: () => $.clock.now(),
     later: work => {
       $.clock.after(0, () => {
-        work().catch(err => debug($, 'queue-tie work failed', err))
+        work().catch(err => debug($, 'queue-tea work failed', err))
       })
     },
     newId: () => `t-${hex(crypto.getRandomValues(new Uint8Array(4)))}`,

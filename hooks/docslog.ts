@@ -14,7 +14,7 @@ export type DocsRow = {
 const HEAD = [
   '# Task Log',
   '',
-  'Every task finished in this project, newest first. Written by Queue-tie.',
+  'Every task finished in this project, newest first. Written by Queue-tea.',
   '',
 ]
 const TABLE = ['| Task | Priority | Difficulty | Time | Branch |', '| --- | --- | --- | --- | --- |']

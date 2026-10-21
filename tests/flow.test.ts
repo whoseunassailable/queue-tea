@@ -110,7 +110,7 @@ test('slash commands and the mod’s own prompts are not checked', () => {
   expect(shouldCheck({ origin: { kind: 'composer' } })).toBe(true)
   expect(shouldCheck({ origin: { kind: 'composer' }, command: { name: 'help', args: '' } })).toBe(false)
   expect(shouldCheck({ origin: { kind: 'composer' }, isMeta: true })).toBe(false)
-  const fromPlugin = { kind: 'plugin', name: 'queue-tie' }
+  const fromPlugin = { kind: 'plugin', name: 'queue-tea' }
   expect(shouldCheck({ origin: fromPlugin })).toBe(false)
   expect(shouldCheck({ origin: { kind: 'task-notification' } })).toBe(false)
 })
@@ -261,9 +261,9 @@ test('the compose section names the task only while one is current', () => {
 
   expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [makeTask()] })).toBeNull()
   expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })).toEqual({
-    id: 'queue-tie:task',
+    id: 'queue-tea:task',
     scope: 'session',
-    text: 'The current Queue-tie task is "Retry button". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.',
+    text: 'The current Queue-tea task is "Retry button". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.',
   })
   expect(taskSection(null)).toBeNull()
 })
@@ -276,7 +276,7 @@ test('firstMessage includes the handoff note when there is one', () => {
     firstMessage({ ...task, handoff: { text: 'Button done; colour left.', written: '2026-10-21T10:00:00+02:00' } }),
   ).toBe(
     'Task: Retry button\n\nadd a retry button\n\nmake it blue\n\nHandoff note (2026-10-21T10:00:00+02:00):\nButton done; colour left.\n\n' +
-      'First compare the checkpoint with the repository and say in one line what differs. A check counts as passed only when Queue-tie saw it pass; rerun the ones the work relies on. Then do the next action.',
+      'First compare the checkpoint with the repository and say in one line what differs. A check counts as passed only when Queue-tea saw it pass; rerun the ones the work relies on. Then do the next action.',
   )
 })
 

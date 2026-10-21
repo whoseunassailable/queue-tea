@@ -2,7 +2,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { Ctx, Options } from '../types'
 import { hostOf } from './host'
-import { projectKey, recordPath } from './record'
+import { carryOverRecords, projectKey, recordPath } from './record'
 import { parseOffset } from './time'
 
 const DEFAULTS: Options = { idleGapMinutes: 15, freshAtTokens: 100000, handoffAtPercent: 90, checkTimeoutSeconds: 10 }
@@ -26,6 +26,11 @@ export async function loadContext($: EngineInterface, options: Options): Promise
   const top = await host.run(['git', 'rev-parse', '--show-toplevel'], cwd)
   const projectPath = top.exitCode === 0 && top.stdout.trim() !== '' ? top.stdout.trim() : cwd
   const home = (await $.env.get('HOME')) ?? ''
+  try {
+    await carryOverRecords(host, home)
+  } catch (err) {
+    $.ui.log(`carrying over the Queue-tie records failed: ${err instanceof Error ? err.message : String(err)}`, { to: 'debug' })
+  }
   const offset = parseOffset((await host.run(['date', '+%z'], cwd)).stdout)
 
   return {

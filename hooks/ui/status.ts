@@ -7,11 +7,11 @@ export const statusText = (
   allowance: Allowance | null,
   isChecking: boolean,
 ): string | undefined => {
-  if (isChecking) return 'Queue-tie: checking your message…'
+  if (isChecking) return 'Queue-tea: checking your message…'
   if (task === null) return undefined
   const used = allowance === null ? '' : ` · 5h ${Math.round(allowance.percent)}%`
 
-  return `Queue-tie: ${task.title} · ${formatMinutes(minutes)}${used}`
+  return `Queue-tea: ${task.title} · ${formatMinutes(minutes)}${used}`
 }
 
 const DAY = 86_400_000

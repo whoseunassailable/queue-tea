@@ -27,7 +27,7 @@ import { shouldFresh, shouldHandoff, windowKey } from './usage'
 
 export { firstMessage } from './checkpoint'
 
-export type View = PluginState['queue-tie']
+export type View = PluginState['queue-tea']
 
 // What the flow needs from the engine. register.tsx builds them from `$`.
 export type Ports = {
@@ -82,7 +82,7 @@ const scheduleFresh = (p: Ports, ctx: Ctx, task: Task) => {
   p.later(() => freshConversation(p, ctx, task))
 }
 
-// True while Queue-tie is starting a conversation of its own, so the clear it
+// True while Queue-tea is starting a conversation of its own, so the clear it
 // makes is not taken for one to recover from.
 export const isStartingFresh = () => isFreshPending
 
@@ -121,9 +121,9 @@ export const taskSection = (record: ProjectRecord | null) => {
   if (current === null) return null
 
   return {
-    id: 'queue-tie:task',
+    id: 'queue-tea:task',
     scope: 'session' as const,
-    text: `The current Queue-tie task is "${current.title}". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`,
+    text: `The current Queue-tea task is "${current.title}". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`,
   }
 }
 
@@ -428,7 +428,7 @@ export const switchToTask = async (p: Ports, ctx: Ctx): Promise<'switched' | str
   return 'switched'
 }
 
-const HANDOFF_FAILED = "Queue-tie: couldn't write the checkpoint; trying again after the next reply"
+const HANDOFF_FAILED = "Queue-tea: couldn't write the checkpoint; trying again after the next reply"
 
 const factsNow = async (p: Ports, ctx: Ctx) => {
   try {
@@ -575,9 +575,9 @@ export const commitWarning = async (
   if (commits.length === 0) return null
 
   const named = commits.length === 1 ? `a commit appeared: ${commits[0]}` : `${commits.length} commits appeared, newest ${commits[0]}`
-  const text = `During the last turn ${named}. Queue-tie stops Claude's commits, so check it was yours.`
+  const text = `During the last turn ${named}. Queue-tea stops Claude's commits, so check it was yours.`
   await p.set('warning', text)
-  p.toast(`Queue-tie: ${named}`)
+  p.toast(`Queue-tea: ${named}`)
 
   return text
 }

@@ -85,7 +85,7 @@ test('two new commits are counted, the newest named', async () => {
   const { ports, view } = fakePorts(mem)
 
   await commitWarning(ports, CTX, { commit: 'aaaaaaa', branch: 'main' })
-  expect(view.warning).toBe("During the last turn 2 commits appeared, newest ccccccc Second. Queue-tie stops Claude's commits, so check it was yours.")
+  expect(view.warning).toBe("During the last turn 2 commits appeared, newest ccccccc Second. Queue-tea stops Claude's commits, so check it was yours.")
 })
 
 test('a note in the older shape is split at its own headings', () => {

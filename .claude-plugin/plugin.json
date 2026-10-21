@@ -1,9 +1,9 @@
 {
-  "name": "queue-tie",
+  "name": "queue-tea",
   "version": "0.1.0",
   "author": { "name": "Rohan Bhande" },
-  "homepage": "https://github.com/whoseunassailable/queue-tie",
-  "repository": "https://github.com/whoseunassailable/queue-tie",
+  "homepage": "https://github.com/whoseunassailable/queue-tea",
+  "repository": "https://github.com/whoseunassailable/queue-tea",
   "license": "MIT",
   "description": "One task at a time per project, a priority queue, a branch per task, and a record of time and effort.",
   "types": "./types/index.d.ts",

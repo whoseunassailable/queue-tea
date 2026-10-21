@@ -13,11 +13,11 @@ const CLEAN = [OID, '# branch.head main', '# branch.upstream origin/main', '# br
 const DIRTY = [OID, '# branch.head main', '# branch.upstream origin/main', '# branch.ab +2 -0', '? a', '? b', '? c', ''].join('\n')
 const SURFACES = ['terminal', 'desktop'] as const
 const PANE = {
-  plugin: 'queue-tie',
+  plugin: 'queue-tea',
   component: 'Pane',
-  requestId: 'queue-tie',
+  requestId: 'queue-tea',
   props: {
-    title: 'Queue-tie · p',
+    title: 'Queue-tea · p',
     isFocused: false,
     bodyColumns: 60,
     placement: 'dock',
@@ -26,7 +26,7 @@ const PANE = {
   },
 } as const
 const BAND = {
-  plugin: 'queue-tie',
+  plugin: 'queue-tea',
   component: 'AbovePrompt',
   requestId: 'above-prompt',
   props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 60, scroll: { offset: 0, bodyRows: 12 }, view: {} },
@@ -51,11 +51,21 @@ const startSession = async (
       ...options.git,
     },
   })
-  const seen = { toasts: [] as string[], submits: [] as string[], clears: 0, forks: 0, commands: [] as string[], tools: [] as string[] }
+  const seen = {
+    toasts: [] as string[],
+    submits: [] as string[],
+    prompts: [] as { text: string; origin: unknown }[],
+    clears: 0,
+    forks: 0,
+    commands: [] as string[],
+    tools: [] as string[],
+    logs: [] as string[],
+  }
   const clock = mock.clock(on, { now: Date.parse('2026-10-21T07:12:00Z') })
   mock.env(on, { HOME: '/h' })
   on('prompt.submit', (_, e) => {
     seen.submits.push(e.text)
+    seen.prompts.push({ text: e.text, origin: e.origin })
 
     return { text: e.text }
   })
@@ -69,7 +79,7 @@ const startSession = async (
   on('tool.register', (_, e) => {
     seen.tools.push(e.name)
 
-    return { value: { tool: `mcp__queue-tie__${e.name}` } }
+    return { value: { tool: `mcp__queue-tea__${e.name}` } }
   })
   on('command.register', (_, e) => {
     seen.commands.push(e.name)
@@ -83,6 +93,11 @@ const startSession = async (
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('ui.status', () => ({ value: undefined }))
+  on('ui.log', (_, e) => {
+    seen.logs.push(e.text)
+
+    return { value: undefined }
+  })
   on('ui.toast', (_, e) => {
     seen.toasts.push(e.text)
 
@@ -177,7 +192,7 @@ test('Up next is in priority order with the suggestion marked', async ($, on) =>
 
 test('a held start shows what is left and Check again', async ($, on) => {
   const { mem } = await startSession($, on, { file: record(), status: DIRTY })
-  await $.command.run({ command: 'task', args: 'add dark mode', ...COMMAND })
+  await $.command.run({ command: 'steep', args: 'add dark mode', ...COMMAND })
   for (const surface of SURFACES) {
     const band = await $.ui.mount({ ...BAND, surface })
     await band.press({ key: 'save' })
@@ -195,7 +210,7 @@ test('a held start shows what is left and Check again', async ($, on) => {
 test('Is this done for now? Yes leads to the difficulty band', async ($, on) => {
   const task = makeTask({ title: 'Now', state: 'current' })
   await startSession($, on, { file: record({ tasks: [task] }) })
-  await $.tool.call({ tool: 'mcp__queue-tie__task_looks_done' })
+  await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' })
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...PANE, surface })
     expect(await ui.find({ type: 'Text', text: /Is this done for now\?/ })).toBeDefined()
@@ -247,9 +262,9 @@ test("the unsure band without a check says the check didn't run", async ($, on) 
   }
 })
 
-test('/task files without a check', async ($, on) => {
+test('/steep files without a check', async ($, on) => {
   await startSession($, on, { file: record() })
-  const answer = await $.command.run({ command: 'task', args: 'add dark mode', ...COMMAND })
+  const answer = await $.command.run({ command: 'steep', args: 'add dark mode', ...COMMAND })
 
   expect(JSON.stringify(answer)).toContain('band above the prompt')
   const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
@@ -278,7 +293,7 @@ test('a git error at the start still registers the tool and the commands', async
   const { seen } = await startSession($, on, { file: record({ tasks: [task] }), status: 'missing' })
 
   expect(seen.tools).toEqual(['task_looks_done'])
-  expect(seen.commands).toEqual(['queue-tie', 'done', 'task'])
+  expect(seen.commands).toEqual(['queue-tea', 'done', 'steep', 'brew', 'instant', 'tea'])
 })
 
 const DAY_ONE = '2026-10-21'
@@ -354,7 +369,7 @@ test('Continue shows the handoff note as numbered sections', async ($, on) => {
 test('task_looks_done with what Claude checked shows it beside the question', async ($, on) => {
   const task = makeTask({ title: 'Now', state: 'current' })
   await startSession($, on, { file: record({ tasks: [task] }) })
-  await $.tool.call({ tool: 'mcp__queue-tie__task_looks_done', checked: 'ran the tests: 130 pass' } as never)
+  await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done', checked: 'ran the tests: 130 pass' } as never)
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
 
   expect(await ui.find({ type: 'Text', text: 'Claude checked: ran the tests: 130 pass' })).toBeDefined()
@@ -400,10 +415,127 @@ test('a commit made during a turn is named in the panel', async ($, on) => {
   await $.turn.complete(turn as never)
   await clock.settle()
 
-  expect(seen.toasts).toEqual(['Queue-tie: a commit appeared: bbbbbbb Sneaky commit'])
+  expect(seen.toasts).toEqual(['Queue-tea: a commit appeared: bbbbbbb Sneaky commit'])
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /During the last turn a commit appeared: bbbbbbb Sneaky commit/ })).toBeDefined()
   await ui.press({ key: 'dismiss-warning' })
   expect(await ui.find({ type: 'Text', text: /During the last turn/ })).toBeUndefined()
   await ui.unmount()
+})
+
+const TURN = { answer: '', durationMs: 1, isAborted: false, turnId: 't1', reason: 'end_turn', category: null, explanation: null }
+const NEW_REPLY = '{"kind":"new","intent":"improving","title":"Dev server","difficulty":"light"}'
+// A git command that makes or changes the branch; listing them is neither.
+const isBranchRun = (argv: string[]) => argv[0] === 'git' && ['switch', 'checkout'].includes(argv[1] ?? '')
+const noteOf = (answer: { context?: readonly string[] }) => (answer.context ?? []).join('\n')
+
+// The turn the engine runs for a submitted prompt: its start, then its end.
+const runTurn = async ($: Engine, clock: { settle: () => Promise<void> }, text: string, turnId = 't1') => {
+  await $.turn.start({ text, turnId })
+  await $.turn.complete({ ...TURN, turnId } as never)
+  await clock.settle()
+}
+
+test('/brew sends the request as Rohan’s, outside the queue: no check, no task, no branch, no clear', async ($, on) => {
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login' })
+  const { seen, mem, clock } = await startSession($, on, { file: record({ tasks: [task] }), reply: NEW_REPLY })
+  const runs = mem.runs.length
+
+  const answer = await $.command.run({ command: 'brew', args: ' start the dev server and tell me its URL ', ...COMMAND })
+  await clock.settle()
+
+  expect(answer.text).toBe('Brewing now, outside the queue.')
+  expect(noteOf(answer)).toContain('Rohan ran /brew')
+  expect(noteOf(answer)).toContain('"Fix login"')
+  expect(seen.logs).toEqual([])
+  expect(seen.prompts).toEqual([
+    { text: 'start the dev server and tell me its URL', origin: { kind: 'plugin', name: 'queue-tea', asUser: true } },
+  ])
+
+  await runTurn($, clock, 'start the dev server and tell me its URL')
+  expect(seen.forks).toBe(0)
+  expect(seen.clears).toBe(0)
+  expect(mem.runs.slice(runs).filter(isBranchRun)).toEqual([])
+  expect((JSON.parse(mem.files.get(FILE)!) as ProjectRecord).tasks.map(t => [t.title, t.state, t.branch])).toEqual([
+    ['Fix login', 'current', 'task/fix-login'],
+  ])
+})
+
+test('/brew with nothing after it says what to write and sends nothing', async ($, on) => {
+  const { seen, clock } = await startSession($, on, { file: record() })
+
+  const answer = await $.command.run({ command: 'brew', args: '  ', ...COMMAND })
+  await clock.settle()
+
+  expect(answer.text).toBe('Write what you want after the command: /brew <request>')
+  expect(answer.context).toBeUndefined()
+  expect(seen.prompts).toEqual([])
+})
+
+test('/instant is /brew, and /tea asks for an answer that changes no files', async ($, on) => {
+  const { seen, clock } = await startSession($, on, { file: record() })
+
+  const instant = await $.command.run({ command: 'instant', args: 'run the tests', ...COMMAND })
+  await clock.settle()
+  await runTurn($, clock, 'run the tests')
+  const tea = await $.command.run({ command: 'tea', args: 'how do I start the server?', ...COMMAND })
+  await clock.settle()
+
+  expect(tea.text).toBe('Pouring an answer, outside the queue.')
+  expect(seen.prompts.map(p => p.text)).toEqual(['run the tests', 'how do I start the server?'])
+  expect(noteOf(instant)).toContain('Rohan ran /brew')
+  expect(noteOf(tea)).toContain('Rohan ran /tea')
+  expect(noteOf(tea)).toContain('change no files')
+  expect(seen.forks).toBe(0)
+})
+
+test('during a /brew turn task_looks_done asks nothing; after it, it asks again', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { clock } = await startSession($, on, { file: record({ tasks: [task] }) })
+  const asksDone = async () => {
+    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    const found = await ui.find({ type: 'Text', text: /Is this done for now\?/ })
+    await ui.unmount()
+
+    return found !== undefined
+  }
+
+  await $.command.run({ command: 'brew', args: 'start the server', ...COMMAND })
+  await clock.settle()
+  await $.turn.start({ text: 'start the server', turnId: 't1' })
+  const during = await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' })
+  expect(JSON.stringify(during)).toContain('errand')
+  expect(await asksDone()).toBe(false)
+
+  await $.turn.complete(TURN as never)
+  await clock.settle()
+  await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' })
+  expect(await asksDone()).toBe(true)
+})
+
+test('a /brew turn past the size starts no fresh conversation; the next turn does', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { seen, clock } = await startSession($, on, { file: record({ tasks: [task] }), tokens: 200_000, reply: 'note' })
+
+  await $.command.run({ command: 'brew', args: 'start the server', ...COMMAND })
+  await clock.settle()
+  await runTurn($, clock, 'start the server')
+  expect(seen.forks).toBe(0)
+  expect(seen.clears).toBe(0)
+
+  await runTurn($, clock, 'and the tests?', 't2')
+  expect(seen.forks).toBe(1)
+  expect(seen.clears).toBe(1)
+})
+
+test('a message typed after /brew is checked as before', async ($, on) => {
+  const { seen, clock } = await startSession($, on, { file: record(), reply: NEW_REPLY })
+
+  await $.command.run({ command: 'brew', args: 'start the server', ...COMMAND })
+  await clock.settle()
+  await runTurn($, clock, 'start the server')
+  await $.prompt.submit({ text: 'start the server', wait: false, origin: { kind: 'composer' } })
+
+  expect(seen.forks).toBe(1)
+  expect(seen.prompts.map(p => p.text)).toEqual(['start the server'])
 })

@@ -1,15 +1,15 @@
-# Queue-tie: panel redesign
+# Queue-tea: panel redesign
 
 - **Date:** 2026-10-20
 - **State:** built 2026-10-20, with Back to queue, the fuller handoff note, the "Claude checked" line and the commit warning. What was built is in "The panel" in [spec.md](spec.md); this note keeps the design as decided. One change from it: the palette is a list of Buttons with keys and a New task field, not a `Select`, because a `Select` option has no dim line under it.
-- **Where it came from:** ChatGPT's review of Queue-tie (https://chatgpt.com/share/6ad7f105-0690-83e9-af2a-eae150883219). Beside each of its six points it showed a screenshot of another product. Rohan wants the panel to look like them.
+- **Where it came from:** ChatGPT's review of Queue-tea (https://chatgpt.com/share/6ad7f105-0690-83e9-af2a-eae150883219). Beside each of its six points it showed a screenshot of another product. Rohan wants the panel to look like them.
 
 ## What Rohan chose
 
 1. **Look:** TaskYou's terminal board, with the sections stacked so it fits the pane beside the chat.
 2. **Also:** a handoff card, shortcuts with a palette, and a week chart.
 
-Not included: a Blocked column (Queue-tie has no blocked state) and the dashboards with tiles and several charts (those belong to the weekly board, a separate project).
+Not included: a Blocked column (Queue-tea has no blocked state) and the dashboards with tiles and several charts (those belong to the weekly board, a separate project).
 
 ## The images, described
 
@@ -23,16 +23,16 @@ Not included: a Blocked column (Queue-tie has no blocked state) and the dashboar
 ## The panel, top to bottom
 
 ```
-Queue-tie · example-app       5h 62% · resets 16:40
+Queue-tea · example-app       5h 62% · resets 16:40
 
 █ ▶ In progress ███████████████████████  (orange)
-  [high] Go through ChatGPT's Queue-tie ideas
+  [high] Go through ChatGPT's Queue-tea ideas
   Medium · task/https-chatgpt… · 12m
 
 █ ○ Up next (8) ██████████████████████  (grey)
 ★ [urgent] Add a retry button to the scan…
   Hard · waited 29m
-  [urgent] Queue-tie: fix queue not loading…
+  [urgent] Queue-tea: fix queue not loading…
   Hard · waited 19m
 
 █ ✓ Done this week (1) · 1h 14m ███████  (green)
@@ -42,7 +42,7 @@ Queue-tie · example-app       5h 62% · resets 16:40
 ↑↓ move · enter open · s start · d done · ? help
 ```
 
-- **Header line:** "Queue-tie · <project>", with the allowance on the right.
+- **Header line:** "Queue-tea · <project>", with the allowance on the right.
 - **In progress:** the current task with its priority tag and a dim line (difficulty · branch · time so far). The done question, the git hold with **Check again**, the branch mismatch with **Switch**, and **Continue** stay in this section.
 - **Up next:** ★ marks the suggested task. The priority tag is coloured by priority, and the dim line says difficulty and how long it has waited. Pressing a row still opens Start, the priorities and Remove.
 - **Done this week:** the count and total in the bar, then this week's finished tasks ("done 2h"), then the week chart. Draw one bar per day from `minutesByDay` with `▁▂▃▄▅▆▇█`. A day with no time is blank.
@@ -56,7 +56,7 @@ Shown when **Continue** is offered: the latest handoff note as numbered sections
 ### Shortcuts and palette
 
 - One key per action on the panel's Buttons: `s` start, `d` done, `c` continue, `x` remove, `1`–`5` priority (urgent to low). Check that no two clash.
-- A palette (`Select`) that lists what can be done now, each with a dim line under it, opened by a key (`p`) and from `/queue-tie`.
+- A palette (`Select`) that lists what can be done now, each with a dim line under it, opened by a key (`p`) and from `/queue-tea`.
 - Leave out actions that don't exist yet, such as putting the current task back in the queue.
 
 ## What the panel can draw (this build's mod API)
@@ -71,6 +71,6 @@ From the types file the plugin-authoring skill lays out (grep `export type BoxPr
 
 ## Where to change it
 
-- Both copies, until the mod is installed from the source folder: `~/Documents/projects/personal_projects/queue-tie/` and the loaded copy at `~/.claude/dev-mods/<session>/queue-tie/`.
+- Both copies, until the mod is installed from the source folder: `~/Documents/projects/personal_projects/queue-tea/` and the loaded copy at `~/.claude/dev-mods/<session>/queue-tea/`.
 - `hooks/ui/panel.tsx` (the panel), `hooks/ui/status.ts` (age and week lines), the handoff prompt, and `tests/ui.test.tsx`.
 - Update "The panel" in `spec.md` to match once it is built.

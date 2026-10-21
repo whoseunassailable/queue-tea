@@ -180,7 +180,7 @@ export const CTX: Ctx = {
   cwd: '/p',
   projectPath: '/p',
   projectName: 'p',
-  file: '/h/.queue-tie/projects/p-000000.json',
+  file: '/h/.queue-tea/projects/p-000000.json',
   offsetMinutes: 120,
   options: { idleGapMinutes: 15, freshAtTokens: 100000, handoffAtPercent: 90, checkTimeoutSeconds: 10 },
 }

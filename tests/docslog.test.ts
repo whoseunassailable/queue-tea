@@ -16,7 +16,7 @@ const ROW: DocsRow = {
 const HEAD = [
   '# Task Log',
   '',
-  'Every task finished in this project, newest first. Written by Queue-tie.',
+  'Every task finished in this project, newest first. Written by Queue-tea.',
   '',
 ].join('\n')
 const TABLE = ['| Task | Priority | Difficulty | Time | Branch |', '| --- | --- | --- | --- | --- |']

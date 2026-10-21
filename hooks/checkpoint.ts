@@ -2,7 +2,7 @@ import type { Checkpoint, CommandRun, GitFacts, Task } from '../types'
 import { firstObject } from './check'
 
 // A task's checkpoint: what Claude writes at a handoff, beside what
-// Queue-tie saw itself, and the first message a fresh conversation gets.
+// Queue-tea saw itself, and the first message a fresh conversation gets.
 
 const KEEP_COMMANDS = 15
 
@@ -31,7 +31,7 @@ const lastLine = (text: string) =>
     .filter(Boolean)
     .at(-1) ?? ''
 
-// One shell command as Queue-tie keeps it: cut short, with the last line of
+// One shell command as Queue-tea keeps it: cut short, with the last line of
 // what it printed.
 export const commandRun = (command: string, isOk: boolean, output: string, at: string): CommandRun => ({
   command: command.replace(/\s+/g, ' ').trim().slice(0, 160),
@@ -41,7 +41,7 @@ export const commandRun = (command: string, isOk: boolean, output: string, at: s
   summary: lastLine(output).slice(0, 120),
 })
 
-// Adds what Queue-tie saw since the last turn to a task's checkpoint.
+// Adds what Queue-tea saw since the last turn to a task's checkpoint.
 export const noteSeen = (
   task: Task,
   seen: { at: string; files: string[]; commands: CommandRun[]; git: GitFacts | null },
@@ -66,7 +66,7 @@ export const noteSeen = (
 
 const ran = (c: CommandRun) => `- ${c.isOk ? 'passed' : 'failed'}: ${c.command}${c.summary === '' ? '' : ` (${c.summary})`}`
 
-// The question for a checkpoint, with what git and Queue-tie saw, so Claude
+// The question for a checkpoint, with what git and Queue-tea saw, so Claude
 // need not guess and cannot claim a check it didn't run.
 export const checkpointPrompt = (task: Task, git: GitFacts | null): string => {
   const seen = task.checkpoint?.seen
@@ -88,8 +88,8 @@ export const checkpointPrompt = (task: Task, git: GitFacts | null): string => {
       ? 'Not a git repository.'
       : `From git now: branch ${git.branch ?? 'none (detached HEAD)'}; last commit ${git.head ?? 'none'}; ${git.uncommitted.length} not committed${git.uncommitted.length === 0 ? '' : `: ${git.uncommitted.join(', ')}`}.`,
     ...(seen == null || seen.commands.length === 0
-      ? ['Queue-tie saw no shell commands run during this task.']
-      : ['Shell commands Queue-tie saw, latest last:', ...seen.commands.map(ran)]),
+      ? ['Queue-tea saw no shell commands run during this task.']
+      : ['Shell commands Queue-tea saw, latest last:', ...seen.commands.map(ran)]),
     'Under 300 words in all.',
   ].join('\n')
 }
@@ -174,7 +174,7 @@ export const checkLines = (task: Task, now: GitFacts | null, drift: string[]): s
 const list = (lines: string[]) => lines.map(l => `- ${l}`)
 
 // The first message of a task's fresh conversation. A task that has been
-// worked on brings its checkpoint, what Queue-tie checked just now, and the
+// worked on brings its checkpoint, what Queue-tea checked just now, and the
 // order to compare before trusting either.
 export const firstMessage = (task: Task, checked: string[] | null = null): string => {
   const c = task.checkpoint
@@ -198,15 +198,15 @@ export const firstMessage = (task: Task, checked: string[] | null = null): strin
   if (seen != null && (seen.files.length > 0 || seen.commands.length > 0)) {
     parts.push(
       [
-        `Seen by Queue-tie (${seen.at}):`,
+        `Seen by Queue-tea (${seen.at}):`,
         ...(seen.files.length === 0 ? [] : [`Files Claude changed: ${seen.files.join(', ')}`]),
         ...(seen.commands.length === 0 ? [] : ['Shell commands, latest last:', ...seen.commands.map(ran)]),
       ].join('\n'),
     )
   }
-  if (checked !== null) parts.push(['Checked by Queue-tie just now:', ...list(checked)].join('\n'))
+  if (checked !== null) parts.push(['Checked by Queue-tea just now:', ...list(checked)].join('\n'))
   parts.push(
-    'First compare the checkpoint with the repository and say in one line what differs. A check counts as passed only when Queue-tie saw it pass; rerun the ones the work relies on. Then do the next action.',
+    'First compare the checkpoint with the repository and say in one line what differs. A check counts as passed only when Queue-tea saw it pass; rerun the ones the work relies on. Then do the next action.',
   )
 
   return parts.join('\n\n')

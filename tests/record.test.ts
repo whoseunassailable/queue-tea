@@ -1,14 +1,14 @@
 import { expect, test } from 'claude-code/testing'
 
-import { emptyRecord, projectKey, readRecord, recordPath, updateRecord } from '../hooks/record'
+import { carryOverRecords, emptyRecord, projectKey, readRecord, recordPath, updateRecord } from '../hooks/record'
 import type { ProjectRecord } from '../types'
 import { makeTask, memoryHost } from './helpers'
 
 const FILE = recordPath('/Users/example', 'example-app-abc123')
 const json = (r: ProjectRecord) => JSON.stringify(r)
 
-test('recordPath is under ~/.queue-tie/projects', () => {
-  expect(FILE).toBe('/Users/example/.queue-tie/projects/example-app-abc123.json')
+test('recordPath is under ~/.queue-tea/projects', () => {
+  expect(FILE).toBe('/Users/example/.queue-tea/projects/example-app-abc123.json')
 })
 
 test('projectKey: same folder name, different paths, different keys', () => {
@@ -72,4 +72,35 @@ test('a record of version 2 is unreadable', async () => {
   const { host } = memoryHost({ files: { [FILE]: JSON.stringify({ ...emptyRecord('p', '/p'), version: 2 }) } })
 
   expect(await readRecord(host, FILE, 'p', '/p')).toBe('unreadable')
+})
+
+const OLD = '/h/.queue-tie/projects'
+const NEW = '/h/.queue-tea/projects'
+const COPY = { 'mkdir -p /h/.queue-tea': {}, [`cp -Rp ${OLD} ${NEW}`]: {} }
+
+test('the first start after the rename copies the Queue-tie records over', async () => {
+  const mem = memoryHost({ files: { [OLD]: '' }, git: COPY })
+
+  expect(await carryOverRecords(mem.host, '/h')).toBe('copied')
+  expect(mem.runs).toEqual([
+    ['mkdir', '-p', '/h/.queue-tea'],
+    ['cp', '-Rp', OLD, NEW],
+  ])
+})
+
+test('records are not copied once ~/.queue-tea exists, without old ones, or without a home', async () => {
+  const both = memoryHost({ files: { [OLD]: '', [NEW]: '' }, git: COPY })
+  const none = memoryHost({ git: COPY })
+  const homeless = memoryHost({ files: { '/.queue-tie/projects': '' }, git: COPY })
+
+  expect(await carryOverRecords(both.host, '/h')).toBe('none')
+  expect(await carryOverRecords(none.host, '/h')).toBe('none')
+  expect(await carryOverRecords(homeless.host, '')).toBe('none')
+  expect([...both.runs, ...none.runs, ...homeless.runs]).toEqual([])
+})
+
+test('a copy that fails says so', async () => {
+  const mem = memoryHost({ files: { [OLD]: '' }, git: { 'mkdir -p /h/.queue-tea': {} } })
+
+  await expect(carryOverRecords(mem.host, '/h')).rejects.toThrow('cp of the old records failed')
 })

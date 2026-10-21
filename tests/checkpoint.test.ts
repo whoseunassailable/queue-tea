@@ -36,7 +36,7 @@ test('a checkpoint reply is read field by field; prose is not a checkpoint', () 
   expect(parseCheckpoint('{"goal":"","nextAction":""}', AT)).toBeNull()
 })
 
-test('the prompt gives what git says and only the commands Queue-tie saw', () => {
+test('the prompt gives what git says and only the commands Queue-tea saw', () => {
   const run = commandRun('claude plugin test .', true, ' 143 pass\n 0 fail\n', AT)
   const task = noteSeen(makeTask({ title: 'Retry' }), { at: AT, files: ['a.ts'], commands: [run], git: null })
   const prompt = checkpointPrompt(task, { branch: 'task/retry', head: '1a2b3c4 Add bars', uncommitted: ['a.ts'] })
@@ -44,7 +44,7 @@ test('the prompt gives what git says and only the commands Queue-tie saw', () =>
   expect(prompt).toContain('From git now: branch task/retry; last commit 1a2b3c4 Add bars; 1 not committed: a.ts.')
   expect(prompt).toContain('- passed: claude plugin test . (0 fail)')
   expect(prompt).toContain('Say a check passed only when it is listed as passed below.')
-  expect(checkpointPrompt(makeTask(), null)).toContain('Queue-tie saw no shell commands run during this task.')
+  expect(checkpointPrompt(makeTask(), null)).toContain('Queue-tea saw no shell commands run during this task.')
 })
 
 test('commands are kept with their result, tests marked, the last 15 only', () => {
@@ -104,7 +104,7 @@ test('the first message brings the checkpoint, what was seen, what was checked, 
   expect(text).toContain('Next action: Write test/scan_page_test.dart for the off case')
   expect(text).toContain('Files Claude changed: lib/scan_page.dart')
   expect(text).toContain('- failed: flutter test (Some tests failed.)')
-  expect(text).toContain("Checked by Queue-tie just now:\n- ✓ On task/retry, the task's branch.")
+  expect(text).toContain("Checked by Queue-tea just now:\n- ✓ On task/retry, the task's branch.")
   expect(text).toEndWith('Then do the next action.')
   expect(text).not.toContain('Blockers')
   expect(firstMessage(makeTask({ title: 'New', messages: ['do it'] }))).toBe('Task: New\n\ndo it')

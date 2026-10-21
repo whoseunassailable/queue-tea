@@ -1,34 +1,34 @@
-# Queue-tie Implementation Plan
+# Queue-tea Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Queue-tie mod in [spec.md](spec.md): one current task per project, a priority queue, a branch per task, a fresh conversation per task, a git guard, and a record of time and effort.
+**Goal:** Build the Queue-tea mod in [spec.md](spec.md): one current task per project, a priority queue, a branch per task, a fresh conversation per task, a git guard, and a record of time and effort.
 
 **Architecture:** One Claude Code mod (a hooks module plugin). The logic that needs no engine (queue order, git output parsing, the guard's matcher, time accrual, the docs log, check answers) lives in pure functions, each in its own file and tested on its own. Thin adapters reach the engine through `$` (`$.fs`, `$.process.run`, `$.model.fork`, `$.command.run`, `$.prompt.submit`, `$.session.usage`). `hooks/register.tsx` only wires events to them. Display state lives in `$.state` atoms. The record lives in a JSON file per project.
 
 **Tech Stack:** TypeScript and TSX hooks module against the `claude-code` API of build 2.1.304, its testing kit `claude-code/testing`, `claude plugin validate`, `claude plugin test`, `tsc`, and git through `$.process.run`.
 
-**Spec:** `~/Documents/projects/personal_projects/queue-tie/docs/spec.md`
+**Spec:** `~/Documents/projects/personal_projects/queue-tea/docs/spec.md`
 
 **API reference while building:** `/private/tmp/claude-501/bundled-skills/2.1.304/b83111368ebe5d0152d38b9f71c09350/plugin-authoring/types/claude-code.d.ts` until the mod has loaded once, then `<mod>/.claude-plugin/types/claude-code/index.d.ts`. Grep it for the name at hand (`export type ToolCallResult`, `'process.run'`). Where this plan names a call's shape, the declaration file wins.
 
 ## Global Constraints
 
 - **No commits, no pushes.** Rohan commits. Every task ends with a checkpoint that lists the files it changed, never `git commit`.
-- **Mod folder while building:** `M=~/.claude/dev-mods/<session>/queue-tie`. Every path below is relative to `$M`.
-- **Plugin name:** `queue-tie`. Pane id `queue-tie`, pane title `Queue-tie · <project>`.
+- **Mod folder while building:** `M=~/.claude/dev-mods/<session>/queue-tea`. Every path below is relative to `$M`.
+- **Plugin name:** `queue-tea`. Pane id `queue-tea`, pane title `Queue-tea · <project>`.
 - **Priorities, in order:** `urgent`, `high`, `mid`, `okay`, `low`.
 - **Difficulties:** `light`, `medium`, `hard`.
 - **Task states:** `queued`, `current`, `done`, `removed`.
 - **Branch:** `task/<slug>`, made from the branch checked out now. A taken name gets `-2`, `-3` and so on.
-- **Record file:** `$HOME/.queue-tie/projects/<folder>-<hash6>.json`.
+- **Record file:** `$HOME/.queue-tea/projects/<folder>-<hash6>.json`.
 - **Defaults (userConfig):** `idleGapMinutes` 15, `freshAtTokens` 100000, `handoffAtPercent` 90, `checkTimeoutSeconds` 10.
 - **Docs log suggestion:** `docs/task_log.md`.
-- **Commands:** `/queue-tie`, `/done`, `/task <message>`.
+- **Commands:** `/queue-tea`, `/done`, `/task <message>`.
 - **Errors** go to `$.ui.log(text, { to: 'debug' })`, never to the screen. The screen says what went wrong in plain words, with a way to try again.
 - **Every waiting view** shows loading (a turning character and a line), partly loaded, done, done but empty, or failed. Never blank.
 - **Exact copy from the spec** (use these strings as written):
-  - `Queue-tie: checking your message…`
+  - `Queue-tea: checking your message…`
   - `Queued: <title> (<priority>)`
   - `Is <task> done for now?` and `Is this done for now?`
   - `Reading your queue…`
@@ -36,8 +36,8 @@
   - `Couldn't read your task record`
   - `Not a git repository, so no branches are made`
   - `This branch has never been pushed`
-  - `Queue-tie: commits and pushes are yours to make.`
-  - status line `Queue-tie: <task> · <time> · 5h <n>%`
+  - `Queue-tea: commits and pushes are yours to make.`
+  - status line `Queue-tea: <task> · <time> · 5h <n>%`
   - allowance `5h: <n>% · resets <HH:MM>`
 - **Health data:** the docs log holds titles and numbers only, never message text.
 
@@ -57,7 +57,7 @@
 | --- | --- |
 | `.claude-plugin/plugin.json` | Manifest: name, version, description, `types`, `userConfig` |
 | `hooks/hooks.json` | `{ "modules": ["./register.tsx"] }` |
-| `types/index.d.ts` | The contract: every domain type and every `$.state` value under `PluginState['queue-tie']` |
+| `types/index.d.ts` | The contract: every domain type and every `$.state` value under `PluginState['queue-tea']` |
 | `hooks/register.tsx` | Wires events to the pieces. No logic of its own |
 | `hooks/state.ts` | The atoms (`atom(ref, initial)`), one per `$.state` value |
 | `hooks/queue.ts` | Pure: queue order, the suggestion, adding, removing, re-prioritising |
@@ -150,7 +150,7 @@ export type Allowance = { percent: number; resetsAt: string | null }
 
 declare module 'claude-code' {
   interface PluginState {
-    'queue-tie': {
+    'queue-tea': {
       record: ProjectRecord | null
       load: 'loading' | 'ready' | 'failed'
       hold: string | null          // what the git check says is left, or null
@@ -184,11 +184,11 @@ declare module 'claude-code' {
   - `newTask(input: { title: string; priority: Priority; difficulty: Difficulty; messages: string[]; now: string; id: string }): Task`
   - `setPriority(tasks: Task[], id: string, p: Priority): Task[]`
   - `removeTask(tasks: Task[], id: string): Task[]` (state `removed`; queued tasks only)
-  - in `state.ts`: one atom per `PluginState['queue-tie']` key, named like the key (`record`, `load`, `hold`, `band`…), refs `{ plugin: 'queue-tie', key: '<key>' } as const`; initial values `null`, `'loading'`, `null`, `{ kind: 'none' }`, `false`, `false`, `null`, `false`, `null`, `null`, `0`
+  - in `state.ts`: one atom per `PluginState['queue-tea']` key, named like the key (`record`, `load`, `hold`, `band`…), refs `{ plugin: 'queue-tea', key: '<key>' } as const`; initial values `null`, `'loading'`, `null`, `{ kind: 'none' }`, `false`, `false`, `null`, `false`, `null`, `null`, `0`
 
 - [ ] **Step 1: Write the manifest and module files**
 
-`plugin.json`: `{ "name": "queue-tie", "version": "0.1.0", "description": "One task at a time per project, a priority queue, a branch per task, and a record of time and effort.", "types": "./types/index.d.ts", "userConfig": { … } }`. The four numeric fields go under `userConfig` with the Global Constraints defaults, each with a title and a one-line description. Check the field shape against `claude plugin validate` output in Step 6. `hooks/register.tsx` exports `register: Register` with an empty `session.start` hook that returns `next(e)`.
+`plugin.json`: `{ "name": "queue-tea", "version": "0.1.0", "description": "One task at a time per project, a priority queue, a branch per task, and a record of time and effort.", "types": "./types/index.d.ts", "userConfig": { … } }`. The four numeric fields go under `userConfig` with the Global Constraints defaults, each with a title and a one-line description. Check the field shape against `claude plugin validate` output in Step 6. `hooks/register.tsx` exports `register: Register` with an empty `session.start` hook that returns `next(e)`.
 
 - [ ] **Step 2: Write the failing tests** in `tests/queue.test.ts`
 
@@ -214,7 +214,7 @@ Run: `claude plugin test $M`. Expected: all pass.
 
 - [ ] **Step 6: Validate and type-check**
 
-Run: `claude plugin validate $M`. Expected: no errors, and it lists the `queue-tie` state keys. Then run `tsc -p $M` once `.claude-plugin/types/` exists. Before the mod has loaded, use the header `tsconfig.json` of the API file, kept outside `$M`. Expected: no errors.
+Run: `claude plugin validate $M`. Expected: no errors, and it lists the `queue-tea` state keys. Then run `tsc -p $M` once `.claude-plugin/types/` exists. Before the mod has loaded, use the header `tsconfig.json` of the API file, kept outside `$M`. Expected: no errors.
 
 - [ ] **Step 7: Checkpoint.** List the files created. Don't commit.
 
@@ -230,7 +230,7 @@ Run: `claude plugin validate $M`. Expected: no errors, and it lists the `queue-t
 - Consumes: `ProjectRecord`, `Task` (Task 1)
 - Produces:
   - `projectKey(path: string): string` returns `<last folder name>-<6 hex>`. The 6 hex are the first six of an FNV-1a 32-bit hash of the full path, as lowercase hex.
-  - `recordPath(home: string, key: string): string` returns `${home}/.queue-tie/projects/${key}.json`
+  - `recordPath(home: string, key: string): string` returns `${home}/.queue-tea/projects/${key}.json`
   - `emptyRecord(name: string, path: string): ProjectRecord`
   - `parseRecord(text: string): ProjectRecord | 'unreadable'`: `'unreadable'` for invalid JSON or `version !== 1`
   - `readRecord($, file: string, name: string, path: string): Promise<ProjectRecord | 'unreadable'>`: a missing file gives `emptyRecord`
@@ -329,7 +329,7 @@ Approach:
 
 `git pull` and `git am` are added to the spec's list because both make commits; the spec says "side effects included".
 
-- Hook: `on('tool.call', { tool: 'Bash' }, ($, e, next) => isCommitOrPush(e.command) ? { deny: 'Queue-tie: commits and pushes are yours to make.' } : next(e))`, with `.catch(($, e, next) => next.called ? next(e) : { deny: 'Queue-tie: commits and pushes are yours to make.' })`.
+- Hook: `on('tool.call', { tool: 'Bash' }, ($, e, next) => isCommitOrPush(e.command) ? { deny: 'Queue-tea: commits and pushes are yours to make.' } : next(e))`, with `.catch(($, e, next) => next.called ? next(e) : { deny: 'Queue-tea: commits and pushes are yours to make.' })`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -417,7 +417,7 @@ test('a turn flushes minutes to the current task and unassigned when none', …)
 - Produces:
   - `type DocsRow = { title: string; priority: Priority; expected: Difficulty; actual: Difficulty; minutes: number; branch: string | null }`
   - `escapeCell(text: string): string`: `|` becomes `\|`, newlines become spaces
-  - `addRow(existing: string | null, row: DocsRow, day: string): string`. When there's no file, it starts with `# Task Log`, a blank line and `Every task finished in this project, newest first. Written by Queue-tie.`. It puts the row first under `## <day>`, which goes above every older date's heading. The table header is `| Task | Priority | Difficulty | Time | Branch |` with `| --- | --- | --- | --- | --- |`. Cells: the escaped title; the priority capitalised (`High`); `Light → Medium`, or just `Light` when both are the same; `formatMinutes`; the branch in backticks, or `—` when null.
+  - `addRow(existing: string | null, row: DocsRow, day: string): string`. When there's no file, it starts with `# Task Log`, a blank line and `Every task finished in this project, newest first. Written by Queue-tea.`. It puts the row first under `## <day>`, which goes above every older date's heading. The table header is `| Task | Priority | Difficulty | Time | Branch |` with `| --- | --- | --- | --- | --- |`. Cells: the escaped title; the priority capitalised (`High`); `Light → Medium`, or just `Light` when both are the same; `formatMinutes`; the branch in backticks, or `—` when null.
   - `writeDocsLog($, projectPath: string, logPath: string, row: DocsRow, day: string): Promise<void>`
 
 - [ ] **Step 1: Write the failing tests**
@@ -514,13 +514,13 @@ test('the prompt names the current task and the queue', …)
   - `continueTask($, ctx): Promise<void>`: `freshConversation` with the current task
   - `switchToTask($, ctx): Promise<'switched' | string>`: the hold text when anything is uncommitted
   - `type Ctx = { cwd: string; projectPath: string; projectName: string; file: string; options: Options }`, where `Options` is the four userConfig values
-  - The done tool: at `session.start`, `$.tool.register({ name: 'task_looks_done', description: 'Call when your reply has finished what the current Queue-tie task asked. Rohan is then asked in the panel whether it is done for now.', inputSchema: { type: 'object', properties: {} }, isDeferred: false })`. A `tool.call` hook on `mcp__queue-tie__task_looks_done` sets `isAskingDone` true and answers with the tool's result. Check the result shape with `export type ToolCallResult`.
-  - System prompt: a `prompt.compose` hook appends `{ id: 'queue-tie:task', scope: 'session', text }` to `next(e)`'s sections while a task is current. The text is: `The current Queue-tie task is "<title>". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`
+  - The done tool: at `session.start`, `$.tool.register({ name: 'task_looks_done', description: 'Call when your reply has finished what the current Queue-tea task asked. Rohan is then asked in the panel whether it is done for now.', inputSchema: { type: 'object', properties: {} }, isDeferred: false })`. A `tool.call` hook on `mcp__queue-tea__task_looks_done` sets `isAskingDone` true and answers with the tool's result. Check the result shape with `export type ToolCallResult`.
+  - System prompt: a `prompt.compose` hook appends `{ id: 'queue-tea:task', scope: 'session', text }` to `next(e)`'s sections while a task is current. The text is: `The current Queue-tea task is "<title>". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`
   - The message check is wired into `prompt.submit`:
     - Skip when `e.command` is set, `e.isMeta` is set, or `e.origin` is this plugin.
     - Set `isChecking`, run `checkMessage`, then clear `isChecking`.
     - `same` or `quick`: return `next(e)`.
-    - `new`: set `band` to `file` with the answer's title, priority `mid` and the guessed difficulty, then return `{ drop: 'Queue-tie: held as a new task' }`.
+    - `new`: set `band` to `file` with the answer's title, priority `mid` and the guessed difficulty, then return `{ drop: 'Queue-tea: held as a new task' }`.
     - `unsure`, or `null`: set `band` to `unsure` (`didCheckRun: answer !== null`) and drop the same way.
     - Call `addIntent(answer.intent)` (Task 5) for `same`, `quick` and `new`.
   - **An unreadable record stops the flow.** When `updateRecord` returns `'unreadable'`, every flow function sets `load` to `'failed'` and returns without clearing, branching or starting. `startTask` returns `'failed'`.
@@ -569,7 +569,7 @@ test('an unreadable record stops the start: no branch, no clear', …)
   - `shouldFresh(tokens: number | undefined, freshAt: number): boolean`: true when `tokens` is over `freshAt`
   - `shouldHandoff(percent: number, mark: number, alreadyForReset: string | null, resetsAt: string | null): boolean`: true once per reset window, when `percent` is at or over `mark`
   - `HANDOFF_PROMPT`: `Write a handoff note for the current task so a fresh conversation can carry it on: what is done, what is left, which files changed, what was decided. Plain text, under 300 words.`
-  - `writeHandoff($, ctx): Promise<boolean>`: runs `$.model.fork({ prompt: HANDOFF_PROMPT })`. When answered, it saves `handoff` with `written` set to now and returns true. Otherwise it logs to debug, sets `$.ui.status('Queue-tie: couldn't write the handoff note; trying again after the next reply')`, and returns false.
+  - `writeHandoff($, ctx): Promise<boolean>`: runs `$.model.fork({ prompt: HANDOFF_PROMPT })`. When answered, it saves `handoff` with `written` set to now and returns true. Otherwise it logs to debug, sets `$.ui.status('Queue-tea: couldn't write the handoff note; trying again after the next reply')`, and returns false.
   - Hooks:
     - `session.measure` updates `allowance` from `e.rateLimits`.
     - `turn.complete`, while a task is current, reads `$.session.usage()`. When `shouldFresh` is true, it calls `writeHandoff` and, only if that succeeds, schedules `freshConversation` with `$.clock.after(0, …)`. When `shouldHandoff` is true, it calls `writeHandoff` alone and remembers the reset time it wrote for.
@@ -603,12 +603,12 @@ test('under the size nothing happens', …)
 - Consumes: every atom, `orderQueue`, `suggestion`, `currentTask`, `formatMinutes`, `formatAllowance`, the flow functions
 - Produces:
   - `statusText(task: Task | null, minutes: number, allowance: Allowance | null, isChecking: boolean): string | undefined`:
-    - `Queue-tie: checking your message…` while checking
-    - `Queue-tie: <title> · <formatMinutes> · 5h <n>%` with a task, leaving out the allowance part when it's null
+    - `Queue-tea: checking your message…` while checking
+    - `Queue-tea: <title> · <formatMinutes> · 5h <n>%` with a task, leaving out the allowance part when it's null
     - `undefined` with no task and no check
   - `weekLine(tasks: Task[], unassigned: Record<string, number>, today: string): string`: `<n> done · <formatMinutes>`. It covers the week from Monday that holds `today`. `n` counts tasks finished that week, and the minutes are every task's and the unassigned minutes on those days.
   - `formatAge(ms: number): string`: `5m`, `3h`, `2d`, from a task's `created` to now
-  - `renderPanel($, e): Promise<Tree>` for `{ component: 'Pane', requestId: 'queue-tie' }`. Sections and states are as in the spec under "The panel". Lay it out to `e.props.bodyColumns`.
+  - `renderPanel($, e): Promise<Tree>` for `{ component: 'Pane', requestId: 'queue-tea' }`. Sections and states are as in the spec under "The panel". Lay it out to `e.props.bodyColumns`.
     - Loading draws `'◐◓◑◒'[spin % 4]` and `Reading your queue…`. A `$.clock.every(150, …)` steps `spin` only while `load` is `'loading'` or `isChecking` is true.
     - Every Button gets its own `key`: `start:<id>`, `prio:<id>:<p>`, `remove:<id>`, `done-yes`, `done-not-yet`, `check-again`, `switch`, `continue`, `retry`.
   - `renderBand($, e, next): Promise<Tree>` for `{ component: 'AbovePrompt' }`. It returns `next(e)` when `band.kind === 'none'` or `e.props.hasSurvey`.
@@ -617,14 +617,14 @@ test('under the size nothing happens', …)
     - `difficulty`: three buttons, the picked one primary, then **Save**.
     - `docsPath`: an `Input` prefilled with `suggested`, and **Save**.
   - Commands, registered at `session.start`:
-    - `queue-tie` opens the pane
+    - `queue-tea` opens the pane
     - `done` sets `isAskingDone` and opens the pane
     - `task` takes `argumentHint: '<message>'`. It sets `band` to `file` with the title from the first 60 characters of the arguments, priority `mid` and difficulty `medium`, with no check.
-    - When a name is refused, register `queue-tie-done` or `queue-tie-task` instead, and say so in the pane's notice.
+    - When a name is refused, register `queue-tea-done` or `queue-tea-task` instead, and say so in the pane's notice.
   - At `session.start`:
     1. Find the project with `git rev-parse --show-toplevel`, or the cwd.
     2. Read the record and set `load`.
-    3. `$.ui.open({ id: 'queue-tie', title: 'Queue-tie · <name>' })`.
+    3. `$.ui.open({ id: 'queue-tea', title: 'Queue-tea · <name>' })`.
     4. When a task is current and the checked-out branch isn't its branch, set the notice `You're on <branch>; this task is on <task branch>.` and show **Switch**.
     5. `$.ui.status(statusText(…))` after every change that affects it.
   - At every `turn.complete`, read the record again into the `record` atom, so a second session's changes show.
@@ -657,8 +657,8 @@ test('/task files without a check', …)
 ### Task 11: Live try, move and install
 
 **Files:**
-- Copy: `$M/` → `~/Documents/projects/personal_projects/queue-tie/`, keeping `docs/`
-- Create: `~/Documents/projects/personal_projects/queue-tie/.claude-plugin/marketplace.json`, `~/Documents/projects/personal_projects/queue-tie/README.md`
+- Copy: `$M/` → `~/Documents/projects/personal_projects/queue-tea/`, keeping `docs/`
+- Create: `~/Documents/projects/personal_projects/queue-tea/.claude-plugin/marketplace.json`, `~/Documents/projects/personal_projects/queue-tea/README.md`
 
 - [ ] **Step 1: Live try in a throwaway repository**
 
@@ -670,11 +670,11 @@ Make `/private/tmp/claude-501/<session>/scratchpad/qt-try`, `git init`, one comm
 - `task_looks_done` asks in the panel; Yes and the difficulty lead to the docs path question, the docs log row and the Up next choice
 - a dirty tree holds the next start
 - `git commit` from Claude is refused
-- the record file is written at `~/.queue-tie/projects/qt-try-<hash6>.json`, which confirms `$.fs` can write outside the project folder
+- the record file is written at `~/.queue-tea/projects/qt-try-<hash6>.json`, which confirms `$.fs` can write outside the project folder
 
 Expected: each one happens as the spec says. Write down anything that doesn't.
 
-- [ ] **Step 2: Copy into Rohan's folder.** Run `rsync -a --exclude .claude-plugin/types $M/ ~/Documents/projects/personal_projects/queue-tie/`. The docs there stay.
-- [ ] **Step 3: Marketplace file.** `{ "name": "queue-tie", "owner": { "name": "Rohan Bhande" }, "plugins": [{ "name": "queue-tie", "source": "./" }] }`. Then run `claude plugin validate ~/Documents/projects/personal_projects/queue-tie`. Expected: no errors.
-- [ ] **Step 4: Ask Rohan, then install.** Ask before changing Rohan's Claude Code setup. After a yes, run `claude plugin marketplace add ~/Documents/projects/personal_projects/queue-tie` and `claude plugin install queue-tie@queue-tie --scope user`. Expected: `Installed queue-tie`. Edits to the folder reach a session through `/reload-plugins`.
+- [ ] **Step 2: Copy into Rohan's folder.** Run `rsync -a --exclude .claude-plugin/types $M/ ~/Documents/projects/personal_projects/queue-tea/`. The docs there stay.
+- [ ] **Step 3: Marketplace file.** `{ "name": "queue-tea", "owner": { "name": "Rohan Bhande" }, "plugins": [{ "name": "queue-tea", "source": "./" }] }`. Then run `claude plugin validate ~/Documents/projects/personal_projects/queue-tea`. Expected: no errors.
+- [ ] **Step 4: Ask Rohan, then install.** Ask before changing Rohan's Claude Code setup. After a yes, run `claude plugin marketplace add ~/Documents/projects/personal_projects/queue-tea` and `claude plugin install queue-tea@queue-tea --scope user`. Expected: `Installed queue-tea`. Edits to the folder reach a session through `/reload-plugins`.
 - [ ] **Step 5: Hand over.** List every file in the folder for Rohan to commit. Don't commit.

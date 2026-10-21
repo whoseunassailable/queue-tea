@@ -13,14 +13,14 @@ export type Effort = {
   filesTouched: number
 }
 
-// One shell command Claude ran during a task, as Queue-tie saw it.
+// One shell command Claude ran during a task, as Queue-tea saw it.
 export type CommandRun = { command: string; isOk: boolean; isTest: boolean; at: string; summary: string }
 
-// What git said when Queue-tie last looked.
+// What git said when Queue-tea last looked.
 export type GitFacts = { branch: string | null; head: string | null; uncommitted: string[] }
 
 // What a fresh conversation needs to carry a task on. Claude writes the first
-// part at a handoff; Queue-tie fills `seen` itself after every turn.
+// part at a handoff; Queue-tea fills `seen` itself after every turn.
 export type Checkpoint = {
   written: string | null
   goal: string
@@ -112,7 +112,7 @@ export type Ctx = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'queue-tie': {
+    'queue-tea': {
       record: ProjectRecord | null
       load: 'loading' | 'ready' | 'failed'
       hold: { taskId: string; text: string } | null

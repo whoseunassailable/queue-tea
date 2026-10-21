@@ -21,7 +21,22 @@ export const projectKey = (path: string): string => {
 }
 
 export const recordPath = (home: string, key: string): string =>
-  `${home}/.queue-tie/projects/${key}.json`
+  `${home}/.queue-tea/projects/${key}.json`
+
+// Before the mod was Queue-tea its records were in ~/.queue-tie. The first
+// start without ~/.queue-tea copies them over; the old folder is left as it was.
+export const carryOverRecords = async (host: Host, home: string): Promise<'copied' | 'none'> => {
+  const from = `${home}/.queue-tie/projects`
+  const to = `${home}/.queue-tea/projects`
+  if (home === '' || (await host.exists(to)) || !(await host.exists(from))) return 'none'
+
+  for (const argv of [['mkdir', '-p', `${home}/.queue-tea`], ['cp', '-Rp', from, to]]) {
+    const ran = await host.run(argv)
+    if (ran.exitCode !== 0) throw new Error(`${argv[0]} of the old records failed: ${ran.stderr}`)
+  }
+
+  return 'copied'
+}
 
 export const emptyRecord = (name: string, path: string): ProjectRecord => ({
   version: 1,

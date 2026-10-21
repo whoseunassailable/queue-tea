@@ -65,7 +65,7 @@ export async function renderPanel($: EngineInterface, e: RenderInput<'Pane'>): P
     return (
       <Box flexDirection="column">
         <Text>Couldn't read your task record</Text>
-        <Text dimColor>It is left as it is. Try again, or look at the file in ~/.queue-tie/projects.</Text>
+        <Text dimColor>It is left as it is. Try again, or look at the file in ~/.queue-tea/projects.</Text>
         <Button key="retry" label="Try again" hotkey={KEYS.retry} onPress={() => void loadRecord($)} />
       </Box>
     )
@@ -104,7 +104,7 @@ export async function renderPanel($: EngineInterface, e: RenderInput<'Pane'>): P
 
   const header = (
     <Box justifyContent="space-between">
-      <Text bold>Queue-tie · {name}</Text>
+      <Text bold>Queue-tea · {name}</Text>
       {allowance !== null && <Text dimColor>{formatAllowance(allowance, offset)}</Text>}
     </Box>
   )

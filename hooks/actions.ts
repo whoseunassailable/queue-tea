@@ -120,7 +120,7 @@ export async function checkResume($: EngineInterface) {
 }
 
 // After a /clear: the record again, and Continue when the clear wasn't one
-// Queue-tie made to start a conversation of its own.
+// Queue-tea made to start a conversation of its own.
 export async function afterClear($: EngineInterface) {
   await loadRecord($)
   if (!isStartingFresh()) await checkResume($)
@@ -156,7 +156,7 @@ export async function tick($: EngineInterface) {
 // over an empty prompt; otherwise it opens without them).
 export async function openPanel($: EngineInterface, focus = false) {
   const name = live.ctx?.projectName ?? 'this project'
-  await $.ui.open(focus ? { id: 'queue-tie', title: `Queue-tie · ${name}`, focus } : { id: 'queue-tie', title: `Queue-tie · ${name}` })
+  await $.ui.open(focus ? { id: 'queue-tea', title: `Queue-tea · ${name}`, focus } : { id: 'queue-tea', title: `Queue-tea · ${name}` })
 }
 
 export async function pressStart($: EngineInterface, taskId: string) {

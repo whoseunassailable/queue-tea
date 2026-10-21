@@ -2,6 +2,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import { afterClear, askDone, checkResume, fileFromCommand, flush, loadRecord, openPanel, saveBeforeClear, tick } from './actions'
 import { commandRun } from './checkpoint'
+import { ERRANDS, errandNote, errandReply, errandUsage, isErrandTurn } from './errand'
+import type { ErrandKind } from './errand'
 import { afterTurn, commitWarning, onMessage, refreshDrift, shouldCheck, taskLooksDone, taskSection } from './flow'
 import { readHead } from './git'
 import { isCommitOrPush } from './guard'
@@ -14,11 +16,12 @@ import { renderBand } from './ui/band'
 import { renderPanel } from './ui/panel'
 import { isoLocal } from './time'
 import { readAllowance } from './usage'
+import { currentTask } from './queue'
 
-const GUARD_TEXT = 'Queue-tie: commits and pushes are yours to make.'
-const HELD_TEXT = 'Queue-tie: held for the band above the prompt'
+const GUARD_TEXT = 'Queue-tea: commits and pushes are yours to make.'
+const HELD_TEXT = 'Queue-tea: held for the band above the prompt'
 
-// Registers a command, or its `queue-tie-` name when the short one is taken;
+// Registers a command, or its `queue-tea-` name when the short one is taken;
 // says so in the panel.
 async function registerCommand($: EngineInterface, name: string, description: string, argumentHint?: string) {
   const spec = argumentHint === undefined ? { description } : { description, argumentHint }
@@ -26,8 +29,8 @@ async function registerCommand($: EngineInterface, name: string, description: st
     await $.command.register({ name, ...spec })
   } catch (err) {
     debug($, `registering /${name} failed`, err)
-    await $.command.register({ name: `queue-tie-${name}`, ...spec })
-    await portsOf($).set('notice', `/${name} was taken, so it is /queue-tie-${name} here.`)
+    await $.command.register({ name: `queue-tea-${name}`, ...spec })
+    await portsOf($).set('notice', `/${name} was taken, so it is /queue-tea-${name} here.`)
   }
 }
 
@@ -45,7 +48,7 @@ async function startSession($: EngineInterface) {
   await $.tool.register({
     name: 'task_looks_done',
     description:
-      'Call when your reply has finished what the current Queue-tie task asked. Rohan is then asked in the panel whether it is done for now.',
+      'Call when your reply has finished what the current Queue-tea task asked. Rohan is then asked in the panel whether it is done for now.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -58,9 +61,12 @@ async function startSession($: EngineInterface) {
     },
     isDeferred: false,
   })
-  await registerCommand($, 'queue-tie', 'Open the Queue-tie panel')
-  await registerCommand($, 'done', 'Ask whether the current Queue-tie task is done for now')
-  await registerCommand($, 'task', 'File a message as a new Queue-tie task, with no check', '<message>')
+  await registerCommand($, 'queue-tea', 'Open the Queue-tea panel')
+  await registerCommand($, 'done', 'Ask whether the current Queue-tea task is done for now')
+  await registerCommand($, 'steep', 'Steep a message for later: file it as a new Queue-tea task, with no check', '<message>')
+  await registerCommand($, 'brew', 'Do this now, outside the Queue-tea queue: no task, same branch and conversation', '<request>')
+  await registerCommand($, 'instant', 'The same as /brew', '<request>')
+  await registerCommand($, 'tea', 'Ask or explain, outside the Queue-tea queue: no task, no changes', '<question>')
   try {
     await checkResume($)
   } catch (err) {
@@ -71,6 +77,8 @@ async function startSession($: EngineInterface) {
 }
 
 async function afterEachTurn($: EngineInterface) {
+  const wasErrand = live.errand?.isRunning === true
+  if (wasErrand) live.errand = null
   live.tracker?.activity(await $.clock.now())
   await flush($)
   if (live.ctx === null) return
@@ -88,10 +96,12 @@ async function afterEachTurn($: EngineInterface) {
   try {
     const usage = await $.session.usage()
     const allowance = readAllowance(usage.rateLimits)
+    // An errand's answer stays on screen: a fresh conversation past the size
+    // waits for the next turn. The note at the allowance mark does not.
     live.handedOffFor = await afterTurn(
       portsOf($),
       live.ctx,
-      { tokens: usage.context.tokens, allowance },
+      { tokens: wasErrand ? undefined : usage.context.tokens, allowance },
       live.handedOffFor,
     )
   } catch (err) {
@@ -109,6 +119,28 @@ async function checkTyped($: EngineInterface, text: string): Promise<'pass' | 'd
   if (intent !== null && kind !== 'quick') live.tracker?.intent(intent)
 
   return verdict
+}
+
+// /brew, /instant and /tea: the errand's note goes in the command's context,
+// and the words go to Claude as Rohan's own once the command is done (a submit
+// from the command's own hook would wait on it). Time goes to the project, as
+// after a quick question.
+async function runErrand($: EngineInterface, kind: ErrandKind, command: string, args: string) {
+  const text = args.trim()
+  if (text === '') return { text: errandUsage(command, kind) }
+  const record = await getView($, 'record')
+  live.errand = { kind, text, isRunning: false }
+  live.tracker?.route('project')
+  portsOf($).later(async () => {
+    try {
+      await $.prompt.submit({ text, asUser: true })
+    } catch (err) {
+      live.errand = null
+      debug($, `/${command} failed`, err)
+    }
+  })
+
+  return { text: errandReply(kind), context: [errandNote(kind, record === null ? null : currentTask(record.tasks))] }
 }
 
 export const register: Register = (on, options) => {
@@ -134,7 +166,10 @@ export const register: Register = (on, options) => {
     return section === null ? composed : { sections: [...composed.sections, section] }
   })
 
-  on('tool.call', { tool: 'mcp__queue-tie__task_looks_done' }, async ($, e) => {
+  on('tool.call', { tool: 'mcp__queue-tea__task_looks_done' }, async ($, e) => {
+    if (live.errand?.isRunning === true) {
+      return { result: 'This turn is a /brew or /tea errand, outside the task, so Rohan is not asked.' }
+    }
     await taskLooksDone(portsOf($), e.checked)
 
     // A registered tool's result is what the model reads: a string, not a record.
@@ -168,8 +203,10 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // The commit a turn starts on, to name any commit that appears during it.
+  // The commit a turn starts on, to name any commit that appears during it,
+  // and whether the turn is an errand's.
   on('turn.start', async ($, e, next) => {
+    if (isErrandTurn(e, live.errand)) live.errand = { ...live.errand!, isRunning: true }
     if (e.agentId === undefined && live.ctx !== null) {
       try {
         live.turnHead = await readHead(hostOf($), live.ctx.projectPath)
@@ -217,43 +254,49 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  on('command.run', { command: 'queue-tie' }, async $ => {
+  on('command.run', { command: 'queue-tea' }, async $ => {
     await openPanel($, true)
 
-    return { text: 'Queue-tie panel opened.' }
+    return { text: 'Queue-tea panel opened.' }
   })
 
   on('command.run', { command: 'done' }, async $ => {
     const isAsked = await askDone($)
     await openPanel($)
 
-    return { text: isAsked ? 'Asked in the Queue-tie panel.' : 'No Queue-tie task is in progress.' }
+    return { text: isAsked ? 'Asked in the Queue-tea panel.' : 'No Queue-tea task is in progress.' }
   })
 
-  on('command.run', { command: 'queue-tie-done' }, async $ => {
+  on('command.run', { command: 'queue-tea-done' }, async $ => {
     const isAsked = await askDone($)
     await openPanel($)
 
-    return { text: isAsked ? 'Asked in the Queue-tie panel.' : 'No Queue-tie task is in progress.' }
+    return { text: isAsked ? 'Asked in the Queue-tea panel.' : 'No Queue-tea task is in progress.' }
   })
 
-  on('command.run', { command: 'task' }, async ($, e) => {
+  on('command.run', { command: 'steep' }, async ($, e) => {
     const text = (e.args ?? '').trim()
-    if (text === '') return { text: 'Write the task after the command: /task <message>' }
+    if (text === '') return { text: 'Write the task after the command: /steep <message>' }
     await fileFromCommand($, text)
 
     return { text: 'Pick its priority in the band above the prompt.' }
   })
 
-  on('command.run', { command: 'queue-tie-task' }, async ($, e) => {
+  on('command.run', { command: 'queue-tea-steep' }, async ($, e) => {
     const text = (e.args ?? '').trim()
-    if (text === '') return { text: 'Write the task after the command: /queue-tie-task <message>' }
+    if (text === '') return { text: 'Write the task after the command: /queue-tea-steep <message>' }
     await fileFromCommand($, text)
 
     return { text: 'Pick its priority in the band above the prompt.' }
   })
 
-  on('ui.render', { component: 'Pane', requestId: 'queue-tie' }, ($, e) => renderPanel($, e))
+  for (const [name, kind] of Object.entries(ERRANDS)) {
+    for (const command of [name, `queue-tea-${name}`]) {
+      on('command.run', { command }, ($, e) => runErrand($, kind, command, e.args ?? ''))
+    }
+  }
+
+  on('ui.render', { component: 'Pane', requestId: 'queue-tea' }, ($, e) => renderPanel($, e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => (await renderBand($, e)) ?? next(e))
 

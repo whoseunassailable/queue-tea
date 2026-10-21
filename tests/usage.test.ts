@@ -55,7 +55,7 @@ test('over 100,000 tokens: handoff, then clear and the first message from the no
   expect(stored(mem).tasks[0]!.handoff).toEqual({ text: 'Button done; colour left.', written: '2026-10-21T09:12:00+02:00' })
   expect(done.clears).toBe(1)
   expect(done.submits[0]).toStartWith(
-    `Task: ${task.title}\n\nadd a retry button\n\nHandoff note (2026-10-21T09:12:00+02:00):\nButton done; colour left.\n\nChecked by Queue-tie just now:`,
+    `Task: ${task.title}\n\nadd a retry button\n\nHandoff note (2026-10-21T09:12:00+02:00):\nButton done; colour left.\n\nChecked by Queue-tea just now:`,
   )
 })
 
@@ -67,7 +67,7 @@ test('a failed handoff note does not clear', async () => {
 
   expect(done.clears).toBe(0)
   expect(stored(mem).tasks[0]!.handoff).toBeNull()
-  expect(done.statuses).toContain("Queue-tie: couldn't write the checkpoint; trying again after the next reply")
+  expect(done.statuses).toContain("Queue-tea: couldn't write the checkpoint; trying again after the next reply")
   expect(done.logs.length > 0).toBe(true)
 })
 

@@ -1,11 +1,11 @@
-# Queue-tie: design
+# Queue-tea: design
 
 A Claude Code mod that keeps one task in progress per project and the rest in a priority queue, makes each task's git branch, starts every task in a fresh conversation, and records the time and effort that went into each one.
 
 - **Date:** 2026-10-20
 - **State:** built; installed at the user scope from this folder on 2026-10-20. The panel redesign and the features from ChatGPT's review (Back to queue, the fuller handoff note, the "Claude checked" line, the commit warning) were added the same day
 - **Next:** make this folder a git repository (Rohan makes the first commit)
-- **Later, as its own project:** the weekly board, which reads what Queue-tie records (see [What the board will need](#what-the-board-will-need))
+- **Later, as its own project:** the weekly board, which reads what Queue-tea records (see [What the board will need](#what-the-board-will-need))
 
 ## Why
 
@@ -102,9 +102,19 @@ A session that opens in a project with a current task shows that task in the pan
 
 - **Also answers:** understanding or improving, for every message; a short title and a difficulty guess for a new task.
 - **With nothing current:** a message that is work becomes a new task; a quick question goes through.
-- **While it runs:** the status line says "Queue-tie: checking your message…".
+- **While it runs:** the status line says "Queue-tea: checking your message…".
 - **When it fails** (a model error, or no answer within 10 seconds): the can't-tell buttons, with a line saying the check didn't run. It never guesses. The error goes to the debug log.
-- **`/task <message>`** files the message as a new task with no check.
+- **`/steep <message>`** files the message as a new task with no check.
+- **`/brew <request>`** (or `/instant`) and **`/tea <question>`** skip the check: the words go to Claude as Rohan's own, in this conversation, with no task, branch change or clear. See [Errands](#errands).
+
+### Errands
+
+An errand is work Rohan wants done now without filing it (`/brew`, `/instant`) or a question Rohan wants answered (`/tea`).
+
+- **What Claude reads:** the command leaves a hidden note before the words. It says this is outside the queue, that the current task, its branch and the queue stay as they are, and not to call `task_looks_done`. For `/brew`, it says to do the work rather than describe it and to check it worked (for a server: that it is listening, and its URL). For `/tea`, it says to change no files.
+- **During its turn:** a `task_looks_done` call asks nothing. A fresh conversation past the size waits for the next turn; the handoff note at the allowance mark is still written.
+- **Time:** goes to the project, as after a quick question, until the next task message.
+- **Guards:** unchanged. Claude's commits and pushes are still refused.
 
 ## Keeping usage down
 
@@ -133,10 +143,10 @@ The tool takes one optional argument, `checked`: a line on what Claude checked b
 
 ### The panel
 
-It opens by itself at the start of a session when the terminal is wide enough to seat it, and `/queue-tie` opens it at any time, with the keys. It is drawn like a terminal board, its sections stacked so it fits beside the chat. Top to bottom, with made-up tasks:
+It opens by itself at the start of a session when the terminal is wide enough to seat it, and `/queue-tea` opens it at any time, with the keys. It is drawn like a terminal board, its sections stacked so it fits beside the chat. Top to bottom, with made-up tasks:
 
 ```
-Queue-tie · example-app            5h: 62% · resets 16:40
+Queue-tea · example-app            5h: 62% · resets 16:40
  ▶ In progress (1)                                (orange)
   [high] Add dark mode
   Medium · task/add-dark-mode · 1h 12m
@@ -152,7 +162,7 @@ M ▃  T ▆  W ▁  T █  F    S    S
 p: actions · tab move · enter press · esc back to the chat
 ```
 
-- **Header:** "Queue-tie · <project>" with the allowance on the right.
+- **Header:** "Queue-tea · <project>" with the allowance on the right.
 - **Lines under it, while they apply:** a warning about a commit made during a turn (with **OK**), the message check running, work in progress ("Saving a handoff note…"), a notice.
 - **In progress:** a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far. Then, while they apply:
   - the git check's hold, with **Check again**; a branch mismatch, with **Switch**;
@@ -202,21 +212,24 @@ Only while it needs Rohan: filing a new task, the can't-tell choice, the difficu
 
 ### The status line
 
-"Queue-tie: <task> · 1h 12m · 5h 62%", or "Queue-tie: checking your message…" while the check runs.
+"Queue-tea: <task> · 1h 12m · 5h 62%", or "Queue-tea: checking your message…" while the check runs.
 
 ### Commands
 
 | Command | Does |
 | --- | --- |
-| `/queue-tie` | Opens the panel and gives it the keys (when the prompt is empty) |
+| `/queue-tea` | Opens the panel and gives it the keys (when the prompt is empty) |
 | `/done` | Asks whether the current task is done for now |
-| `/task <message>` | Files the message as a new task, no check |
+| `/steep <message>` | Files the message as a new task, no check |
+| `/brew <request>` | Does it now, outside the queue (see [Errands](#errands)) |
+| `/instant <request>` | The same as `/brew` |
+| `/tea <question>` | Answers or explains, outside the queue, changing no files |
 
 ## The record
 
 ### Where
 
-One file per project: `~/.queue-tie/projects/<folder>-<hash>.json`, where `<folder>` is the repository's top folder name and `<hash>` six characters from its full path, so two repositories with the same folder name (two `frontend` folders) don't share a file. It sits outside every repository and is never committed.
+One file per project: `~/.queue-tea/projects/<folder>-<hash>.json`, where `<folder>` is the repository's top folder name and `<hash>` six characters from its full path, so two repositories with the same folder name (two `frontend` folders) don't share a file. It sits outside every repository and is never committed. Records from before the rename to Queue-tea, in `~/.queue-tie/projects/`, are copied over the first time `~/.queue-tea/projects/` is missing; the old folder is left as it was.
 
 ### Writing it
 
@@ -286,7 +299,7 @@ The time between two moments of activity (a message of Rohan's, a turn of Claude
 ```markdown
 # Task Log
 
-Every task finished in this project, newest first. Written by Queue-tie.
+Every task finished in this project, newest first. Written by Queue-tea.
 
 ## 2026-10-21
 
@@ -303,7 +316,7 @@ Refuses Claude's shell commands that commit or push, side effects included:
 - `git merge`, `git rebase`, `git cherry-pick`, `git revert`
 - `gh repo create --push`, `gh pr merge`
 
-It finds them inside chained commands (`cd x && git commit`) and with `git -C <path>`. Claude is told "Queue-tie: commits and pushes are yours to make." When the guard itself fails, it refuses. It matches command spellings, so it catches the usual forms but not every possible one. The mod's own git work (status, branches, the diff) runs as its own processes and is not blocked.
+It finds them inside chained commands (`cd x && git commit`) and with `git -C <path>`. Claude is told "Queue-tea: commits and pushes are yours to make." When the guard itself fails, it refuses. It matches command spellings, so it catches the usual forms but not every possible one. The mod's own git work (status, branches, the diff) runs as its own processes and is not blocked.
 
 Because the guard can miss a spelling, the mod also looks after each turn: it notes the commit checked out when a turn starts, and when the turn ends on the same branch with new commits on top, a toast and a warning line in the panel name them ("During the last turn a commit appeared: 1a2b3c4 …"). A commit Rohan makes in another terminal during a turn is named too; the line asks him to check it was his. A change of branch is not counted.
 
@@ -355,12 +368,12 @@ The board is a separate project. Everything it shows comes from the record files
 
 ## Where it lives
 
-- **Source:** `~/Documents/projects/personal_projects/queue-tie/`, its own git repository, committed by Rohan, and on GitHub at https://github.com/whoseunassailable/queue-tie (public, MIT).
+- **Source:** `~/Documents/projects/personal_projects/queue-tea/`, its own git repository, committed by Rohan, and on GitHub at https://github.com/whoseunassailable/queue-tea (public, MIT).
 - **Installed** for Rohan's user from that folder as a local marketplace, so it loads in every project and every new session, and `/reload-plugins` picks up edits to the folder.
 - **Built** in the session's mods folder first, where it reloads on every change, then moved here.
 
 ## To confirm while building
 
-- `$.fs` can write under `~/.queue-tie/`, outside the project folder. Confirmed: the records are written there.
+- `$.fs` can write under `~/.queue-tea/`, outside the project folder. Confirmed: the records are written there.
 - The write that never leaves a half-written file. Built: a temporary file, then `mv -f` over the record.
 - The panel opens by itself only where the terminal seats it beside the chat.

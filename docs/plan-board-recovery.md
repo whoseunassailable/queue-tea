@@ -1,6 +1,6 @@
 # Plan: the board, recoverable tasks and checkpoints
 
-Round 2 of Queue-tie, from ChatGPT's review (2026-10-20). Three changes, built in this order. Each step keeps the 143 tests passing and adds its own. Rohan commits; Claude never does.
+Round 2 of Queue-tea, from ChatGPT's review (2026-10-20). Three changes, built in this order. Each step keeps the 143 tests passing and adds its own. Rohan commits; Claude never does.
 
 When a step is built, tick it here, so a fresh conversation can carry on from this file. [spec.md](spec.md) is updated last, to describe what was built.
 
@@ -32,21 +32,21 @@ The panel's sections, top to bottom: **In progress**, **Backlog** (was Up next),
   - the branch no longer holds its start commit (a rebase or a reset)
   - the base branch has commits the task's branch doesn't
   - another branch is checked out (as before, with Switch)
-- **Recovery:** whenever a conversation opens on a current task that Queue-tie didn't start itself (a new session, a restart after a crash, a `/clear`), the panel shows the checkpoint and **Continue**. A `/clear` Rohan types during a task first saves a checkpoint, when the conversation holds enough to save (20,000 tokens or more).
+- **Recovery:** whenever a conversation opens on a current task that Queue-tea didn't start itself (a new session, a restart after a crash, a `/clear`), the panel shows the checkpoint and **Continue**. A `/clear` Rohan types during a task first saves a checkpoint, when the conversation holds enough to save (20,000 tokens or more).
 - **Later:** a git worktree per task, so tasks can run side by side.
 
 - [ ] `startCommit` in full, `baseBranch`, the gone-branch restart (tests)
 - [ ] `hooks/drift.ts` and its lines in the panel (tests)
-- [ ] Continue after a clear Queue-tie didn't make; the checkpoint before a typed `/clear` (tests)
+- [ ] Continue after a clear Queue-tea didn't make; the checkpoint before a typed `/clear` (tests)
 
 ## 3. Checkpoints in place of the handoff note
 
 A task's `checkpoint` has two parts:
 
 - **Written by Claude** at a handoff (the conversation size, the allowance mark, Back to queue, Blocked, a typed `/clear`), as JSON: goal, acceptance criteria, changes made, decisions, approaches rejected, what remains, blockers, the next exact action.
-- **Seen by Queue-tie** after every turn, with no model call: the files Claude changed, the last 15 shell commands with whether each passed (tests marked), the branch, the last commit and the files not committed.
+- **Seen by Queue-tea** after every turn, with no model call: the files Claude changed, the last 15 shell commands with whether each passed (tests marked), the branch, the last commit and the files not committed.
 
-On Continue, Queue-tie checks the repository first (branch, last commit, uncommitted files, drift) and puts what it found in the first message beside the checkpoint, with: compare the two, rerun the checks the checkpoint relies on, say what differs, then do the next action. Claude is told a check passed only when Queue-tie saw it pass. A reply that isn't JSON is kept as a plain note, as before.
+On Continue, Queue-tea checks the repository first (branch, last commit, uncommitted files, drift) and puts what it found in the first message beside the checkpoint, with: compare the two, rerun the checks the checkpoint relies on, say what differs, then do the next action. Claude is told a check passed only when Queue-tea saw it pass. A reply that isn't JSON is kept as a plain note, as before.
 
 - [ ] Tracker: shell commands and their results; facts after each turn (tests)
 - [ ] `hooks/checkpoint.ts`: the prompt, parsing, the first message with what was checked (tests)

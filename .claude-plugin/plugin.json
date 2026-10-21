@@ -1,0 +1,36 @@
+{
+  "name": "queue-tie",
+  "version": "0.1.0",
+  "author": { "name": "Rohan Bhande" },
+  "homepage": "https://github.com/whoseunassailable/queue-tie",
+  "repository": "https://github.com/whoseunassailable/queue-tie",
+  "license": "MIT",
+  "description": "One task at a time per project, a priority queue, a branch per task, and a record of time and effort.",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "idleGapMinutes": {
+      "type": "number",
+      "title": "Idle gap (minutes)",
+      "description": "A gap in activity longer than this stops the clock.",
+      "default": 15
+    },
+    "freshAtTokens": {
+      "type": "number",
+      "title": "Fresh conversation at (tokens)",
+      "description": "Past this conversation size, a handoff note is written and the task carries on in a fresh conversation.",
+      "default": 100000
+    },
+    "handoffAtPercent": {
+      "type": "number",
+      "title": "Handoff note at (% of the 5-hour allowance)",
+      "description": "At this share of the 5-hour allowance, a handoff note is written so nothing is lost if the limit is reached.",
+      "default": 90
+    },
+    "checkTimeoutSeconds": {
+      "type": "number",
+      "title": "Message check time limit (seconds)",
+      "description": "A message check that takes longer than this counts as not run.",
+      "default": 10
+    }
+  }
+}

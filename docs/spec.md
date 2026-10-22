@@ -60,7 +60,9 @@ A task is **queued**, then **current**, then **done**. A queued task can also be
 
 ### Filing a task
 
-A message the check judges new is held back: Claude never sees it. The band above the prompt shows the title, the priority buttons and the difficulty with the guess picked. **Save** queues it and a toast says "Queued: <title> (high)". **Same task** sends the message to Claude after all.
+A message the check judges new is held back: Claude never sees it. The band above the prompt shows the title, the priority buttons and the difficulty with the guess picked. **Save** queues it and a toast says "Queued: <title> (high)". **Same task** sends the message to Claude after all. **Cancel** drops it: it is neither sent nor filed, and it goes back in the prompt box when nothing has been typed there since.
+
+A held message is counted (understanding or improving) and its time goes to the current task only once **Same task** sends it.
 
 When nothing is current, the saved task starts straight away.
 
@@ -85,7 +87,7 @@ This happens when nothing is current and a task is filed, or when Rohan picks th
 
 ### Coming back later
 
-A session that opens in a project with a current task shows that task in the menu with **Continue**. Continue sends the first message from the latest handoff note and the task's messages. When the checked-out branch is not the task's branch, the menu says so and offers **Switch**. Switch works only when nothing is uncommitted; otherwise the menu says what is uncommitted and leaves it to Rohan.
+A session that opens in a project with a current task shows that task in the menu with **Continue**, above it a card of the note it carries on from: the checkpoint Claude wrote, or a plain handoff note when that is newer or the only one. Continue sends the first message from that note and the task's messages. When the checked-out branch is not the task's branch, the menu says so and offers **Switch**. Switch works only when nothing is uncommitted; otherwise the menu says what is uncommitted and leaves it to Rohan.
 
 ## The message check
 
@@ -98,7 +100,7 @@ A session that opens in a project with a current task shows that task in the men
   | Same task | The message goes to Claude |
   | New task | Held back; [Filing a task](#filing-a-task) |
   | Quick question | A side question that isn't work to queue ("what does this error mean?"). It goes to Claude and is not filed |
-  | Can't tell | The band shows **Same task**, **New task** and **Quick question** |
+  | Can't tell | The band shows **Same task**, **New task**, **Quick question** (sent as a quick question: not counted, its time to the project) and **Cancel** |
 
 - **Also answers:** understanding or improving, for every message; a short title and a difficulty guess for a new task.
 - **With nothing current:** a message that is work becomes a new task; a quick question goes through.
@@ -184,22 +186,23 @@ Each view starts with the header, the lines under it, and **‹ Menu** (`m`).
 - **Header:** "Queue-tea · <project>" with the allowance on the right.
 - **Lines under it, while they apply:** a warning about a commit made during a turn (with **OK**), the message check running, work in progress ("Saving a handoff note…"), a notice.
 - **Brew now:** a field; what is typed goes as `/brew` does (see [Errands](#errands)): the note in a row only Claude reads, then the words as Rohan's. The menu closes so the answer shows.
-- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far. Then, while they apply:
+- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far. Under it, in the warning colour, what has moved under the task since it started ("! The branch task/now is gone.", a start commit no longer on its branch, the base branch ahead). Then, while they apply:
   - the git check's hold, with **Check again**; a branch mismatch, with **Switch**;
   - "Is this done for now?" with **Yes** and **Not yet**, and "Claude checked: …" when Claude said;
   - the handoff card and **Continue** (below);
-  - **Done**, which goes straight to the difficulty band, and **Back to queue**.
+  - **Done**, which goes straight to the difficulty band, **Back to queue**, and **Blocked…**, which puts the task back blocked, with a checkpoint.
 
   With nothing current: "No task in progress." and **Start ★ <task>**.
-- **Backlog:** a grey bar with the count, then the queue in order. Each row: ★ on the suggestion, the priority tag, the title; a dim line with the expected difficulty, how long it has waited, and for a task put back its branch and time so far. Pressing a row opens **Start** (while nothing is current; the view then moves to Current task), the five priorities and **Remove**. Under the rows, a **New task** field that files what is typed (the band then asks for its priority).
+- **Backlog:** a grey bar with the count of the tasks that can start, **Time I have** (any, 30m, 1h, 2h; for this session), then those tasks in the order of the suggestion (Play next, what fits the time, priority raised by what waits, what unblocks more, the oldest). Each row: ★ on the suggestion, the priority tag, the title; a dim line with the expected difficulty, the estimate ("~1h 30m", "~30m short"), how long it has waited, and for a task put back its branch and time so far. Under ★, a dim line says why ("high, from what waits for it · unblocks Screen"). Pressing a row opens **Start** (while nothing is current; the view then moves to Current task), the five priorities, **Play next** (pressed again, it comes off), **Blocked…** and **Remove**. Then a red **Blocked** bar with the blocked tasks, each with what blocks it; an open one has the priorities, **Unblock** and **Remove**. Then a grey **Other projects** bar, read when the record loads: each other project with tasks waiting, one dim line ("example-app · 2 waiting · ★ Fix the login"). Under the rows, a **New task** field that files what is typed (the band then asks for its priority).
+- **Blocked…** (from a row or the current task): "What does <task> wait for?", the tasks it can wait for (none that would make two tasks wait for each other), a reason field, and **Cancel**.
 - **History:** a green bar with the count and the week's time, this week's finished tasks, latest first, five at most ("done 3h"), and the week chart: one bar a day, Monday to Sunday, the busiest day full height, a day with no time blank. Then the tasks finished before this week, with their dates.
-- **Usage & time:** the 5-hour allowance, today's and this week's time, the week chart, the current task's time and effort (messages, files, lines), and project time outside tasks this week.
+- **Usage & time:** the 5-hour allowance, today's and this week's time, the week chart, the current task's time and effort (messages, files, and its lines so far: `git diff --shortstat` from its start commit, measured at a session's start and after each turn, left out until then), and project time outside tasks this week.
 - **Settings:** the four `userConfig` values, the task log's path and the record's file. They are changed with `/config`.
 - **Key hints:** one dim line. Hotkeys work only while the menu has the keys; when it hasn't, the line says how to give them to it (ctrl+x tab, or a click).
 
 #### The handoff card
 
-Shown with **Continue**: the latest handoff note in a frame, with when it was written, as numbered sections (1 Overview, 2 What changed, 3 Current state, 4 Decisions, 5 Next steps). Points under Next steps are drawn as ☐, under What changed as ✓. A note in an older shape is split at its own headings ("Done:", "Left:"); a note with fewer than two headings is shown as plain text.
+Shown with **Continue**: the checkpoint, as numbered sections (Goal, Acceptance criteria, Changes made ✓, Decisions, Approaches rejected, Remaining ☐, Blockers, Next action ☐), or a plain handoff note when that is newer. A handoff note is shown in a frame, with when it was written, as numbered sections (1 Overview, 2 What changed, 3 Current state, 4 Decisions, 5 Next steps). Points under Next steps are drawn as ☐, under What changed as ✓. A note in an older shape is split at its own headings ("Done:", "Left:"); a note with fewer than two headings is shown as plain text.
 
 #### Keys
 
@@ -215,6 +218,11 @@ Shown with **Continue**: the latest handoff note in a frame, with when it was wr
 | `w` | Switch to the task's branch |
 | `r` | Check again; Try again when the record can't be read |
 | `1`–`5` | The open row's priority, urgent to low |
+| `f` | Play next: the open row, on or off |
+| `k` | Blocked…: the open row, or the current task |
+| `u` | Unblock the open row |
+| `t` | Time I have: the next of any, 30m, 1h, 2h |
+| `1`–`9` | In Blocked…: the task it waits for |
 | `x` | Remove the open row |
 | `o` | Dismiss the commit warning |
 | Esc | Close the menu |

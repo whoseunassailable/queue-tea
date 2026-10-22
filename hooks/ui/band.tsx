@@ -2,11 +2,13 @@ import type { Color, EngineInterface, RenderElement, RenderInput } from 'claude-
 
 import type { Band, Difficulty } from '../../types'
 import {
+  cancelHeld,
   pickBand,
   saveDifficulty,
   saveDocsPath,
   saveFile,
   sendHeld,
+  sendQuick,
   toggleMenu,
   unsureToNew,
 } from '../actions'
@@ -148,6 +150,7 @@ async function drawQuestion(
         <Box>
           <Button key="save" label="Save" variant="primary" onPress={() => void saveFile($)} />
           <Button key="same-task" label="Same task" onPress={() => void sendHeld($)} />
+          <Button key="cancel" label="Cancel" onPress={() => void cancelHeld($)} />
         </Box>
       </Box>
     )
@@ -161,7 +164,8 @@ async function drawQuestion(
         <Box>
           <Button key="same-task" label="Same task" onPress={() => void sendHeld($)} />
           <Button key="new-task" label="New task" onPress={() => void unsureToNew($)} />
-          <Button key="quick-question" label="Quick question" onPress={() => void sendHeld($)} />
+          <Button key="quick-question" label="Quick question" onPress={() => void sendQuick($)} />
+          <Button key="cancel" label="Cancel" onPress={() => void cancelHeld($)} />
         </Box>
       </Box>
     )

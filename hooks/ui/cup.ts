@@ -1,5 +1,6 @@
 import type { Band, MenuView, ProjectRecord, Task } from '../../types'
-import { currentTask, orderQueue } from '../queue'
+import { suggest } from '../plan'
+import { currentTask } from '../queue'
 import { formatMinutes } from '../time'
 
 export type Mood = 'idle' | 'working' | 'attention' | 'done'
@@ -14,7 +15,8 @@ export type Frame = Seg[][]
 // the one it shows while the pointer is on it.
 export type CupArt = { frames: Frame[]; wink: Frame; ms: number }
 
-// What the cup is drawn from: the view's values, whether a turn runs, and now.
+// What the cup is drawn from: the view's values, whether a turn runs, the
+// time Rohan has, and now.
 export type CupFacts = {
   load: 'loading' | 'ready' | 'failed'
   record: ProjectRecord | null
@@ -27,6 +29,7 @@ export type CupFacts = {
   isChecking: boolean
   busy: string | null
   isTurnRunning: boolean
+  budget: number | null
   now: number
 }
 
@@ -76,11 +79,12 @@ export const cupOf = (f: CupFacts): Cup => {
   if (last !== null && f.now - Date.parse(last.finished!) < DONE_FOR_MS) {
     return { mood: 'done', line: `Finished: ${last.title}`, view: 'history' }
   }
-  const queue = orderQueue(tasks)
+  const waiting = tasks.filter(t => t.state === 'queued').length
+  const next = f.record === null ? null : suggest(f.record, f.budget)
 
-  return queue.length === 0
+  return waiting === 0
     ? { mood: 'idle', line: 'Nothing queued', view: 'menu' }
-    : { mood: 'idle', line: `${queue.length} waiting · ★ ${queue[0]!.title}`, view: 'backlog' }
+    : { mood: 'idle', line: `${waiting} waiting · ${next === null ? 'all blocked' : `★ ${next.title}`}`, view: 'backlog' }
 }
 
 // The cup in the reference picture: cream, amber tea, a sage tea-bag tag, a

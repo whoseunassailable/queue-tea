@@ -95,7 +95,13 @@ export const memoryHost = (
 // Answers the plugin's $.fs and $.process.run from a memory host, for tests
 // that raise events.
 export const answerHost = (on: On, mem: ReturnType<typeof memoryHost>) => {
-  on('fs.exists', async (_, e) => ({ value: await mem.host.exists(e.path) }))
+  // A folder exists while it holds a file.
+  on('fs.exists', async (_, e) => ({
+    value: (await mem.host.exists(e.path)) || [...mem.files.keys()].some(path => path.startsWith(`${e.path}/`)),
+  }))
+  on('fs.list', async (_, e) => ({
+    value: (await mem.host.list(e.path)).map(name => ({ name, kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false })),
+  }))
   on('fs.read', async (_, e) => ({ value: await mem.host.read(e.path) }))
   on('fs.write', async (_, e) => ({ value: await mem.host.write(e.path, e.text) }))
   on('process.run', async (_, e) => ({
@@ -130,6 +136,7 @@ export const fakePorts = (
     blocking: null,
     budget: null,
     drift: [],
+    lines: null,
     others: [],
     menuView: 'menu',
     isMenuOpen: false,

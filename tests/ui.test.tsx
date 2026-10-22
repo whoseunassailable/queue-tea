@@ -2,6 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+import { emptyCheckpoint } from '../hooks/checkpoint'
 import { emptyRecord, projectKey, recordPath } from '../hooks/record'
 import type { MenuView, ProjectRecord } from '../types'
 import { answerHost, makeTask, memoryHost } from './helpers'
@@ -38,10 +39,17 @@ const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 
 const startSession = async (
   $: Engine,
   on: On,
-  options: { file?: string; status?: string; git?: Record<string, Run>; reply?: string; tokens?: number } = {},
+  options: {
+    file?: string
+    others?: Record<string, string>
+    status?: string
+    git?: Record<string, Run>
+    reply?: string
+    tokens?: number
+  } = {},
 ) => {
   const mem = memoryHost({
-    files: options.file === undefined ? {} : { [FILE]: options.file },
+    files: { ...options.others, ...(options.file === undefined ? {} : { [FILE]: options.file }) },
     git: {
       'git rev-parse --show-toplevel': { stdout: '/p\n' },
       'date +%z': { stdout: '+0200\n' },
@@ -389,6 +397,35 @@ test('Continue shows the handoff note as numbered sections', async ($, on) => {
   }
 })
 
+test('Continue shows the checkpoint Claude wrote, as numbered sections', async ($, on) => {
+  const task = makeTask({
+    title: 'Now',
+    state: 'current',
+    checkpoint: {
+      ...emptyCheckpoint(),
+      written: '2026-10-21T08:45:00+02:00',
+      goal: 'Show the checkpoint on the card',
+      changes: ['Read the card in menu.tsx'],
+      remaining: ['Write the test'],
+      nextAction: 'Run the tests',
+    },
+  })
+  await startSession($, on, { file: record({ tasks: [task] }) })
+  for (const surface of SURFACES) {
+    const ui = await mountView($, surface, 'current')
+
+    expect(await ui.find({ type: 'Text', text: /Checkpoint · 08:45/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '1 Goal' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'Show the checkpoint on the card' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '✓ Read the card in menu.tsx' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '☐ Write the test' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '4 Next action' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '☐ Run the tests' })).toBeDefined()
+    expect(await ui.find({ key: 'continue' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
 test('task_looks_done with what Claude checked shows it beside the question', async ($, on) => {
   const task = makeTask({ title: 'Now', state: 'current' })
   await startSession($, on, { file: record({ tasks: [task] }) })
@@ -565,6 +602,95 @@ test('a message typed after /brew is checked as before', async ($, on) => {
   expect(seen.prompts.map(p => p.text)).toEqual(['start the server'])
 })
 
+// The held message's band: Cancel, and where a message sent on counts.
+
+// The prompt box beneath the plugin: what it holds, and what is put in it.
+const promptBox = (on: On, draft: string) => {
+  const fills: { text: string; mode: string }[] = []
+  on('prompt.read', () => ({ value: { text: draft, cursor: draft.length } }))
+  on('prompt.fill', (_, e) => {
+    fills.push({ text: e.text, mode: e.mode })
+
+    return { isFilled: true }
+  })
+
+  return fills
+}
+
+test('Cancel on a held new task sends nothing, files nothing, and puts the message back in the empty prompt box', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const fills = promptBox(on, '')
+  const { seen, mem } = await startSession($, on, { file: record({ tasks: [task] }), reply: NEW_REPLY })
+  await $.prompt.submit({ text: 'start the dev server', wait: false, origin: { kind: 'composer' } })
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await band.press({ key: 'cancel' })
+  expect(await band.find({ type: 'Text', text: /New task: Dev server/ })).toBeUndefined()
+  await band.unmount()
+
+  expect(seen.prompts).toEqual([])
+  expect(fills).toEqual([{ text: 'start the dev server', mode: 'append' }])
+  expect((JSON.parse(mem.files.get(FILE)!) as ProjectRecord).tasks.map(t => t.title)).toEqual(['Now'])
+})
+
+test('Cancel on the unsure band leaves a draft typed since alone, and the next band goes up', async ($, on) => {
+  const fills = promptBox(on, 'half typed')
+  const { seen } = await startSession($, on, { file: record() })
+  await $.prompt.submit({ text: 'hmm', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'and this', wait: false, origin: { kind: 'composer' } })
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await band.find({ type: 'Text', text: 'hmm' })).toBeDefined()
+  await band.press({ key: 'cancel' })
+  expect(await band.find({ type: 'Text', text: 'and this' })).toBeDefined()
+  await band.unmount()
+
+  expect(seen.prompts).toEqual([])
+  expect(fills).toEqual([])
+})
+
+test('Quick question sends the message as Rohan’s; its time goes to the project and it is not counted', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { seen, mem, clock } = await startSession($, on, {
+    file: record({ tasks: [task] }),
+    reply: '{"kind":"unsure","intent":"understanding"}',
+  })
+  await $.prompt.submit({ text: 'what does this error mean?', wait: false, origin: { kind: 'composer' } })
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await band.press({ key: 'quick-question' })
+  await band.unmount()
+  await clock.advance(5 * 60_000)
+  await runTurn($, clock, 'what does this error mean?')
+
+  expect(seen.prompts).toEqual([
+    { text: 'what does this error mean?', origin: { kind: 'plugin', name: 'queue-tea', asUser: true } },
+  ])
+  const saved = JSON.parse(mem.files.get(FILE)!) as ProjectRecord
+  expect(saved.unassignedMinutesByDay).toEqual({ [DAY_ONE]: 5 })
+  expect(saved.tasks[0]!.minutesByDay).toEqual({})
+  expect(saved.tasks[0]!.effort.understandingMessages).toBe(0)
+})
+
+test('Same task on the unsure band counts the message once, and its time goes to the task', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { mem, clock } = await startSession($, on, {
+    file: record({ tasks: [task] }),
+    reply: '{"kind":"unsure","intent":"understanding"}',
+  })
+  await $.prompt.submit({ text: 'why does it fail?', wait: false, origin: { kind: 'composer' } })
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await band.press({ key: 'same-task' })
+  await band.unmount()
+  await clock.advance(5 * 60_000)
+  await runTurn($, clock, 'why does it fail?')
+
+  const saved = JSON.parse(mem.files.get(FILE)!) as ProjectRecord
+  expect(saved.tasks[0]!.minutesByDay).toEqual({ [DAY_ONE]: 5 })
+  expect(saved.tasks[0]!.effort.understandingMessages).toBe(1)
+})
+
 // The tea cup above the prompt and the menu it opens.
 
 const ENTRIES = ['brew', 'backlog', 'current', 'history', 'usage', 'settings'] as const
@@ -665,6 +791,151 @@ test('Backlog: priority, Remove and Start go through the queue engine', async ($
   expect(await ui.find({ type: 'Text', text: '3 files not committed · 2 commits not pushed' })).toBeDefined()
   expect(await ui.find({ key: 'check-again' })).toBeDefined()
   expect(mem.runs.some(isBranchRun)).toBe(false)
+  await ui.unmount()
+})
+
+test('Backlog: Play next puts a task first and says why, Start ★ names it; pressed again, it comes off', async ($, on) => {
+  const tidy = makeTask({ title: 'Tidy', priority: 'low' })
+  const login = makeTask({ title: 'Login', priority: 'high' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [tidy, login] }) })
+  const ui = await mountView($, 'terminal', 'backlog')
+  expect((await ui.find({ key: `row:${login.id}` }))?.text).toMatch(/^★ \[high\] Login/)
+
+  await ui.press({ key: `row:${tidy.id}` })
+  await ui.press({ key: `play-next:${tidy.id}` })
+  expect(recordOf(mem).playNext).toBe(tidy.id)
+  expect((await ui.find({ key: `row:${tidy.id}` }))?.text).toMatch(/^★ \[low\] Tidy/)
+  expect(await ui.find({ type: 'Text', text: /you chose Play next/ })).toBeDefined()
+
+  await ui.press({ key: 'menu:back' })
+  await ui.press({ key: 'menu:current' })
+  expect((await ui.find({ key: 'start-next' }))?.text).toBe('Start ★ Tidy')
+  await ui.press({ key: 'menu:back' })
+  await ui.press({ key: 'menu:backlog' })
+
+  await ui.press({ key: `row:${tidy.id}` })
+  expect((await ui.find({ key: `play-next:${tidy.id}` }))?.text).toBe('Play next •')
+  await ui.press({ key: `play-next:${tidy.id}` })
+  expect(recordOf(mem).playNext).toBeNull()
+  expect((await ui.find({ key: `row:${login.id}` }))?.text).toMatch(/^★ \[high\] Login/)
+  await ui.unmount()
+})
+
+test('Backlog: each task shows its estimate, and Time I have puts what fits first', async ($, on) => {
+  const rewrite = makeTask({ title: 'Rewrite', priority: 'high', difficulty: { expected: 'hard', actual: null } })
+  const typo = makeTask({ title: 'Typo', priority: 'low', difficulty: { expected: 'light', actual: null } })
+  await startSession($, on, { file: record({ tasks: [rewrite, typo] }) })
+  const ui = await mountView($, 'terminal', 'backlog')
+  expect(await ui.find({ type: 'Text', text: /Hard · ~4h · / })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Light · ~30m short · / })).toBeDefined()
+  expect((await ui.find({ key: 'time' }))?.text).toBe('Time I have: any')
+  expect((await ui.find({ key: `row:${rewrite.id}` }))?.text).toMatch(/^★ \[high\] Rewrite/)
+
+  await ui.press({ key: 'time' })
+  expect((await ui.find({ key: 'time' }))?.text).toBe('Time I have: 30m')
+  expect((await ui.find({ key: `row:${typo.id}` }))?.text).toMatch(/^★ \[low\] Typo/)
+  expect(await ui.find({ type: 'Text', text: /low · fits 30m/ })).toBeDefined()
+
+  for (const label of ['1h', '2h', 'any']) {
+    await ui.press({ key: 'time' })
+    expect((await ui.find({ key: 'time' }))?.text).toBe(`Time I have: ${label}`)
+  }
+  expect((await ui.find({ key: `row:${rewrite.id}` }))?.text).toMatch(/^★ \[high\] Rewrite/)
+  await ui.unmount()
+})
+
+test('Backlog: Blocked… sets what a task waits for; it moves to Blocked, and Unblock brings it back', async ($, on) => {
+  const api = makeTask({ title: 'API', priority: 'mid' })
+  const screen = makeTask({ title: 'Screen', priority: 'high' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [api, screen] }) })
+  const ui = await mountView($, 'terminal', 'backlog')
+
+  await ui.press({ key: `row:${screen.id}` })
+  await ui.press({ key: `block:${screen.id}` })
+  expect(await ui.find({ type: 'Text', text: /What does Screen wait for\?/ })).toBeDefined()
+  await ui.press({ key: 'block-cancel' })
+  expect(await ui.find({ type: 'Text', text: /What does Screen wait for\?/ })).toBeUndefined()
+
+  // Cancel goes back to the row, still open.
+  await ui.press({ key: `block:${screen.id}` })
+  await ui.press({ key: `wait:${api.id}` })
+  expect(recordOf(mem).tasks.find(t => t.id === screen.id)?.blockedBy).toEqual([api.id])
+  expect(await ui.find({ type: 'Text', text: /Blocked \(1\)/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /waits for API/ })).toBeDefined()
+  // API takes the priority of what waits for it, and is the suggestion.
+  expect((await ui.find({ key: `row:${api.id}` }))?.text).toMatch(/^★ \[mid\] API/)
+  expect(await ui.find({ type: 'Text', text: /high, from what waits for it · unblocks Screen/ })).toBeDefined()
+
+  await ui.press({ key: `row:${screen.id}` })
+  await ui.press({ key: `unblock:${screen.id}` })
+  expect(recordOf(mem).tasks.find(t => t.id === screen.id)?.blockedBy).toEqual([])
+  expect(await ui.find({ type: 'Text', text: /Blocked \(/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('Backlog: other projects with tasks waiting, one dim line each', async ($, on) => {
+  const other = { ...emptyRecord('example-app', '/q'), tasks: [makeTask({ title: 'Fix the login' }), makeTask({ title: 'Docs', priority: 'low' })] }
+  const idle = emptyRecord('idle-app', '/r')
+  await startSession($, on, {
+    file: record({ tasks: [makeTask({ title: 'Here' })] }),
+    others: { [recordPath('/h', projectKey('/q'))]: JSON.stringify(other), [recordPath('/h', projectKey('/r'))]: JSON.stringify(idle) },
+  })
+  const ui = await mountView($, 'terminal', 'backlog')
+
+  expect(await ui.find({ type: 'Text', text: /Other projects \(1\)/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'example-app · 2 waiting · ★ Fix the login' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /idle-app/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('Current task: what has moved under it is named, in the warning colour', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now', baseBranch: 'main', startCommit: '1a2b3c4' })
+  await startSession($, on, { file: record({ tasks: [task] }) })
+  const ui = await mountView($, 'terminal', 'current')
+
+  expect((await ui.find({ type: 'Text', text: '! The branch task/now is gone.' }))?.props.color).toBe('warning')
+  await ui.unmount()
+})
+
+test('Usage: the current task’s lines so far, from git since it started, measured again after each turn', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current', branch: 'main', startCommit: '1a2b3c4' })
+  const { mem, clock } = await startSession($, on, {
+    file: record({ tasks: [task] }),
+    git: { 'git diff --shortstat 1a2b3c4': { stdout: ' 3 files changed, 42 insertions(+), 7 deletions(-)\n' } },
+  })
+  const ui = await mountView($, 'terminal', 'usage')
+  expect(await ui.find({ type: 'Text', text: /changed · \+42 −7 lines$/ })).toBeDefined()
+
+  mem.git['git diff --shortstat 1a2b3c4'] = { stdout: ' 4 files changed, 50 insertions(+), 9 deletions(-)\n' }
+  await runTurn($, clock, 'go on')
+  expect(await ui.find({ type: 'Text', text: /changed · \+50 −9 lines$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('Usage: a task with no start commit shows no line count rather than +0 −0', async ($, on) => {
+  await startSession($, on, { file: record({ tasks: [makeTask({ title: 'Now', state: 'current' })] }) })
+  const ui = await mountView($, 'terminal', 'usage')
+  expect(await ui.find({ type: 'Text', text: /files read · 0 changed$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /lines/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('Current task: Blocked… with a reason puts it back blocked, with a checkpoint', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now', startCommit: '1a2b3c4' })
+  const { mem, seen, clock } = await startSession($, on, {
+    file: record({ tasks: [task] }),
+    reply: HANDOFF,
+    git: { 'git log -1 --format=%h %s': { stdout: '1a2b3c4 Add bars\n' } },
+  })
+  const ui = await mountView($, 'terminal', 'current')
+  await ui.press({ key: `block:${task.id}` })
+  expect(await ui.find({ type: 'Text', text: /What does Now wait for\?/ })).toBeDefined()
+  await ui.input({ key: 'block-reason', text: 'waiting for the API key' })
+  await clock.settle()
+
+  const saved = recordOf(mem).tasks[0]!
+  expect([saved.state, saved.blockedReason, saved.handoff?.text]).toEqual(['queued', 'waiting for the API key', HANDOFF])
+  expect(seen.toasts).toEqual(['Blocked: Now'])
   await ui.unmount()
 })
 

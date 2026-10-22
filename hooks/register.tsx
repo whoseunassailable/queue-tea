@@ -19,7 +19,7 @@ import {
 import { commandRun } from './checkpoint'
 import { ERRANDS, errandReply, errandUsage, isErrandTurn } from './errand'
 import type { ErrandKind } from './errand'
-import { afterTurn, commitWarning, onMessage, refreshDrift, shouldCheck, taskLooksDone, taskSection } from './flow'
+import { afterTurn, commitWarning, onMessage, refreshDrift, refreshLines, shouldCheck, taskLooksDone, taskSection } from './flow'
 import { readHead } from './git'
 import { isCommitOrPush } from './guard'
 import { live } from './live'
@@ -107,6 +107,11 @@ async function afterEachTurn($: EngineInterface) {
     debug($, 'reading the drift failed', err)
   }
   try {
+    await refreshLines(portsOf($), live.ctx)
+  } catch (err) {
+    debug($, 'measuring the change failed', err)
+  }
+  try {
     const usage = await $.session.usage()
     const allowance = readAllowance(usage.rateLimits)
     // An errand's answer stays on screen: a fresh conversation past the size
@@ -128,8 +133,11 @@ async function checkTyped($: EngineInterface, text: string): Promise<'pass' | 'd
   const p = portsOf($)
   await p.set('canContinue', false)
   const { verdict, intent, kind } = await onMessage(p, ctx, text)
-  live.tracker?.route(kind === 'quick' ? 'project' : 'task')
-  if (intent !== null && kind !== 'quick') live.tracker?.intent(intent)
+  // A held message counts once it is sent on from the band.
+  if (verdict === 'pass') {
+    live.tracker?.route(kind === 'quick' ? 'project' : 'task')
+    if (intent !== null && kind !== 'quick') live.tracker?.intent(intent)
+  }
 
   return verdict
 }

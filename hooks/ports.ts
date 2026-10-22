@@ -29,6 +29,7 @@ const warningAtom = atom({ plugin: 'queue-tea', key: 'warning' } as const, null)
 const blockingAtom = atom({ plugin: 'queue-tea', key: 'blocking' } as const, null)
 const budgetAtom = atom({ plugin: 'queue-tea', key: 'budget' } as const, null)
 const driftAtom = atom({ plugin: 'queue-tea', key: 'drift' } as const, [] as View['drift'])
+const linesAtom = atom({ plugin: 'queue-tea', key: 'lines' } as const, null as View['lines'])
 const othersAtom = atom({ plugin: 'queue-tea', key: 'others' } as const, [] as View['others'])
 const menuViewAtom = atom({ plugin: 'queue-tea', key: 'menuView' } as const, 'menu' as View['menuView'])
 const isMenuOpenAtom = atom({ plugin: 'queue-tea', key: 'isMenuOpen' } as const, false)
@@ -79,6 +80,8 @@ export async function getView<K extends keyof View>($: EngineInterface, key: K):
       return (await read($, budgetAtom)) as View[K]
     case 'drift':
       return (await read($, driftAtom)) as View[K]
+    case 'lines':
+      return (await read($, linesAtom)) as View[K]
     case 'others':
       return (await read($, othersAtom)) as View[K]
     case 'menuView':
@@ -133,6 +136,8 @@ async function setView<K extends keyof View>($: EngineInterface, key: K, value: 
       return update($, budgetAtom, () => v)
     case 'drift':
       return update($, driftAtom, () => v)
+    case 'lines':
+      return update($, linesAtom, () => v)
     case 'others':
       return update($, othersAtom, () => v)
     case 'menuView':
@@ -169,6 +174,7 @@ export async function readCup($: EngineInterface, isTurnRunning: boolean): Promi
     isChecking: await read($, isCheckingAtom),
     busy: await read($, busyAtom),
     isTurnRunning,
+    budget: await read($, budgetAtom),
     now: await $.clock.now(),
   })
 }

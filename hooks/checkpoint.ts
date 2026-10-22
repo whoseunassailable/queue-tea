@@ -173,6 +173,17 @@ export const checkLines = (task: Task, now: GitFacts | null, drift: string[]): s
 
 const list = (lines: string[]) => lines.map(l => `- ${l}`)
 
+// The note a task carries on from, for the first message and the Continue
+// card alike: the checkpoint Claude wrote, or the plain handoff note when it
+// is newer or the only one.
+export const latestNote = (task: Task): 'checkpoint' | 'handoff' | null => {
+  const written = task.checkpoint?.written ?? null
+  if (task.handoff === null) return written === null ? null : 'checkpoint'
+  if (written === null) return 'handoff'
+
+  return Date.parse(task.handoff.written) > Date.parse(written) ? 'handoff' : 'checkpoint'
+}
+
 // The first message of a task's fresh conversation. A task that has been
 // worked on brings its checkpoint, what Queue-tea checked just now, and the
 // order to compare before trusting either.
@@ -182,7 +193,8 @@ export const firstMessage = (task: Task, checked: string[] | null = null): strin
   const parts = [`Task: ${task.title}`, ...task.messages]
   if (!hasNote) return parts.join('\n\n')
 
-  if (c !== null && c.written !== null) {
+  const note = latestNote(task)
+  if (note === 'checkpoint' && c !== null && c.written !== null) {
     parts.push(
       [
         `Checkpoint from an earlier conversation (${c.written}). It may be out of date or wrong: check it before relying on it.`,
@@ -191,7 +203,7 @@ export const firstMessage = (task: Task, checked: string[] | null = null): strin
         ),
       ].join('\n'),
     )
-  } else if (task.handoff !== null) {
+  } else if (note === 'handoff' && task.handoff !== null) {
     parts.push(`Handoff note (${task.handoff.written}):\n${task.handoff.text}`)
   }
   const seen = c?.seen

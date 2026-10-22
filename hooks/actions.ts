@@ -8,12 +8,14 @@ import {
   blockTask,
   closeBand,
   continueTask,
+  dropHeld,
   fileTask,
   finishDocs,
   finishTask,
   isStartingFresh,
   putBack,
   refreshDrift,
+  refreshLines,
   removeQueued,
   sendHeld as sendHeldOn,
   showBand,
@@ -119,6 +121,7 @@ export async function checkResume($: EngineInterface) {
     await p.set('mismatch', `You're on ${git.branch ?? 'a detached HEAD'}; this task is on ${current.branch}.`)
   }
   await refreshDrift(p, ctx)
+  await refreshLines(p, ctx)
 }
 
 // After a /clear: the record again, and Continue when the clear wasn't one
@@ -196,7 +199,9 @@ export async function toggleMenu($: EngineInterface) {
   else await openMenu($, (await readCup($, false)).view)
 }
 
+// Moving to another view leaves a Blocked… question unanswered.
 export async function pressMenu($: EngineInterface, view: MenuView) {
+  await portsOf($).set('blocking', null)
   await portsOf($).set('menuView', view)
 }
 
@@ -364,10 +369,34 @@ export async function saveFile($: EngineInterface) {
   await fileTask(portsOf($), live.ctx, band)
 }
 
-// Sends a held message on to Claude after all.
+// Sends a held message on to Claude after all, as the current task's. Where
+// its time goes is set before it is sent, so its turn counts there.
 export async function sendHeld($: EngineInterface) {
-  const intent = await sendHeldOn(portsOf($))
-  if (intent !== null) live.tracker?.intent(intent)
+  await sendOn($, 'task')
+}
+
+// Sends a held message on as a quick question: its time goes to the project
+// and it isn't counted, as when the check answers quick.
+export async function sendQuick($: EngineInterface) {
+  await sendOn($, 'project')
+}
+
+async function sendOn($: EngineInterface, to: 'task' | 'project') {
+  const band = await getView($, 'band')
+  if (band.kind !== 'file' && band.kind !== 'unsure') return
+  live.tracker?.route(to)
+  if (to === 'task') live.tracker?.intent(band.intent)
+  await sendHeldOn(portsOf($))
+}
+
+// Cancel: the held message is neither sent nor filed. It goes back in the
+// prompt box when nothing has been typed there since; appended, so a box the
+// mod can't read is never written over.
+export async function cancelHeld($: EngineInterface) {
+  const text = await dropHeld(portsOf($))
+  if (text === null) return
+  const box = await $.prompt.read()
+  if (box.text === '') await $.prompt.fill({ text, mode: 'append' })
 }
 
 export async function unsureToNew($: EngineInterface) {

@@ -21,6 +21,7 @@ const facts = (tasks: Task[], over: Partial<CupFacts> = {}): CupFacts => ({
   isChecking: false,
   busy: null,
   isTurnRunning: false,
+  budget: null,
   now: NOW,
   ...over,
 })
@@ -29,6 +30,20 @@ test('idle: nothing queued, or the ★ task waiting', () => {
   expect(cupOf(facts([]))).toEqual({ mood: 'idle', line: 'Nothing queued', view: 'menu' })
   const tasks = [makeTask({ title: 'Later', priority: 'low' }), makeTask({ title: 'Soon', priority: 'urgent' })]
   expect(cupOf(facts(tasks))).toEqual({ mood: 'idle', line: '2 waiting · ★ Soon', view: 'backlog' })
+})
+
+test('idle: the ★ is the backlog’s suggestion, with Play next and the time Rohan has', () => {
+  const later = makeTask({ title: 'Later', priority: 'low', difficulty: { expected: 'light', actual: null } })
+  const soon = makeTask({ title: 'Soon', priority: 'urgent', difficulty: { expected: 'hard', actual: null } })
+  const record = { ...emptyRecord('p', '/p'), tasks: [later, soon] }
+
+  expect(cupOf(facts([], { record: { ...record, playNext: later.id } })).line).toBe('2 waiting · ★ Later')
+  expect(cupOf(facts([], { record, budget: 30 })).line).toBe('2 waiting · ★ Later')
+  expect(cupOf(facts([makeTask({ title: 'Wait', blockedReason: 'later' })]))).toEqual({
+    mood: 'idle',
+    line: '1 waiting · all blocked',
+    view: 'backlog',
+  })
 })
 
 test('working: a current task, the message check, work under way, or a turn outside the queue', () => {

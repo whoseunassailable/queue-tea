@@ -1,3 +1,6 @@
+import type { Task } from '../../types'
+import { checkpointSections, latestNote } from '../checkpoint'
+
 export type HandoffSection = { heading: string; lines: string[] }
 
 // A line that is a heading alone: "Next steps:", "## Next steps", "3. Decisions:"
@@ -25,4 +28,28 @@ export const handoffSections = (text: string): HandoffSection[] | null => {
   if (sections.length < 2) return null
 
   return before.length === 0 ? sections : [{ heading: 'Note', lines: before }, ...sections]
+}
+
+export type CardNote = { title: string; written: string; text: string; sections: HandoffSection[] | null }
+
+// What the Continue card shows: the note Continue carries on from. A
+// checkpoint's points are listed, its goal left plain.
+export const cardNote = (task: Task): CardNote | null => {
+  const note = latestNote(task)
+  const c = task.checkpoint
+  if (note === 'checkpoint' && c !== null && c.written !== null) {
+    const sections = checkpointSections(c).map(s => ({
+      heading: s.heading,
+      lines: s.heading === 'Goal' ? s.lines : s.lines.map(line => `- ${line}`),
+    }))
+
+    return { title: 'Checkpoint', written: c.written, text: '', sections }
+  }
+  if (note === 'handoff' && task.handoff !== null) {
+    const { text, written } = task.handoff
+
+    return { title: 'Handoff note', written, text, sections: handoffSections(text) }
+  }
+
+  return null
 }

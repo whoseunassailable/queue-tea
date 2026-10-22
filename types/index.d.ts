@@ -136,6 +136,7 @@ declare module 'claude-code' {
       blocking: string | null
       budget: number | null
       drift: string[]
+      lines: { taskId: string; added: number; removed: number } | null
       others: OtherProject[]
       menuView: MenuView
       isMenuOpen: boolean

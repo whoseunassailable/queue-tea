@@ -510,6 +510,16 @@ export const sendHeld = async (p: Ports): Promise<Intent | null> => {
   return band.intent
 }
 
+// Drops a held message: Claude never sees it and nothing is filed. Puts up
+// the next band, and returns the message so it can go back in the prompt box.
+export const dropHeld = async (p: Ports): Promise<string | null> => {
+  const band = await p.get('band')
+  if (band.kind !== 'file' && band.kind !== 'unsure') return null
+  await closeBand(p)
+
+  return band.text
+}
+
 export type Block = { waitFor: string } | { reason: string }
 
 // Puts the current task back in the backlog with a checkpoint, keeping its
@@ -646,5 +656,23 @@ export const refreshDrift = async (p: Ports, ctx: Ctx): Promise<void> => {
     await p.set('drift', await readDrift(p.host, ctx.projectPath, current))
   } catch (err) {
     p.log(`reading the drift failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+// The current task's lines so far, for the panel: what finishing it would
+// measure now. Marked with the task, so another task's count never shows.
+export const refreshLines = async (p: Ports, ctx: Ctx): Promise<void> => {
+  const record = await p.get('record')
+  const current = record === null ? null : currentTask(record.tasks)
+  if (current === null || current.startCommit === null) {
+    await p.set('lines', null)
+
+    return
+  }
+  try {
+    const diff = await diffSince(p.host, ctx.projectPath, current.startCommit)
+    await p.set('lines', { taskId: current.id, added: diff.linesAdded, removed: diff.linesRemoved })
+  } catch (err) {
+    p.log(`measuring the change failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 }

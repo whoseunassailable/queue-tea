@@ -6,25 +6,32 @@ import {
   fileFromCommand,
   loadRecord,
   pressBackToQueue,
+  pressBlock,
+  pressBlockWith,
+  pressBudget,
+  pressCancelBlock,
   pressCheckAgain,
   pressContinue,
   pressDismissWarning,
   pressDoneNotYet,
   pressDoneYes,
   pressMenu,
+  pressPlayNext,
   pressPriority,
   pressRemove,
   pressRow,
   pressStartFromBacklog,
   pressStartNext,
   pressSwitch,
+  pressUnblock,
 } from '../actions'
 import { live } from '../live'
+import { blockedTasks, blockedText, budgetLabel, canWaitFor, formatSpan, rankBacklog } from '../plan'
 import { getView, readCup } from '../ports'
-import { currentTask, orderQueue, PRIORITY_ORDER } from '../queue'
+import { currentTask, PRIORITY_ORDER } from '../queue'
 import { dayKey, formatMinutes } from '../time'
 import { formatAllowance } from '../usage'
-import { handoffSections } from './handoff'
+import { cardNote } from './handoff'
 import { KEYS } from './keys'
 import { cut, doneThisWeek, finishedTasks, formatAge, weekChart, weekMinutes, weekOf } from './status'
 
@@ -59,7 +66,8 @@ const grouped = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
 // A handoff line's mark, from its section: a step still to do, one done, or
 // a plain point.
-const markFor = (heading: string) => (/next|left|to do|todo/i.test(heading) ? '☐' : /changed|done/i.test(heading) ? '✓' : '•')
+const markFor = (heading: string) =>
+  /next|left|to do|todo|remaining/i.test(heading) ? '☐' : /changed|changes|done/i.test(heading) ? '✓' : '•'
 
 // The menu the tea cup opens: the list, or one of its views. Every press
 // goes to the same actions the panel used; opening, moving between views and
@@ -92,7 +100,16 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
   const record = await getView($, 'record')
   const tasks = record?.tasks ?? []
   const current = currentTask(tasks)
-  const queue = orderQueue(tasks)
+  const budget = await getView($, 'budget')
+  // The tasks that can start, in the order Start ★ takes them; the blocked
+  // ones apart.
+  const ranked = record === null ? [] : rankBacklog(record, budget)
+  const queue = ranked.map(r => r.task)
+  const blocked = blockedTasks(tasks)
+  const waiting = queue.length + blocked.length
+  const blocking = await getView($, 'blocking')
+  const drift = await getView($, 'drift')
+  const others = await getView($, 'others')
   const allowance = await getView($, 'allowance')
   const notice = await getView($, 'notice')
   const mismatch = await getView($, 'mismatch')
@@ -170,12 +187,13 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
   )
 
   if (view === 'menu') {
-    const isEmpty = current === null && queue.length === 0 && done.length === 0
+    const isEmpty = current === null && waiting === 0 && done.length === 0
     const needsYou = cup.mood === 'attention' && cup.view === 'current'
     const todayMinutes = minutes[weekOf(today).indexOf(today)] ?? 0
     const summary: Record<Exclude<MenuView, 'menu'>, string> = {
       brew: 'do it now, outside the queue',
-      backlog: queue.length === 0 ? 'nothing waiting' : `${queue.length} waiting · ★ ${queue[0]!.title}`,
+      backlog:
+        waiting === 0 ? 'nothing waiting' : `${waiting} waiting · ${queue.length === 0 ? 'all blocked' : `★ ${queue[0]!.title}`}`,
       current: needsYou ? cup.line : current === null ? 'none' : `${current.title} · ${formatMinutes(total(current.minutesByDay))}`,
       history: `${done.length} this week · ${formatMinutes(sum(minutes))}`,
       usage: `${allowance === null ? '' : `5h ${Math.round(allowance.percent)}% · `}today ${formatMinutes(todayMinutes)}`,
@@ -242,7 +260,92 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
 
   const tag = (p: Priority) => <Text color={PRIORITY_COLOR[p]}>[{p}]</Text>
 
+  // Blocked…: the tasks it can wait for, a reason, or Cancel. Asked from a
+  // backlog row or the current task, in the view it was asked from.
+  const blockingTask = blocking === null ? undefined : tasks.find(t => t.id === blocking)
+  if (blockingTask !== undefined && (view === 'backlog' || view === 'current')) {
+    const waits = canWaitFor(tasks, blockingTask.id)
+    const reason =
+      e.surface === 'mobile' ? null : (() => {
+        const { Input } = $.ui.resolve(e as RenderInput<'Pane', 'terminal'>)
+
+        return (
+          <Input
+            key="block-reason"
+            label="Or a reason"
+            placeholder="waiting for the API key"
+            submitLabel="Block"
+            onSubmit={value => {
+              if (value.trim() !== '') void pressBlockWith($, blockingTask.id, { reason: value.trim() })
+            }}
+          />
+        )
+      })()
+
+    return (
+      <Box flexDirection="column">
+        {top}
+        {bar('error', '⊘ Blocked…')}
+        <Text>{cut(`What does ${blockingTask.title} wait for?`, cols)}</Text>
+        {blockingTask.state === 'current' && <Text dimColor>It goes back in the backlog with a checkpoint.</Text>}
+        {waits.length === 0 && <Text dimColor>No other task it can wait for.</Text>}
+        {waits.map((t, n) => (
+          <Button
+            key={`wait:${t.id}`}
+            plain
+            {...(n < 9 ? { hotkey: String(n + 1) } : {})}
+            label={cut(t.title, cols - 3)}
+            onPress={() => void pressBlockWith($, blockingTask.id, { waitFor: t.id })}
+          />
+        ))}
+        {reason}
+        <Button key="block-cancel" plain label="Cancel" onPress={() => void pressCancelBlock($)} />
+        {hints}
+      </Box>
+    )
+  }
+
   if (view === 'backlog') {
+    // A row's own buttons once it is pressed open: Start and Play next for one
+    // that can start, Unblock for a blocked one.
+    const rowButtons = (task: Task, isBlockedRow: boolean) => (
+      <Box flexWrap="wrap" columnGap={2}>
+        {current === null && !isBlockedRow && (
+          <Button
+            key={`start:${task.id}`}
+            plain
+            hotkey={KEYS['start-next']}
+            label="Start"
+            onPress={() => void pressStartFromBacklog($, task.id)}
+          />
+        )}
+        {PRIORITY_ORDER.map((p, n) => (
+          <Button
+            key={`prio:${task.id}:${p}`}
+            plain
+            hotkey={String(n + 1)}
+            label={p === task.priority ? `${p} •` : p}
+            onPress={() => (p === task.priority ? undefined : void pressPriority($, task.id, p))}
+          />
+        ))}
+        {!isBlockedRow && (
+          <Button
+            key={`play-next:${task.id}`}
+            plain
+            hotkey={KEYS.playNext}
+            label={record?.playNext === task.id ? 'Play next •' : 'Play next'}
+            onPress={() => void pressPlayNext($, task.id)}
+          />
+        )}
+        {!isBlockedRow && (
+          <Button key={`block:${task.id}`} plain hotkey={KEYS.block} label="Blocked…" onPress={() => void pressBlock($, task.id)} />
+        )}
+        {isBlockedRow && (
+          <Button key={`unblock:${task.id}`} plain hotkey={KEYS.unblock} label="Unblock" onPress={() => void pressUnblock($, task.id)} />
+        )}
+        <Button key={`remove:${task.id}`} plain hotkey={KEYS.remove} label="Remove" onPress={() => void pressRemove($, task.id)} />
+      </Box>
+    )
     const newTask =
       e.surface === 'mobile' ? null : (() => {
         const { Input } = $.ui.resolve(e as RenderInput<'Pane', 'terminal'>)
@@ -264,15 +367,21 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
       <Box flexDirection="column">
         {top}
         {bar('inactive', `○ Backlog${queue.length > 0 ? ` (${queue.length})` : ''}`)}
-        {queue.length === 0 && <Text dimColor>Nothing waiting.</Text>}
+        {waiting === 0 && <Text dimColor>Nothing waiting.</Text>}
+        {waiting > 0 && queue.length === 0 && <Text dimColor>Nothing can start: every task waiting is blocked.</Text>}
+        {waiting > 0 && (
+          <Button key="time" plain hotkey={KEYS.time} label={`Time I have: ${budgetLabel(budget)}`} onPress={() => void pressBudget($)} />
+        )}
         {isChoosingNext && queue.length > 0 && current === null && (
           <Text dimColor>Pick the next task: s starts ★, or press a row.</Text>
         )}
-        {queue.map((task, i) => {
+        {ranked.map((r, i) => {
+          const task = r.task
           const waited = formatAge(now - Date.parse(task.created))
           const soFar = total(task.minutesByDay)
           const dim = [
             capital(task.difficulty.expected),
+            `~${formatSpan(r.estimate)}${r.isShort ? ' short' : ''}`,
             `waited ${waited}`,
             ...(task.branch === null ? [] : [task.branch]),
             ...(soFar > 0 ? [`${formatMinutes(soFar)} so far`] : []),
@@ -285,32 +394,26 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
                 {tag(task.priority)} {cut(task.title, cols - task.priority.length - 5)}
               </Button>
               <Text dimColor>{cut(`  ${dim}`, cols)}</Text>
-              {openRow === task.id && (
-                <Box flexWrap="wrap" columnGap={2}>
-                  {current === null && (
-                    <Button
-                      key={`start:${task.id}`}
-                      plain
-                      hotkey={KEYS['start-next']}
-                      label="Start"
-                      onPress={() => void pressStartFromBacklog($, task.id)}
-                    />
-                  )}
-                  {PRIORITY_ORDER.map((p, n) => (
-                    <Button
-                      key={`prio:${task.id}:${p}`}
-                      plain
-                      hotkey={String(n + 1)}
-                      label={p === task.priority ? `${p} •` : p}
-                      onPress={() => (p === task.priority ? undefined : void pressPriority($, task.id, p))}
-                    />
-                  ))}
-                  <Button key={`remove:${task.id}`} plain hotkey={KEYS.remove} label="Remove" onPress={() => void pressRemove($, task.id)} />
-                </Box>
-              )}
+              {i === 0 && <Text dimColor>{cut(`  ${r.why}`, cols)}</Text>}
+              {openRow === task.id && rowButtons(task, false)}
             </Box>
           )
         })}
+        {blocked.length > 0 && bar('error', `⊘ Blocked (${blocked.length})`)}
+        {blocked.map(task => (
+          <Box flexDirection="column">
+            <Button key={`row:${task.id}`} plain onPress={() => void pressRow($, task.id)}>
+              {'  '}
+              {tag(task.priority)} {cut(task.title, cols - task.priority.length - 5)}
+            </Button>
+            <Text dimColor>{cut(`  ${blockedText(task, tasks)}`, cols)}</Text>
+            {openRow === task.id && rowButtons(task, true)}
+          </Box>
+        ))}
+        {others.length > 0 && bar('inactive', `◇ Other projects (${others.length})`)}
+        {others.map(o => (
+          <Text dimColor>{cut(`${o.name} · ${o.waiting} waiting · ${o.next === null ? 'all blocked' : `★ ${o.next}`}`, cols)}</Text>
+        ))}
         {newTask}
         {hints}
       </Box>
@@ -319,18 +422,18 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
 
   if (view === 'current') {
     const handoffCard = (task: Task) => {
-      if (task.handoff === null) return null
-      const sections = handoffSections(task.handoff.text)
-      const written = task.handoff.written
+      const note = cardNote(task)
+      if (note === null) return null
+      const { sections, written } = note
       const when = written.slice(0, 10) === today ? written.slice(11, 16) : `${written.slice(0, 10)} ${written.slice(11, 16)}`
 
       return (
         <Box flexDirection="column" borderStyle="round" borderColor="subtle" paddingX={1}>
           <Text bold>
-            Handoff note <Text dimColor>· {when}</Text>
+            {note.title} <Text dimColor>· {when}</Text>
           </Text>
           {sections === null ? (
-            <Text>{task.handoff.text}</Text>
+            <Text>{note.text}</Text>
           ) : (
             sections.map((s, i) => (
               <Box flexDirection="column">
@@ -376,6 +479,9 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
                 cols,
               )}
             </Text>
+            {drift.map(line => (
+              <Text color="warning">{cut(`! ${line}`, cols)}</Text>
+            ))}
           </Box>
         )}
         {mismatch !== null && (
@@ -410,6 +516,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
           <Box gap={2}>
             {!isAskingDone && <Button key="done" plain hotkey={KEYS.done} label="Done" onPress={() => void pressDoneYes($)} />}
             <Button key="back" plain hotkey={KEYS.back} label="Back to queue" onPress={() => void pressBackToQueue($)} />
+            <Button key={`block:${current.id}`} plain hotkey={KEYS.block} label="Blocked…" onPress={() => void pressBlock($, current.id)} />
           </Box>
         )}
         {hints}
@@ -449,6 +556,11 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
     const todayMinutes = minutes[weekOf(today).indexOf(today)] ?? 0
     const outside = sum(weekOf(today).map(day => record?.unassignedMinutesByDay[day] ?? 0))
     const effort = current?.effort
+    // Lines are measured from git after each turn; before the first, or with
+    // no start commit, none are shown rather than a count of nothing.
+    const measured = await getView($, 'lines')
+    const linesSoFar =
+      measured === null || measured.taskId !== current?.id ? '' : ` · +${measured.added} −${measured.removed} lines`
 
     return (
       <Box flexDirection="column">
@@ -466,7 +578,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
               {cut(`  ${effort.understandingMessages} understanding · ${effort.improvingMessages} improving messages`, cols)}
             </Text>
             <Text dimColor>
-              {cut(`  ${effort.filesRead} files read · ${effort.filesChanged} changed · +${effort.linesAdded} −${effort.linesRemoved} lines`, cols)}
+              {cut(`  ${effort.filesRead} files read · ${effort.filesChanged} changed${linesSoFar}`, cols)}
             </Text>
           </Box>
         )}

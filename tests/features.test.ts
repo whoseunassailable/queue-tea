@@ -3,7 +3,6 @@ import { expect, test } from 'claude-code/testing'
 import { commitWarning, putBack, startTask } from '../hooks/flow'
 import { emptyRecord } from '../hooks/record'
 import { handoffSections } from '../hooks/ui/handoff'
-import { paletteItems } from '../hooks/ui/keys'
 import { cut, weekChart } from '../hooks/ui/status'
 import type { ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
@@ -106,17 +105,4 @@ test('the week chart is blank with no time, and cut ends with an ellipsis', () =
   expect(weekChart([10, 80, 0, 0, 0, 0, 40])).toBe('M ▁  T █  W    T    F    S    S ▄')
   expect(cut('Finish the scan page', 10)).toBe('Finish th…')
   expect(cut('Short', 10)).toBe('Short')
-})
-
-test('the palette offers only what can be done now', () => {
-  const current = makeTask({ title: 'Now', state: 'current' })
-  const next = makeTask({ title: 'Next' })
-  const base = { hasHold: false, hasMismatch: false, canContinue: false, isBusy: false, hasWarning: false }
-
-  expect(paletteItems({ ...base, current: null, next }).map(i => i.id)).toEqual(['start-next', 'close'])
-  expect(paletteItems({ ...base, current, next, canContinue: true }).map(i => i.id)).toEqual(['continue', 'done', 'back', 'close'])
-  expect(paletteItems({ ...base, current, next, isBusy: true, hasWarning: true }).map(i => i.id)).toEqual(['done', 'dismiss', 'close'])
-  expect(paletteItems({ ...base, current: null, next, hasHold: true }).map(i => i.id)).toEqual(['check-again', 'close'])
-  const keys = paletteItems({ ...base, current, next, canContinue: true, hasMismatch: true, hasWarning: true }).map(i => i.hotkey)
-  expect(new Set(keys).size).toBe(keys.length)
 })

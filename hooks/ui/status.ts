@@ -33,6 +33,12 @@ export const doneThisWeek = (tasks: Task[], today: string): Task[] => {
     .sort((a, b) => Date.parse(b.finished!) - Date.parse(a.finished!))
 }
 
+// Every finished task, the latest first.
+export const finishedTasks = (tasks: Task[]): Task[] =>
+  tasks
+    .filter(t => t.state === 'done' && t.finished !== null)
+    .sort((a, b) => Date.parse(b.finished!) - Date.parse(a.finished!))
+
 // Minutes per day of the week, Monday first, tasks and project time together.
 export const weekMinutes = (tasks: Task[], unassigned: Record<string, number>, today: string): number[] =>
   weekOf(today).map(day => tasks.reduce((sum, t) => sum + (t.minutesByDay[day] ?? 0), unassigned[day] ?? 0))

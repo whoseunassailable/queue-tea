@@ -94,6 +94,9 @@ export type OtherProject = { name: string; waiting: number; next: string | null 
 
 export type Allowance = { percent: number; resetsAt: string | null }
 
+// Which of the tea cup's menu views shows.
+export type MenuView = 'menu' | 'brew' | 'backlog' | 'current' | 'history' | 'usage' | 'settings'
+
 export type Options = {
   idleGapMinutes: number
   freshAtTokens: number
@@ -130,11 +133,13 @@ declare module 'claude-code' {
       checked: string | null
       busy: string | null
       warning: string | null
-      isPaletteOpen: boolean
       blocking: string | null
       budget: number | null
       drift: string[]
       others: OtherProject[]
+      menuView: MenuView
+      isMenuOpen: boolean
+      isCupStill: boolean
     }
   }
 }

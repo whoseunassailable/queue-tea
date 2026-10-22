@@ -44,7 +44,7 @@ Each piece has one job, and only it touches its own data.
 | Record | Reads and writes the project's record file. Nothing else touches the file |
 | Message check | Before each typed message reaches Claude: same task, new task, quick question or can't tell; understanding or improving; for a new task, a title and a difficulty guess |
 | Task flow | The queue order; starting and finishing tasks; the git check and the branch; the handoff note and the fresh conversation |
-| Display | The panel, the band above the prompt, the status line, the commands |
+| Display | The tea cup in the band above the prompt, its menu, the status line, the commands |
 | Git guard | Refuses every command of Claude's that commits or pushes |
 | Docs log | Adds a finished task's row to the project's docs log |
 
@@ -66,26 +66,26 @@ When nothing is current, the saved task starts straight away.
 
 ### Starting a task
 
-This happens when nothing is current and a task is filed, or when Rohan picks the next task from the panel.
+This happens when nothing is current and a task is filed, or when Rohan picks the next task from the menu.
 
-1. **Git check.** Nothing may be uncommitted and the branch must have no commits that haven't been pushed. A branch that has never been pushed, or a repository with no remote, counts as not pushed. When the check fails, the panel says what is left ("3 files not committed · 2 commits not pushed") with **Check again**, and the task waits. The mod never commits or pushes.
+1. **Git check.** Nothing may be uncommitted and the branch must have no commits that haven't been pushed. A branch that has never been pushed, or a repository with no remote, counts as not pushed. When the check fails, the menu says what is left ("3 files not committed · 2 commits not pushed") with **Check again**, and the task waits. The mod never commits or pushes.
 2. **Branch.** It makes `task/<short-title>` from the branch checked out now (the last task's branch) and switches to it. A taken name gets `-2`, `-3` and so on. It notes the commit the task started from. A task that was put back in the queue switches to its own branch instead, and keeps its start commit and start date.
 3. **Fresh conversation.** It clears the conversation (`/clear`) and sends the first message: the task's title and the messages filed with it.
 
 ### Finishing a task
 
-1. Claude tells the mod when a reply looks like it finished what the task asked (see [Telling the mod a task looks done](#telling-the-mod-a-task-looks-done)). The panel asks "Is <task> done for now?" with **Yes** and **Not yet**. `/done` asks the same at any time.
+1. Claude tells the mod when a reply looks like it finished what the task asked (see [Telling the mod a task looks done](#telling-the-mod-a-task-looks-done)). The menu asks "Is <task> done for now?" with **Yes** and **Not yet**. `/done` asks the same at any time.
 2. After **Yes**, the band asks for the difficulty it turned out to be, with the expected one picked.
 3. The mod measures the change in git, writes the task to the record and adds its row to the docs log. The docs log row is an uncommitted change, so it goes into the commit Rohan makes next.
-4. The panel shows the whole queue with each task's priority and difficulty, the top row marked as the suggestion. Rohan presses a task and **Start**, which runs [Starting a task](#starting-a-task) from the git check.
+4. The menu shows the whole queue with each task's priority and difficulty, the top row marked as the suggestion. Rohan presses a task and **Start**, which runs [Starting a task](#starting-a-task) from the git check.
 
 ### Putting a task back
 
-**Back to queue** in the panel puts the current task back in Up next. The mod first asks Claude for a handoff note and saves it with the task; then the task is queued again with its branch, start commit, time and priority kept, and the panel asks for the next task. When the note can't be written, the task is still put back and the panel says so. Starting it later runs the git check, switches to its branch, and sends the first message with the note.
+**Back to queue** in the menu puts the current task back in Up next. The mod first asks Claude for a handoff note and saves it with the task; then the task is queued again with its branch, start commit, time and priority kept, and the menu asks for the next task. When the note can't be written, the task is still put back and the menu says so. Starting it later runs the git check, switches to its branch, and sends the first message with the note.
 
 ### Coming back later
 
-A session that opens in a project with a current task shows that task in the panel with **Continue**. Continue sends the first message from the latest handoff note and the task's messages. When the checked-out branch is not the task's branch, the panel says so and offers **Switch**. Switch works only when nothing is uncommitted; otherwise the panel says what is uncommitted and leaves it to Rohan.
+A session that opens in a project with a current task shows that task in the menu with **Continue**. Continue sends the first message from the latest handoff note and the task's messages. When the checked-out branch is not the task's branch, the menu says so and offers **Switch**. Switch works only when nothing is uncommitted; otherwise the menu says what is uncommitted and leaves it to Rohan.
 
 ## The message check
 
@@ -122,7 +122,7 @@ Every reply re-reads the whole conversation, so a long conversation makes each m
 
 1. **A fresh conversation for every task** ([Starting a task](#starting-a-task)).
 2. **A fresh conversation by size, mid-task.** After each turn the mod reads the conversation's size (`$.session.usage()`). Past 100,000 tokens, it asks Claude for a handoff note (`$.model.fork`), saves it with the task, clears the conversation and sends the first message from the note. Same branch, no git check. The question names the five headings and gives what git says at that moment (branch, last commit, files not committed), so the note's Current state need not guess.
-3. **The allowance on show.** The five-hour window's use and reset time, from the rate-limit readings, in the panel and the status line: "5h: 62% · resets 16:40".
+3. **The allowance on show.** The five-hour window's use and reset time, from the rate-limit readings, in the menu and the status line: "5h: 62% · resets 16:40".
 4. **A handoff note at 90% of the allowance**, written straight away, so a limit reached partway through a task loses nothing; work carries on from the note after the reset.
 
 When the handoff note cannot be written, the conversation is not cleared. The status line says so and the mod tries again after the next reply.
@@ -135,54 +135,78 @@ When the handoff note cannot be written, the conversation is not cleared. The st
 
 ### Telling the mod a task looks done
 
-The mod registers a tool for Claude (`$.tool.register`, listed from the start) and adds a short section to the system prompt saying when to call it: when a reply has finished what the current task asked. Calling it opens the "done for now?" question in the panel. This costs no extra model call, which a check after every reply would.
+The mod registers a tool for Claude (`$.tool.register`, listed from the start) and adds a short section to the system prompt saying when to call it: when a reply has finished what the current task asked. Calling it opens the "done for now?" question in the menu. This costs no extra model call, which a check after every reply would.
 
-The tool takes one optional argument, `checked`: a line on what Claude checked before calling ("ran the tests: 143 pass"). The panel shows it under the question as "Claude checked: …".
+The tool takes one optional argument, `checked`: a line on what Claude checked before calling ("ran the tests: 143 pass"). The menu shows it under the question as "Claude checked: …".
 
 ## What Rohan sees
 
-### The panel
+### The tea cup
 
-It opens by itself at the start of a session when the terminal is wide enough to seat it, and `/queue-tea` opens it at any time, with the keys. It is drawn like a terminal board, its sections stacked so it fits beside the chat. Top to bottom, with made-up tasks:
+A small tea cup sits in the band above the prompt, always, unless a survey holds the band. It is the cup in `.claude-plugin/icon.png` in eleven columns and three rows: cream with amber tea, a sage tea-bag tag, a face with pink cheeks. Beside it, three lines: "Queue-tea" and its mood, a line saying why, and **Menu** with how to open it.
+
+```
+   ) ( )     Queue-tea brewing
+ ▄▀▀▀▀▀▀▀▄   Fix the login timeout · 42m
+▐▀ ▄•ω•▄ ▀)  m: Menu · /queue-tea, or click the cup
+```
+
+Its mood comes from Queue-tea's own state, first match wins:
+
+| Mood | When | Face, and above it |
+| --- | --- | --- |
+| Needs you | The record can't be read; the band asks something; "Is this done for now?"; the git hold; a branch mismatch; the commit warning; Continue offered | `•o•`, a blinking ! |
+| Brewing | The message check; work in progress; loading; a task current; a turn running outside the queue | `•ω•`, steam, a blink now and then |
+| Done | A task finished in the last 15 minutes, none current | `^ω^`, twinkles |
+| Idle | Anything else: "Nothing queued", or "3 waiting · ★ <task>" | `-ω-`, z's |
+
+- **Animation:** the cup is a `Client` surface module (`hooks/ui/teacup.tsx`) that plays its frames on the surface's own clock. Nothing in the hooks module runs for it and nothing is written, the record or `$.state`. Pointing at it winks.
+- **Opening the menu:** a click on the cup (the fullscreen terminal reports clicks; the main screen does not, so the band then names only `/queue-tea`), **Menu** (`m` once the band has the keys), or `/queue-tea`. While a mood is "needs you" for the current task, the menu opens on **Current task**.
+- **Still:** where the surface runs no `Client`, or the cup's module failed (`ui.fault`), the first frame is drawn as plain text. Under 40 columns the band has the words without the cup.
+
+### The menu
+
+A pane opened with the keys and `closeOnEscape`: inline above the prompt (16 rows), or docked narrow (46 columns) in a wide fullscreen terminal. Esc closes it while it has the keys; the surface gives it the keys only over an empty prompt, so `/queue-tea` does and a click on the cup may not (a click in the menu then gives them). Opening it, moving between its views and closing it write nothing: which view shows and whether it is open are `$.state` values for the session.
 
 ```
 Queue-tea · example-app            5h: 62% · resets 16:40
- ▶ In progress (1)                                (orange)
-  [high] Add dark mode
-  Medium · task/add-dark-mode · 1h 12m
-d: Done  b: Back to queue
- ○ Up next (2)                                    (grey)
-★ [urgent] Fix the login timeout
-  Hard · waited 2h
-  [low] Tidy the settings page
-  Light · waited 1d
- ✓ Done this week (3) · 6h 40m                    (green)
-✓ Write the onboarding text · done 3h
-M ▃  T ▆  W ▁  T █  F    S    S
-p: actions · tab move · enter press · esc back to the chat
+1: Brew now      do it now, outside the queue
+2: Backlog       2 waiting · ★ Fix the login timeout
+3: Current task  Add dark mode · 1h 12m
+4: History       3 this week · 6h 40m
+5: Usage & time  5h 62% · today 1h 12m
+6: Settings      /config options and paths
+1–6 pick · tab move · enter press · esc close
 ```
+
+Each view starts with the header, the lines under it, and **‹ Menu** (`m`).
 
 - **Header:** "Queue-tea · <project>" with the allowance on the right.
 - **Lines under it, while they apply:** a warning about a commit made during a turn (with **OK**), the message check running, work in progress ("Saving a handoff note…"), a notice.
-- **In progress:** a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far. Then, while they apply:
+- **Brew now:** a field; what is typed goes as `/brew` does (see [Errands](#errands)): the note in a row only Claude reads, then the words as Rohan's. The menu closes so the answer shows.
+- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far. Then, while they apply:
   - the git check's hold, with **Check again**; a branch mismatch, with **Switch**;
   - "Is this done for now?" with **Yes** and **Not yet**, and "Claude checked: …" when Claude said;
   - the handoff card and **Continue** (below);
   - **Done**, which goes straight to the difficulty band, and **Back to queue**.
 
   With nothing current: "No task in progress." and **Start ★ <task>**.
-- **Up next:** a grey bar with the count, then the queue in order. Each row: ★ on the suggestion, the priority tag, the title; a dim line with the expected difficulty, how long it has waited, and for a task put back its branch and time so far. Pressing a row opens **Start** (while nothing is current), the five priorities and **Remove**.
-- **Done this week:** a green bar with the count and the week's time, this week's finished tasks, latest first, five at most ("done 3h"), and the week chart: one bar a day, Monday to Sunday, the busiest day full height, a day with no time blank.
-- **Key hints:** one dim line. Hotkeys work only while the panel has the keys; when it hasn't, the line says how to give them to it (ctrl+x tab, or a click).
+- **Backlog:** a grey bar with the count, then the queue in order. Each row: ★ on the suggestion, the priority tag, the title; a dim line with the expected difficulty, how long it has waited, and for a task put back its branch and time so far. Pressing a row opens **Start** (while nothing is current; the view then moves to Current task), the five priorities and **Remove**. Under the rows, a **New task** field that files what is typed (the band then asks for its priority).
+- **History:** a green bar with the count and the week's time, this week's finished tasks, latest first, five at most ("done 3h"), and the week chart: one bar a day, Monday to Sunday, the busiest day full height, a day with no time blank. Then the tasks finished before this week, with their dates.
+- **Usage & time:** the 5-hour allowance, today's and this week's time, the week chart, the current task's time and effort (messages, files, lines), and project time outside tasks this week.
+- **Settings:** the four `userConfig` values, the task log's path and the record's file. They are changed with `/config`.
+- **Key hints:** one dim line. Hotkeys work only while the menu has the keys; when it hasn't, the line says how to give them to it (ctrl+x tab, or a click).
 
 #### The handoff card
 
 Shown with **Continue**: the latest handoff note in a frame, with when it was written, as numbered sections (1 Overview, 2 What changed, 3 Current state, 4 Decisions, 5 Next steps). Points under Next steps are drawn as ☐, under What changed as ✓. A note in an older shape is split at its own headings ("Done:", "Left:"); a note with fewer than two headings is shown as plain text.
 
-#### Keys and the palette
+#### Keys
 
 | Key | Does |
 | --- | --- |
+| `1`–`6` | On the list: Brew now, Backlog, Current task, History, Usage & time, Settings |
+| `m` | Back to the list; in the band, Menu |
 | `s` | Start: the open row, or ★ when no row is open |
 | `d` | Done: the difficulty band |
 | `y` / `n` | Yes / Not yet, to "Is this done for now?" |
@@ -193,9 +217,9 @@ Shown with **Continue**: the latest handoff note in a frame, with when it was wr
 | `1`–`5` | The open row's priority, urgent to low |
 | `x` | Remove the open row |
 | `o` | Dismiss the commit warning |
-| `p` | The palette, and back to the board |
+| Esc | Close the menu |
 
-The palette lists only what can be done now, each with its key and a dim line saying what it does, and a **New task** field that files what is typed (the band then asks for its priority). While it is open it takes the board's place, so no key does two things.
+Only the view showing has its keys, so `1`–`5` on an open Backlog row never pick a list entry.
 
 States:
 
@@ -208,7 +232,7 @@ States:
 
 ### The band above the prompt
 
-Only while it needs Rohan: filing a new task, the can't-tell choice, the difficulty at the end of a task.
+The tea cup and its lines, always. While it needs Rohan the question takes the lines' place, beside the cup: filing a new task, the can't-tell choice, the difficulty at the end of a task, the task log's path.
 
 ### The status line
 
@@ -218,8 +242,8 @@ Only while it needs Rohan: filing a new task, the can't-tell choice, the difficu
 
 | Command | Does |
 | --- | --- |
-| `/queue-tea` | Opens the panel and gives it the keys (when the prompt is empty) |
-| `/done` | Asks whether the current task is done for now |
+| `/queue-tea` | Opens the tea cup's menu and gives it the keys (when the prompt is empty) |
+| `/done` | Asks whether the current task is done for now, and opens the menu on Current task |
 | `/steep <message>` | Files the message as a new task, no check |
 | `/brew <request>` | Does it now, outside the queue (see [Errands](#errands)) |
 | `/instant <request>` | The same as `/brew` |
@@ -318,19 +342,19 @@ Refuses Claude's shell commands that commit or push, side effects included:
 
 It finds them inside chained commands (`cd x && git commit`) and with `git -C <path>`. Claude is told "Queue-tea: commits and pushes are yours to make." When the guard itself fails, it refuses. It matches command spellings, so it catches the usual forms but not every possible one. The mod's own git work (status, branches, the diff) runs as its own processes and is not blocked.
 
-Because the guard can miss a spelling, the mod also looks after each turn: it notes the commit checked out when a turn starts, and when the turn ends on the same branch with new commits on top, a toast and a warning line in the panel name them ("During the last turn a commit appeared: 1a2b3c4 …"). A commit Rohan makes in another terminal during a turn is named too; the line asks him to check it was his. A change of branch is not counted.
+Because the guard can miss a spelling, the mod also looks after each turn: it notes the commit checked out when a turn starts, and when the turn ends on the same branch with new commits on top, a toast and a warning line in the menu name them ("During the last turn a commit appeared: 1a2b3c4 …"). A commit Rohan makes in another terminal during a turn is named too; the line asks him to check it was his. A change of branch is not counted.
 
 ## When things go wrong
 
 | Case | What happens |
 | --- | --- |
-| Not a git repository | Queue, time and effort work; the panel says "Not a git repository, so no branches are made" |
+| Not a git repository | Queue, time and effort work; the menu says "Not a git repository, so no branches are made" |
 | Branch never pushed, or no remote | Counts as not pushed: "This branch has never been pushed", with **Check again** |
-| Detached HEAD | The panel says so and the task waits |
+| Detached HEAD | The menu says so and the task waits |
 | Branch name taken | `-2`, `-3` and so on |
 | Handoff note not written | No clear; the status line says so; tried again after the next reply |
-| Record cannot be read or written | The panel's failed state with **Try again**; nothing is cleared or started until it works |
-| Two sessions in one project | They share the record; the panel reads it again after each turn |
+| Record cannot be read or written | The menu's failed state with **Try again**; nothing is cleared or started until it works |
+| Two sessions in one project | They share the record; the menu reads it again after each turn |
 
 ## Settings
 
@@ -362,9 +386,11 @@ The board is a separate project. Everything it shows comes from the record files
   - the guard refusing each command listed above, and allowing `git status`, `git log`, `git diff`
   - the 15-minute time rule across days
   - the record's read-again-then-write
-  - the panel's loading, empty and failed states, drawn on the terminal and desktop surfaces
+  - the menu's loading, empty and failed states, drawn on the terminal and desktop surfaces
+  - the menu opening, its keys, its views and closing, none of it writing the record or touching the branch
+  - the tea cup's four moods, its steam on the surface's clock, a click and a wink, and the still cup where there is no `Client` or no room
 - **`claude plugin validate`** and a type check.
-- **A live try** in a throwaway git repository: file tasks, see the band and the panel, finish one, start the next, cross the conversation size.
+- **A live try** in a throwaway git repository: file tasks, see the cup in the band, the questions and the menu, finish one, start the next, cross the conversation size.
 
 ## Where it lives
 
@@ -376,4 +402,4 @@ The board is a separate project. Everything it shows comes from the record files
 
 - `$.fs` can write under `~/.queue-tea/`, outside the project folder. Confirmed: the records are written there.
 - The write that never leaves a half-written file. Built: a temporary file, then `mv -f` over the record.
-- The panel opens by itself only where the terminal seats it beside the chat.
+- Nothing opens by itself: the menu opens when Rohan asks (the cup, **Menu**, `/queue-tea`, `/done`). A click on the cup is a `Client`'s post, which the engine may count as the mod opening the pane on its own, so on a narrow terminal it may wait undrawn; a toast then says to type `/queue-tea`.

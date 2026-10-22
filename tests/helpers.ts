@@ -127,11 +127,13 @@ export const fakePorts = (
     checked: null,
     busy: null,
     warning: null,
-    isPaletteOpen: false,
     blocking: null,
     budget: null,
     drift: [],
     others: [],
+    menuView: 'menu',
+    isMenuOpen: false,
+    isCupStill: false,
     ...options.view,
   }
   const done = { clears: 0, asUser: [] as boolean[], submits: [] as string[], toasts: [] as string[], logs: [] as string[], statuses: [] as (string | undefined)[] }

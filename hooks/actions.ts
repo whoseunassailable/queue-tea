@@ -1,7 +1,9 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Difficulty, Priority, ProjectRecord } from '../types'
+import type { Difficulty, MenuView, Priority, ProjectRecord } from '../types'
 import { applyPending } from './effort'
+import { errandNote } from './errand'
+import type { ErrandKind } from './errand'
 import {
   blockTask,
   closeBand,
@@ -26,7 +28,7 @@ import { readFacts, readGit } from './git'
 import { hostOf } from './host'
 import { live } from './live'
 import { nextBudget, suggest } from './plan'
-import { debug, getView, portsOf } from './ports'
+import { debug, getView, portsOf, readCup } from './ports'
 import { currentTask, setPriority } from './queue'
 import { readOthers, readRecord, updateRecord } from './record'
 import { isoLocal } from './time'
@@ -35,7 +37,7 @@ import { isoLocal } from './time'
 // conversation holds little the turns haven't saved already.
 const CLEAR_CHECKPOINT_TOKENS = 20_000
 
-// What the hooks, the panel and the band do. Each takes `$` and acts through
+// What the hooks, the menu and the band do. Each takes `$` and acts through
 // the same ports.
 
 export async function loadRecord($: EngineInterface) {
@@ -152,16 +154,95 @@ export async function tick($: EngineInterface) {
   if (isWaiting) await portsOf($).set('spin', (await getView($, 'spin')) + 1)
 }
 
-// With `focus`, the panel takes the keys so its hotkeys work at once (only
-// over an empty prompt; otherwise it opens without them).
-export async function openPanel($: EngineInterface, focus = false) {
+// The tea cup's menu: a pane that asks for the keys, which the surface gives
+// only over an empty prompt, and that Esc closes while it holds them. Inline
+// it opens MENU_ROWS tall above the prompt; docked, MENU_COLUMNS wide.
+export const MENU = 'queue-tea'
+const MENU_ROWS = 16
+const MENU_COLUMNS = 46
+
+export async function openMenu($: EngineInterface, view: MenuView = 'menu') {
+  const p = portsOf($)
   const name = live.ctx?.projectName ?? 'this project'
-  await $.ui.open(focus ? { id: 'queue-tea', title: `Queue-tea · ${name}`, focus } : { id: 'queue-tea', title: `Queue-tea · ${name}` })
+  await p.set('menuView', view)
+  await p.set('isMenuOpen', true)
+  const opened = await $.ui.open({
+    id: MENU,
+    title: `Queue-tea · ${name}`,
+    focus: true,
+    closeOnEscape: true,
+    rows: MENU_ROWS,
+    columns: MENU_COLUMNS,
+  })
+  if (!opened.isPlaced) p.toast('Queue-tea: the terminal is too narrow for the menu here. Type /queue-tea to open it.')
+}
+
+// However it closed (Esc, its close mark, the cup), it opens on the list
+// next time.
+export async function menuClosed($: EngineInterface) {
+  const p = portsOf($)
+  await p.set('isMenuOpen', false)
+  await p.set('menuView', 'menu')
+}
+
+export async function closeMenu($: EngineInterface) {
+  await $.ui.close({ id: MENU })
+  await menuClosed($)
+}
+
+// The cup: opens the menu where something waits, or closes it.
+export async function toggleMenu($: EngineInterface) {
+  if (await getView($, 'isMenuOpen')) await closeMenu($)
+  else await openMenu($, (await readCup($, false)).view)
+}
+
+export async function pressMenu($: EngineInterface, view: MenuView) {
+  await portsOf($).set('menuView', view)
+}
+
+// A /brew or /tea errand on its way: time goes to the project, as after a
+// quick question. Answers the note Claude reads before the words.
+export async function errandFor($: EngineInterface, kind: ErrandKind, text: string): Promise<string> {
+  const record = await getView($, 'record')
+  live.errand = { kind, text, isRunning: false }
+  live.tracker?.route('project')
+
+  return errandNote(kind, record === null ? null : currentTask(record.tasks))
+}
+
+// The errand's words go to Claude as Rohan's once the caller is done (a
+// submit from a command's own hook would wait on it).
+export function sendErrand($: EngineInterface, text: string, command: string) {
+  portsOf($).later(async () => {
+    try {
+      await $.prompt.submit({ text, asUser: true })
+    } catch (err) {
+      live.errand = null
+      debug($, `/${command} failed`, err)
+    }
+  })
+}
+
+// Brew now: the /brew errand. With no command row to carry its note, the
+// note goes in as a row only Claude reads. The menu closes so the answer
+// shows.
+export async function brewNow($: EngineInterface, text: string) {
+  const request = text.trim()
+  if (request === '') return
+  await closeMenu($)
+  const note = await errandFor($, 'brew', request)
+  await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: note }] } })
+  sendErrand($, request, 'brew')
 }
 
 export async function pressStart($: EngineInterface, taskId: string) {
-  await portsOf($).set('isPaletteOpen', false)
   if (live.ctx !== null) await startTask(portsOf($), live.ctx, taskId)
+}
+
+// Start from the backlog, then show the task where its hold or branch shows.
+export async function pressStartFromBacklog($: EngineInterface, taskId: string) {
+  await pressStart($, taskId)
+  await portsOf($).set('menuView', 'current')
 }
 
 // Starts the task marked ★.
@@ -173,9 +254,7 @@ export async function pressStartNext($: EngineInterface) {
 
 // Opens the blocking view for a task: what it waits for, or a reason.
 export async function pressBlock($: EngineInterface, taskId: string) {
-  const p = portsOf($)
-  await p.set('isPaletteOpen', false)
-  await p.set('blocking', taskId)
+  await portsOf($).set('blocking', taskId)
 }
 
 export async function pressCancelBlock($: EngineInterface) {
@@ -204,14 +283,9 @@ export async function pressBudget($: EngineInterface) {
 // Puts the current task back in Up next, its time so far written first.
 export async function pressBackToQueue($: EngineInterface) {
   const p = portsOf($)
-  await p.set('isPaletteOpen', false)
   if (live.ctx === null) return
   await flush($)
   await putBack(p, live.ctx)
-}
-
-export async function pressPalette($: EngineInterface) {
-  await portsOf($).set('isPaletteOpen', !(await getView($, 'isPaletteOpen')))
 }
 
 export async function pressDismissWarning($: EngineInterface) {
@@ -225,14 +299,12 @@ export async function pressCheckAgain($: EngineInterface) {
 
 export async function pressContinue($: EngineInterface) {
   const p = portsOf($)
-  await p.set('isPaletteOpen', false)
   await p.set('canContinue', false)
   if (live.ctx !== null) await continueTask(p, live.ctx)
 }
 
 export async function pressSwitch($: EngineInterface) {
   const p = portsOf($)
-  await p.set('isPaletteOpen', false)
   if (live.ctx === null) return
   try {
     const result = await switchToTask(p, live.ctx)
@@ -248,7 +320,6 @@ export async function pressDoneYes($: EngineInterface) {
   const p = portsOf($)
   const record = await getView($, 'record')
   const current = record === null ? null : currentTask(record.tasks)
-  await p.set('isPaletteOpen', false)
   await p.set('isAskingDone', false)
   await p.set('checked', null)
   if (current !== null) {
@@ -327,7 +398,6 @@ export async function saveDocsPath($: EngineInterface, value: string) {
 }
 
 export async function fileFromCommand($: EngineInterface, text: string) {
-  await portsOf($).set('isPaletteOpen', false)
   await showBand(portsOf($), {
     kind: 'file',
     text,

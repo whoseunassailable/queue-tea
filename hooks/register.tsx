@@ -1,8 +1,23 @@
 import type { EngineInterface, Register } from 'claude-code'
 
-import { afterClear, askDone, checkResume, fileFromCommand, flush, loadRecord, openPanel, saveBeforeClear, tick } from './actions'
+import {
+  afterClear,
+  askDone,
+  checkResume,
+  errandFor,
+  fileFromCommand,
+  flush,
+  loadRecord,
+  MENU,
+  menuClosed,
+  openMenu,
+  saveBeforeClear,
+  sendErrand,
+  tick,
+  toggleMenu,
+} from './actions'
 import { commandRun } from './checkpoint'
-import { ERRANDS, errandNote, errandReply, errandUsage, isErrandTurn } from './errand'
+import { ERRANDS, errandReply, errandUsage, isErrandTurn } from './errand'
 import type { ErrandKind } from './errand'
 import { afterTurn, commitWarning, onMessage, refreshDrift, shouldCheck, taskLooksDone, taskSection } from './flow'
 import { readHead } from './git'
@@ -13,16 +28,15 @@ import { createTracker } from './effort'
 import { hostOf } from './host'
 import { loadContext, readOptions } from './session'
 import { renderBand } from './ui/band'
-import { renderPanel } from './ui/panel'
+import { renderMenu } from './ui/menu'
 import { isoLocal } from './time'
 import { readAllowance } from './usage'
-import { currentTask } from './queue'
 
 const GUARD_TEXT = 'Queue-tea: commits and pushes are yours to make.'
 const HELD_TEXT = 'Queue-tea: held for the band above the prompt'
 
 // Registers a command, or its `queue-tea-` name when the short one is taken;
-// says so in the panel.
+// says so in the menu.
 async function registerCommand($: EngineInterface, name: string, description: string, argumentHint?: string) {
   const spec = argumentHint === undefined ? { description } : { description, argumentHint }
   try {
@@ -48,7 +62,7 @@ async function startSession($: EngineInterface) {
   await $.tool.register({
     name: 'task_looks_done',
     description:
-      'Call when your reply has finished what the current Queue-tea task asked. Rohan is then asked in the panel whether it is done for now.',
+      'Call when your reply has finished what the current Queue-tea task asked. Rohan is then asked in the Queue-tea menu whether it is done for now.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -61,7 +75,7 @@ async function startSession($: EngineInterface) {
     },
     isDeferred: false,
   })
-  await registerCommand($, 'queue-tea', 'Open the Queue-tea panel')
+  await registerCommand($, 'queue-tea', 'Open the Queue-tea menu')
   await registerCommand($, 'done', 'Ask whether the current Queue-tea task is done for now')
   await registerCommand($, 'steep', 'Steep a message for later: file it as a new Queue-tea task, with no check', '<message>')
   await registerCommand($, 'brew', 'Do this now, outside the Queue-tea queue: no task, same branch and conversation', '<request>')
@@ -73,7 +87,6 @@ async function startSession($: EngineInterface) {
     debug($, 'checking the branch at the start failed', err)
   }
   await refreshStatus($)
-  void openPanel($)
 }
 
 async function afterEachTurn($: EngineInterface) {
@@ -122,25 +135,14 @@ async function checkTyped($: EngineInterface, text: string): Promise<'pass' | 'd
 }
 
 // /brew, /instant and /tea: the errand's note goes in the command's context,
-// and the words go to Claude as Rohan's own once the command is done (a submit
-// from the command's own hook would wait on it). Time goes to the project, as
-// after a quick question.
+// and the words go to Claude as Rohan's own once the command is done.
 async function runErrand($: EngineInterface, kind: ErrandKind, command: string, args: string) {
   const text = args.trim()
   if (text === '') return { text: errandUsage(command, kind) }
-  const record = await getView($, 'record')
-  live.errand = { kind, text, isRunning: false }
-  live.tracker?.route('project')
-  portsOf($).later(async () => {
-    try {
-      await $.prompt.submit({ text, asUser: true })
-    } catch (err) {
-      live.errand = null
-      debug($, `/${command} failed`, err)
-    }
-  })
+  const note = await errandFor($, kind, text)
+  sendErrand($, text, command)
 
-  return { text: errandReply(kind), context: [errandNote(kind, record === null ? null : currentTask(record.tasks))] }
+  return { text: errandReply(kind), context: [note] }
 }
 
 export const register: Register = (on, options) => {
@@ -173,7 +175,7 @@ export const register: Register = (on, options) => {
     await taskLooksDone(portsOf($), e.checked)
 
     // A registered tool's result is what the model reads: a string, not a record.
-    return { result: 'Rohan is asked in the panel whether the task is done for now.' }
+    return { result: 'Rohan is asked in the Queue-tea menu whether the task is done for now.' }
   })
 
   on('tool.call', async ($, e, next) => {
@@ -255,23 +257,23 @@ export const register: Register = (on, options) => {
   })
 
   on('command.run', { command: 'queue-tea' }, async $ => {
-    await openPanel($, true)
+    await openMenu($)
 
-    return { text: 'Queue-tea panel opened.' }
+    return { text: 'Queue-tea menu opened.' }
   })
 
   on('command.run', { command: 'done' }, async $ => {
     const isAsked = await askDone($)
-    await openPanel($)
+    await openMenu($, 'current')
 
-    return { text: isAsked ? 'Asked in the Queue-tea panel.' : 'No Queue-tea task is in progress.' }
+    return { text: isAsked ? 'Asked in the Queue-tea menu.' : 'No Queue-tea task is in progress.' }
   })
 
   on('command.run', { command: 'queue-tea-done' }, async $ => {
     const isAsked = await askDone($)
-    await openPanel($)
+    await openMenu($, 'current')
 
-    return { text: isAsked ? 'Asked in the Queue-tea panel.' : 'No Queue-tea task is in progress.' }
+    return { text: isAsked ? 'Asked in the Queue-tea menu.' : 'No Queue-tea task is in progress.' }
   })
 
   on('command.run', { command: 'steep' }, async ($, e) => {
@@ -296,9 +298,34 @@ export const register: Register = (on, options) => {
     }
   }
 
-  on('ui.render', { component: 'Pane', requestId: 'queue-tea' }, ($, e) => renderPanel($, e))
+  on('ui.render', { component: 'Pane', requestId: MENU }, ($, e) => renderMenu($, e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => (await renderBand($, e)) ?? next(e))
+
+  // The menu closed, by Esc, its close mark or the cup: nothing else changes.
+  on('ui.close', async ($, e, next) => {
+    if (e.id === MENU) await menuClosed($)
+
+    return next(e)
+  })
+
+  // A click on the tea cup opens or closes the menu.
+  on('ui.message', async ($, e, next) => {
+    const data = e.data as { kind?: unknown } | null
+    if (e.element === 'cup' && typeof data === 'object' && data?.kind === 'press') await toggleMenu($)
+
+    return next(e)
+  })
+
+  // The cup's surface module failed: from now on it is drawn still.
+  on('ui.fault', async ($, e, next) => {
+    if (e.element === 'cup') {
+      debug($, `the tea cup failed (${e.phase})`, e.reason)
+      await portsOf($).set('isCupStill', true)
+    }
+
+    return next(e)
+  })
 
   // A guard: when it fails it refuses rather than lets the command through.
   on('tool.call', { tool: 'Bash' }, ($, e, next) =>

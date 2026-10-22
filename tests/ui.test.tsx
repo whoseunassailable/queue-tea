@@ -3,7 +3,7 @@ import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
 import { emptyRecord, projectKey, recordPath } from '../hooks/record'
-import type { ProjectRecord } from '../types'
+import type { MenuView, ProjectRecord } from '../types'
 import { answerHost, makeTask, memoryHost } from './helpers'
 import type { Run } from './helpers'
 
@@ -60,6 +60,8 @@ const startSession = async (
     commands: [] as string[],
     tools: [] as string[],
     logs: [] as string[],
+    opens: [] as unknown[],
+    closes: [] as string[],
   }
   const clock = mock.clock(on, { now: Date.parse('2026-10-21T07:12:00Z') })
   mock.env(on, { HOME: '/h' })
@@ -91,7 +93,16 @@ const startSession = async (
   }))
   on('turn.complete', () => ({ text: '', reason: 'end_turn', category: null, explanation: null }) as never)
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.open', (_, e) => {
+    seen.opens.push(e)
+
+    return { value: { isPlaced: true } }
+  })
+  on('ui.close', (_, e) => {
+    seen.closes.push(e.id)
+
+    return { value: undefined }
+  })
   on('ui.status', () => ({ value: undefined }))
   on('ui.log', (_, e) => {
     seen.logs.push(e.text)
@@ -123,6 +134,16 @@ const startSession = async (
 }
 
 const record = (over: Partial<ProjectRecord> = {}) => JSON.stringify({ ...emptyRecord('p', '/p'), ...over })
+
+// The menu pane on one of its views, reached the way Rohan reaches it: back
+// to the list when a view shows, then the view's entry.
+const mountView = async ($: Engine, surface: (typeof SURFACES)[number], view: MenuView) => {
+  const ui = await $.ui.mount({ ...PANE, surface })
+  if ((await ui.find({ key: 'menu:back' })) !== undefined) await ui.press({ key: 'menu:back' })
+  if (view !== 'menu') await ui.press({ key: `menu:${view}` })
+
+  return ui
+}
 
 test('loading shows the turning character and Reading your queue…', async $ => {
   for (const surface of SURFACES) {
@@ -164,7 +185,7 @@ test('after a /clear the record is read again', async ($, on) => {
 
   await $.classic.SessionStart({ source: 'clear' })
   for (const surface of SURFACES) {
-    const ui = await $.ui.mount({ ...PANE, surface })
+    const ui = await mountView($, surface, 'backlog')
 
     expect(await ui.find({ type: 'Text', text: /Reading your queue…/ })).toBeUndefined()
     expect((await ui.find({ key: `row:${task.id}` }))?.text).toMatch(/^★ \[high\] Filed in another session/)
@@ -180,7 +201,7 @@ test('Up next is in priority order with the suggestion marked', async ($, on) =>
   ]
   await startSession($, on, { file: record({ tasks }) })
   for (const surface of SURFACES) {
-    const ui = await $.ui.mount({ ...PANE, surface })
+    const ui = await mountView($, surface, 'backlog')
     const first = await ui.find({ key: `row:${tasks[1]!.id}` })
     const second = await ui.find({ key: `row:${tasks[0]!.id}` })
 
@@ -197,7 +218,7 @@ test('a held start shows what is left and Check again', async ($, on) => {
     const band = await $.ui.mount({ ...BAND, surface })
     await band.press({ key: 'save' })
     await band.unmount()
-    const ui = await $.ui.mount({ ...PANE, surface })
+    const ui = await mountView($, surface, 'current')
 
     expect(await ui.find({ type: 'Text', text: '3 files not committed · 2 commits not pushed' })).toBeDefined()
     expect(await ui.find({ key: 'check-again' })).toBeDefined()
@@ -212,7 +233,7 @@ test('Is this done for now? Yes leads to the difficulty band', async ($, on) => 
   await startSession($, on, { file: record({ tasks: [task] }) })
   await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' })
   for (const surface of SURFACES) {
-    const ui = await $.ui.mount({ ...PANE, surface })
+    const ui = await mountView($, surface, 'current')
     expect(await ui.find({ type: 'Text', text: /Is this done for now\?/ })).toBeDefined()
     await ui.press({ key: 'done-yes' })
     await ui.unmount()
@@ -310,7 +331,7 @@ const HANDOFF = [
   '- Write the spec',
 ].join('\n')
 
-test('the board: a bar per section with its count, the done list and the week chart', async ($, on) => {
+test('the views: a bar each with its count, the done list and the week chart', async ($, on) => {
   const tasks = [
     makeTask({ title: 'Now', state: 'current', priority: 'high', branch: 'task/now', minutesByDay: { '2026-10-20': 30 } }),
     makeTask({ title: 'Waiting', priority: 'urgent' }),
@@ -318,31 +339,33 @@ test('the board: a bar per section with its count, the done list and the week ch
   ]
   await startSession($, on, { file: record({ tasks }) })
   for (const surface of SURFACES) {
-    const ui = await $.ui.mount({ ...PANE, surface })
-
+    let ui = await mountView($, surface, 'current')
     expect(await ui.find({ type: 'Text', text: /▶ In progress \(1\)/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /○ Up next \(1\)/ })).toBeDefined()
+    expect(await ui.find({ key: 'done' })).toBeDefined()
+    expect(await ui.find({ key: 'back' })).toBeDefined()
+    await ui.unmount()
+
+    ui = await mountView($, surface, 'backlog')
+    expect(await ui.find({ type: 'Text', text: /○ Backlog \(1\)/ })).toBeDefined()
+    await ui.unmount()
+
+    ui = await mountView($, surface, 'history')
     expect(await ui.find({ type: 'Text', text: /✓ Done this week \(1\) · 1h 30m/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Finished · done 1h/ })).toBeDefined()
     expect((await ui.find({ type: 'Text', text: /^M / }))?.text).toBe('M    T ▄  W █  T    F    S    S  ')
-    expect(await ui.find({ key: 'done' })).toBeDefined()
-    expect(await ui.find({ key: 'back' })).toBeDefined()
     await ui.unmount()
   }
 })
 
-test('the palette lists what can be done now, and p goes back to the board', async ($, on) => {
+test('the backlog has a New task field that files what is typed', async ($, on) => {
   const tasks = [makeTask({ title: 'Waiting', priority: 'urgent' })]
   await startSession($, on, { file: record({ tasks }) })
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  await ui.press({ key: 'palette' })
+  const ui = await mountView($, 'terminal', 'backlog')
 
-  expect(await ui.find({ key: 'palette:start-next' })).toBeDefined()
-  expect(await ui.find({ key: 'palette:done' })).toBeUndefined()
-  expect(await ui.find({ key: 'new-task' })).toBeDefined()
-  await ui.press({ key: 'palette' })
-  expect(await ui.find({ key: 'palette:start-next' })).toBeUndefined()
-  expect(await ui.find({ key: 'start-next' })).toBeDefined()
+  await ui.input({ key: 'new-task', text: 'Write the docs' })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await band.find({ type: 'Text', text: /New task: Write the docs/ })).toBeDefined()
+  await band.unmount()
   await ui.unmount()
 })
 
@@ -354,7 +377,7 @@ test('Continue shows the handoff note as numbered sections', async ($, on) => {
   })
   await startSession($, on, { file: record({ tasks: [task] }) })
   for (const surface of SURFACES) {
-    const ui = await $.ui.mount({ ...PANE, surface })
+    const ui = await mountView($, surface, 'current')
 
     expect(await ui.find({ type: 'Text', text: /Handoff note · 08:30/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: '1 Overview' })).toBeDefined()
@@ -370,7 +393,7 @@ test('task_looks_done with what Claude checked shows it beside the question', as
   const task = makeTask({ title: 'Now', state: 'current' })
   await startSession($, on, { file: record({ tasks: [task] }) })
   await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done', checked: 'ran the tests: 130 pass' } as never)
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const ui = await mountView($, 'terminal', 'current')
 
   expect(await ui.find({ type: 'Text', text: 'Claude checked: ran the tests: 130 pass' })).toBeDefined()
   await ui.press({ key: 'done-not-yet' })
@@ -385,7 +408,7 @@ test('Back to queue saves a handoff note and puts the task in Up next on its bra
     reply: HANDOFF,
     git: { 'git log -1 --format=%h %s': { stdout: '1a2b3c4 Add bars\n' } },
   })
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const ui = await mountView($, 'terminal', 'current')
   await ui.press({ key: 'back' })
   await clock.settle()
 
@@ -393,12 +416,14 @@ test('Back to queue saves a handoff note and puts the task in Up next on its bra
   expect([saved.state, saved.branch, saved.startCommit, saved.handoff?.text]).toEqual(['queued', 'task/now', '1a2b3c4', HANDOFF])
   expect(seen.forks).toBe(1)
   expect(seen.toasts).toEqual(['Back in the backlog: Now'])
+  await ui.press({ key: 'menu:back' })
+  await ui.press({ key: 'menu:backlog' })
   expect((await ui.find({ key: `row:${task.id}` }))?.text).toMatch(/^★ \[mid\] Now/)
   expect(await ui.find({ type: 'Text', text: /task\/now/ })).toBeDefined()
   await ui.unmount()
 })
 
-test('a commit made during a turn is named in the panel', async ($, on) => {
+test('a commit made during a turn is named in the menu', async ($, on) => {
   const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now' })
   const { mem, seen, clock } = await startSession($, on, {
     file: record({ tasks: [task] }),
@@ -493,7 +518,7 @@ test('during a /brew turn task_looks_done asks nothing; after it, it asks again'
   const task = makeTask({ title: 'Now', state: 'current' })
   const { clock } = await startSession($, on, { file: record({ tasks: [task] }) })
   const asksDone = async () => {
-    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    const ui = await mountView($, 'terminal', 'current')
     const found = await ui.find({ type: 'Text', text: /Is this done for now\?/ })
     await ui.unmount()
 
@@ -538,4 +563,310 @@ test('a message typed after /brew is checked as before', async ($, on) => {
 
   expect(seen.forks).toBe(1)
   expect(seen.prompts.map(p => p.text)).toEqual(['start the server'])
+})
+
+// The tea cup above the prompt and the menu it opens.
+
+const ENTRIES = ['brew', 'backlog', 'current', 'history', 'usage', 'settings'] as const
+const SAME_REPLY = '{"kind":"same","intent":"improving"}'
+const FOCUSED = { ...PANE, props: { ...PANE.props, isFocused: true } }
+const recordOf = (mem: ReturnType<typeof memoryHost>) => JSON.parse(mem.files.get(FILE)!) as ProjectRecord
+
+test('/queue-tea opens the menu asking for the keys, so Esc closes it; opening it files nothing', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now' })
+  const { mem, seen } = await startSession($, on, { file: record({ tasks: [task] }) })
+  const before = mem.files.get(FILE)
+  expect(seen.opens).toEqual([])
+
+  const answer = await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  expect(answer.text).toBe('Queue-tea menu opened.')
+  expect(seen.opens[0]).toMatchObject({ id: 'queue-tea', focus: true, closeOnEscape: true })
+
+  const ui = await $.ui.mount({ ...FOCUSED, surface: 'terminal' })
+  for (const [i, view] of ENTRIES.entries()) {
+    expect((await ui.find({ key: `menu:${view}` }))?.props.hotkey).toBe(String(i + 1))
+  }
+  expect((await ui.find({ key: 'menu:brew' }))?.props.autoFocus).toBe(true)
+  expect(await ui.find({ type: 'Text', text: '1–6 pick · tab move · enter press · esc close' })).toBeDefined()
+  await ui.unmount()
+
+  expect(mem.files.get(FILE)).toBe(before)
+  expect(recordOf(mem).tasks.length).toBe(1)
+  expect(seen.prompts).toEqual([])
+})
+
+test('keyboard: every view has m back to the list, and a closed menu opens on the list again', async ($, on) => {
+  const { seen } = await startSession($, on, { file: record({ tasks: [makeTask({ title: 'Waiting' })] }) })
+  await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  const ui = await $.ui.mount({ ...FOCUSED, surface: 'terminal' })
+
+  for (const view of ENTRIES) {
+    await ui.press({ key: `menu:${view}` })
+    expect((await ui.find({ key: 'menu:back' }))?.props.hotkey).toBe('m')
+    expect(await ui.find({ key: 'menu:brew' })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: 'm menu · tab move · enter press · esc close' })).toBeDefined()
+    await ui.press({ key: 'menu:back' })
+    expect(await ui.find({ key: 'menu:brew' })).toBeDefined()
+  }
+
+  await ui.press({ key: 'menu:history' })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await band.find({ key: 'cup-menu' }))?.text).toBe('Close menu')
+  await band.press({ key: 'cup-menu' })
+  expect(seen.closes).toEqual(['queue-tea'])
+  expect((await band.find({ key: 'cup-menu' }))?.text).toBe('Menu')
+  await band.unmount()
+
+  await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  expect(await ui.find({ key: 'menu:brew' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('docked 46 columns wide, the list and the hint without the keys fit uncut', async ($, on) => {
+  await startSession($, on, { file: record({ tasks: [makeTask({ title: 'Waiting' })] }) })
+  const ui = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 46 }, surface: 'terminal' })
+
+  expect(await ui.find({ type: 'Text', text: 'click or ctrl+x tab for keys · esc closes' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '/config options and paths' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /…$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('/done opens the menu on Current task, where the question is', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { seen } = await startSession($, on, { file: record({ tasks: [task] }) })
+
+  const answer = await $.command.run({ command: 'done', args: '', ...COMMAND })
+  expect(answer.text).toBe('Asked in the Queue-tea menu.')
+  expect(seen.opens[0]).toMatchObject({ id: 'queue-tea', focus: true, closeOnEscape: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: 'Is this done for now?' })).toBeDefined()
+  expect(await ui.find({ key: 'done-yes' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('Backlog: priority, Remove and Start go through the queue engine', async ($, on) => {
+  const tidy = makeTask({ title: 'Tidy', priority: 'low' })
+  const typo = makeTask({ title: 'Typo', priority: 'okay' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [tidy, typo] }), status: DIRTY })
+  const ui = await mountView($, 'terminal', 'backlog')
+
+  await ui.press({ key: `row:${tidy.id}` })
+  await ui.press({ key: `prio:${tidy.id}:high` })
+  expect(recordOf(mem).tasks.find(t => t.id === tidy.id)?.priority).toBe('high')
+
+  await ui.press({ key: `row:${typo.id}` })
+  await ui.press({ key: `remove:${typo.id}` })
+  expect(recordOf(mem).tasks.find(t => t.id === typo.id)?.state).toBe('removed')
+
+  // Start: the git check holds it, and the menu moves to where Check again is.
+  await ui.press({ key: `row:${tidy.id}` })
+  await ui.press({ key: `start:${tidy.id}` })
+  expect(await ui.find({ type: 'Text', text: '3 files not committed · 2 commits not pushed' })).toBeDefined()
+  expect(await ui.find({ key: 'check-again' })).toBeDefined()
+  expect(mem.runs.some(isBranchRun)).toBe(false)
+  await ui.unmount()
+})
+
+test('moving around the menu leaves the current task, its branch and the record as they were', async ($, on) => {
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login', startCommit: '1a2b3c4' })
+  const { mem, seen, clock } = await startSession($, on, { file: record({ tasks: [task] }) })
+  const before = mem.files.get(FILE)
+  const runs = mem.runs.length
+
+  await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  for (const view of ENTRIES) {
+    await ui.press({ key: `menu:${view}` })
+    await ui.press({ key: 'menu:back' })
+  }
+  await ui.unmount()
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await band.press({ key: 'cup-menu' })
+  await band.press({ key: 'cup-menu' })
+  await band.unmount()
+  await clock.settle()
+
+  expect(mem.files.get(FILE)).toBe(before)
+  expect(mem.runs.slice(runs).filter(isBranchRun)).toEqual([])
+  expect(seen.clears).toBe(0)
+  expect(seen.prompts).toEqual([])
+  expect(recordOf(mem).tasks.map(t => [t.title, t.state, t.branch])).toEqual([['Fix login', 'current', 'task/fix-login']])
+})
+
+test('tasks in the record are all there after a restart, and the menu shows them', async ($, on) => {
+  const now = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login' })
+  const next = makeTask({ title: 'Dark mode', priority: 'high' })
+  const { mem, clock } = await startSession($, on, { file: record({ tasks: [now, next] }) })
+  await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  await $.command.run({ command: 'steep', args: 'Write the docs', ...COMMAND })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await band.press({ key: 'save' })
+  await band.unmount()
+
+  // A restart: a new session reads the same record.
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+  await clock.settle()
+
+  expect(recordOf(mem).tasks.map(t => [t.title, t.state])).toEqual([
+    ['Fix login', 'current'],
+    ['Dark mode', 'queued'],
+    ['Write the docs', 'queued'],
+  ])
+  const ui = await mountView($, 'terminal', 'backlog')
+  expect(await ui.find({ key: `row:${next.id}` })).toBeDefined()
+  expect(await ui.find({ text: /Write the docs/ })).toBeDefined()
+  await ui.press({ key: 'menu:back' })
+  await ui.press({ key: 'menu:current' })
+  expect(await ui.find({ type: 'Text', text: /Fix login/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('Brew now is the /brew errand: outside the queue, the task and branch kept, the menu closed', async ($, on) => {
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login' })
+  const rows = mock.session(on)
+  const { mem, seen, clock } = await startSession($, on, { file: record({ tasks: [task] }) })
+  await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  const ui = await mountView($, 'terminal', 'brew')
+
+  await ui.input({ key: 'brew', text: ' run the tests ' })
+  await clock.settle()
+
+  expect(seen.closes).toEqual(['queue-tea'])
+  const note = JSON.stringify(rows.appended().map(row => row.message))
+  expect(note).toContain('Rohan ran /brew')
+  expect(note).toContain('\\"Fix login\\"')
+  expect(seen.prompts).toEqual([{ text: 'run the tests', origin: { kind: 'plugin', name: 'queue-tea', asUser: true } }])
+
+  // Its turn is the errand's: task_looks_done asks nothing during it.
+  await $.turn.start({ text: 'run the tests', turnId: 't1' })
+  expect(JSON.stringify(await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' }))).toContain('errand')
+  expect(recordOf(mem).tasks.map(t => [t.title, t.state, t.branch])).toEqual([['Fix login', 'current', 'task/fix-login']])
+  await ui.unmount()
+})
+
+test('the cup idles when nothing is going on', async ($, on) => {
+  await startSession($, on, { file: record() })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+
+  expect(await band.find({ type: 'Client', key: 'cup' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: '-ω-', in: 'cup' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'idle' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'Nothing queued' })).toBeDefined()
+  await band.unmount()
+})
+
+test('the cup brews while a task is current, or while a turn runs outside the queue', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current', minutesByDay: { [DAY_ONE]: 42 } })
+  await startSession($, on, { file: record({ tasks: [task] }), reply: SAME_REPLY })
+  await $.prompt.submit({ text: 'keep going', wait: false, origin: { kind: 'composer' } })
+
+  let band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await band.find({ type: 'Text', text: '•ω•', in: 'cup' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'brewing' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'Now · 42m' })).toBeDefined()
+  await band.unmount()
+
+  band = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, isWorking: true } })
+  expect(await band.find({ type: 'Text', text: 'brewing' })).toBeDefined()
+  await band.unmount()
+})
+
+test('the cup needs Rohan when Queue-tea asks, and the menu opens where the answer is', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { seen } = await startSession($, on, { file: record({ tasks: [task] }) })
+  await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' })
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await band.find({ type: 'Text', text: '•o•', in: 'cup' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: '     !     ', in: 'cup' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'needs you' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'Is this done for now? Now' })).toBeDefined()
+
+  await band.press({ key: 'cup-menu' })
+  expect(seen.opens[0]).toMatchObject({ id: 'queue-tea' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ key: 'done-yes' })).toBeDefined()
+  await ui.unmount()
+  await band.unmount()
+})
+
+test('the cup is pleased just after a task is done', async ($, on) => {
+  const done = makeTask({ title: 'Dark mode', state: 'done', finished: '2026-10-21T09:05:00+02:00' })
+  await startSession($, on, { file: record({ tasks: [done] }) })
+
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await band.find({ type: 'Text', text: '^ω^', in: 'cup' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'done' })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: 'Finished: Dark mode' })).toBeDefined()
+  await band.unmount()
+})
+
+test('the steam moves on the surface’s own clock, and nothing is written for it', async ($, on) => {
+  const { mem, seen } = await startSession($, on, { file: record() })
+  const writes = mem.writes.length
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, isWorking: true } })
+  const steam = async () => (await band.find({ type: 'Text', text: /\(/, in: 'cup' }))?.text
+
+  const first = await steam()
+  await band.advance(500)
+  const second = await steam()
+  await band.advance(500)
+
+  expect(first).toBe('   ) ( )   ')
+  expect(second).toBe('   ( ) (   ')
+  expect(await steam()).toBe('   ) ) (   ')
+  expect(mem.writes.length).toBe(writes)
+  expect(seen.opens).toEqual([])
+  await band.unmount()
+})
+
+test('pointing at the cup winks, and a click opens the menu and closes it', async ($, on) => {
+  const { seen } = await startSession($, on, { file: record() })
+  const band = await $.ui.mount({
+    ...BAND,
+    surface: 'terminal',
+    viewport: { columns: 120, rows: 40, isFullscreen: true },
+  })
+  await band.resize({ columns: 11, rows: 3, in: 'cup' })
+  expect(await band.find({ type: 'Text', text: ' · /queue-tea, or click the cup' })).toBeDefined()
+
+  await band.pointer({ type: 'enter', x: 5, y: 2 })
+  expect(await band.find({ type: 'Text', text: '•ω-', in: 'cup' })).toBeDefined()
+
+  await band.pointer({ type: 'down', x: 5, y: 2, button: 'left' })
+  expect(seen.opens[0]).toMatchObject({ id: 'queue-tea', focus: true, closeOnEscape: true })
+  expect((await band.find({ key: 'cup-menu' }))?.text).toBe('Close menu')
+
+  await band.pointer({ type: 'down', x: 5, y: 2, button: 'left' })
+  expect(seen.closes).toEqual(['queue-tea'])
+  expect((await band.find({ key: 'cup-menu' }))?.text).toBe('Menu')
+  await band.unmount()
+})
+
+test('with no mouse, no Client or little room, the band still works from the keyboard', async ($, on) => {
+  const { seen } = await startSession($, on, { file: record() })
+
+  // The main screen reports no clicks: the band names the keyboard way alone.
+  const main = await $.ui.mount({ ...BAND, surface: 'terminal', viewport: { columns: 100, rows: 30, isFullscreen: false } })
+  expect(await main.find({ type: 'Text', text: ' · /queue-tea' })).toBeDefined()
+  expect(await main.find({ type: 'Text', text: /click/ })).toBeUndefined()
+  await main.press({ key: 'cup-menu' })
+  expect(seen.opens.length).toBe(1)
+  await main.unmount()
+
+  // A surface that runs no Client draws the cup still.
+  for (const surface of ['vscode', 'mobile'] as const) {
+    const still = await $.ui.mount({ ...BAND, surface })
+    expect(await still.find({ type: 'Client' })).toBeUndefined()
+    expect(await still.find({ type: 'Text', text: '-ω-' })).toBeDefined()
+    await still.unmount()
+  }
+
+  // A narrow band has the words without the cup.
+  const narrow = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, bodyColumns: 30 } })
+  expect(await narrow.find({ type: 'Client' })).toBeUndefined()
+  expect(await narrow.find({ type: 'Text', text: 'Nothing queued' })).toBeDefined()
+  expect(await narrow.find({ key: 'cup-menu' })).toBeDefined()
+  await narrow.unmount()
 })

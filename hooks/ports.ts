@@ -5,6 +5,8 @@ import { askOf } from './check'
 import type { Ports, View } from './flow'
 import { hostOf } from './host'
 import { currentTask } from './queue'
+import { cupOf } from './ui/cup'
+import type { Cup } from './ui/cup'
 import { statusText } from './ui/status'
 
 const recordAtom = atom({ plugin: 'queue-tea', key: 'record' } as const, null)
@@ -24,11 +26,13 @@ const bandQueueAtom = atom({ plugin: 'queue-tea', key: 'bandQueue' } as const, [
 const checkedAtom = atom({ plugin: 'queue-tea', key: 'checked' } as const, null)
 const busyAtom = atom({ plugin: 'queue-tea', key: 'busy' } as const, null)
 const warningAtom = atom({ plugin: 'queue-tea', key: 'warning' } as const, null)
-const isPaletteOpenAtom = atom({ plugin: 'queue-tea', key: 'isPaletteOpen' } as const, false)
 const blockingAtom = atom({ plugin: 'queue-tea', key: 'blocking' } as const, null)
 const budgetAtom = atom({ plugin: 'queue-tea', key: 'budget' } as const, null)
 const driftAtom = atom({ plugin: 'queue-tea', key: 'drift' } as const, [] as View['drift'])
 const othersAtom = atom({ plugin: 'queue-tea', key: 'others' } as const, [] as View['others'])
+const menuViewAtom = atom({ plugin: 'queue-tea', key: 'menuView' } as const, 'menu' as View['menuView'])
+const isMenuOpenAtom = atom({ plugin: 'queue-tea', key: 'isMenuOpen' } as const, false)
+const isCupStillAtom = atom({ plugin: 'queue-tea', key: 'isCupStill' } as const, false)
 
 export function debug($: EngineInterface, what: string, err: unknown) {
   $.ui.log(`${what}: ${err instanceof Error ? err.message : String(err)}`, { to: 'debug' })
@@ -69,8 +73,6 @@ export async function getView<K extends keyof View>($: EngineInterface, key: K):
       return (await read($, busyAtom)) as View[K]
     case 'warning':
       return (await read($, warningAtom)) as View[K]
-    case 'isPaletteOpen':
-      return (await read($, isPaletteOpenAtom)) as View[K]
     case 'blocking':
       return (await read($, blockingAtom)) as View[K]
     case 'budget':
@@ -79,6 +81,12 @@ export async function getView<K extends keyof View>($: EngineInterface, key: K):
       return (await read($, driftAtom)) as View[K]
     case 'others':
       return (await read($, othersAtom)) as View[K]
+    case 'menuView':
+      return (await read($, menuViewAtom)) as View[K]
+    case 'isMenuOpen':
+      return (await read($, isMenuOpenAtom)) as View[K]
+    case 'isCupStill':
+      return (await read($, isCupStillAtom)) as View[K]
     default:
       return (await read($, spinAtom)) as View[K]
   }
@@ -119,8 +127,6 @@ async function setView<K extends keyof View>($: EngineInterface, key: K, value: 
       return update($, busyAtom, () => v)
     case 'warning':
       return update($, warningAtom, () => v)
-    case 'isPaletteOpen':
-      return update($, isPaletteOpenAtom, () => v)
     case 'blocking':
       return update($, blockingAtom, () => v)
     case 'budget':
@@ -129,6 +135,12 @@ async function setView<K extends keyof View>($: EngineInterface, key: K, value: 
       return update($, driftAtom, () => v)
     case 'others':
       return update($, othersAtom, () => v)
+    case 'menuView':
+      return update($, menuViewAtom, () => v)
+    case 'isMenuOpen':
+      return update($, isMenuOpenAtom, () => v)
+    case 'isCupStill':
+      return update($, isCupStillAtom, () => v)
     default:
       return update($, spinAtom, () => v)
   }
@@ -140,6 +152,25 @@ export async function refreshStatus($: EngineInterface) {
   const current = record === null ? null : currentTask(record.tasks)
   const minutes = current === null ? 0 : Object.values(current.minutesByDay).reduce((a, b) => a + b, 0)
   $.ui.status(statusText(current, minutes, await read($, allowanceAtom), await read($, isCheckingAtom)))
+}
+
+// The tea cup's mood, from the same values the menu shows. Read while
+// drawing, it redraws the cup when one of them changes.
+export async function readCup($: EngineInterface, isTurnRunning: boolean): Promise<Cup> {
+  return cupOf({
+    load: await read($, loadAtom),
+    record: await read($, recordAtom),
+    band: await read($, bandAtom),
+    isAskingDone: await read($, isAskingDoneAtom),
+    hold: await read($, holdAtom),
+    mismatch: await read($, mismatchAtom),
+    canContinue: await read($, canContinueAtom),
+    warning: await read($, warningAtom),
+    isChecking: await read($, isCheckingAtom),
+    busy: await read($, busyAtom),
+    isTurnRunning,
+    now: await $.clock.now(),
+  })
 }
 
 const STATUS_KEYS: readonly (keyof View)[] = ['record', 'isChecking', 'allowance']

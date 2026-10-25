@@ -39,23 +39,60 @@ export const holdReason = (g: GitState): string | null => {
 
   const parts = [
     g.uncommitted > 0 ? `${count(g.uncommitted, 'file', 'files')} not committed` : null,
-    g.unpushed > 0 ? `${count(g.unpushed, 'commit', 'commits')} not pushed` : null,
+    g.hasUpstream && g.unpushed > 0 ? `${count(g.unpushed, 'commit', 'commits')} not pushed` : null,
   ].filter(part => part !== null)
   if (parts.length > 0) return parts.join(' · ')
-  if (!g.hasUpstream) return 'This branch has never been pushed'
+  // A branch never pushed holds a task only when it has commits no remote has.
+  if (!g.hasUpstream && g.unpushed > 0) return 'This branch has never been pushed'
 
   return null
 }
 
+// Words a branch name does without.
+const FILLER = new Set(
+  (
+    'a an the and or but nor of to for from in into on onto at by with without via as about than ' +
+    'is are was were be been being it its this that these those there here ' +
+    'i me my we us our you your he she they them their ' +
+    'please pls can could would should will shall must may might need needs want wants let lets ' +
+    'just also so then now some any all very really maybe still again ' +
+    'make makes making get gets getting do does doing go going see try tell through'
+  ).split(' '),
+)
+const SLUG_LENGTH = 30
+const SLUG_WORDS = 4
+
+// A branch's short name from a task title: up to four of its meaningful
+// words, in order, at most 30 characters, without links, ports, filler
+// words and punctuation. The same title always gives the same name.
+export const branchSlug = (title: string): string => {
+  const words = title
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*/g, ' ')
+    .replace(/\bwww\.\S+/g, ' ')
+    .replace(/\b(?:localhost|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?/g, ' ')
+    .replace(/:\d{2,5}\b/g, ' ')
+    .replace(/\bports?\s*#?\d{2,5}\b/g, ' ')
+    .split(/[^a-z0-9]+/)
+    .filter(w => w !== '')
+  const meaningful = words.filter(w => !FILLER.has(w) && (w.length > 1 || /\d/.test(w)))
+  const pool = meaningful.length > 0 ? meaningful : words
+
+  // A word that would run past the length is passed over for a later one.
+  const picked: string[] = []
+  for (const word of pool) {
+    if (picked.length === SLUG_WORDS) break
+    if ([...picked, word].join('-').length <= SLUG_LENGTH) picked.push(word)
+  }
+  if (picked.length > 0) return picked.join('-')
+
+  return pool[0]?.slice(0, SLUG_LENGTH) ?? 'task'
+}
+
+// `task/<short name>`; a name taken by another branch gets -2, -3 and so on.
 export const slugBranch = (title: string, taken: string[]): string => {
-  const slug =
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 50)
-      .replace(/-+$/, '') || 'task'
-  const base = `task/${slug}`
+  const base = `task/${branchSlug(title)}`
   if (!taken.includes(base)) return base
 
   let n = 2
@@ -85,7 +122,14 @@ export const readGit = async (host: Host, cwd: string): Promise<GitState> => {
     return { isRepo: false, branch: null, isDetached: false, head: null, uncommitted: 0, unpushed: 0, hasUpstream: false }
   }
 
-  return { isRepo: true, ...parseStatus(await git(host, cwd, ['status', '--porcelain=v2', '--branch'])) }
+  const status = parseStatus(await git(host, cwd, ['status', '--porcelain=v2', '--branch']))
+  if (status.hasUpstream || status.branch === null || status.head === null) return { isRepo: true, ...status }
+
+  // No upstream: the commits that no remote branch has, every one of them
+  // when there is no remote.
+  const localOnly = Number((await git(host, cwd, ['rev-list', '--count', 'HEAD', '--not', '--remotes'])).trim())
+
+  return { isRepo: true, ...status, unpushed: localOnly }
 }
 
 export const listBranches = async (host: Host, cwd: string): Promise<string[]> =>

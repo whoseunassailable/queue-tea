@@ -1,23 +1,27 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Difficulty, MenuView, Priority, ProjectRecord } from '../types'
+import type { Difficulty, MenuView, ParentPick, Priority, ProjectRecord } from '../types'
 import { applyPending } from './effort'
 import { errandNote } from './errand'
 import type { ErrandKind } from './errand'
+import { guessParent } from './family'
 import {
   blockTask,
   closeBand,
   continueTask,
   dropHeld,
+  featureCommand,
   fileTask,
   finishDocs,
   finishTask,
   isStartingFresh,
+  moveTask,
   putBack,
   refreshDrift,
   refreshLines,
   removeQueued,
   sendHeld as sendHeldOn,
+  setFeature,
   showBand,
   startTask,
   switchToTask,
@@ -199,9 +203,10 @@ export async function toggleMenu($: EngineInterface) {
   else await openMenu($, (await readCup($, false)).view)
 }
 
-// Moving to another view leaves a Blocked… question unanswered.
+// Moving to another view leaves a Blocked… or Part of… question unanswered.
 export async function pressMenu($: EngineInterface, view: MenuView) {
   await portsOf($).set('blocking', null)
+  await portsOf($).set('parenting', null)
   await portsOf($).set('menuView', view)
 }
 
@@ -259,6 +264,7 @@ export async function pressStartNext($: EngineInterface) {
 
 // Opens the blocking view for a task: what it waits for, or a reason.
 export async function pressBlock($: EngineInterface, taskId: string) {
+  await portsOf($).set('parenting', null)
   await portsOf($).set('blocking', taskId)
 }
 
@@ -351,10 +357,51 @@ export async function pressRemove($: EngineInterface, taskId: string) {
   if (live.ctx !== null) await removeQueued(portsOf($), live.ctx, taskId)
 }
 
+// Shows a feature's tasks under it in the backlog, or folds them away.
+export async function pressFold($: EngineInterface, parentId: string) {
+  const open = await getView($, 'openParents')
+  await portsOf($).set('openParents', open.includes(parentId) ? open.filter(id => id !== parentId) : [...open, parentId])
+}
+
+// Opens the Part of… view for a task: the features it can go under.
+export async function pressPartOf($: EngineInterface, taskId: string) {
+  await portsOf($).set('blocking', null)
+  await portsOf($).set('parenting', taskId)
+}
+
+export async function pressCancelPartOf($: EngineInterface) {
+  await portsOf($).set('parenting', null)
+}
+
+export async function pressPartOfWith($: EngineInterface, taskId: string, parentId: string | null) {
+  if (live.ctx !== null) await moveTask(portsOf($), live.ctx, taskId, parentId)
+}
+
+// Makes a task the active feature, or, pressed on the active one, none.
+export async function pressFeature($: EngineInterface, taskId: string) {
+  const p = portsOf($)
+  if (live.ctx === null) return
+  const record = await getView($, 'record')
+  p.toast(`Queue-tea: ${await setFeature(p, live.ctx, record?.feature === taskId ? null : taskId)}`)
+}
+
+export async function pressClearFeature($: EngineInterface) {
+  const p = portsOf($)
+  if (live.ctx !== null) p.toast(`Queue-tea: ${await setFeature(p, live.ctx, null)}`)
+}
+
+// /feature, answered in the command's reply.
+export async function runFeature($: EngineInterface, args: string): Promise<string> {
+  return live.ctx === null ? 'Queue-tea has no project here.' : featureCommand(portsOf($), live.ctx, args)
+}
+
 // The band: a held message, the can't-tell choice, the difficulty at the end
 // of a task, and the docs log's path.
 
-export async function pickBand($: EngineInterface, patch: Partial<{ priority: Priority; difficulty: Difficulty }>) {
+export async function pickBand(
+  $: EngineInterface,
+  patch: Partial<{ priority: Priority; difficulty: Difficulty; parent: ParentPick }>,
+) {
   const band = await getView($, 'band')
   const p = portsOf($)
   if (band.kind === 'file') await p.set('band', { ...band, ...patch })
@@ -399,6 +446,20 @@ export async function cancelHeld($: EngineInterface) {
   if (box.text === '') await $.prompt.fill({ text, mode: 'append' })
 }
 
+// The name of the new feature a held message goes under.
+export async function nameNewFeature($: EngineInterface, title: string) {
+  const band = await getView($, 'band')
+  if (band.kind === 'file') await portsOf($).set('band', { ...band, parent: { kind: 'new', title: title.trim() } })
+}
+
+// What a message filed with no check is offered under: a feature it names,
+// or, with a feature active, the question.
+async function parentFor($: EngineInterface, text: string) {
+  const record = await getView($, 'record')
+
+  return record === null ? null : guessParent(record, text, null)
+}
+
 export async function unsureToNew($: EngineInterface) {
   const band: View['band'] = await getView($, 'band')
   if (band.kind !== 'unsure') return
@@ -409,6 +470,7 @@ export async function unsureToNew($: EngineInterface) {
     priority: 'mid',
     difficulty: 'medium',
     intent: band.intent,
+    ...(await parentFor($, band.text)),
   })
 }
 
@@ -434,6 +496,7 @@ export async function fileFromCommand($: EngineInterface, text: string) {
     priority: 'mid',
     difficulty: 'medium',
     intent: 'improving',
+    ...(await parentFor($, text)),
   })
 }
 

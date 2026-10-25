@@ -34,6 +34,8 @@ const othersAtom = atom({ plugin: 'queue-tea', key: 'others' } as const, [] as V
 const menuViewAtom = atom({ plugin: 'queue-tea', key: 'menuView' } as const, 'menu' as View['menuView'])
 const isMenuOpenAtom = atom({ plugin: 'queue-tea', key: 'isMenuOpen' } as const, false)
 const isCupStillAtom = atom({ plugin: 'queue-tea', key: 'isCupStill' } as const, false)
+const parentingAtom = atom({ plugin: 'queue-tea', key: 'parenting' } as const, null)
+const openParentsAtom = atom({ plugin: 'queue-tea', key: 'openParents' } as const, [] as View['openParents'])
 
 export function debug($: EngineInterface, what: string, err: unknown) {
   $.ui.log(`${what}: ${err instanceof Error ? err.message : String(err)}`, { to: 'debug' })
@@ -90,6 +92,10 @@ export async function getView<K extends keyof View>($: EngineInterface, key: K):
       return (await read($, isMenuOpenAtom)) as View[K]
     case 'isCupStill':
       return (await read($, isCupStillAtom)) as View[K]
+    case 'parenting':
+      return (await read($, parentingAtom)) as View[K]
+    case 'openParents':
+      return (await read($, openParentsAtom)) as View[K]
     default:
       return (await read($, spinAtom)) as View[K]
   }
@@ -146,6 +152,10 @@ async function setView<K extends keyof View>($: EngineInterface, key: K, value: 
       return update($, isMenuOpenAtom, () => v)
     case 'isCupStill':
       return update($, isCupStillAtom, () => v)
+    case 'parenting':
+      return update($, parentingAtom, () => v)
+    case 'openParents':
+      return update($, openParentsAtom, () => v)
     default:
       return update($, spinAtom, () => v)
   }

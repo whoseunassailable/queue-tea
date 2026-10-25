@@ -10,12 +10,18 @@ import {
   pressBlockWith,
   pressBudget,
   pressCancelBlock,
+  pressCancelPartOf,
   pressCheckAgain,
+  pressClearFeature,
   pressContinue,
   pressDismissWarning,
   pressDoneNotYet,
   pressDoneYes,
+  pressFeature,
+  pressFold,
   pressMenu,
+  pressPartOf,
+  pressPartOfWith,
   pressPlayNext,
   pressPriority,
   pressRemove,
@@ -25,8 +31,11 @@ import {
   pressSwitch,
   pressUnblock,
 } from '../actions'
+import { activeFeature, childrenOf, groupBacklog, parentChoices, parentOf, progressOf, progressText } from '../family'
+import type { Group } from '../family'
 import { live } from '../live'
-import { blockedTasks, blockedText, budgetLabel, canWaitFor, formatSpan, rankBacklog } from '../plan'
+import { blockedTasks, blockedText, budgetLabel, canWaitFor, formatSpan, isBlocked, rankBacklog } from '../plan'
+import type { Ranked } from '../plan'
 import { getView, readCup } from '../ports'
 import { currentTask, PRIORITY_ORDER } from '../queue'
 import { dayKey, formatMinutes } from '../time'
@@ -56,8 +65,29 @@ const ENTRIES: readonly { view: Exclude<MenuView, 'menu'>; hotkey: string; label
   { view: 'history', hotkey: '4', label: 'History' },
   { view: 'usage', hotkey: '5', label: 'Usage & time' },
   { view: 'settings', hotkey: '6', label: 'Settings' },
+  { view: 'help', hotkey: '7', label: 'Help' },
 ]
 const LABEL_WIDTH = 14
+
+// What Help lists: the commands, the most used first (/instant is /brew's
+// other name), then the keys by where they work. A line fits 80 columns; a
+// narrower menu wraps it rather than cut it.
+export const HELP_COMMANDS: readonly { usage: string; does: string }[] = [
+  { usage: '/steep <message>', does: 'file it as a task for later, no check' },
+  { usage: '/brew <request>', does: 'do it now, outside the queue (or /instant)' },
+  { usage: '/tea <question>', does: 'ask or explain, changing no files' },
+  { usage: '/feature [<title>|off]', does: 'show, set or clear the active feature' },
+  { usage: '/done', does: 'ask whether the current task is done for now' },
+  { usage: '/queue-tea', does: 'open this menu' },
+]
+const HELP_KEYS: readonly { where: string; keys: string }[] = [
+  { where: 'Backlog', keys: 's start ★, or the open row · t time I have' },
+  { where: 'Open row', keys: '1–5 priority · f play next · u unblock · x remove' },
+  { where: 'Row or task', keys: 'k blocked… · p part of… · a active feature' },
+  { where: 'Current task', keys: 'd done · b back to queue · c continue · w switch' },
+  { where: '', keys: 'r check again · y / n to "Is this done for now?"' },
+]
+const HELP_WIDTH = 24
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
 const total = (byDay: Record<string, number>) => Object.values(byDay).reduce((a, b) => a + b, 0)
@@ -108,6 +138,9 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
   const blocked = blockedTasks(tasks)
   const waiting = queue.length + blocked.length
   const blocking = await getView($, 'blocking')
+  const parenting = await getView($, 'parenting')
+  const openParents = await getView($, 'openParents')
+  const feature = record === null ? null : activeFeature(record)
   const drift = await getView($, 'drift')
   const others = await getView($, 'others')
   const allowance = await getView($, 'allowance')
@@ -170,7 +203,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
         !e.props.isFocused
           ? 'click or ctrl+x tab for keys · esc closes'
           : view === 'menu'
-            ? '1–6 pick · tab move · enter press · esc close'
+            ? '1–7 pick · tab move · enter press · esc close'
             : 'm menu · tab move · enter press · esc close',
         cols,
       )}
@@ -198,6 +231,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
       history: `${done.length} this week · ${formatMinutes(sum(minutes))}`,
       usage: `${allowance === null ? '' : `5h ${Math.round(allowance.percent)}% · `}today ${formatMinutes(todayMinutes)}`,
       settings: '/config options and paths',
+      help: '/steep /brew /tea /feature',
     }
 
     return (
@@ -305,6 +339,56 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
     )
   }
 
+  // Part of…: the features a task can go under, On its own, or Cancel. Asked
+  // from a backlog row or the current task, in the view it was asked from.
+  const parentingTask = parenting === null ? undefined : tasks.find(t => t.id === parenting)
+  if (parentingTask !== undefined && (view === 'backlog' || view === 'current')) {
+    const choices = parentChoices(tasks, parentingTask.id)
+    const under = parentOf(parentingTask, tasks)
+
+    return (
+      <Box flexDirection="column">
+        {top}
+        {bar('suggestion', '◆ Part of…')}
+        <Text>{cut(`Which feature is ${parentingTask.title} part of?`, cols)}</Text>
+        {under !== null && <Text dimColor>{cut(`Now part of ${under.title}.`, cols)}</Text>}
+        {choices.length === 0 && <Text dimColor>No other open task it can go under.</Text>}
+        {choices.map((t, n) => (
+          <Button
+            key={`parent:${t.id}`}
+            plain
+            {...(n < 9 ? { hotkey: String(n + 1) } : {})}
+            label={cut(t.title, cols - 3)}
+            onPress={() => void pressPartOfWith($, parentingTask.id, t.id)}
+          />
+        ))}
+        {under !== null && (
+          <Button key="parent:none" plain hotkey="0" label="On its own" onPress={() => void pressPartOfWith($, parentingTask.id, null)} />
+        )}
+        <Button key="part-of-cancel" plain label="Cancel" onPress={() => void pressCancelPartOf($)} />
+        {hints}
+      </Box>
+    )
+  }
+
+  // Part of… for a task with none under it; Active feature for one on its own.
+  const familyButtons = (task: Task) => [
+    ...(childrenOf(task, tasks).length === 0
+      ? [<Button key={`part-of:${task.id}`} plain hotkey={KEYS.partOf} label="Part of…" onPress={() => void pressPartOf($, task.id)} />]
+      : []),
+    ...(parentOf(task, tasks) === null
+      ? [
+          <Button
+            key={`feature:${task.id}`}
+            plain
+            hotkey={KEYS.feature}
+            label={feature?.id === task.id ? 'Active feature •' : 'Active feature'}
+            onPress={() => void pressFeature($, task.id)}
+          />,
+        ]
+      : []),
+  ]
+
   if (view === 'backlog') {
     // A row's own buttons once it is pressed open: Start and Play next for one
     // that can start, Unblock for a blocked one.
@@ -343,6 +427,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
         {isBlockedRow && (
           <Button key={`unblock:${task.id}`} plain hotkey={KEYS.unblock} label="Unblock" onPress={() => void pressUnblock($, task.id)} />
         )}
+        {familyButtons(task)}
         <Button key={`remove:${task.id}`} plain hotkey={KEYS.remove} label="Remove" onPress={() => void pressRemove($, task.id)} />
       </Box>
     )
@@ -363,10 +448,103 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
         )
       })()
 
+    // The ★ row is the first in the order; a feature's tasks are drawn under
+    // it, `pad` further in.
+    const star = ranked[0]
+    const readyRow = (r: Ranked, pad: string) => {
+      const task = r.task
+      const isStar = r === star
+      const waited = formatAge(now - Date.parse(task.created))
+      const soFar = total(task.minutesByDay)
+      const dim = [
+        capital(task.difficulty.expected),
+        `~${formatSpan(r.estimate)}${r.isShort ? ' short' : ''}`,
+        `waited ${waited}`,
+        ...(task.branch === null ? [] : [task.branch]),
+        ...(soFar > 0 ? [`${formatMinutes(soFar)} so far`] : []),
+      ].join(' · ')
+
+      return (
+        <Box flexDirection="column">
+          <Button key={`row:${task.id}`} plain {...(isStar ? { autoFocus: true as const } : {})} onPress={() => void pressRow($, task.id)}>
+            {pad}
+            {isStar ? '★ ' : '  '}
+            {tag(task.priority)} {cut(task.title, cols - task.priority.length - 5 - pad.length)}
+          </Button>
+          <Text dimColor>{cut(`${pad}  ${dim}`, cols)}</Text>
+          {isStar && <Text dimColor>{cut(`${pad}  ${r.why}`, cols)}</Text>}
+          {openRow === task.id && rowButtons(task, false)}
+        </Box>
+      )
+    }
+    const blockedRow = (task: Task, pad: string) => (
+      <Box flexDirection="column">
+        <Button key={`row:${task.id}`} plain onPress={() => void pressRow($, task.id)}>
+          {pad}
+          {'  '}
+          {tag(task.priority)} {cut(task.title, cols - task.priority.length - 5 - pad.length)}
+        </Button>
+        <Text dimColor>{cut(`${pad}  ${blockedText(task, tasks)}`, cols)}</Text>
+        {openRow === task.id && rowButtons(task, true)}
+      </Box>
+    )
+    // A feature: ▸ shows its tasks under it and ▾ folds them away. Its title
+    // opens its own buttons while it is queued, and folds it otherwise. Under
+    // it, how far its tasks are, and while folded the ★ task in it.
+    const groupRows = (g: Group) => {
+      const parent = g.parent
+      const isOpen = openParents.includes(parent.id)
+      const isQueued = parent.state === 'queued'
+      const starHere = g.hasStar ? star : undefined
+      const mark = parent.state === 'current' ? '▶ ' : parent.state === 'done' ? '✓ ' : ''
+      const finished = childrenOf(parent, tasks).filter(t => t.state === 'current' || t.state === 'done')
+
+      return (
+        <Box flexDirection="column">
+          <Box>
+            <Text>{g.hasStar ? '★ ' : '  '}</Text>
+            <Button key={`fold:${parent.id}`} plain label={isOpen ? '▾' : '▸'} onPress={() => void pressFold($, parent.id)} />
+            <Text> </Text>
+            <Button
+              key={`row:${parent.id}`}
+              plain
+              {...(g.hasStar ? { autoFocus: true as const } : {})}
+              onPress={() => void (isQueued ? pressRow($, parent.id) : pressFold($, parent.id))}
+            >
+              {mark}
+              {tag(parent.priority)} {cut(parent.title, cols - parent.priority.length - 7 - mark.length)}
+            </Button>
+          </Box>
+          <Text dimColor>
+            {cut(`    ◆ ${progressText(progressOf(parent, tasks))}${feature?.id === parent.id ? ' · active feature' : ''}`, cols)}
+          </Text>
+          {starHere !== undefined && (starHere.task === parent || !isOpen) && (
+            <Text dimColor>{cut(`    ${starHere.task === parent ? '' : `★ ${starHere.task.title} · `}${starHere.why}`, cols)}</Text>
+          )}
+          {openRow === parent.id && isQueued && rowButtons(parent, isBlocked(parent, tasks))}
+          {isOpen && g.rows.filter(r => r.task !== parent).map(r => readyRow(r, '  '))}
+          {isOpen && g.blocked.filter(t => t !== parent).map(t => blockedRow(t, '  '))}
+          {isOpen &&
+            finished.map(t => (
+              <Text dimColor>{cut(`      ${t.state === 'current' ? '▶' : '✓'} ${t.title}${t.state === 'current' ? ' · in progress' : ''}`, cols)}</Text>
+            ))}
+        </Box>
+      )
+    }
+    const { ready, blocked: stuck } = groupBacklog(ranked, blocked, tasks)
+    // The blocked tasks drawn under Blocked; the rest stand with their feature.
+    const stuckCount = stuck.reduce((n, entry) => n + (entry.kind === 'group' ? entry.group.blocked.length : 1), 0)
+
     return (
       <Box flexDirection="column">
         {top}
         {bar('inactive', `○ Backlog${queue.length > 0 ? ` (${queue.length})` : ''}`)}
+        {feature !== null && (
+          <Box>
+            <Text dimColor>{cut(`◆ Active feature: ${feature.title} `, cols - 6)}</Text>
+            <Button key="feature:clear" plain label="Clear" onPress={() => void pressClearFeature($)} />
+          </Box>
+        )}
         {waiting === 0 && <Text dimColor>Nothing waiting.</Text>}
         {waiting > 0 && queue.length === 0 && <Text dimColor>Nothing can start: every task waiting is blocked.</Text>}
         {waiting > 0 && (
@@ -375,41 +553,9 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
         {isChoosingNext && queue.length > 0 && current === null && (
           <Text dimColor>Pick the next task: s starts ★, or press a row.</Text>
         )}
-        {ranked.map((r, i) => {
-          const task = r.task
-          const waited = formatAge(now - Date.parse(task.created))
-          const soFar = total(task.minutesByDay)
-          const dim = [
-            capital(task.difficulty.expected),
-            `~${formatSpan(r.estimate)}${r.isShort ? ' short' : ''}`,
-            `waited ${waited}`,
-            ...(task.branch === null ? [] : [task.branch]),
-            ...(soFar > 0 ? [`${formatMinutes(soFar)} so far`] : []),
-          ].join(' · ')
-
-          return (
-            <Box flexDirection="column">
-              <Button key={`row:${task.id}`} plain {...(i === 0 ? { autoFocus: true as const } : {})} onPress={() => void pressRow($, task.id)}>
-                {i === 0 ? '★ ' : '  '}
-                {tag(task.priority)} {cut(task.title, cols - task.priority.length - 5)}
-              </Button>
-              <Text dimColor>{cut(`  ${dim}`, cols)}</Text>
-              {i === 0 && <Text dimColor>{cut(`  ${r.why}`, cols)}</Text>}
-              {openRow === task.id && rowButtons(task, false)}
-            </Box>
-          )
-        })}
-        {blocked.length > 0 && bar('error', `⊘ Blocked (${blocked.length})`)}
-        {blocked.map(task => (
-          <Box flexDirection="column">
-            <Button key={`row:${task.id}`} plain onPress={() => void pressRow($, task.id)}>
-              {'  '}
-              {tag(task.priority)} {cut(task.title, cols - task.priority.length - 5)}
-            </Button>
-            <Text dimColor>{cut(`  ${blockedText(task, tasks)}`, cols)}</Text>
-            {openRow === task.id && rowButtons(task, true)}
-          </Box>
-        ))}
+        {ready.map(entry => (entry.kind === 'group' ? groupRows(entry.group) : entry.kind === 'task' ? readyRow(entry.row, '') : null))}
+        {stuckCount > 0 && bar('error', `⊘ Blocked (${stuckCount})`)}
+        {stuck.map(entry => (entry.kind === 'group' ? groupRows(entry.group) : entry.kind === 'blocked' ? blockedRow(entry.task, '') : null))}
         {others.length > 0 && bar('inactive', `◇ Other projects (${others.length})`)}
         {others.map(o => (
           <Text dimColor>{cut(`${o.name} · ${o.waiting} waiting · ${o.next === null ? 'all blocked' : `★ ${o.next}`}`, cols)}</Text>
@@ -421,6 +567,18 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
   }
 
   if (view === 'current') {
+    // The feature the current task is part of, or how far its own tasks are.
+    const currentParent = current === null ? null : parentOf(current, tasks)
+    const currentFamily =
+      current === null
+        ? null
+        : currentParent !== null
+          ? `part of ${currentParent.title} · ${progressText(progressOf(currentParent, tasks))}`
+          : childrenOf(current, tasks).length > 0
+            ? `feature · ${progressText(progressOf(current, tasks))}${feature?.id === current.id ? ' · active feature' : ''}`
+            : feature?.id === current.id
+              ? 'active feature'
+              : null
     const handoffCard = (task: Task) => {
       const note = cardNote(task)
       if (note === null) return null
@@ -479,6 +637,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
                 cols,
               )}
             </Text>
+            {currentFamily !== null && <Text dimColor>{cut(`  ◆ ${currentFamily}`, cols)}</Text>}
             {drift.map(line => (
               <Text color="warning">{cut(`! ${line}`, cols)}</Text>
             ))}
@@ -513,10 +672,11 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
           </Box>
         )}
         {current !== null && busy === null && (
-          <Box gap={2}>
+          <Box flexWrap="wrap" columnGap={2}>
             {!isAskingDone && <Button key="done" plain hotkey={KEYS.done} label="Done" onPress={() => void pressDoneYes($)} />}
             <Button key="back" plain hotkey={KEYS.back} label="Back to queue" onPress={() => void pressBackToQueue($)} />
             <Button key={`block:${current.id}`} plain hotkey={KEYS.block} label="Blocked…" onPress={() => void pressBlock($, current.id)} />
+            {familyButtons(current)}
           </Box>
         )}
         {hints}
@@ -583,6 +743,29 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
           </Box>
         )}
         <Text dimColor>Outside tasks this week: {formatMinutes(outside)}</Text>
+        {hints}
+      </Box>
+    )
+  }
+
+  if (view === 'help') {
+    // Two columns: what is typed or pressed, and what it does, wrapping under
+    // its own column.
+    const row = (left: string, right: string) => (
+      <Box>
+        <Box width={HELP_WIDTH} flexShrink={0}>
+          <Text>{left}</Text>
+        </Box>
+        <Text dimColor>{right}</Text>
+      </Box>
+    )
+
+    return (
+      <Box flexDirection="column">
+        {top}
+        {bar('inactive', '? Commands and keys')}
+        {HELP_COMMANDS.map(c => row(c.usage, c.does))}
+        {HELP_KEYS.map(k => row(k.where, k.keys))}
         {hints}
       </Box>
     )

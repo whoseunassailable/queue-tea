@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import {
+  branchSlug,
   diffSince,
   holdReason,
   listBranches,
@@ -70,11 +71,43 @@ test('only uncommitted files', () => {
   expect(holdReason({ isRepo: true, ...g })).toBe('1 file not committed')
 })
 
-test('no upstream', () => {
-  const g = parseStatus(status(OID, '# branch.head task/new'))
+// Without an upstream, the commits no remote has; with no remote at all, that
+// is every commit.
+const noUpstream = (localOnly: string) =>
+  memoryHost({
+    git: {
+      'git rev-parse --is-inside-work-tree': { stdout: 'true\n' },
+      'git status --porcelain=v2 --branch': { stdout: status(OID, '# branch.head task/new') },
+      'git rev-list --count HEAD --not --remotes': { stdout: localOnly },
+    },
+  })
 
-  expect(g.hasUpstream).toBe(false)
-  expect(holdReason({ isRepo: true, ...g })).toBe('This branch has never been pushed')
+test('no upstream, with commits no remote has', async () => {
+  const git = await readGit(noUpstream('2\n').host, '/r')
+
+  expect(git.hasUpstream).toBe(false)
+  expect(git.unpushed).toBe(2)
+  expect(holdReason(git)).toBe('This branch has never been pushed')
+})
+
+test('no upstream, but every commit is already on a remote', async () => {
+  const git = await readGit(noUpstream('0\n').host, '/r')
+
+  expect(git.hasUpstream).toBe(false)
+  expect(git.unpushed).toBe(0)
+  expect(holdReason(git)).toBeNull()
+})
+
+test('no upstream and files not committed', async () => {
+  const { host } = memoryHost({
+    git: {
+      'git rev-parse --is-inside-work-tree': { stdout: 'true\n' },
+      'git status --porcelain=v2 --branch': { stdout: status(OID, '# branch.head task/new', '? a.txt') },
+      'git rev-list --count HEAD --not --remotes': { stdout: '3\n' },
+    },
+  })
+
+  expect(holdReason(await readGit(host, '/r'))).toBe('1 file not committed')
 })
 
 test('detached', () => {
@@ -93,26 +126,58 @@ test('not a repo', async () => {
   expect(holdReason(git)).toBeNull()
 })
 
-test('slugBranch: plain title', () => {
-  expect(slugBranch('Retry button on the scan page', [])).toBe('task/retry-button-on-the-scan-page')
+test('slugBranch: plain title, filler words left out', () => {
+  expect(slugBranch('Retry button on the scan page', [])).toBe('task/retry-button-scan-page')
+  expect(slugBranch('Add dark mode', [])).toBe('task/add-dark-mode')
 })
 
-test('slugBranch: slashes, pipes, backticks, emoji, 200 chars', () => {
+test('branchSlug: at most four words and 30 characters, in the title’s order', () => {
+  expect(branchSlug('Feature parity audit of the menu against the engine')).toBe('feature-parity-audit-menu')
+  expect(branchSlug('Short branch names and parent-child tasks')).toBe('short-branch-names-parent')
+  // A word that would run past 30 characters is passed over for a later one.
+  expect(branchSlug('Refactor authentication middleware for sessions')).toBe('refactor-authentication')
+  expect(branchSlug('Internationalization localization support')).toBe('internationalization-support')
+  for (const title of ['Feature parity audit of the menu against the engine', 'x'.repeat(200), 'a b c d e f g h']) {
+    expect(branchSlug(title).length).toBeLessThanOrEqual(30)
+  }
+})
+
+test('branchSlug: punctuation, slashes, pipes, backticks and emoji', () => {
+  expect(branchSlug('Fix: the `parseStatus()` crash (again!) — urgent?')).toBe('fix-parsestatus-crash-urgent')
+  expect(branchSlug("Don't reset the user’s draft")).toBe('dont-reset-users-draft')
   const name = slugBranch(`Fix a/b | \`c\` 🚀 ${'x'.repeat(200)}`, [])
-
-  expect(name).toMatch(/^task\/[a-z0-9-]+$/)
-  expect(name.length).toBeLessThanOrEqual(55)
-  expect(name.endsWith('-')).toBe(false)
-  expect(name.startsWith('task/fix-a-b-c-')).toBe(true)
+  expect(name).toMatch(/^task\/[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  expect(name).toBe('task/fix')
 })
 
-test('slugBranch: nothing usable becomes task', () => {
+test('branchSlug: links, hosts and port numbers are left out', () => {
+  expect(branchSlug('Get the dev server running on localhost:3000 and tell me its URL')).toBe('dev-server-running-url')
+  expect(branchSlug('Proxy https://api.example.com/v2/users?id=7 calls through 127.0.0.1:8080')).toBe('proxy-calls')
+  expect(branchSlug('Move the app off port 5173 to www.example.org')).toBe('move-app-off')
+  expect(branchSlug('Fix issue 42 in the parser')).toBe('fix-issue-42-parser')
+})
+
+test('branchSlug: one word too long is cut; nothing usable becomes task; filler alone is kept', () => {
+  expect(branchSlug('x'.repeat(200))).toBe('x'.repeat(30))
+  expect(branchSlug('🚀🚀')).toBe('task')
   expect(slugBranch('🚀🚀', [])).toBe('task/task')
+  expect(branchSlug('Do it now')).toBe('do-it-now')
 })
 
-test('slugBranch: taken names get -2 then -3', () => {
+test('branchSlug: the same title always gives the same name', () => {
+  const title = 'Feature parity audit of the menu against the engine'
+
+  expect(branchSlug(title)).toBe(branchSlug(title))
+  expect(slugBranch(title, ['main'])).toBe(slugBranch(title, ['main']))
+})
+
+test('slugBranch: taken names get -2 then -3, whatever order the branches are listed in', () => {
   expect(slugBranch('Retry', ['task/retry'])).toBe('task/retry-2')
   expect(slugBranch('Retry', ['task/retry', 'task/retry-2'])).toBe('task/retry-3')
+  expect(slugBranch('Retry', ['task/retry-2', 'main', 'task/retry'])).toBe('task/retry-3')
+  // Two titles that shorten to the same name.
+  expect(slugBranch('Retry the button', ['task/retry-button'])).toBe('task/retry-button-2')
+  expect(slugBranch('Retry button, please', ['task/retry-button', 'task/retry-button-2'])).toBe('task/retry-button-3')
 })
 
 test('parseShortstat', () => {

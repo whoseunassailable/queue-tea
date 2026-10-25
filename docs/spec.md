@@ -30,6 +30,8 @@ Rohan works on several projects with Claude Code and wants to:
 | Project | One git repository, taken at its top folder. A repository with an app, a server and a website in separate folders is one project. A folder that is not a git repository is a project too, without branches |
 | Task | One piece of work: a feature, a fix, a clean-up |
 | Current task | The one task being worked on in a project. There is at most one |
+| Feature | A task with other tasks filed under it, one level deep. It is a task like any other: it waits in the queue, starts and finishes the same way |
+| Active feature | The feature Rohan says he is working within; new work is offered under it, never filed under it without his say |
 | Queue | The project's waiting tasks, in priority order |
 | Handoff note | What a fresh conversation needs to carry on a task, under five headings: Overview, What changed, Current state (branch, last commit, what is uncommitted, tests run), Decisions, Next steps |
 | Record | The file on the Mac that holds a project's tasks, time and effort |
@@ -66,12 +68,14 @@ A held message is counted (understanding or improving) and its time goes to the 
 
 When nothing is current, the saved task starts straight away.
 
+When there are features to offer (the active feature, the current task or its feature, other features with open tasks), the band also asks what the task is **Part of**: **On its own**, one of them, or **New feature…**, which takes a name and files the feature with the task under it. One is picked beforehand when the message names a feature (its whole title, or its id), or when the message check says it is part of one. When the check can't tell, two features are named, or a feature is active and nothing says the task belongs to it, nothing is picked and **Save** waits until Rohan picks. The check is also shown the five newest open tasks on their own, so a broad task with nothing under it yet ("Fix the documentation") can take its first piece: when the check says the message is part of one, that task is offered and picked, and becomes a feature once the task is saved; when it can't tell, they are offered too. See [Features](#features).
+
 ### Starting a task
 
 This happens when nothing is current and a task is filed, or when Rohan picks the next task from the menu.
 
-1. **Git check.** Nothing may be uncommitted and the branch must have no commits that haven't been pushed. A branch that has never been pushed, or a repository with no remote, counts as not pushed. When the check fails, the menu says what is left ("3 files not committed · 2 commits not pushed") with **Check again**, and the task waits. The mod never commits or pushes.
-2. **Branch.** It makes `task/<short-title>` from the branch checked out now (the last task's branch) and switches to it. A taken name gets `-2`, `-3` and so on. It notes the commit the task started from. A task that was put back in the queue switches to its own branch instead, and keeps its start commit and start date.
+1. **Git check.** Nothing may be uncommitted and the branch must have no commits that haven't been pushed. A branch that has never been pushed counts as not pushed when it has commits no remote branch has, and a repository with no remote always does. A branch that has never been pushed but whose commits are all on a remote already, such as a task branch just made from a pushed one, has nothing to push and passes. When the check fails, the menu says what is left ("3 files not committed · 2 commits not pushed") with **Check again**, and the task waits. The mod never commits or pushes.
+2. **Branch.** It makes `task/<short-title>` from the branch checked out now (the last task's branch) and switches to it. The short title is up to four meaningful words of the title, in order, at most 30 characters, without links, hosts, port numbers, filler words ("the", "of", "please") and punctuation: "Feature parity audit of the menu against the engine" gives `task/feature-parity-audit-menu`. The task keeps its whole title. A taken name gets `-2`, `-3` and so on, the lowest free one. A branch made before the short names keeps its name. It notes the commit the task started from. A task that was put back in the queue switches to its own branch instead, and keeps its start commit and start date.
 3. **Fresh conversation.** It clears the conversation (`/clear`) and sends the first message: the task's title and the messages filed with it.
 
 ### Finishing a task
@@ -80,6 +84,17 @@ This happens when nothing is current and a task is filed, or when Rohan picks th
 2. After **Yes**, the band asks for the difficulty it turned out to be, with the expected one picked.
 3. The mod measures the change in git, writes the task to the record and adds its row to the docs log. The docs log row is an uncommitted change, so it goes into the commit Rohan makes next.
 4. The menu shows the whole queue with each task's priority and difficulty, the top row marked as the suggestion. Rohan presses a task and **Start**, which runs [Starting a task](#starting-a-task) from the git check.
+
+### Features
+
+A task can be filed under another, its feature (`parentId` in the record). One level deep: a task with tasks under it is part of none, and a task under a feature has none under it. Records written before features read as every task on its own.
+
+- **Active feature.** `/feature <title>` (or the task's id) makes an open task on its own the active feature; `/feature` says which it is, `/feature off` clears it. **Active feature** on a backlog row or the current task does the same, and pressed again clears it; **Clear** beside the backlog's "◆ Active feature" line too. It is kept in the record, so it outlasts a restart, and it is cleared only by Rohan or when its task is removed.
+- **Filing.** See [Filing a task](#filing-a-task). The active feature is offered first, but a task is never filed under it without a sign or Rohan's pick. Filing a task under a feature changes nothing about the current task, its branch or the conversation. With nothing current, the task filed starts, never a new feature filed with it.
+- **Moving.** **Part of…** on a backlog row or the current task lists the features the task can go under, **On its own** when it is under one, and **Cancel**. A move that would nest deeper than one level is refused, saying why.
+- **Starting.** A task under a feature starts like any other: the git check first, and only while nothing else is current. Between tasks of the same priority, a feature's own tasks come before the feature.
+- **Removing** a feature leaves its tasks on their own; if it was the active feature, none is.
+- **`/brew`** files nothing, feature or not.
 
 ### Putting a task back
 
@@ -178,7 +193,8 @@ Queue-tea · example-app            5h: 62% · resets 16:40
 4: History       3 this week · 6h 40m
 5: Usage & time  5h 62% · today 1h 12m
 6: Settings      /config options and paths
-1–6 pick · tab move · enter press · esc close
+7: Help          /steep /brew /tea /feature
+1–7 pick · tab move · enter press · esc close
 ```
 
 Each view starts with the header, the lines under it, and **‹ Menu** (`m`).
@@ -186,18 +202,19 @@ Each view starts with the header, the lines under it, and **‹ Menu** (`m`).
 - **Header:** "Queue-tea · <project>" with the allowance on the right.
 - **Lines under it, while they apply:** a warning about a commit made during a turn (with **OK**), the message check running, work in progress ("Saving a handoff note…"), a notice.
 - **Brew now:** a field; what is typed goes as `/brew` does (see [Errands](#errands)): the note in a row only Claude reads, then the words as Rohan's. The menu closes so the answer shows.
-- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far. Under it, in the warning colour, what has moved under the task since it started ("! The branch task/now is gone.", a start commit no longer on its branch, the base branch ahead). Then, while they apply:
+- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far; then, for a task under a feature, "◆ part of <feature> · 1/2 done ▰▰▰▱▱", or for a feature, how far its tasks are. Under it, in the warning colour, what has moved under the task since it started ("! The branch task/now is gone.", a start commit no longer on its branch, the base branch ahead). Then, while they apply:
   - the git check's hold, with **Check again**; a branch mismatch, with **Switch**;
   - "Is this done for now?" with **Yes** and **Not yet**, and "Claude checked: …" when Claude said;
   - the handoff card and **Continue** (below);
-  - **Done**, which goes straight to the difficulty band, **Back to queue**, and **Blocked…**, which puts the task back blocked, with a checkpoint.
+  - **Done**, which goes straight to the difficulty band, **Back to queue**, **Blocked…**, which puts the task back blocked, with a checkpoint, **Part of…** and **Active feature**.
 
   With nothing current: "No task in progress." and **Start ★ <task>**.
-- **Backlog:** a grey bar with the count of the tasks that can start, **Time I have** (any, 30m, 1h, 2h; for this session), then those tasks in the order of the suggestion (Play next, what fits the time, priority raised by what waits, what unblocks more, the oldest). Each row: ★ on the suggestion, the priority tag, the title; a dim line with the expected difficulty, the estimate ("~1h 30m", "~30m short"), how long it has waited, and for a task put back its branch and time so far. Under ★, a dim line says why ("high, from what waits for it · unblocks Screen"). Pressing a row opens **Start** (while nothing is current; the view then moves to Current task), the five priorities, **Play next** (pressed again, it comes off), **Blocked…** and **Remove**. Then a red **Blocked** bar with the blocked tasks, each with what blocks it; an open one has the priorities, **Unblock** and **Remove**. Then a grey **Other projects** bar, read when the record loads: each other project with tasks waiting, one dim line ("example-app · 2 waiting · ★ Fix the login"). Under the rows, a **New task** field that files what is typed (the band then asks for its priority).
+- **Backlog:** a grey bar with the count of the tasks that can start, "◆ Active feature: <title>" with **Clear** while one is set, **Time I have** (any, 30m, 1h, 2h; for this session), then those tasks in the order of the suggestion (Play next, what fits the time, priority raised by what waits, what unblocks more, the oldest). Each row: ★ on the suggestion, the priority tag, the title; a dim line with the expected difficulty, the estimate ("~1h 30m", "~30m short"), how long it has waited, and for a task put back its branch and time so far. Under ★, a dim line says why ("high, from what waits for it · unblocks Screen"). Pressing a row opens **Start** (while nothing is current; the view then moves to Current task), the five priorities, **Play next** (pressed again, it comes off), **Blocked…**, **Part of…** (not on a feature), **Active feature** (not on a task under one) and **Remove**. A feature's tasks are drawn under it, the feature standing where the first of them stands in the order: ▸ before its title shows them and ▾ folds them away, folded to start with. Under its title, how far it is ("◆ 1/3 done ▰▰▱▱▱ · 1 in progress · 1 blocked"), and while folded the ★ task in it with why. Unfolded: its tasks that can start, in order, then its blocked ones, then the one in progress (▶) and those done (✓). Its title opens its own buttons while it is queued. Then a red **Blocked** bar with the blocked tasks not shown with their feature, each with what blocks it, and the features with nothing that can start; an open one has the priorities, **Unblock**, **Part of…** and **Remove**. Then a grey **Other projects** bar, read when the record loads: each other project with tasks waiting, one dim line ("example-app · 2 waiting · ★ Fix the login"). Under the rows, a **New task** field that files what is typed (the band then asks for its priority).
 - **Blocked…** (from a row or the current task): "What does <task> wait for?", the tasks it can wait for (none that would make two tasks wait for each other), a reason field, and **Cancel**.
 - **History:** a green bar with the count and the week's time, this week's finished tasks, latest first, five at most ("done 3h"), and the week chart: one bar a day, Monday to Sunday, the busiest day full height, a day with no time blank. Then the tasks finished before this week, with their dates.
 - **Usage & time:** the 5-hour allowance, today's and this week's time, the week chart, the current task's time and effort (messages, files, and its lines so far: `git diff --shortstat` from its start commit, measured at a session's start and after each turn, left out until then), and project time outside tasks this week.
 - **Settings:** the four `userConfig` values, the task log's path and the record's file. They are changed with `/config`.
+- **Help:** the commands, the most used first, each with what it does; then the keys by where they work (Backlog, an open row, a row or the current task, Current task). Two columns, the second wrapping under itself in a narrow menu. Its list line names the common commands.
 - **Key hints:** one dim line. Hotkeys work only while the menu has the keys; when it hasn't, the line says how to give them to it (ctrl+x tab, or a click).
 
 #### The handoff card
@@ -208,7 +225,7 @@ Shown with **Continue**: the checkpoint, as numbered sections (Goal, Acceptance 
 
 | Key | Does |
 | --- | --- |
-| `1`–`6` | On the list: Brew now, Backlog, Current task, History, Usage & time, Settings |
+| `1`–`7` | On the list: Brew now, Backlog, Current task, History, Usage & time, Settings, Help |
 | `m` | Back to the list; in the band, Menu |
 | `s` | Start: the open row, or ★ when no row is open |
 | `d` | Done: the difficulty band |
@@ -223,6 +240,9 @@ Shown with **Continue**: the checkpoint, as numbered sections (Goal, Acceptance 
 | `u` | Unblock the open row |
 | `t` | Time I have: the next of any, 30m, 1h, 2h |
 | `1`–`9` | In Blocked…: the task it waits for |
+| `p` | Part of…: the open row, or the current task |
+| `a` | Active feature: the open row, or the current task, on or off |
+| `1`–`9`, `0` | In Part of…: the feature to go under; `0` On its own |
 | `x` | Remove the open row |
 | `o` | Dismiss the commit warning |
 | Esc | Close the menu |
@@ -256,6 +276,7 @@ The tea cup and its lines, always. While it needs Rohan the question takes the l
 | `/brew <request>` | Does it now, outside the queue (see [Errands](#errands)) |
 | `/instant <request>` | The same as `/brew` |
 | `/tea <question>` | Answers or explains, outside the queue, changing no files |
+| `/feature [<title> \| off]` | Says which feature is active, makes the task with that title (or id) the active feature, or clears it |
 
 ## The record
 
@@ -273,6 +294,7 @@ The mod reads the file again just before each write and changes only the task it
 - state: queued, current, done, removed
 - the messages filed with it, and its latest handoff note with its date
 - its branch and the commit it started from
+- the feature it is part of (`parentId`), or null
 - created, started and finished dates
 - time, per day
 - effort (below)
@@ -357,9 +379,11 @@ Because the guard can miss a spelling, the mod also looks after each turn: it no
 | Case | What happens |
 | --- | --- |
 | Not a git repository | Queue, time and effort work; the menu says "Not a git repository, so no branches are made" |
-| Branch never pushed, or no remote | Counts as not pushed: "This branch has never been pushed", with **Check again** |
+| Branch never pushed, with commits no remote has, or no remote | Counts as not pushed: "This branch has never been pushed", with **Check again** |
+| Branch never pushed, but every commit already on a remote | Nothing to push, so the task goes ahead |
 | Detached HEAD | The menu says so and the task waits |
 | Branch name taken | `-2`, `-3` and so on |
+| A feature picked in the band is removed or finished by another session before Save | Nothing is filed; the menu says the feature is no longer open and the band stays to pick again |
 | Handoff note not written | No clear; the status line says so; tried again after the next reply |
 | Record cannot be read or written | The menu's failed state with **Try again**; nothing is cleared or started until it works |
 | Two sessions in one project | They share the record; the menu reads it again after each turn |

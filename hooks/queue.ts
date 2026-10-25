@@ -24,6 +24,7 @@ export const newTask = (input: {
   messages: string[]
   now: string
   id: string
+  parentId?: string | null
 }): Task => ({
   id: input.id,
   title: input.title,
@@ -52,11 +53,15 @@ export const newTask = (input: {
     filesTouched: 0,
   },
   files: { read: [], changed: [] },
+  parentId: input.parentId ?? null,
 })
 
 export const setPriority = (tasks: Task[], id: string, priority: Priority): Task[] =>
   tasks.map(t => (t.id === id ? { ...t, priority } : t))
 
-// Only a queued task can be removed.
-export const removeTask = (tasks: Task[], id: string): Task[] =>
-  tasks.map(t => (t.id === id && t.state === 'queued' ? { ...t, state: 'removed' } : t))
+// Only a queued task can be removed. The tasks under it are then on their own.
+export const removeTask = (tasks: Task[], id: string): Task[] => {
+  if (!tasks.some(t => t.id === id && t.state === 'queued')) return tasks
+
+  return tasks.map(t => (t.id === id ? { ...t, state: 'removed' } : t.parentId === id ? { ...t, parentId: null } : t))
+}

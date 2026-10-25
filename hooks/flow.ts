@@ -1,10 +1,11 @@
 import type { PluginState } from 'claude-code'
 
-import type { Allowance, Band, CheckAnswer, Ctx, Difficulty, Intent, Priority, ProjectRecord, Task } from '../types'
+import type { Allowance, Band, CheckAnswer, Ctx, Difficulty, Intent, ParentPick, Priority, ProjectRecord, Task } from '../types'
 import { checkMessage, checkPrompt } from './check'
 import type { Ask } from './check'
 import { checkLines, checkpointPrompt, emptyCheckpoint, firstMessage, parseCheckpoint } from './checkpoint'
 import { writeDocsLog } from './docslog'
+import { activeFeature, filingCandidates, guessParent, loneTasks, parentOf, parentRefusal, setParent } from './family'
 import {
   commitsBetween,
   diffSince,
@@ -140,7 +141,14 @@ export const onMessage = async (
   await p.set('isChecking', true)
   let answer: CheckAnswer | null
   try {
-    const prompt = checkPrompt(currentTask(record.tasks), orderQueue(record.tasks), text)
+    const prompt = checkPrompt(
+      currentTask(record.tasks),
+      orderQueue(record.tasks),
+      text,
+      filingCandidates(record),
+      activeFeature(record)?.id ?? null,
+      loneTasks(record),
+    )
     answer = await checkMessage(p.ask, prompt, ctx.options.checkTimeoutSeconds * 1000)
   } finally {
     await p.set('isChecking', false)
@@ -157,6 +165,7 @@ export const onMessage = async (
       priority: 'mid',
       difficulty: answer.difficulty ?? 'medium',
       intent: answer.intent,
+      ...guessParent(record, text, answer.parent),
     })
 
     return { verdict: 'drop', intent: answer.intent, kind: 'new' }
@@ -286,26 +295,55 @@ const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' 
 
 const filing = new Set<string>()
 
-// Saves a held message as a task. Two presses of Save file it once.
+// Saves a held message as a task: on its own, under a feature, or under a new
+// feature filed with it. Two presses of Save file it once. Filing never
+// touches the current task, its branch or the conversation; with nothing
+// current, the task itself starts, never a new feature.
 export const fileTask = async (
   p: Ports,
   ctx: Ctx,
-  input: { text: string; title: string; priority: Priority; difficulty: Difficulty; intent: Intent },
+  input: {
+    text: string
+    title: string
+    priority: Priority
+    difficulty: Difficulty
+    intent: Intent
+    parent?: ParentPick | null
+  },
 ): Promise<void> => {
+  const pick = input.parent ?? { kind: 'none' }
+  if (input.parent === null || (pick.kind === 'new' && pick.title.trim() === '')) {
+    await p.set('notice', pick.kind === 'new' ? 'Name the new feature first.' : 'Pick what it is part of first, or On its own.')
+
+    return
+  }
   if (filing.has(input.text)) return
   filing.add(input.text)
   try {
+    const now = await nowIso(p, ctx)
+    const feature =
+      pick.kind === 'new'
+        ? newTask({ title: pick.title.trim(), priority: input.priority, difficulty: 'medium', messages: [], now, id: p.newId() })
+        : null
     const task = newTask({
       title: input.title,
       priority: input.priority,
       difficulty: input.difficulty,
       messages: [input.text],
-      now: await nowIso(p, ctx),
+      now,
       id: p.newId(),
+      parentId: pick.kind === 'task' ? pick.id : (feature?.id ?? null),
     })
+    // The feature may have gone since the band went up: checked against the
+    // record as it is now.
+    let refused = null as string | null
     let saved: ProjectRecord | null
     try {
-      saved = await change(p, ctx, r => ({ ...r, tasks: [...r.tasks, task] }))
+      saved = await change(p, ctx, r => {
+        refused = pick.kind === 'task' ? parentRefusal(r.tasks, task.id, pick.id) : null
+
+        return refused === null ? { ...r, tasks: [...r.tasks, ...(feature === null ? [] : [feature]), task] } : r
+      })
     } catch (err) {
       p.log(`saving the task failed: ${err instanceof Error ? err.message : String(err)}`)
       await p.set('notice', "Couldn't save the task. Try Save again.")
@@ -313,9 +351,15 @@ export const fileTask = async (
       return
     }
     if (saved === null) return
+    if (refused !== null) {
+      await p.set('notice', `${refused} Pick again.`)
+
+      return
+    }
 
     await closeBand(p)
-    p.toast(`Queued: ${task.title} (${task.priority})`)
+    const under = parentOf(task, saved.tasks)
+    p.toast(`Queued: ${task.title} (${task.priority})${under === null ? '' : ` · part of ${under.title}`}`)
     if (currentTask(saved.tasks) === null) await startTask(p, ctx, task.id)
   } finally {
     filing.delete(input.text)
@@ -592,9 +636,14 @@ export const commitWarning = async (
   return text
 }
 
-// Removes a queued task, and the git check's hold on it.
+// Removes a queued task, and the git check's hold on it. The tasks under it
+// are then on their own, and it is no longer the active feature.
 export const removeQueued = async (p: Ports, ctx: Ctx, taskId: string): Promise<void> => {
-  const saved = await change(p, ctx, r => ({ ...r, tasks: removeTask(r.tasks, taskId) }))
+  const saved = await change(p, ctx, r => {
+    const tasks = removeTask(r.tasks, taskId)
+
+    return tasks === r.tasks ? r : { ...r, feature: r.feature === taskId ? null : r.feature, tasks }
+  })
   if (saved === null) return
   const hold = await p.get('hold')
   if (hold?.taskId === taskId) await p.set('hold', null)
@@ -675,4 +724,82 @@ export const refreshLines = async (p: Ports, ctx: Ctx): Promise<void> => {
   } catch (err) {
     p.log(`measuring the change failed: ${err instanceof Error ? err.message : String(err)}`)
   }
+}
+
+// Makes a task the active feature, or none with null. Only an open task on
+// its own can be one. Returns what happened, in plain words.
+export const setFeature = async (p: Ports, ctx: Ctx, taskId: string | null): Promise<string> => {
+  let said = ''
+  const saved = await change(p, ctx, r => {
+    if (taskId === null) {
+      said = r.feature === null ? 'No feature was active.' : 'No active feature now.'
+
+      return { ...r, feature: null }
+    }
+    const task = r.tasks.find(t => t.id === taskId)
+    const above = task === undefined ? null : parentOf(task, r.tasks)
+    if (task === undefined || (task.state !== 'queued' && task.state !== 'current')) {
+      said = 'That task is no longer open.'
+
+      return r
+    }
+    if (above !== null) {
+      said = `${task.title} is part of ${above.title}; make that the feature instead.`
+
+      return r
+    }
+    said = `Active feature: ${task.title}. New tasks that belong to it are offered under it.`
+
+    return { ...r, feature: taskId }
+  })
+
+  return saved === null ? "Couldn't read the task record." : said
+}
+
+// /feature: with nothing after it, says which feature is active; "off" (or
+// "clear", "none") clears it; otherwise the words pick an open task on its
+// own, by its id or its title.
+export const featureCommand = async (p: Ports, ctx: Ctx, args: string): Promise<string> => {
+  const words = args.trim()
+  const record = await readRecord(p.host, ctx.file, ctx.projectName, ctx.projectPath)
+  if (record === 'unreadable') return "Couldn't read the task record."
+  if (words === '') {
+    const feature = activeFeature(record)
+
+    return feature === null
+      ? 'No active feature. /feature <title of a task> sets one; /feature off clears it.'
+      : `Active feature: ${feature.title}. /feature off clears it.`
+  }
+  if (/^(off|clear|none)$/i.test(words)) return setFeature(p, ctx, null)
+
+  const said = words.toLowerCase()
+  const open = record.tasks.filter(t => (t.state === 'queued' || t.state === 'current') && parentOf(t, record.tasks) === null)
+  const byId = open.filter(t => t.id === words)
+  const exact = open.filter(t => t.title.toLowerCase() === said)
+  const found = byId.length > 0 ? byId : exact.length > 0 ? exact : open.filter(t => t.title.toLowerCase().includes(said))
+  if (found.length === 1) return setFeature(p, ctx, found[0]!.id)
+  if (found.length > 1) return `Several tasks match: ${found.map(t => t.title).join('; ')}. Use more of the title.`
+
+  return `No open task matches "${words}". File it first with /steep, then /feature <its title>.`
+}
+
+// Files a task under a feature, or on its own with null. Refused, saying why,
+// when it would nest deeper than one level.
+export const moveTask = async (p: Ports, ctx: Ctx, taskId: string, parentId: string | null): Promise<void> => {
+  await p.set('parenting', null)
+  let refused = null as string | null
+  const saved = await change(p, ctx, r => {
+    refused = parentId === null ? null : parentRefusal(r.tasks, taskId, parentId)
+
+    return refused === null ? { ...r, tasks: setParent(r.tasks, taskId, parentId) } : r
+  })
+  if (saved === null) return
+  if (refused !== null) {
+    await p.set('notice', refused)
+
+    return
+  }
+  const task = saved.tasks.find(t => t.id === taskId)
+  const under = task === undefined ? null : parentOf(task, saved.tasks)
+  if (task !== undefined) p.toast(under === null ? `On its own: ${task.title}` : `Part of ${under.title}: ${task.title}`)
 }

@@ -54,6 +54,9 @@ export type Task = {
   minutesByDay: Record<string, number>
   effort: Effort
   files: { read: string[]; changed: string[] }
+  // The feature this task is part of; null for a task on its own. One level
+  // deep: a task with tasks under it is part of none.
+  parentId: string | null
 }
 
 export type ProjectRecord = {
@@ -61,6 +64,9 @@ export type ProjectRecord = {
   project: { name: string; path: string }
   docsLogPath: string | null
   playNext: string | null
+  // The feature Rohan is working within, whose tasks new work is offered
+  // under; null for none. Set and cleared only by Rohan.
+  feature: string | null
   tasks: Task[]
   unassignedMinutesByDay: Record<string, number>
 }
@@ -80,11 +86,28 @@ export type CheckAnswer = {
   intent: Intent
   title?: string
   difficulty?: Difficulty
+  // For new work: the id of the feature it is part of, 'none' or 'unsure'.
+  parent?: string
 }
+
+// What a new task is filed under: nothing, a task already there, or a new
+// feature filed with it.
+export type ParentPick = { kind: 'none' } | { kind: 'task'; id: string } | { kind: 'new'; title: string }
 
 export type Band =
   | { kind: 'none' }
-  | { kind: 'file'; text: string; title: string; priority: Priority; difficulty: Difficulty; intent: Intent }
+  | {
+      kind: 'file'
+      text: string
+      title: string
+      priority: Priority
+      difficulty: Difficulty
+      intent: Intent
+      // The features offered and the one picked; null while Rohan is asked.
+      // Left out when there is nothing to offer: the task goes on its own.
+      parent?: ParentPick | null
+      choices?: string[]
+    }
   | { kind: 'unsure'; text: string; intent: Intent; didCheckRun: boolean }
   | { kind: 'difficulty'; taskId: string; picked: Difficulty }
   | { kind: 'docsPath'; taskId: string; suggested: string }
@@ -95,7 +118,7 @@ export type OtherProject = { name: string; waiting: number; next: string | null 
 export type Allowance = { percent: number; resetsAt: string | null }
 
 // Which of the tea cup's menu views shows.
-export type MenuView = 'menu' | 'brew' | 'backlog' | 'current' | 'history' | 'usage' | 'settings'
+export type MenuView = 'menu' | 'brew' | 'backlog' | 'current' | 'history' | 'usage' | 'settings' | 'help'
 
 export type Options = {
   idleGapMinutes: number
@@ -141,6 +164,8 @@ declare module 'claude-code' {
       menuView: MenuView
       isMenuOpen: boolean
       isCupStill: boolean
+      parenting: string | null
+      openParents: string[]
     }
   }
 }

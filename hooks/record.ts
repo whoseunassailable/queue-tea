@@ -43,20 +43,36 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
   project: { name, path },
   docsLogPath: null,
   playNext: null,
+  feature: null,
   tasks: [],
   unassignedMinutesByDay: {},
 })
 
-// A record written before a field existed gets the field's empty value.
+// A record written before a field existed gets the field's empty value. A
+// task without an id gets one from its creation and title, the same at every
+// read until it is written back.
 const withDefaults = (t: Partial<Task>): Task =>
-  ({ baseBranch: null, blockedBy: [], blockedReason: null, checkpoint: null, ...t }) as Task
+  ({
+    id: `t-${fnv1a(`${t.created ?? ''}|${t.title ?? ''}`)}`,
+    baseBranch: null,
+    blockedBy: [],
+    blockedReason: null,
+    checkpoint: null,
+    parentId: null,
+    ...t,
+  }) as Task
 
 export const parseRecord = (text: string): ProjectRecord | 'unreadable' => {
   try {
     const parsed = JSON.parse(text) as Partial<ProjectRecord>
 
     return parsed?.version === 1 && Array.isArray(parsed.tasks)
-      ? ({ ...parsed, playNext: parsed.playNext ?? null, tasks: parsed.tasks.map(withDefaults) } as ProjectRecord)
+      ? ({
+          ...parsed,
+          playNext: parsed.playNext ?? null,
+          feature: parsed.feature ?? null,
+          tasks: parsed.tasks.map(withDefaults),
+        } as ProjectRecord)
       : 'unreadable'
   } catch {
     return 'unreadable'

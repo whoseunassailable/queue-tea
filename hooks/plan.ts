@@ -106,10 +106,13 @@ export type Ranked = {
 
 // The tasks that can start, in the order to take them. The first is the
 // suggestion: Play next, then what fits the time Rohan has, then priority
-// (raised by the tasks waiting), then what unblocks more, then the oldest.
-// With a time set and nothing fitting, the shortest come first.
+// (raised by the tasks waiting), then what unblocks more, then a feature's
+// own tasks before the feature, then the oldest. With a time set and nothing
+// fitting, the shortest come first.
 export const rankBacklog = (record: Pick<ProjectRecord, 'tasks' | 'playNext'>, budget: number | null): Ranked[] => {
   const tasks = record.tasks
+  // Features with tasks still open under them.
+  const leading = new Set(tasks.filter(t => t.parentId !== null && isOpen(t)).map(t => t.parentId))
   const rows = tasks
     .filter(t => t.state === 'queued' && !isBlocked(t, tasks))
     .map(task => {
@@ -134,6 +137,7 @@ export const rankBacklog = (record: Pick<ProjectRecord, 'tasks' | 'playNext'>, b
       (a.fits === false && b.fits === false ? a.estimate - b.estimate : 0) ||
       rank(a) - rank(b) ||
       b.unblocks.length - a.unblocks.length ||
+      Number(leading.has(a.task.id)) - Number(leading.has(b.task.id)) ||
       Date.parse(a.task.created) - Date.parse(b.task.created),
   )
 

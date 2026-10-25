@@ -11,6 +11,7 @@ import {
   MENU,
   menuClosed,
   openMenu,
+  runFeature,
   saveBeforeClear,
   sendErrand,
   tick,
@@ -81,6 +82,7 @@ async function startSession($: EngineInterface) {
   await registerCommand($, 'brew', 'Do this now, outside the Queue-tea queue: no task, same branch and conversation', '<request>')
   await registerCommand($, 'instant', 'The same as /brew', '<request>')
   await registerCommand($, 'tea', 'Ask or explain, outside the Queue-tea queue: no task, no changes', '<question>')
+  await registerCommand($, 'feature', 'Show, set or clear the Queue-tea feature new tasks are offered under', '<task title> | off')
   try {
     await checkResume($)
   } catch (err) {
@@ -299,6 +301,10 @@ export const register: Register = (on, options) => {
 
     return { text: 'Pick its priority in the band above the prompt.' }
   })
+
+  for (const command of ['feature', 'queue-tea-feature']) {
+    on('command.run', { command }, async ($, e) => ({ text: await runFeature($, e.args ?? '') }))
+  }
 
   for (const [name, kind] of Object.entries(ERRANDS)) {
     for (const command of [name, `queue-tea-${name}`]) {

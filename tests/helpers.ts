@@ -37,6 +37,7 @@ export const makeTask = (over: Partial<Task> = {}): Task => {
       filesTouched: 0,
     },
     files: { read: [], changed: [] },
+    parentId: null,
     ...over,
   }
 }
@@ -141,6 +142,8 @@ export const fakePorts = (
     menuView: 'menu',
     isMenuOpen: false,
     isCupStill: false,
+    parenting: null,
+    openParents: [],
     ...options.view,
   }
   const done = { clears: 0, asUser: [] as boolean[], submits: [] as string[], toasts: [] as string[], logs: [] as string[], statuses: [] as (string | undefined)[] }

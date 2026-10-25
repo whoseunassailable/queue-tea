@@ -1,8 +1,9 @@
 import type { Color, EngineInterface, RenderElement, RenderInput } from 'claude-code'
 
-import type { Band, Difficulty } from '../../types'
+import type { Band, Difficulty, ParentPick, Task } from '../../types'
 import {
   cancelHeld,
+  nameNewFeature,
   pickBand,
   saveDifficulty,
   saveDocsPath,
@@ -20,6 +21,7 @@ import { KEYS } from './keys'
 import { cut } from './status'
 
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
+const FEATURE_LABEL = 24
 
 // Narrower than this, the band has the words without the cup.
 const CUP_MIN_COLUMNS = 40
@@ -115,8 +117,8 @@ function stillCup($: EngineInterface, e: RenderInput<'AbovePrompt'>, frame: Fram
   )
 }
 
-// What the band asks: a held message's priority, the can't-tell choice, the
-// difficulty at the end of a task, the docs log's path.
+// What the band asks: a held message's priority and what it is part of, the
+// can't-tell choice, the difficulty at the end of a task, the docs log's path.
 async function drawQuestion(
   $: EngineInterface,
   e: RenderInput<'AbovePrompt'>,
@@ -126,6 +128,38 @@ async function drawQuestion(
   const { Box, Text, Button } = els
 
   if (band.kind === 'file') {
+    const record = await getView($, 'record')
+    const offered = (band.choices ?? [])
+      .map(id => record?.tasks.find(t => t.id === id))
+      .filter((t): t is Task => t !== undefined && (t.state === 'queued' || t.state === 'current'))
+    const pick = band.parent
+    const isPicked = (p: ParentPick) =>
+      pick != null && pick.kind === p.kind && (p.kind !== 'task' || (pick.kind === 'task' && pick.id === p.id))
+    const choice = (key: string, label: string, p: ParentPick) =>
+      isPicked(p) ? (
+        <Button key={key} label={label} variant="primary" onPress={() => {}} />
+      ) : (
+        <Button key={key} label={label} onPress={() => void pickBand($, { parent: p })} />
+      )
+    // A new feature is named in a field the phone has not; Save waits for a
+    // pick, and for a new feature's name.
+    const naming =
+      pick?.kind !== 'new' || e.surface === 'mobile' ? null : (() => {
+        const { Input } = $.ui.resolve(e as RenderInput<'AbovePrompt', 'terminal'>)
+
+        return (
+          <Input
+            key="feature-title"
+            label="New feature"
+            placeholder="its name, then Enter"
+            value={pick.title}
+            submitLabel="Set"
+            onSubmit={value => void nameNewFeature($, value)}
+          />
+        )
+      })()
+    const canSave = pick !== null && !(pick?.kind === 'new' && pick.title === '')
+
     return (
       <Box flexDirection="column">
         <Text>New task: {band.title}</Text>
@@ -147,8 +181,18 @@ async function drawQuestion(
             ),
           )}
         </Box>
+        {band.choices !== undefined && (
+          <Box flexWrap="wrap">
+            <Text>Part of </Text>
+            {choice('parent:none', 'On its own', { kind: 'none' })}
+            {offered.map(t => choice(`parent:${t.id}`, cut(t.title, FEATURE_LABEL), { kind: 'task', id: t.id }))}
+            {e.surface !== 'mobile' && choice('parent:new', 'New feature…', { kind: 'new', title: pick?.kind === 'new' ? pick.title : '' })}
+          </Box>
+        )}
+        {pick === null && <Text color="warning">Is it part of a feature? Pick one, or On its own.</Text>}
+        {naming}
         <Box>
-          <Button key="save" label="Save" variant="primary" onPress={() => void saveFile($)} />
+          {canSave && <Button key="save" label="Save" variant="primary" onPress={() => void saveFile($)} />}
           <Button key="same-task" label="Same task" onPress={() => void sendHeld($)} />
           <Button key="cancel" label="Cancel" onPress={() => void cancelHeld($)} />
         </Box>

@@ -49,6 +49,7 @@ Each piece has one job, and only it touches its own data.
 | Display | The tea cup in the band above the prompt, its menu, the status line, the commands |
 | Git guard | Refuses every command of Claude's that commits or pushes |
 | Docs log | Adds a finished task's row to the project's docs log |
+| Helpers | Four subagents in `agents/` that a task can hand work to: git, design, docs and tests. See [Helpers](#helpers) |
 
 ## Priority and difficulty
 
@@ -373,6 +374,19 @@ Refuses Claude's shell commands that commit or push, side effects included:
 It finds them inside chained commands (`cd x && git commit`) and with `git -C <path>`. Claude is told "Queue-tea: commits and pushes are yours to make." When the guard itself fails, it refuses. It matches command spellings, so it catches the usual forms but not every possible one. The mod's own git work (status, branches, the diff) runs as its own processes and is not blocked.
 
 Because the guard can miss a spelling, the mod also looks after each turn: it notes the commit checked out when a turn starts, and when the turn ends on the same branch with new commits on top, a toast and a warning line in the menu name them ("During the last turn a commit appeared: 1a2b3c4 …"). A commit Rohan makes in another terminal during a turn is named too; the line asks him to check it was his. A change of branch is not counted.
+
+## Helpers
+
+Subagents that come with the plugin, in `agents/`, one file each. Claude hands one a piece of a task when Rohan names it or the work matches its description; Rohan can also @-mention it. Each starts with skills from other plugins (the `skills` field), loaded in full when it is spawned as a subagent; a skill that isn't installed is left out. They are subagents, so the [git guard](#the-git-guard) refuses their commits and pushes too.
+
+Each has a logo in `.claude-plugin/helpers/<name>.svg`, drawn alike so they read as one family with the Queue-tea cup: a dark tile with a faint grid and a neon edge, and a cup-bot with a glowing visor in the helper's colour, its symbol rising where the steam would be. Commit Chai-n is a cyan cutting-chai glass under a git graph; Mocha Mockup a green mug projecting a wireframe screen; Chai-pter an amber cup under an open book; Tea-DD a violet teacup on its saucer under a red-to-green test loop and a tick. The colours match each agent's `color`.
+
+- **Commit Chai-n** (`queue-tea:commit-chai-n`): reads the state of the branch; names branches by the [Branch](#starting-a-task) rules, never renaming one that exists; splits work into atomic commits and writes their messages; drafts pull requests to a file; checks a merge before it happens. Every command that commits, pushes, merges or pulls goes to Rohan as a line starting with `! `. It opens a pull request (`gh pr create`) only when asked to in that request, after Rohan pushed.
+- **Mocha Mockup** (`queue-tea:mocha-mockup`): the design stage. The goal and the limits (sizes, old records, the project's rules), two or three options with their trade-offs and a recommendation, mockups at the real size with every state and the keys, interfaces and data flow, acceptance criteria, and open questions each with a suggested answer. It writes no production code.
+- **Chai-pter** (`queue-tea:chai-pter`): writes docs and keeps them true to the code, checking each command, key, path and default it names. Plain writing in the doc's own voice, with an edit pass for vocabulary and one for structure; with `write-like-a-human` in `~/.claude/skills`, it uses that skill's word and pattern lists.
+- **Tea-DD** (`queue-tea:tea-dd`): tests for each feature and fix in the project's own runner and style, at the lowest level that shows the behaviour; for a bug, the failing test first. It runs them and the whole suite and reports the counts. It never skips, deletes or loosens a test to get to green.
+
+Each also follows the project's graphify rule: with `graphify-out/graph.json` present, `graphify query` comes before its first search.
 
 ## When things go wrong
 

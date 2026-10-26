@@ -29,6 +29,19 @@ A Claude Code mod that keeps one task in progress per project and the rest in a 
 
 `/brew` (or **Brew now** in the menu) is for work you want right away without filing it, such as `/brew get the dev server running and tell me its URL`. The current task stays current, and its branch and conversation stay as they are. Claude is told to do the work and check that it worked, not just describe it. The commit and push guard still applies. Time spent goes to the project, as with a quick question. A fresh conversation that is due waits until the next turn, so the answer stays on screen.
 
+## Helpers
+
+Four subagents come with Queue-tea, each with a job, the skills for it and a logo of its own: a cup-bot in its colour, with its symbol rising where the steam would be. Ask for one by name ("have Commit Chai-n write the commits") or @-mention it.
+
+| | Helper | Its job | Skills it starts with |
+| --- | --- | --- | --- |
+| <img src=".claude-plugin/helpers/commit-chai-n.svg" width="72" alt="Commit Chai-n"> | **Commit Chai-n** (`queue-tea:commit-chai-n`) | Branch names, splitting work into commits and writing their messages, pull requests, and planning pushes, merges and pulls. It hands you the commands that commit, push or merge, each starting with `! `, and never runs them | `git-workflow-and-versioning` |
+| <img src=".claude-plugin/helpers/mocha-mockup.svg" width="72" alt="Mocha Mockup"> | **Mocha Mockup** (`queue-tea:mocha-mockup`) | The design stage, before code: options and trade-offs, screens and their states, keys, interfaces and data, acceptance criteria | `spec-driven-development`, `api-and-interface-design`, `frontend-ui-engineering`, `frontend-design` |
+| <img src=".claude-plugin/helpers/chai-pter.svg" width="72" alt="Chai-pter"> | **Chai-pter** (`queue-tea:chai-pter`) | Writing docs and keeping them true to the code, in plain writing that reads as a person wrote it. Uses `write-like-a-human`'s word and pattern lists when that skill is in `~/.claude/skills` | `documentation-and-adrs` |
+| <img src=".claude-plugin/helpers/tea-dd.svg" width="72" alt="Tea-DD"> | **Tea-DD** (`queue-tea:tea-dd`) | Tests for every feature and fix, in the project's own style; for a bug, the failing test first. It runs them and reports the results | `test-driven-development`, `verification-before-completion` |
+
+The skills come from the agent-skills, superpowers and frontend-design plugins; a helper without one of them installed starts without it. Each helper's shell commands go through the same commit and push guard as Claude's.
+
 ## Settings
 
 Change these in `/config`.

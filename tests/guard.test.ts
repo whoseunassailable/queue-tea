@@ -75,6 +75,25 @@ test('the hook denies with the spec text', async ($, on) => {
   expect(ran).toBe(false)
 })
 
+test('a helper’s commits and pushes are refused too, its reads let through', async ($, on) => {
+  const ran: string[] = []
+  on('tool.call', ($, e) => {
+    ran.push(`${e.agentId ?? 'main'}: ${e.tool === 'Bash' ? e.command : e.tool}`)
+
+    return { result: {} }
+  })
+  // A call from a subagent's loop, as when Commit Chai-n runs a command.
+  const inHelper = { agentId: 'commit-chai-n-1' }
+
+  const push = await $.tool.call({ tool: 'Bash', command: 'git push -u origin task/x', ...inHelper })
+  const merge = await $.tool.call({ tool: 'Bash', command: 'gh pr merge 12 --squash', ...inHelper })
+  await $.tool.call({ tool: 'Bash', command: 'git status', ...inHelper })
+
+  expect(JSON.stringify(push)).toContain(TEXT)
+  expect(JSON.stringify(merge)).toContain(TEXT)
+  expect(ran).toEqual(['commit-chai-n-1: git status'])
+})
+
 test('the hook passes git status through', async ($, on) => {
   let ran = false
   on('tool.call', () => {

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Mocha Mockup">
+  <title>Mocha Mockup</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="36%" r="72%">
+      <stop offset="0" stop-color="#242038"/>
+      <stop offset="1" stop-color="#0c0a13"/>
+    </radialGradient>
+    <linearGradient id="accent" gradientUnits="userSpaceOnUse" x1="96" y1="64" x2="416" y2="448">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#a3e635"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34304d"/>
+      <stop offset="1" stop-color="#14121d"/>
+    </linearGradient>
+    <linearGradient id="liquid" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5634"/>
+      <stop offset="1" stop-color="#5a3420"/>
+    </linearGradient>
+    <radialGradient id="fadeGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <mask id="fade"><rect width="512" height="512" fill="url(#fadeGrad)"/></mask>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#34d399" stroke-opacity="0.16" stroke-width="1"/>
+    </pattern>
+    <clipPath id="tile"><rect x="16" y="16" width="480" height="480" rx="112"/></clipPath>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <!-- The tile: dark glass, a faint grid, a thin neon edge. -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="url(#grid)" mask="url(#fade)"/>
+    <ellipse cx="236" cy="446" rx="150" ry="22" fill="#34d399" opacity="0.30" filter="url(#soft)"/>
+  </g>
+  <rect x="17.5" y="17.5" width="477" height="477" rx="110.5" fill="none" stroke="url(#accent)" stroke-opacity="0.55" stroke-width="3"/>
+
+  <g transform="translate(0 0)">
+  <!-- The symbol, where the steam would be. -->
+  <g filter="url(#glow)">
+    <path d="M150 276 L120 224 H340 L310 276 Z" fill="url(#accent)" opacity="0.10"/>
+    <rect x="120" y="84" width="220" height="140" rx="14" fill="#0c0a13" fill-opacity="0.6" stroke="url(#accent)" stroke-width="6"/>
+    <path d="M120 112 H340" stroke="url(#accent)" stroke-width="4"/>
+    <g fill="#34d399"><circle cx="138" cy="98" r="4"/><circle cx="152" cy="98" r="4"/><circle cx="166" cy="98" r="4"/></g>
+    <rect x="138" y="128" width="70" height="78" rx="8" fill="none" stroke="url(#accent)" stroke-width="4" stroke-dasharray="8 6"/>
+    <g stroke="url(#accent)" stroke-width="6" stroke-linecap="round"><path d="M224 136 H318"/><path d="M224 158 H298"/><path d="M224 180 H286"/></g>
+    <rect x="224" y="194" width="52" height="14" rx="7" fill="#a3e635"/>
+    <g fill="#34d399"><rect x="112" y="76" width="16" height="16" rx="3"/><rect x="332" y="76" width="16" height="16" rx="3"/><rect x="112" y="216" width="16" height="16" rx="3"/><rect x="332" y="216" width="16" height="16" rx="3"/></g>
+    <path d="M318 196 L318 240 L330 228 L340 250 L348 246 L338 224 L354 224 Z" fill="#f5f3ff" stroke="#0c0a13" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <!-- The cup-bot. -->
+  <g>
+
+    <path d="M330 304 C392 298 394 394 330 388" fill="none" stroke="url(#metal)" stroke-width="28" stroke-linecap="round"/>
+    <path d="M330 304 C392 298 394 394 330 388" fill="none" stroke="url(#accent)" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+    <path d="M128 282 H332 V404 Q332 430 306 430 H154 Q128 430 128 404 Z" fill="url(#metal)"/>
+    <path d="M128 282 H332 V404 Q332 430 306 430 H154 Q128 430 128 404 Z" fill="none" stroke="url(#accent)" stroke-width="5" stroke-linejoin="round" filter="url(#glow)"/>
+
+    <path d="M150 300 L160 396" stroke="#ffffff" stroke-opacity="0.10" stroke-width="10" stroke-linecap="round"/>
+    <ellipse cx="230" cy="282" rx="102" ry="20" fill="#0d0b14" stroke="url(#accent)" stroke-width="5" filter="url(#glow)"/>
+    <ellipse cx="230" cy="284" rx="90" ry="13" fill="url(#liquid)"/>
+    <ellipse cx="206" cy="281" rx="34" ry="4" fill="#ffffff" opacity="0.28"/>
+    <rect x="158" y="320" width="144" height="54" rx="27" fill="#06050b" stroke="url(#accent)" stroke-opacity="0.85" stroke-width="3"/>
+    <g fill="none" stroke="#34d399" stroke-width="7" stroke-linecap="round" filter="url(#glow)">
+      <path d="M186 355 q14 -17 28 0"/>
+      <path d="M246 355 q14 -17 28 0"/>
+    </g>
+    <circle cx="176" cy="392" r="7" fill="#a3e635" opacity="0.55"/>
+    <circle cx="284" cy="392" r="7" fill="#a3e635" opacity="0.55"/>
+    <path d="M216 394 q14 11 28 0" fill="none" stroke="url(#accent)" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  </g>
+</svg>

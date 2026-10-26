@@ -15,6 +15,7 @@ export const KEYS = {
   notYet: 'n',
   remove: 'x',
   retry: 'r',
+  restore: 'l',
   playNext: 'f',
   block: 'k',
   unblock: 'u',

@@ -25,6 +25,7 @@ import {
   pressPlayNext,
   pressPriority,
   pressRemove,
+  pressRestore,
   pressRow,
   pressStartFromBacklog,
   pressStartNext,
@@ -86,6 +87,7 @@ const HELP_KEYS: readonly { where: string; keys: string }[] = [
   { where: 'Row or task', keys: 'k blocked… · p part of… · a active feature' },
   { where: 'Current task', keys: 'd done · b back to queue · c continue · w switch' },
   { where: '', keys: 'r check again · y / n to "Is this done for now?"' },
+  { where: 'Record unreadable', keys: 'l use the last good copy · r try again' },
 ]
 const HELP_WIDTH = 24
 
@@ -117,11 +119,22 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
     )
   }
   if (load === 'failed') {
+    const problem = await getView($, 'loadError')
+    const canRestore = problem?.canRestore === true
+
     return (
       <Box flexDirection="column">
         <Text>Couldn't read your task record</Text>
-        <Text dimColor>It is left as it is. Try again, or look at the file in ~/.queue-tea/projects.</Text>
-        <Button key="retry" label="Try again" hotkey={KEYS.retry} onPress={() => void loadRecord($)} />
+        {problem !== null && <Text color="warning">{capital(problem.reason)}.</Text>}
+        <Text dimColor>
+          {`It is left as it is. ${canRestore ? 'Use the last good copy, try again,' : 'Try again,'} or look at the file in ~/.queue-tea/projects.`}
+        </Text>
+        <Box>
+          {canRestore && (
+            <Button key="restore" label="Use the last good copy" hotkey={KEYS.restore} onPress={() => void pressRestore($)} />
+          )}
+          <Button key="retry" label="Try again" hotkey={KEYS.retry} onPress={() => void loadRecord($)} />
+        </Box>
       </Box>
     )
   }

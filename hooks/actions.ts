@@ -15,6 +15,7 @@ import {
   finishDocs,
   finishTask,
   isStartingFresh,
+  markUnreadable,
   moveTask,
   putBack,
   refreshDrift,
@@ -36,7 +37,7 @@ import { live } from './live'
 import { nextBudget, suggest } from './plan'
 import { debug, getView, portsOf, readCup } from './ports'
 import { currentTask, setPriority } from './queue'
-import { readOthers, readRecord, updateRecord } from './record'
+import { readOthers, readRecord, restoreRecord, updateRecord } from './record'
 import { isoLocal } from './time'
 
 // A typed /clear saves a checkpoint first only past this size: a smaller
@@ -58,11 +59,12 @@ export async function loadRecord($: EngineInterface) {
   try {
     const record = await readRecord(hostOf($), ctx.file, ctx.projectName, ctx.projectPath)
     if (record === 'unreadable') {
-      await p.set('load', 'failed')
+      await markUnreadable(p, ctx)
 
       return
     }
     await p.set('record', record)
+    await p.set('loadError', null)
     await p.set('load', 'ready')
   } catch (err) {
     debug($, 'reading the record failed', err)
@@ -83,11 +85,30 @@ async function changeRecord($: EngineInterface, fn: (r: ProjectRecord) => Projec
   if (ctx === null) return
   try {
     const saved = await updateRecord(hostOf($), ctx.file, fn, ctx.projectName, ctx.projectPath)
-    if (saved === 'unreadable') await p.set('load', 'failed')
+    if (saved === 'unreadable') await markUnreadable(p, ctx)
     else await p.set('record', saved)
   } catch (err) {
     debug($, 'writing the record failed', err)
   }
+}
+
+// Puts the record's last good copy in place of the one that can't be read,
+// keeping the broken file beside it, then reads it as at a session's start.
+export async function pressRestore($: EngineInterface) {
+  const p = portsOf($)
+  const ctx = live.ctx
+  if (ctx === null) return
+  try {
+    const stamp = isoLocal(await $.clock.now(), ctx.offsetMinutes).slice(0, 19).replace(/:/g, '-')
+    const restored = await restoreRecord(hostOf($), ctx.file, stamp)
+    if (typeof restored === 'object') {
+      p.toast(`Queue-tea: back to the last good copy. The broken record is kept as ${restored.keptAt.split('/').pop()}`)
+    }
+  } catch (err) {
+    debug($, 'restoring the record failed', err)
+  }
+  await loadRecord($)
+  if ((await getView($, 'load')) === 'ready') await checkResume($)
 }
 
 // Writes what the tracker gathered since the last flush into the record,

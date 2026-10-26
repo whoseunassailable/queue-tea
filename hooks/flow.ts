@@ -22,7 +22,7 @@ import {
 import type { Host } from './host'
 import { blockedText, isBlocked, wouldLoop } from './plan'
 import { currentTask, newTask, orderQueue, removeTask } from './queue'
-import { readRecord, updateRecord } from './record'
+import { readProblem, readRecord, updateRecord } from './record'
 import { dayKey, isoLocal } from './time'
 import { shouldFresh, shouldHandoff, windowKey } from './usage'
 
@@ -87,12 +87,24 @@ const scheduleFresh = (p: Ports, ctx: Ctx, task: Task) => {
 // makes is not taken for one to recover from.
 export const isStartingFresh = () => isFreshPending
 
+// The menu's failed state, with why the record can't be read and whether
+// its last good copy can take its place. Nothing is written to it.
+export const markUnreadable = async (p: Ports, ctx: Ctx): Promise<void> => {
+  try {
+    await p.set('loadError', await readProblem(p.host, ctx.file))
+  } catch (err) {
+    p.log(`reading why the record can't be read failed: ${err instanceof Error ? err.message : String(err)}`)
+    await p.set('loadError', null)
+  }
+  await p.set('load', 'failed')
+}
+
 // Changes the record; on an unreadable one says so in the panel and changes
 // nothing. Returns the record as saved, or null.
 const change = async (p: Ports, ctx: Ctx, fn: (r: ProjectRecord) => ProjectRecord) => {
   const saved = await updateRecord(p.host, ctx.file, fn, ctx.projectName, ctx.projectPath)
   if (saved === 'unreadable') {
-    await p.set('load', 'failed')
+    await markUnreadable(p, ctx)
 
     return null
   }
@@ -193,11 +205,17 @@ export const checkNow = async (p: Ports, ctx: Ctx, task: Task): Promise<string[]
   }
 }
 
+// When the clear or the first message fails, the task stays current and
+// Continue is offered, so it can be tried again.
 export const freshConversation = async (p: Ports, ctx: Ctx, task: Task): Promise<void> => {
   try {
     const checked = await checkNow(p, ctx, task)
     await p.clear()
     await p.submit(firstMessage(task, checked))
+  } catch (err) {
+    p.log(`starting the conversation for ${task.id} failed: ${err instanceof Error ? err.message : String(err)}`)
+    await p.set('notice', `Couldn't open the conversation for ${task.title}. Press Continue to try again.`)
+    await p.set('canContinue', true)
   } finally {
     isFreshPending = false
   }
@@ -210,7 +228,7 @@ export const startTask = (p: Ports, ctx: Ctx, taskId: string): Promise<'started'
 const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' | 'held' | 'failed'> => {
   const record = await readRecord(p.host, ctx.file, ctx.projectName, ctx.projectPath)
   if (record === 'unreadable') {
-    await p.set('load', 'failed')
+    await markUnreadable(p, ctx)
 
     return 'failed'
   }
@@ -235,26 +253,95 @@ const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' 
     return 'held'
   }
 
+  // A task put back in the queue goes on on its own branch; one whose branch
+  // is gone starts again on a new one from here.
   let branch: string | null = null
   let isResumed = false
   if (git.isRepo) {
     const branches = await listBranches(p.host, ctx.projectPath)
-    // A task put back in the queue goes on on its own branch; one whose
-    // branch is gone starts again on a new one from here.
     isResumed = task.branch !== null && branches.includes(task.branch)
-    const name = isResumed ? task.branch! : slugBranch(task.title, branches)
+    branch = isResumed ? task.branch! : slugBranch(task.title, branches)
+  }
+  // The commit in full, so a rebase or a reset of the branch can be told.
+  const head = git.isRepo && !isResumed ? ((await readHead(p.host, ctx.projectPath))?.commit ?? git.head) : null
+  const started = await nowIso(p, ctx)
+
+  // The task is claimed before git is touched, against the record as it is
+  // now: another session may have started a task since it was read.
+  let refused = null as string | null
+  let before = task
+  const saved = await change(p, ctx, r => {
+    const fresh = r.tasks.find(t => t.id === taskId)
+    const other = currentTask(r.tasks)
+    refused =
+      fresh === undefined || (fresh.state !== 'queued' && fresh.state !== 'current')
+        ? `${task.title} is no longer in the backlog.`
+        : other !== null
+          ? other.id === taskId
+            ? `${task.title} was started already, maybe in another session.`
+            : `${other.title} was started first, maybe in another session, so ${task.title} waits in the backlog.`
+          : isBlocked(fresh, r.tasks)
+            ? `${task.title} is blocked: ${blockedText(fresh, r.tasks)}. Unblock it first.`
+            : null
+    if (refused !== null || fresh === undefined) return r
+    before = fresh
+
+    return {
+      ...r,
+      playNext: r.playNext === taskId ? null : r.playNext,
+      tasks: r.tasks.map(t =>
+        t.id !== taskId
+          ? t
+          : {
+              ...t,
+              state: 'current',
+              started: t.started ?? started,
+              branch,
+              baseBranch: isResumed ? t.baseBranch : git.isRepo ? git.branch : null,
+              startCommit: isResumed ? t.startCommit : head,
+            },
+      ),
+    }
+  })
+  if (saved === null) return 'failed'
+  if (refused !== null) {
+    const hold = await p.get('hold')
+    if (hold?.taskId === taskId) await p.set('hold', null)
+    await p.set('notice', refused)
+
+    return 'failed'
+  }
+
+  if (branch !== null) {
     if (task.branch !== null && !isResumed) {
-      await p.set('notice', `${task.branch} was gone, so this task starts again on ${name}, made from ${git.branch}.`)
+      await p.set('notice', `${task.branch} was gone, so this task starts again on ${branch}, made from ${git.branch}.`)
     }
     try {
-      if (isResumed && git.branch !== name) await switchBranch(p.host, ctx.projectPath, name)
-      else if (!isResumed) await makeBranch(p.host, ctx.projectPath, name)
-      branch = name
+      if (isResumed && git.branch !== branch) await switchBranch(p.host, ctx.projectPath, branch)
+      else if (!isResumed) await makeBranch(p.host, ctx.projectPath, branch)
     } catch (err) {
-      p.log(`${isResumed ? 'switching to' : 'making'} ${name} failed: ${err instanceof Error ? err.message : String(err)}`)
+      p.log(`${isResumed ? 'switching to' : 'making'} ${branch} failed: ${err instanceof Error ? err.message : String(err)}`)
+      // The claim is taken back, so the task waits as it was.
+      const wasNext = record.playNext === taskId
+      await change(p, ctx, r => ({
+        ...r,
+        playNext: wasNext && r.playNext === null ? taskId : r.playNext,
+        tasks: r.tasks.map(t =>
+          t.id === taskId && t.state === 'current'
+            ? {
+                ...t,
+                state: 'queued',
+                started: before.started,
+                branch: before.branch,
+                baseBranch: before.baseBranch,
+                startCommit: before.startCommit,
+              }
+            : t,
+        ),
+      }))
       await p.set('hold', {
         taskId,
-        text: `Couldn't ${isResumed ? 'switch to' : 'make'} the branch ${name}. Check again to retry.`,
+        text: `Couldn't ${isResumed ? 'switch to' : 'make'} the branch ${branch}. Check again to retry.`,
       })
 
       return 'held'
@@ -262,27 +349,6 @@ const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' 
   } else {
     await p.set('notice', NOT_A_REPO)
   }
-
-  // The commit in full, so a rebase or a reset of the branch can be told.
-  const head = git.isRepo && !isResumed ? ((await readHead(p.host, ctx.projectPath))?.commit ?? git.head) : null
-  const started = await nowIso(p, ctx)
-  const saved = await change(p, ctx, r => ({
-    ...r,
-    playNext: r.playNext === taskId ? null : r.playNext,
-    tasks: r.tasks.map(t =>
-      t.id !== taskId
-        ? t
-        : {
-            ...t,
-            state: 'current',
-            started: t.started ?? started,
-            branch,
-            baseBranch: isResumed ? t.baseBranch : git.isRepo ? git.branch : null,
-            startCommit: isResumed ? t.startCommit : head,
-          },
-    ),
-  }))
-  if (saved === null) return 'failed'
 
   await p.set('hold', null)
   await p.set('isChoosingNext', false)
@@ -402,7 +468,7 @@ export const finishTask = (p: Ports, ctx: Ctx, taskId: string, actual: Difficult
 const finishOnce = async (p: Ports, ctx: Ctx, taskId: string, actual: Difficulty): Promise<void> => {
   const record = await readRecord(p.host, ctx.file, ctx.projectName, ctx.projectPath)
   if (record === 'unreadable') {
-    await p.set('load', 'failed')
+    await markUnreadable(p, ctx)
 
     return
   }

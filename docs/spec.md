@@ -215,7 +215,7 @@ Each view starts with the header, the lines under it, and **‹ Menu** (`m`).
 - **History:** a green bar with the count and the week's time, this week's finished tasks, latest first, five at most ("done 3h"), and the week chart: one bar a day, Monday to Sunday, the busiest day full height, a day with no time blank. Then the tasks finished before this week, with their dates.
 - **Usage & time:** the 5-hour allowance, today's and this week's time, the week chart, the current task's time and effort (messages, files, and its lines so far: `git diff --shortstat` from its start commit, measured at a session's start and after each turn, left out until then), and project time outside tasks this week.
 - **Settings:** the four `userConfig` values, the task log's path and the record's file. They are changed with `/config`.
-- **Help:** the commands, the most used first, each with what it does; then the keys by where they work (Backlog, an open row, a row or the current task, Current task). Two columns, the second wrapping under itself in a narrow menu. Its list line names the common commands.
+- **Help:** the commands, the most used first, each with what it does; then the keys by where they work (Backlog, an open row, a row or the current task, Current task, a record that can't be read). Two columns, the second wrapping under itself in a narrow menu. Its list line names the common commands.
 - **Key hints:** one dim line. Hotkeys work only while the menu has the keys; when it hasn't, the line says how to give them to it (ctrl+x tab, or a click).
 
 #### The handoff card
@@ -235,6 +235,7 @@ Shown with **Continue**: the checkpoint, as numbered sections (Goal, Acceptance 
 | `c` | Continue |
 | `w` | Switch to the task's branch |
 | `r` | Check again; Try again when the record can't be read |
+| `l` | Use the last good copy, when the record can't be read |
 | `1`–`5` | The open row's priority, urgent to low |
 | `f` | Play next: the open row, on or off |
 | `k` | Blocked…: the open row, or the current task |
@@ -256,7 +257,7 @@ States:
 | --- | --- |
 | Loading | A turning character (the terminal has no circular spinner) and "Reading your queue…" |
 | Empty | "Nothing queued yet. Tell me what you're working on and it becomes the first task." |
-| Failed | What went wrong in plain words ("Couldn't read your task record") with **Try again**. The error goes to the debug log |
+| Failed | What went wrong in plain words ("Couldn't read your task record"), and why: it isn't valid JSON, a newer Queue-tea wrote it, or it isn't a record. **Try again**, and **Use the last good copy** when there is one. The error goes to the debug log |
 | Working | A turning character and what is happening: "Checking your message…", "Saving a handoff note…" |
 
 ### The band above the prompt
@@ -287,7 +288,7 @@ One file per project: `~/.queue-tea/projects/<folder>-<hash>.json`, where `<fold
 
 ### Writing it
 
-The mod reads the file again just before each write and changes only the task it is working on, so two sessions in the same project don't undo each other. A write never leaves a half-written file behind.
+Each write first takes a lock, a folder beside the file (`<record>.lock`) that only one session can make, so two sessions in the same project don't undo each other. A lock still there after two seconds is from a session that stopped mid-write, and is taken over. The mod then reads the file again and changes only the task it is working on. A write never leaves a half-written file behind, and the record it replaces is kept as `<record>.bak`, the last good copy.
 
 ### What a task holds
 
@@ -397,10 +398,14 @@ Each also follows the project's graphify rule: with `graphify-out/graph.json` pr
 | Branch never pushed, but every commit already on a remote | Nothing to push, so the task goes ahead |
 | Detached HEAD | The menu says so and the task waits |
 | Branch name taken | `-2`, `-3` and so on |
+| Another session started a task first | Start touches nothing in git: the task is claimed in the record before its branch is made. The menu names the task started first, and this one waits in the backlog. When git then refuses the branch, the claim is taken back |
+| The fresh conversation can't be opened | The task stays current; the menu says so and offers **Continue** |
 | A feature picked in the band is removed or finished by another session before Save | Nothing is filed; the menu says the feature is no longer open and the band stays to pick again |
 | Handoff note not written | No clear; the status line says so; tried again after the next reply |
-| Record cannot be read or written | The menu's failed state with **Try again**; nothing is cleared or started until it works |
-| Two sessions in one project | They share the record; the menu reads it again after each turn |
+| Record cannot be read | The menu's failed state says why, with **Try again**, and **Use the last good copy** when `<record>.bak` reads. The broken file is kept beside it as `<record>.broken-<date and time>`, never deleted. Nothing is cleared or started until the record reads |
+| Record written by a newer Queue-tea | The failed state says to update Queue-tea, and offers no copy: an older one would lose the newer work |
+| Record cannot be written | Nothing is cleared or started; the error goes to the debug log |
+| Two sessions in one project | They share the record, one write at a time; the menu reads it again after each turn |
 
 ## Settings
 

@@ -11,6 +11,7 @@ import { statusText } from './ui/status'
 
 const recordAtom = atom({ plugin: 'queue-tea', key: 'record' } as const, null)
 const loadAtom = atom({ plugin: 'queue-tea', key: 'load' } as const, 'loading')
+const loadErrorAtom = atom({ plugin: 'queue-tea', key: 'loadError' } as const, null as View['loadError'])
 const holdAtom = atom({ plugin: 'queue-tea', key: 'hold' } as const, null)
 const bandAtom = atom({ plugin: 'queue-tea', key: 'band' } as const, { kind: 'none' } as View['band'])
 const isAskingDoneAtom = atom({ plugin: 'queue-tea', key: 'isAskingDone' } as const, false)
@@ -48,6 +49,8 @@ export async function getView<K extends keyof View>($: EngineInterface, key: K):
       return (await read($, recordAtom)) as View[K]
     case 'load':
       return (await read($, loadAtom)) as View[K]
+    case 'loadError':
+      return (await read($, loadErrorAtom)) as View[K]
     case 'hold':
       return (await read($, holdAtom)) as View[K]
     case 'band':
@@ -108,6 +111,8 @@ async function setView<K extends keyof View>($: EngineInterface, key: K, value: 
       return update($, recordAtom, () => v)
     case 'load':
       return update($, loadAtom, () => v)
+    case 'loadError':
+      return update($, loadErrorAtom, () => v)
     case 'hold':
       return update($, holdAtom, () => v)
     case 'band':

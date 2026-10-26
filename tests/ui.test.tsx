@@ -186,6 +186,33 @@ test("failed shows Couldn't read your task record and Try again", async ($, on) 
   }
 })
 
+test('a broken record says why, and the last good copy brings the queue back', async ($, on) => {
+  const task = makeTask({ title: 'Kept in the copy', priority: 'high' })
+  const { mem, seen } = await startSession($, on, { file: '{bad', others: { [`${FILE}.bak`]: record({ tasks: [task] }) } })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  expect(await ui.find({ type: 'Text', text: /^It isn't valid JSON \(.+\)\.$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^It is left as it is\. Use the last good copy, try again, or look/ })).toBeDefined()
+  await ui.press({ key: 'restore' })
+
+  expect(mem.files.get(FILE)).toBe(record({ tasks: [task] }))
+  expect([...mem.files.keys()].some(path => path.startsWith(`${FILE}.broken-`))).toBe(true)
+  expect(seen.toasts.some(t => t.startsWith('Queue-tea: back to the last good copy.'))).toBe(true)
+  expect(await ui.find({ type: 'Text', text: "Couldn't read your task record" })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a newer Queue-tea’s record says to update, with no copy to go back to', async ($, on) => {
+  const newer = JSON.stringify({ ...emptyRecord('p', '/p'), version: 2 })
+  await startSession($, on, { file: newer, others: { [`${FILE}.bak`]: record() } })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  expect(await ui.find({ type: 'Text', text: /newer Queue-tea \(record version 2\); update Queue-tea to read it\.$/ })).toBeDefined()
+  expect(await ui.find({ key: 'restore' })).toBeUndefined()
+  expect(await ui.find({ key: 'retry' })).toBeDefined()
+  await ui.unmount()
+})
+
 test('after a /clear the record is read again', async ($, on) => {
   on('classic.SessionStart', () => ({}))
   const { mem } = await startSession($, on, { file: record() })

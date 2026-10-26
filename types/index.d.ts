@@ -115,6 +115,9 @@ export type Band =
 // Another project's queue, one line in the panel.
 export type OtherProject = { name: string; waiting: number; next: string | null }
 
+// Why the record can't be read, and whether its last good copy can take its place.
+export type LoadError = { reason: string; canRestore: boolean }
+
 export type Allowance = { percent: number; resetsAt: string | null }
 
 // Which of the tea cup's menu views shows.
@@ -141,6 +144,7 @@ declare module 'claude-code' {
     'queue-tea': {
       record: ProjectRecord | null
       load: 'loading' | 'ready' | 'failed'
+      loadError: LoadError | null
       hold: { taskId: string; text: string } | null
       band: Band
       bandQueue: Band[]

@@ -44,19 +44,21 @@ export const makeTask = (over: Partial<Task> = {}): Task => {
 
 export type Run = { stdout?: string; exitCode?: number }
 
-// A host held in memory: files in a map, `mv` as a rename in that map, every
-// other argv answered from `git` by `argv.join(' ')`; an argv it lacks exits 1.
+// A host held in memory: files in a map, `mv` as a rename in that map, plain
+// `mkdir` and `rmdir` as folders in a set, every other argv answered from
+// `git` by `argv.join(' ')`; an argv it lacks exits 1. Sleeps end at once.
 export const memoryHost = (
   options: { files?: Record<string, string>; git?: Record<string, Run> } = {},
 ) => {
   const files = new Map(Object.entries(options.files ?? {}))
+  const dirs = new Set<string>()
   const runs: string[][] = []
   const writes: string[] = []
   const git = { ...(options.git ?? {}) }
   const result = (exitCode: number, stdout = '') => ({ exitCode, stdout, stderr: '' })
 
   const host: Host = {
-    exists: async path => files.has(path),
+    exists: async path => files.has(path) || dirs.has(path),
     read: async path => {
       const text = files.get(path)
       if (text === undefined) throw new Error(`ENOENT: ${path}`)
@@ -79,6 +81,15 @@ export const memoryHost = (
 
         return result(0)
       }
+      if (argv.length === 2 && (argv[0] === 'mkdir' || argv[0] === 'rmdir')) {
+        const dir = argv[1]!
+        const isThere = dirs.has(dir) || files.has(dir)
+        if (argv[0] === 'mkdir' ? isThere : !dirs.has(dir)) return result(1)
+        if (argv[0] === 'mkdir') dirs.add(dir)
+        else dirs.delete(dir)
+
+        return result(0)
+      }
       const run = git[argv.join(' ')]
 
       return run === undefined ? result(1) : result(run.exitCode ?? 0, run.stdout ?? '')
@@ -88,9 +99,10 @@ export const memoryHost = (
         .filter(path => path.startsWith(`${dir}/`))
         .map(path => path.slice(dir.length + 1))
         .filter(name => !name.includes('/')),
+    sleep: async () => {},
   }
 
-  return { files, runs, writes, git, host }
+  return { files, dirs, runs, writes, git, host }
 }
 
 // Answers the plugin's $.fs and $.process.run from a memory host, for tests
@@ -119,6 +131,7 @@ export const fakePorts = (
   const view: View = {
     record: null,
     load: 'ready',
+    loadError: null,
     hold: null,
     band: { kind: 'none' },
     bandQueue: [],

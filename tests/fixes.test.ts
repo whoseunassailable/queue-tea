@@ -6,6 +6,7 @@ import { escapeCell } from '../hooks/docslog'
 import { applyPending, createTracker } from '../hooks/effort'
 import {
   afterTurn,
+  continueTask,
   fileTask,
   finishDocs,
   finishTask,
@@ -198,15 +199,81 @@ test('a task cannot start while another is current', async () => {
   expect(stored(mem).tasks.filter(t => t.state === 'current')).toHaveLength(1)
 })
 
+test('a task another session starts first is not started here, and git is left alone', async () => {
+  const a = makeTask({ title: 'A' })
+  const b = makeTask({ title: 'B' })
+  const mem = memoryHost({ files: withRecord({ ...emptyRecord('p', '/p'), tasks: [a, b] }), git: git() })
+  const { ports, view, done, settle } = fakePorts(mem)
+  // The other session starts B after this one read the record, while it
+  // reads the branches.
+  const run = mem.host.run
+  mem.host.run = async argv => {
+    if (argv.join(' ') === 'git branch --format=%(refname:short)') {
+      mem.files.set(CTX.file, JSON.stringify({ ...emptyRecord('p', '/p'), tasks: [a, { ...b, state: 'current' }] }))
+    }
+
+    return run(argv)
+  }
+
+  expect(await startTask(ports, CTX, a.id)).toBe('failed')
+  await settle()
+
+  expect(mem.runs.some(argv => argv.includes('switch'))).toBe(false)
+  expect(stored(mem).tasks.map(t => t.state)).toEqual(['queued', 'current'])
+  expect(view.notice).toBe('B was started first, maybe in another session, so A waits in the backlog.')
+  expect(done.clears).toBe(0)
+})
+
+test('a branch git refuses puts the claimed task back as it was', async () => {
+  const task = makeTask({ title: 'A' })
+  const more = git()
+  delete more['git switch -c task/a']
+  const mem = memoryHost({ files: withRecord({ ...emptyRecord('p', '/p'), playNext: task.id, tasks: [task] }), git: more })
+  const { ports, view } = fakePorts(mem)
+
+  expect(await startTask(ports, CTX, task.id)).toBe('held')
+
+  const after = stored(mem)
+  expect(after.playNext).toBe(task.id)
+  expect(after.tasks[0]).toMatchObject({ state: 'queued', started: null, branch: null, baseBranch: null, startCommit: null })
+  expect(view.hold?.text).toBe("Couldn't make the branch task/a. Check again to retry.")
+})
+
+test('a first message that fails offers Continue, and Continue sends it', async () => {
+  const task = makeTask({ title: 'A' })
+  const mem = memoryHost({ files: withRecord({ ...emptyRecord('p', '/p'), tasks: [task] }), git: git() })
+  const { ports, view, done, settle } = fakePorts(mem)
+  const submit = ports.submit
+  ports.submit = async () => {
+    throw new Error('refused')
+  }
+
+  expect(await startTask(ports, CTX, task.id)).toBe('started')
+  await settle()
+
+  expect(stored(mem).tasks[0]!.state).toBe('current')
+  expect(view.canContinue).toBe(true)
+  expect(view.notice).toBe("Couldn't open the conversation for A. Press Continue to try again.")
+  expect(done.logs.some(l => l.includes('refused'))).toBe(true)
+
+  ports.submit = submit
+  view.record = stored(mem)
+  await continueTask(ports, CTX)
+  await settle()
+
+  expect(done.submits).toEqual(['Task: A'])
+})
+
 test('two record writes use different temp files', async () => {
   const mem = memoryHost()
 
   await updateRecord(mem.host, CTX.file, r => r, 'p', '/p')
   await updateRecord(mem.host, CTX.file, r => r, 'p', '/p')
 
-  expect(mem.writes).toHaveLength(2)
-  expect(mem.writes[0] === mem.writes[1]).toBe(false)
-  expect(mem.writes.every(w => w.startsWith(`${CTX.file}.`) && w.endsWith('.tmp'))).toBe(true)
+  const temps = mem.writes.filter(w => w.endsWith('.tmp'))
+  expect(temps).toHaveLength(2)
+  expect(temps[0] === temps[1]).toBe(false)
+  expect(temps.every(w => w.startsWith(`${CTX.file}.`))).toBe(true)
 })
 
 test('a check whose model call rejects gives null, and onMessage stops checking', async () => {

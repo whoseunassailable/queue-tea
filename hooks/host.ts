@@ -10,6 +10,7 @@ export type Host = {
   write: (path: string, text: string) => Promise<void>
   run: (argv: string[], cwd?: string) => Promise<RunResult>
   list: (dir: string) => Promise<string[]>
+  sleep: (ms: number) => Promise<void>
 }
 
 export function hostOf($: EngineInterface): Host {
@@ -19,5 +20,6 @@ export function hostOf($: EngineInterface): Host {
     write: (path, text) => $.fs.write(path, text),
     run: (argv, cwd) => $.process.run(argv, cwd === undefined ? undefined : { cwd }),
     list: async dir => ((await $.fs.exists(dir)) ? (await $.fs.list(dir)).filter(e => e.kind === 'file').map(e => e.name) : []),
+    sleep: ms => $.clock.sleep(ms),
   }
 }

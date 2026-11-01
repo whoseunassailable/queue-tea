@@ -4,6 +4,7 @@ import type { Ports } from '../../../../core/ports/ports'
 import { live } from '../../../../core/session/live'
 import type { ProjectRecord, Task } from '../../../../../types'
 import { suggest } from '../../../backlog/domain/services/ranking'
+import type { Saved } from '../../domain/repositories/records_repository'
 import { recordsRepositoryOf } from '../../records_providers'
 
 // The menu's failed state, with why the record can't be read and whether
@@ -18,10 +19,9 @@ export const markUnreadable = async (p: Ports, ctx: Ctx): Promise<void> => {
   await p.set('load', 'failed')
 }
 
-// Changes the record; on an unreadable one says so in the panel and changes
-// nothing. Returns the record as saved, or null.
-export const change = async (p: Ports, ctx: Ctx, fn: (r: ProjectRecord) => ProjectRecord) => {
-  const saved = await recordsRepositoryOf(p, ctx).update(fn)
+// Shows what a change left: the record, or on an unreadable one says so in
+// the panel. Returns the record as saved, or null.
+export const applySaved = async (p: Ports, ctx: Ctx, saved: Saved) => {
   if (saved === 'unreadable') {
     await markUnreadable(p, ctx)
 
@@ -31,6 +31,11 @@ export const change = async (p: Ports, ctx: Ctx, fn: (r: ProjectRecord) => Proje
 
   return saved
 }
+
+// Changes the record; on an unreadable one says so in the panel and changes
+// nothing. Returns the record as saved, or null.
+export const change = async (p: Ports, ctx: Ctx, fn: (r: ProjectRecord) => ProjectRecord) =>
+  applySaved(p, ctx, await recordsRepositoryOf(p, ctx).update(fn))
 
 export const changeTask = (p: Ports, ctx: Ctx, id: string, fn: (t: Task) => Task) =>
   change(p, ctx, r => ({ ...r, tasks: r.tasks.map(t => (t.id === id ? fn(t) : t)) }))

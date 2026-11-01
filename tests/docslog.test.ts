@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { addRow, escapeCell, writeDocsLog } from '../hooks/docslog'
-import type { DocsRow } from '../hooks/docslog'
+import { addRow, escapeCell, writeDocsLog } from '../hooks/features/tasks/data/datasources/docs_log_source'
+import type { DocsRow } from '../hooks/features/tasks/domain/repositories/task_log_repository'
 import { memoryHost } from './helpers'
 
 const ROW: DocsRow = {

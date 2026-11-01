@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { blockTask, putBack, startTask, togglePlayNext, unblockTask } from '../hooks/flow'
+import { blockTask, togglePlayNext, unblockTask } from '../hooks/features/tasks/presentation/state_management/queue_controller'
+import { putBack, startTask } from '../hooks/features/tasks/presentation/state_management/tasks_controller'
 import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'

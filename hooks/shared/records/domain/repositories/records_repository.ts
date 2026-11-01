@@ -1,5 +1,9 @@
 import type { LoadError, OtherProject, ProjectRecord } from '../../../../../types'
 
+// What a change to the record leaves: the record as saved, or a file that
+// can't be read.
+export type Saved = ProjectRecord | 'unreadable'
+
 // The task record, whatever holds it.
 export type RecordsRepository = {
   read: () => Promise<ProjectRecord | 'unreadable'>

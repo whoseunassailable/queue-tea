@@ -6,14 +6,16 @@ import { effortState, flush } from './shared/effort/presentation/state_managemen
 import { onViewChange, portsOf } from './core/ports/claude_ports'
 import type { EngineInterface, Register } from 'claude-code'
 
-import { afterClear, askDone, checkResume, fileFromCommand, runFeature, saveBeforeClear, tick, toggleMenu } from './actions'
+import { afterClear, saveBeforeClear, tick, toggleMenu } from './actions'
+import { askDone, checkResume, refreshDrift, refreshLines, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
+import { fileFromCommand } from './features/tasks/presentation/state_management/filing_controller'
+import { runFeature } from './features/tasks/presentation/state_management/queue_controller'
 import { loadRecord } from './shared/records/presentation/state_management/records_controller'
 import { MENU, menuClosed, openMenu } from './core/store/menu'
 import { commandRun } from './shared/checkpoints/domain/services/checkpoints'
 import { ERRAND_NOT_SENT, ERRANDS, errandReply, errandUsage, isErrandTurn, startsAsCommand } from './features/errands/domain/services/errands'
 import type { ErrandKind } from './features/errands/domain/services/errands'
 import { onMessage } from './features/message_check/presentation/state_management/message_check_controller'
-import { refreshDrift, refreshLines, taskLooksDone, taskSection } from './flow'
 import { shouldCheck } from './features/message_check/domain/services/check_prompt'
 import { isCommitOrPush } from './features/commit_guard/domain/services/commit_guard'
 import { live } from './core/session/live'
@@ -79,7 +81,7 @@ async function startSession($: EngineInterface) {
   await registerCommand($, 'tea', 'Ask or explain, outside the Queue-tea queue: no task, no changes', '<question>')
   await registerCommand($, 'feature', 'Show, set or clear the Queue-tea feature new tasks are offered under', '<task title> | off')
   try {
-    await checkResume($)
+    await checkResume(portsOf($))
   } catch (err) {
     debug(portsOf($), 'checking the branch at the start failed', err)
   }
@@ -278,14 +280,14 @@ export const register: Register = (on, options) => {
   })
 
   on('command.run', { command: 'done' }, async $ => {
-    const isAsked = await askDone($)
+    const isAsked = await askDone(portsOf($))
     await openMenu(portsOf($), 'current')
 
     return { text: isAsked ? 'Asked in the Queue-tea menu.' : 'No Queue-tea task is in progress.' }
   })
 
   on('command.run', { command: 'queue-tea-done' }, async $ => {
-    const isAsked = await askDone($)
+    const isAsked = await askDone(portsOf($))
     await openMenu(portsOf($), 'current')
 
     return { text: isAsked ? 'Asked in the Queue-tea menu.' : 'No Queue-tea task is in progress.' }
@@ -294,7 +296,7 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'steep' }, async ($, e) => {
     const text = (e.args ?? '').trim()
     if (text === '') return { text: 'Write the task after the command: /steep <message>' }
-    await fileFromCommand($, text)
+    await fileFromCommand(portsOf($), text)
 
     return { text: 'Pick its priority in the band above the prompt.' }
   })
@@ -302,13 +304,13 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'queue-tea-steep' }, async ($, e) => {
     const text = (e.args ?? '').trim()
     if (text === '') return { text: 'Write the task after the command: /queue-tea-steep <message>' }
-    await fileFromCommand($, text)
+    await fileFromCommand(portsOf($), text)
 
     return { text: 'Pick its priority in the band above the prompt.' }
   })
 
   for (const command of ['feature', 'queue-tea-feature']) {
-    on('command.run', { command }, async ($, e) => ({ text: await runFeature($, e.args ?? '') }))
+    on('command.run', { command }, async ($, e) => ({ text: await runFeature(portsOf($), e.args ?? '') }))
   }
 
   for (const [name, kind] of Object.entries(ERRANDS)) {

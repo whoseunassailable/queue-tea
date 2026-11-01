@@ -1,20 +1,19 @@
+import { drawDifficultyBand } from '../features/tasks/presentation/widgets/difficulty_band'
+import { drawDocsPathBand } from '../features/tasks/presentation/widgets/docs_path_band'
 import { cancelHeld, sendAsTask } from '../features/message_check/presentation/state_management/message_check_controller'
+import { drawFileBand } from '../features/tasks/presentation/widgets/file_band'
 import { drawUnsureBand } from '../features/message_check/presentation/widgets/unsure_band'
 import { portsOf } from '../core/ports/claude_ports'
 import type { Color, EngineInterface, RenderElement, RenderInput } from 'claude-code'
 
-import type { Band, Difficulty, ParentPick, Task } from '../../types'
-import { nameNewFeature, pickBand, saveDifficulty, saveDocsPath, saveFile, toggleMenu } from '../actions'
+import type { Band } from '../../types'
+import { toggleMenu } from '../actions'
 import { getView } from '../core/store/view_store'
 import { readCup } from '../features/tea_cup/presentation/state_management/tea_cup_controller'
-import { PRIORITY_ORDER } from '../shared/records/domain/services/queue_rules'
 import { CUP_COLUMNS, CUP_ROWS, cupArt } from '../features/tea_cup/domain/services/cup_mood'
 import type { Frame, Mood } from '../features/tea_cup/domain/services/cup_mood'
 import { KEYS } from '../core/widgets/keys'
 import { cut } from '../core/widgets/text'
-
-const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
-const FEATURE_LABEL = 24
 
 // Narrower than this, the band has the words without the cup.
 const CUP_MIN_COLUMNS = 40
@@ -117,144 +116,11 @@ async function drawQuestion(
   e: RenderInput<'AbovePrompt'>,
   band: Exclude<Band, { kind: 'none' }>,
 ): Promise<RenderElement> {
-  if (band.kind === 'file') return drawFileBand($, e, band)
+  if (band.kind === 'file') {
+    return drawFileBand($, e, band, { sameTask: () => void sendAsTask(portsOf($)), cancel: () => void cancelHeld(portsOf($)) })
+  }
   if (band.kind === 'unsure') return drawUnsureBand($, e, band)
   if (band.kind === 'difficulty') return drawDifficultyBand($, e, band)
 
   return drawDocsPathBand($, e, band)
-}
-
-async function drawFileBand(
-  $: EngineInterface,
-  e: RenderInput<'AbovePrompt'>,
-  band: Extract<Band, { kind: 'file' }>,
-): Promise<RenderElement> {
-  const { Box, Text, Button } = $.ui.resolve(e)
-
-  const record = await getView($, 'record')
-  const offered = (band.choices ?? [])
-    .map(id => record?.tasks.find(t => t.id === id))
-    .filter((t): t is Task => t !== undefined && (t.state === 'queued' || t.state === 'current'))
-  const pick = band.parent
-  const isPicked = (p: ParentPick) =>
-    pick != null && pick.kind === p.kind && (p.kind !== 'task' || (pick.kind === 'task' && pick.id === p.id))
-  const choice = (key: string, label: string, p: ParentPick) =>
-    isPicked(p) ? (
-      <Button key={key} label={label} variant="primary" onPress={() => {}} />
-    ) : (
-      <Button key={key} label={label} onPress={() => void pickBand($, { parent: p })} />
-    )
-  // A new feature is named in a field the phone has not; Save waits for a
-  // pick, and for a new feature's name.
-  const naming =
-    pick?.kind !== 'new' || e.surface === 'mobile' ? null : (() => {
-      const { Input } = $.ui.resolve(e as RenderInput<'AbovePrompt', 'terminal'>)
-
-      return (
-        <Input
-          key="feature-title"
-          label="New feature"
-          placeholder="its name, then Enter"
-          value={pick.title}
-          submitLabel="Set"
-          onSubmit={value => void nameNewFeature($, value)}
-        />
-      )
-    })()
-  const canSave = pick !== null && !(pick?.kind === 'new' && pick.title === '')
-
-  return (
-    <Box flexDirection="column">
-      <Text>New task: {band.title}</Text>
-      <Box>
-        {PRIORITY_ORDER.map(p =>
-          p === band.priority ? (
-            <Button key={`prio:${p}`} label={p} variant="primary" onPress={() => {}} />
-          ) : (
-            <Button key={`prio:${p}`} label={p} onPress={() => void pickBand($, { priority: p })} />
-          ),
-        )}
-      </Box>
-      <Box>
-        {DIFFICULTIES.map(d =>
-          d === band.difficulty ? (
-            <Button key={`diff:${d}`} label={d} variant="primary" onPress={() => {}} />
-          ) : (
-            <Button key={`diff:${d}`} label={d} onPress={() => void pickBand($, { difficulty: d })} />
-          ),
-        )}
-      </Box>
-      {band.choices !== undefined && (
-        <Box flexWrap="wrap">
-          <Text>Part of </Text>
-          {choice('parent:none', 'On its own', { kind: 'none' })}
-          {offered.map(t => choice(`parent:${t.id}`, cut(t.title, FEATURE_LABEL), { kind: 'task', id: t.id }))}
-          {e.surface !== 'mobile' && choice('parent:new', 'New feature…', { kind: 'new', title: pick?.kind === 'new' ? pick.title : '' })}
-        </Box>
-      )}
-      {pick === null && <Text color="warning">Is it part of a feature? Pick one, or On its own.</Text>}
-      {naming}
-      <Box>
-        {canSave && <Button key="save" label="Save" variant="primary" onPress={() => void saveFile($)} />}
-        <Button key="same-task" label="Same task" onPress={() => void sendAsTask(portsOf($))} />
-        <Button key="cancel" label="Cancel" onPress={() => void cancelHeld(portsOf($))} />
-      </Box>
-    </Box>
-  )
-}
-
-async function drawDifficultyBand(
-  $: EngineInterface,
-  e: RenderInput<'AbovePrompt'>,
-  band: Extract<Band, { kind: 'difficulty' }>,
-): Promise<RenderElement> {
-  const { Box, Text, Button } = $.ui.resolve(e)
-
-  return (
-    <Box flexDirection="column">
-      <Text>How hard was it?</Text>
-      <Box>
-        {DIFFICULTIES.map(d =>
-          d === band.picked ? (
-            <Button key={`diff:${d}`} label={d} variant="primary" onPress={() => {}} />
-          ) : (
-            <Button key={`diff:${d}`} label={d} onPress={() => void pickBand($, { difficulty: d })} />
-          ),
-        )}
-        <Button key="save-difficulty" label="Save" variant="primary" onPress={() => void saveDifficulty($)} />
-      </Box>
-    </Box>
-  )
-}
-
-async function drawDocsPathBand(
-  $: EngineInterface,
-  e: RenderInput<'AbovePrompt'>,
-  band: Extract<Band, { kind: 'docsPath' }>,
-): Promise<RenderElement> {
-  const { Box, Text, Button } = $.ui.resolve(e)
-
-  // The docs log's path, asked the first time a task is finished here.
-  if (e.surface === 'mobile') {
-    return (
-      <Box flexDirection="column">
-        <Text>Where should this project's task log go?</Text>
-        <Button key="docs-path" label={`Use ${band.suggested}`} onPress={() => void saveDocsPath($, band.suggested)} />
-      </Box>
-    )
-  }
-  const { Input } = $.ui.resolve(e as RenderInput<'AbovePrompt', 'terminal'>)
-
-  return (
-    <Box flexDirection="column">
-      <Text>Where should this project's task log go?</Text>
-      <Input
-        key="docs-path"
-        label="Task log path"
-        value={band.suggested}
-        submitLabel="Save"
-        onSubmit={value => void saveDocsPath($, value)}
-      />
-    </Box>
-  )
 }

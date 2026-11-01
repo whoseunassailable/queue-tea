@@ -9,8 +9,6 @@ import { fileURLToPath } from 'node:url'
 // Today's flat files. Each task of the restructure takes out what it empties.
 const LEGACY = [
   'actions.ts',
-  'docslog.ts',
-  'flow.ts',
   'session.ts',
   'ui/band.tsx',
   'ui/menu.tsx',

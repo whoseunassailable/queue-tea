@@ -1,6 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { fileTask, finishDocs, finishTask, firstMessage, startTask, taskLooksDone, taskSection } from '../hooks/flow'
+import { fileTask } from '../hooks/features/tasks/presentation/state_management/filing_controller'
+import { finishDocs, finishTask, startTask, taskLooksDone, taskSection } from '../hooks/features/tasks/presentation/state_management/tasks_controller'
+import { firstMessage } from '../hooks/shared/checkpoints/domain/services/checkpoints'
 import { onMessage } from '../hooks/features/message_check/presentation/state_management/message_check_controller'
 import { shouldCheck } from '../hooks/features/message_check/domain/services/check_prompt'
 import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'

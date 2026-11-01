@@ -1,6 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { featureCommand, fileTask, moveTask, removeQueued, setFeature, startTask } from '../hooks/flow'
+import { featureCommand, moveTask, removeQueued, setFeature } from '../hooks/features/tasks/presentation/state_management/queue_controller'
+import { fileTask } from '../hooks/features/tasks/presentation/state_management/filing_controller'
+import { startTask } from '../hooks/features/tasks/presentation/state_management/tasks_controller'
 import { onMessage } from '../hooks/features/message_check/presentation/state_management/message_check_controller'
 import { emptyRecord, updateRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord, Task } from '../types'

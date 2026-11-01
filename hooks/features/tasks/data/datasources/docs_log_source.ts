@@ -1,15 +1,6 @@
-import type { Difficulty, Priority } from '../types'
-import type { Host } from './core/host/host'
-import { formatMinutes } from './shared/time/domain/services/time'
-
-export type DocsRow = {
-  title: string
-  priority: Priority
-  expected: Difficulty
-  actual: Difficulty
-  minutes: number
-  branch: string | null
-}
+import type { DocsRow } from '../../domain/repositories/task_log_repository'
+import type { Host } from '../../../../core/host/host'
+import { formatMinutes } from '../../../../shared/time/domain/services/time'
 
 const HEAD = [
   '# Task Log',

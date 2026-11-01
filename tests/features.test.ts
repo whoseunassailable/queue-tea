@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { commitWarning } from '../hooks/features/commit_guard/presentation/state_management/commit_guard_controller'
-import { putBack, startTask } from '../hooks/flow'
+import { putBack, startTask } from '../hooks/features/tasks/presentation/state_management/tasks_controller'
 import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
 import { handoffSections } from '../hooks/shared/checkpoints/domain/services/card_note'
 import { cut } from '../hooks/core/widgets/text'

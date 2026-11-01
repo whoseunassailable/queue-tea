@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { accrue, addMinutes, dayKey, formatMinutes, isoLocal, parseOffset } from '../hooks/time'
+import { accrue, addMinutes, dayKey, formatMinutes, isoLocal, parseOffset } from '../hooks/shared/time/domain/services/time'
 
 const MIN = 60_000
 

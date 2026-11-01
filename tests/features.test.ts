@@ -1,9 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
-import { commitWarning, putBack, startTask } from '../hooks/flow'
-import { emptyRecord } from '../hooks/record'
-import { handoffSections } from '../hooks/ui/handoff'
-import { cut, weekChart } from '../hooks/ui/status'
+import { commitWarning } from '../hooks/features/commit_guard/presentation/state_management/commit_guard_controller'
+import { putBack, startTask } from '../hooks/flow'
+import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
+import { handoffSections } from '../hooks/shared/checkpoints/domain/services/card_note'
+import { cut } from '../hooks/core/widgets/text'
+import { weekChart } from '../hooks/shared/time/domain/services/week_stats'
 import type { ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
 
@@ -24,6 +26,39 @@ test('putting back without a handoff note still queues the task and says so', as
   expect([view.isAskingDone, view.canContinue, view.isChoosingNext, view.busy]).toEqual([false, false, true, null])
   expect(view.notice).toBe("Couldn't save a checkpoint, so Start will begin from what was saved before.")
   expect(done.toasts).toEqual(['Back in the backlog: Now'])
+})
+
+test('Back to queue pressed twice writes one checkpoint', async () => {
+  const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now' })
+  const r = withTasks([task])
+  const mem = memoryHost({ files: { [CTX.file]: JSON.stringify(r) } })
+  const { ports, done } = fakePorts(mem, { view: { record: r } })
+
+  const results = await Promise.all([putBack(ports, CTX), putBack(ports, CTX)])
+
+  expect(results.sort()).toEqual(['none', 'queued'])
+  expect(done.toasts).toEqual(['Back in the backlog: Now'])
+})
+
+test('busy shows while the checkpoint is written, and clears when it fails', async () => {
+  const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now' })
+  const r = withTasks([task])
+  const mem = memoryHost({ files: { [CTX.file]: JSON.stringify(r) } })
+  const { ports, view } = fakePorts(mem, { view: { record: r } })
+  let during: string | null = null
+  ports.ask = {
+    ...ports.ask,
+    fork: async () => {
+      during = view.busy
+      throw new Error('no reply')
+    },
+  }
+
+  expect(await putBack(ports, CTX)).toBe('queued')
+
+  expect(during).toBe('Saving a checkpoint…')
+  expect(view.busy).toBeNull()
+  expect(stored(mem).tasks[0]!.state).toBe('queued')
 })
 
 test('with no current task, putting back does nothing', async () => {

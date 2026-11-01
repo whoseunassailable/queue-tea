@@ -1,7 +1,8 @@
 import type { On } from 'claude-code'
-import type { Ports, View } from '../hooks/flow'
-import type { Host } from '../hooks/host'
-import type { Ctx, Task } from '../types'
+import type { Ports, View } from '../hooks/core/ports/ports'
+import type { Host } from '../hooks/core/host/host'
+import type { Ctx } from '../hooks/core/env/env'
+import type { Task } from '../types'
 
 let next = 0
 
@@ -193,6 +194,9 @@ export const fakePorts = (
       view[key] = value
     },
     log: text => done.logs.push(text),
+    ui: { open: async () => ({ isPlaced: true }), close: async () => {} },
+    prompt: { read: async () => ({ text: '' }), fill: async () => ({ isFilled: true }), send: async () => ({}) },
+    session: { usage: async () => ({ context: { tokens: 0 }, rateLimits: [] }) as never, append: async () => {} },
   }
   const settle = async () => {
     while (later.length > 0) await later.shift()!()

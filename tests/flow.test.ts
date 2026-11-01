@@ -1,17 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 
-import {
-  fileTask,
-  finishDocs,
-  finishTask,
-  firstMessage,
-  onMessage,
-  shouldCheck,
-  startTask,
-  taskLooksDone,
-  taskSection,
-} from '../hooks/flow'
-import { emptyRecord } from '../hooks/record'
+import { fileTask, finishDocs, finishTask, firstMessage, startTask, taskLooksDone, taskSection } from '../hooks/flow'
+import { onMessage } from '../hooks/features/message_check/presentation/state_management/message_check_controller'
+import { shouldCheck } from '../hooks/features/message_check/domain/services/check_prompt'
+import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
 import type { Run } from './helpers'

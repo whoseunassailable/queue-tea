@@ -1,6 +1,6 @@
 import type { Difficulty, Priority } from '../types'
-import type { Host } from './host'
-import { formatMinutes } from './time'
+import type { Host } from './core/host/host'
+import { formatMinutes } from './shared/time/domain/services/time'
 
 export type DocsRow = {
   title: string

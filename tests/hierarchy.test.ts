@@ -1,7 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { featureCommand, fileTask, moveTask, onMessage, removeQueued, setFeature, startTask } from '../hooks/flow'
-import { emptyRecord, updateRecord } from '../hooks/record'
+import { featureCommand, fileTask, moveTask, removeQueued, setFeature, startTask } from '../hooks/flow'
+import { onMessage } from '../hooks/features/message_check/presentation/state_management/message_check_controller'
+import { emptyRecord, updateRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord, Task } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
 import type { Run } from './helpers'

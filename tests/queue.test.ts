@@ -1,13 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import {
-  currentTask,
-  newTask,
-  orderQueue,
-  removeTask,
-  setPriority,
-  suggestion,
-} from '../hooks/queue'
+import { currentTask, newTask, orderQueue, removeTask, setPriority, suggestion } from '../hooks/shared/records/domain/services/queue_rules'
 import { makeTask } from './helpers'
 
 const at = (minute: number) => `2026-10-21T10:${String(minute).padStart(2, '0')}:00+02:00`

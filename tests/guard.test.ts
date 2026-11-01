@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { isCommitOrPush } from '../hooks/guard'
+import { isCommitOrPush } from '../hooks/features/commit_guard/domain/services/commit_guard'
 
 const TEXT = 'Queue-tea: commits and pushes are yours to make.'
 

@@ -1,16 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import {
-  branchSlug,
-  diffSince,
-  holdReason,
-  listBranches,
-  makeBranch,
-  parseShortstat,
-  parseStatus,
-  readGit,
-  slugBranch,
-} from '../hooks/git'
+import { branchSlug, holdReason, parseShortstat, parseStatus, slugBranch } from '../hooks/shared/git/domain/services/branch_rules'
+import { diffSince, listBranches, makeBranch, readGit } from '../hooks/shared/git/data/datasources/git_source'
 import { memoryHost } from './helpers'
 
 const OID = '# branch.oid 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b'

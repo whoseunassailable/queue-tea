@@ -1,6 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { formatAge, statusText, weekLine } from '../hooks/ui/status'
+import { formatAge } from '../hooks/shared/time/domain/services/time'
+import { statusText } from '../hooks/features/tea_cup/presentation/widgets/status_line'
+import { weekLine } from '../hooks/shared/time/domain/services/week_stats'
 import { makeTask } from './helpers'
 
 test('statusText', () => {

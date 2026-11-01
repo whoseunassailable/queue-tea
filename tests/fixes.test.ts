@@ -1,22 +1,14 @@
 import { expect, test } from 'claude-code/testing'
 
-import { checkMessage } from '../hooks/check'
-import type { Ask } from '../hooks/check'
+import { checkMessage } from '../hooks/features/message_check/data/repositories/check_repository_impl'
+import type { Ask } from '../hooks/core/ports/ports'
 import { escapeCell } from '../hooks/docslog'
-import { applyPending, createTracker } from '../hooks/effort'
-import {
-  afterTurn,
-  continueTask,
-  fileTask,
-  finishDocs,
-  finishTask,
-  onMessage,
-  removeQueued,
-  sendHeld,
-  shouldCheck,
-  startTask,
-} from '../hooks/flow'
-import { emptyRecord, updateRecord } from '../hooks/record'
+import { applyPending, createTracker } from '../hooks/shared/effort/domain/services/effort_tracker'
+import { afterTurn } from '../hooks/features/conversation/presentation/state_management/conversation_turn_controller'
+import { continueTask, fileTask, finishDocs, finishTask, removeQueued, startTask } from '../hooks/flow'
+import { onMessage, sendHeld } from '../hooks/features/message_check/presentation/state_management/message_check_controller'
+import { shouldCheck } from '../hooks/features/message_check/domain/services/check_prompt'
+import { emptyRecord, updateRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { Band, ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
 import type { Run } from './helpers'

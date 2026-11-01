@@ -1,7 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { checkMessage, checkPrompt, parseCheckAnswer } from '../hooks/check'
-import type { Ask } from '../hooks/check'
+import { checkMessage } from '../hooks/features/message_check/data/repositories/check_repository_impl'
+import { checkPrompt, parseCheckAnswer } from '../hooks/features/message_check/domain/services/check_prompt'
+import type { Ask } from '../hooks/core/ports/ports'
 import { makeTask } from './helpers'
 
 const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }

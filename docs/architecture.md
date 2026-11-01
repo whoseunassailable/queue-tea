@@ -32,7 +32,7 @@ hooks/
 | Data source | Talks to one outside thing: the record files, git, Claude Code. Returns raw values and throws on failure. |
 | Repository impl | Calls data sources and maps their results to entities. The only code that knows a data source. |
 | Repository interface | The contract the rest of the feature sees, in `domain/`. Speaks entities only. |
-| Entity | A plain, immutable type. No Claude Code types, no file paths read or written. |
+| Entity | A plain, immutable type. No Claude Code types, no file paths read or written. The data model is in `types/index.d.ts`, the rest in `domain/entities/`. |
 | Use case | One action: start a task, block one, write a handoff note. It calls repository interfaces and returns a result; it never touches view state. |
 | Service | Pure rules a use case or controller needs: ranking, a branch name, the cup's mood. |
 | Controller | The ViewModel. Runs use cases, holds the feature's view state in the store, and names its loading, partly loaded, done, empty and failed states with a union type. |
@@ -129,7 +129,7 @@ If git isn't clear, "Starting a task" comes back with the reason, nothing is cla
 
 | Resource | What it holds | Built from today's |
 |---|---|---|
-| `shared/records/` | the JSON records, our database: the entities, the queue's basic rules, the records repository, the file data source (lock, `.bak`, carry-over), and the controller that loads, changes and restores the record | `record.ts`, `queue.ts`, the model types in `types/index.d.ts`; `flow.ts`: `change`, `markUnreadable`; `actions.ts`: `loadRecord` |
+| `shared/records/` | the JSON records, our database: the queue's basic rules, the records repository, the file data source (lock, `.bak`, carry-over), and the controller that loads, changes and restores the record | `record.ts`, `queue.ts`; `flow.ts`: `change`, `markUnreadable`; `actions.ts`: `loadRecord` |
 | `shared/backlog/` | ranking, the ★, blocking rules, families of tasks | `plan.ts`, `family.ts` |
 | `shared/git/` | git facts, branches, diffs, the hold reason, branch names | `git.ts` |
 | `shared/assistant/` | Claude Code as a helper: the repository for forking, clearing and submitting; the fresh conversation; writing a handoff note | `flow.ts`: `checkNow`, `freshConversation`, `isStartingFresh`, `writeHandoff` |
@@ -152,7 +152,7 @@ If git isn't clear, "Starting a task" comes back with the reason, nothing is cla
 | `app/band/` | the band's host: the cup, then whichever feature's question is up | `ui/band.tsx` |
 | `app/session/` | the session's rhythm, which crosses features: start, each turn's end, the tick, a /clear, restoring a record | `register.tsx`: `startSession`, `afterEachTurn`; `session.ts`: `loadContext`; `actions.ts`: `tick`, `afterClear`, `saveBeforeClear`, `pressRestore`, `checkResume` |
 | `register.tsx` | the hooks, tools and commands, in today's order | `register.tsx` |
-| `types/index.d.ts` | only the plugin's state declaration for Claude Code | the same file, without the model types |
+| `types/index.d.ts` | the plugin's state declaration, and the data model it names: tasks, the record, bands. Claude Code refuses an import in this file, so these types stay here and `domain/` imports them from it | the same file, without `GitState`, `CheckAnswer`, `Options` and `Ctx` |
 
 ## 6. The app: frontend, backend and storage
 

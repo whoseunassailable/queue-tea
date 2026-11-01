@@ -71,25 +71,6 @@ export type ProjectRecord = {
   unassignedMinutesByDay: Record<string, number>
 }
 
-export type GitState = {
-  isRepo: boolean
-  branch: string | null
-  isDetached: boolean
-  head: string | null
-  uncommitted: number
-  unpushed: number
-  hasUpstream: boolean
-}
-
-export type CheckAnswer = {
-  kind: 'same' | 'new' | 'quick' | 'unsure'
-  intent: Intent
-  title?: string
-  difficulty?: Difficulty
-  // For new work: the id of the feature it is part of, 'none' or 'unsure'.
-  parent?: string
-}
-
 // What a new task is filed under: nothing, a task already there, or a new
 // feature filed with it.
 export type ParentPick = { kind: 'none' } | { kind: 'task'; id: string } | { kind: 'new'; title: string }
@@ -122,22 +103,6 @@ export type Allowance = { percent: number; resetsAt: string | null }
 
 // Which of the tea cup's menu views shows.
 export type MenuView = 'menu' | 'brew' | 'backlog' | 'current' | 'history' | 'usage' | 'settings' | 'help'
-
-export type Options = {
-  idleGapMinutes: number
-  freshAtTokens: number
-  handoffAtPercent: number
-  checkTimeoutSeconds: number
-}
-
-export type Ctx = {
-  cwd: string
-  projectPath: string
-  projectName: string
-  file: string
-  offsetMinutes: number
-  options: Options
-}
 
 declare module 'claude-code' {
   interface PluginState {

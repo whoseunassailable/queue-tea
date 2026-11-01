@@ -2,8 +2,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { emptyCheckpoint } from '../hooks/checkpoint'
-import { emptyRecord, projectKey, recordPath } from '../hooks/record'
+import { emptyCheckpoint } from '../hooks/shared/checkpoints/domain/services/checkpoints'
+import { emptyRecord, projectKey, recordPath } from '../hooks/shared/records/data/datasources/record_source'
 import { HELP_COMMANDS } from '../hooks/ui/menu'
 import type { MenuView, ProjectRecord } from '../types'
 import { answerHost, makeTask, memoryHost } from './helpers'
@@ -73,6 +73,7 @@ const startSession = async (
     logs: [] as string[],
     opens: [] as unknown[],
     closes: [] as string[],
+    statuses: [] as (string | undefined)[],
   }
   const clock = mock.clock(on, { now: Date.parse('2026-10-21T07:12:00Z') })
   mock.env(on, { HOME: '/h' })
@@ -114,7 +115,11 @@ const startSession = async (
 
     return { value: undefined }
   })
-  on('ui.status', () => ({ value: undefined }))
+  on('ui.status', (_, e) => {
+    seen.statuses.push(e.text)
+
+    return { value: undefined }
+  })
   on('ui.log', (_, e) => {
     seen.logs.push(e.text)
 
@@ -1490,4 +1495,40 @@ test('features and their tasks are all there after a restart, the active feature
   expect(await ui.find({ type: 'Text', text: /◆ 0\/2 done/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /◆ Active feature: Menu parity/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('the mod refuses a commit Claude tries through Bash', async ($, on) => {
+  await startSession($, on)
+
+  expect(await $.tool.call({ tool: 'Bash', command: 'git commit -m x' } as never)).toMatchObject({
+    deny: 'Queue-tea: commits and pushes are yours to make.',
+  })
+})
+
+test('the mod refuses a push through Monitor', async ($, on) => {
+  await startSession($, on)
+
+  expect(await $.tool.call({ tool: 'Monitor', command: 'git push' } as never)).toMatchObject({
+    deny: 'Queue-tea: commits and pushes are yours to make.',
+  })
+})
+
+test('the mod lets an ordinary command through', async ($, on) => {
+  on('tool.call', () => ({ result: 'ok' }) as never)
+  await startSession($, on)
+
+  const result = (await $.tool.call({ tool: 'Bash', command: 'git status' } as never)) as { deny?: string }
+  expect(result.deny).toBeUndefined()
+})
+
+test('the status line follows the record', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { seen, clock } = await startSession($, on, { file: record({ tasks: [task] }) })
+  expect(seen.statuses.at(-1)).toMatch(/^Queue-tea: Now/)
+
+  const ui = await mountView($, 'terminal', 'current')
+  await ui.press({ key: 'back' })
+  await clock.settle()
+
+  expect(seen.statuses.at(-1)).toBeUndefined()
 })

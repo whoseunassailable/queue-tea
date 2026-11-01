@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { errandNote, errandUsage, isErrandTurn, startsAsCommand } from '../hooks/errand'
-import type { Errand } from '../hooks/errand'
+import { errandNote, errandUsage, isErrandTurn, startsAsCommand } from '../hooks/features/errands/domain/services/errands'
+import type { Errand } from '../hooks/features/errands/domain/services/errands'
 import { makeTask } from './helpers'
 
 const BREW: Errand = { kind: 'brew', text: 'start the dev server', isRunning: false }

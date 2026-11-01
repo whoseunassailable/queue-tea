@@ -1,18 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import {
-  backupPath,
-  carryOverRecords,
-  emptyRecord,
-  projectKey,
-  readOthers,
-  readProblem,
-  readRecord,
-  recordPath,
-  restoreRecord,
-  updateRecord,
-  whyUnreadable,
-} from '../hooks/record'
+import { backupPath, carryOverRecords, emptyRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord } from '../types'
 import { makeTask, memoryHost } from './helpers'
 

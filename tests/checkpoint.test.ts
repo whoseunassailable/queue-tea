@@ -1,16 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import {
-  checkLines,
-  checkpointPrompt,
-  commandRun,
-  emptyCheckpoint,
-  firstMessage,
-  latestNote,
-  noteSeen,
-  parseCheckpoint,
-} from '../hooks/checkpoint'
-import { parseStatusPaths, readDrift } from '../hooks/git'
+import { checkLines, checkpointPrompt, commandRun, emptyCheckpoint, firstMessage, latestNote, noteSeen, parseCheckpoint } from '../hooks/shared/checkpoints/domain/services/checkpoints'
+import { parseStatusPaths } from '../hooks/shared/git/domain/services/branch_rules'
+import { readDrift } from '../hooks/shared/git/data/datasources/git_source'
 import { makeTask, memoryHost } from './helpers'
 
 const AT = '2026-10-21T10:00:00+02:00'

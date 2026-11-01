@@ -1,44 +1,25 @@
+import { loadRecord, changeRecord } from './shared/records/presentation/state_management/records_controller'
+import { flush } from './shared/effort/presentation/state_management/effort_controller'
+import { closeMenu, openMenu } from './core/store/menu'
 import type { EngineInterface } from 'claude-code'
 
-import type { Difficulty, MenuView, ParentPick, Priority, ProjectRecord } from '../types'
-import { applyPending } from './effort'
-import { ERRAND_NOT_SENT, errandNote, startsAsCommand } from './errand'
-import type { ErrandKind } from './errand'
-import { guessParent } from './family'
-import {
-  blockTask,
-  closeBand,
-  continueTask,
-  dropHeld,
-  featureCommand,
-  fileTask,
-  finishDocs,
-  finishTask,
-  isStartingFresh,
-  markUnreadable,
-  moveTask,
-  putBack,
-  refreshDrift,
-  refreshLines,
-  removeQueued,
-  sendHeld as sendHeldOn,
-  setFeature,
-  showBand,
-  startTask,
-  switchToTask,
-  togglePlayNext,
-  unblockTask,
-  writeHandoff,
-} from './flow'
-import type { Block, View } from './flow'
-import { readFacts, readGit } from './git'
-import { hostOf } from './host'
-import { live } from './live'
-import { nextBudget, suggest } from './plan'
-import { debug, getView, portsOf, readCup } from './ports'
-import { currentTask, setPriority } from './queue'
-import { readOthers, readRecord, restoreRecord, updateRecord } from './record'
-import { isoLocal } from './time'
+import type { Difficulty, ParentPick, Priority, MenuView } from '../types'
+import { guessParent } from './shared/backlog/domain/services/families'
+import { blockTask, continueTask, featureCommand, fileTask, finishDocs, finishTask, moveTask, putBack, refreshDrift, refreshLines, removeQueued, setFeature, startTask, switchToTask, togglePlayNext, unblockTask } from './flow'
+import { isStartingFresh, writeHandoff } from './shared/assistant/presentation/state_management/conversation_controller'
+import { closeBand, showBand } from './core/store/band_queue'
+import type { Block } from './flow'
+import { readGit } from './shared/git/data/datasources/git_source'
+import { hostOf } from './core/host/claude_host'
+import { live } from './core/session/live'
+import { nextBudget, suggest } from './shared/backlog/domain/services/ranking'
+import { debug } from './core/logger/logger'
+import { getView } from './core/store/view_store'
+import { portsOf } from './core/ports/claude_ports'
+import { readCup } from './features/tea_cup/presentation/state_management/tea_cup_controller'
+import { currentTask, setPriority } from './shared/records/domain/services/queue_rules'
+import { restoreRecord } from './shared/records/data/datasources/record_source'
+import { isoLocal } from './shared/time/domain/services/time'
 
 // A typed /clear saves a checkpoint first only past this size: a smaller
 // conversation holds little the turns haven't saved already.
@@ -46,51 +27,6 @@ const CLEAR_CHECKPOINT_TOKENS = 20_000
 
 // What the hooks, the menu and the band do. Each takes `$` and acts through
 // the same ports.
-
-export async function loadRecord($: EngineInterface) {
-  const p = portsOf($)
-  const ctx = live.ctx
-  if (ctx === null) {
-    await p.set('load', 'failed')
-
-    return
-  }
-  await p.set('load', 'loading')
-  try {
-    const record = await readRecord(hostOf($), ctx.file, ctx.projectName, ctx.projectPath)
-    if (record === 'unreadable') {
-      await markUnreadable(p, ctx)
-
-      return
-    }
-    await p.set('record', record)
-    await p.set('loadError', null)
-    await p.set('load', 'ready')
-  } catch (err) {
-    debug($, 'reading the record failed', err)
-    await p.set('load', 'failed')
-
-    return
-  }
-  try {
-    await p.set('others', await readOthers(hostOf($), ctx.file, r => suggest(r, null)?.title ?? null))
-  } catch (err) {
-    debug($, "reading the other projects' records failed", err)
-  }
-}
-
-async function changeRecord($: EngineInterface, fn: (r: ProjectRecord) => ProjectRecord) {
-  const p = portsOf($)
-  const ctx = live.ctx
-  if (ctx === null) return
-  try {
-    const saved = await updateRecord(hostOf($), ctx.file, fn, ctx.projectName, ctx.projectPath)
-    if (saved === 'unreadable') await markUnreadable(p, ctx)
-    else await p.set('record', saved)
-  } catch (err) {
-    debug($, 'writing the record failed', err)
-  }
-}
 
 // Puts the record's last good copy in place of the one that can't be read,
 // keeping the broken file beside it, then reads it as at a session's start.
@@ -105,29 +41,10 @@ export async function pressRestore($: EngineInterface) {
       p.toast(`Queue-tea: back to the last good copy. The broken record is kept as ${restored.keptAt.split('/').pop()}`)
     }
   } catch (err) {
-    debug($, 'restoring the record failed', err)
+    debug(portsOf($), 'restoring the record failed', err)
   }
-  await loadRecord($)
+  await loadRecord(portsOf($))
   if ((await getView($, 'load')) === 'ready') await checkResume($)
-}
-
-// Writes what the tracker gathered since the last flush into the record,
-// and, with a task current, what git says now into its checkpoint.
-export async function flush($: EngineInterface) {
-  const tracker = live.tracker
-  const ctx = live.ctx
-  if (tracker === null || ctx === null) return
-  const pending = tracker.take()
-  const record = await getView($, 'record')
-  let seen: { at: string; git: Awaited<ReturnType<typeof readFacts>> } | undefined
-  if (record !== null && currentTask(record.tasks) !== null) {
-    try {
-      seen = { at: isoLocal(await $.clock.now(), ctx.offsetMinutes), git: await readFacts(hostOf($), ctx.projectPath) }
-    } catch (err) {
-      debug($, 'reading git for the checkpoint failed', err)
-    }
-  }
-  await changeRecord($, r => applyPending(r, pending, seen))
 }
 
 // At a session's start with a current task: offer Continue, and Switch when
@@ -152,7 +69,7 @@ export async function checkResume($: EngineInterface) {
 // After a /clear: the record again, and Continue when the clear wasn't one
 // Queue-tea made to start a conversation of its own.
 export async function afterClear($: EngineInterface) {
-  await loadRecord($)
+  await loadRecord(portsOf($))
   if (!isStartingFresh()) await checkResume($)
 }
 
@@ -169,7 +86,7 @@ export async function saveBeforeClear($: EngineInterface) {
 
   await p.set('busy', 'Saving a checkpoint before the clear…')
   try {
-    await flush($)
+    await flush(portsOf($))
     await writeHandoff(p, ctx, current.id)
   } finally {
     await p.set('busy', null)
@@ -182,46 +99,10 @@ export async function tick($: EngineInterface) {
   if (isWaiting) await portsOf($).set('spin', (await getView($, 'spin')) + 1)
 }
 
-// The tea cup's menu: a pane that asks for the keys, which the surface gives
-// only over an empty prompt, and that Esc closes while it holds them. Inline
-// it opens MENU_ROWS tall above the prompt; docked, MENU_COLUMNS wide.
-export const MENU = 'queue-tea'
-const MENU_ROWS = 16
-const MENU_COLUMNS = 46
-
-export async function openMenu($: EngineInterface, view: MenuView = 'menu') {
-  const p = portsOf($)
-  const name = live.ctx?.projectName ?? 'this project'
-  await p.set('menuView', view)
-  await p.set('isMenuOpen', true)
-  const opened = await $.ui.open({
-    id: MENU,
-    title: `Queue-tea · ${name}`,
-    focus: true,
-    closeOnEscape: true,
-    rows: MENU_ROWS,
-    columns: MENU_COLUMNS,
-  })
-  if (!opened.isPlaced) p.toast('Queue-tea: the terminal is too narrow for the menu here. Type /queue-tea to open it.')
-}
-
-// However it closed (Esc, its close mark, the cup), it opens on the list
-// next time.
-export async function menuClosed($: EngineInterface) {
-  const p = portsOf($)
-  await p.set('isMenuOpen', false)
-  await p.set('menuView', 'menu')
-}
-
-export async function closeMenu($: EngineInterface) {
-  await $.ui.close({ id: MENU })
-  await menuClosed($)
-}
-
 // The cup: opens the menu where something waits, or closes it.
 export async function toggleMenu($: EngineInterface) {
-  if (await getView($, 'isMenuOpen')) await closeMenu($)
-  else await openMenu($, (await readCup($, false)).view)
+  if (await getView($, 'isMenuOpen')) await closeMenu(portsOf($))
+  else await openMenu(portsOf($), (await readCup(portsOf($), false)).view)
 }
 
 // Moving to another view leaves a Blocked… or Part of… question unanswered.
@@ -229,64 +110,6 @@ export async function pressMenu($: EngineInterface, view: MenuView) {
   await portsOf($).set('blocking', null)
   await portsOf($).set('parenting', null)
   await portsOf($).set('menuView', view)
-}
-
-// A /brew or /tea errand on its way: time goes to the project, as after a
-// quick question. Answers the note Claude reads before the words.
-export async function errandFor($: EngineInterface, kind: ErrandKind, text: string): Promise<string> {
-  const record = await getView($, 'record')
-  live.errand = { kind, text, isRunning: false }
-  live.tracker?.route('project')
-
-  return errandNote(kind, record === null ? null : currentTask(record.tasks))
-}
-
-// An errand's words that did not reach Claude go back in the prompt box as
-// the command that sends them, when nothing has been typed there since;
-// appended, so a box the mod can't read is never written over. Answers
-// whether they went back.
-export async function giveBack($: EngineInterface, command: string, text: string): Promise<boolean> {
-  const box = await $.prompt.read()
-  if (box.text !== '') return false
-
-  return (await $.prompt.fill({ text: `/${command} ${text}`, mode: 'append' })).isFilled
-}
-
-// The errand's words go to Claude as Rohan's once the caller is done (a
-// submit from a command's own hook would wait on it). Words that do not
-// enter, refused or dropped, are not lost: Rohan is told, and they go back.
-export function sendErrand($: EngineInterface, text: string, command: string) {
-  portsOf($).later(async () => {
-    let failure: unknown = null
-    try {
-      failure = (await $.prompt.submit({ text, asUser: true })).drop ?? null
-    } catch (err) {
-      failure = err
-    }
-    if (failure === null) return
-    live.errand = null
-    debug($, `/${command} failed`, failure)
-    const isBack = await giveBack($, command, text).catch(() => false)
-    portsOf($).toast(`Queue-tea: /${command} did not reach Claude. ${isBack ? 'It is back in the prompt to send again.' : 'Send it again.'}`)
-  })
-}
-
-// Brew now: the /brew errand. With no command row to carry its note, the
-// note goes in as a row only Claude reads. The menu closes so the answer
-// shows.
-export async function brewNow($: EngineInterface, text: string) {
-  const request = text.trim()
-  if (request === '') return
-  await closeMenu($)
-  if (startsAsCommand(request)) {
-    portsOf($).toast(`Queue-tea: ${ERRAND_NOT_SENT}`)
-    await giveBack($, 'brew', request)
-
-    return
-  }
-  const note = await errandFor($, 'brew', request)
-  await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: note }] } })
-  sendErrand($, request, 'brew')
 }
 
 export async function pressStart($: EngineInterface, taskId: string) {
@@ -318,7 +141,7 @@ export async function pressCancelBlock($: EngineInterface) {
 
 export async function pressBlockWith($: EngineInterface, taskId: string, block: Block) {
   if (live.ctx === null) return
-  await flush($)
+  await flush(portsOf($))
   await blockTask(portsOf($), live.ctx, taskId, block)
 }
 
@@ -339,12 +162,8 @@ export async function pressBudget($: EngineInterface) {
 export async function pressBackToQueue($: EngineInterface) {
   const p = portsOf($)
   if (live.ctx === null) return
-  await flush($)
+  await flush(portsOf($))
   await putBack(p, live.ctx)
-}
-
-export async function pressDismissWarning($: EngineInterface) {
-  await portsOf($).set('warning', null)
 }
 
 export async function pressCheckAgain($: EngineInterface) {
@@ -366,7 +185,7 @@ export async function pressSwitch($: EngineInterface) {
     if (result === 'switched') await p.set('mismatch', null)
     else await p.set('notice', `${result}: commit or stash first, then Switch.`)
   } catch (err) {
-    debug($, 'switching branches failed', err)
+    debug(portsOf($), 'switching branches failed', err)
     await p.set('notice', "Couldn't switch branches. Try again.")
   }
 }
@@ -394,7 +213,7 @@ export async function pressRow($: EngineInterface, taskId: string) {
 }
 
 export async function pressPriority($: EngineInterface, taskId: string, priority: Priority) {
-  await changeRecord($, r => ({ ...r, tasks: setPriority(r.tasks, taskId, priority) }))
+  await changeRecord(portsOf($), r => ({ ...r, tasks: setPriority(r.tasks, taskId, priority) }))
 }
 
 export async function pressRemove($: EngineInterface, taskId: string) {
@@ -460,36 +279,6 @@ export async function saveFile($: EngineInterface) {
   await fileTask(portsOf($), live.ctx, band)
 }
 
-// Sends a held message on to Claude after all, as the current task's. Where
-// its time goes is set before it is sent, so its turn counts there.
-export async function sendHeld($: EngineInterface) {
-  await sendOn($, 'task')
-}
-
-// Sends a held message on as a quick question: its time goes to the project
-// and it isn't counted, as when the check answers quick.
-export async function sendQuick($: EngineInterface) {
-  await sendOn($, 'project')
-}
-
-async function sendOn($: EngineInterface, to: 'task' | 'project') {
-  const band = await getView($, 'band')
-  if (band.kind !== 'file' && band.kind !== 'unsure') return
-  live.tracker?.route(to)
-  if (to === 'task') live.tracker?.intent(band.intent)
-  await sendHeldOn(portsOf($))
-}
-
-// Cancel: the held message is neither sent nor filed. It goes back in the
-// prompt box when nothing has been typed there since; appended, so a box the
-// mod can't read is never written over.
-export async function cancelHeld($: EngineInterface) {
-  const text = await dropHeld(portsOf($))
-  if (text === null) return
-  const box = await $.prompt.read()
-  if (box.text === '') await $.prompt.fill({ text, mode: 'append' })
-}
-
 // The name of the new feature a held message goes under.
 export async function nameNewFeature($: EngineInterface, title: string) {
   const band = await getView($, 'band')
@@ -502,20 +291,6 @@ async function parentFor($: EngineInterface, text: string) {
   const record = await getView($, 'record')
 
   return record === null ? null : guessParent(record, text, null)
-}
-
-export async function unsureToNew($: EngineInterface) {
-  const band: View['band'] = await getView($, 'band')
-  if (band.kind !== 'unsure') return
-  await portsOf($).set('band', {
-    kind: 'file',
-    text: band.text,
-    title: band.text.slice(0, 60),
-    priority: 'mid',
-    difficulty: 'medium',
-    intent: band.intent,
-    ...(await parentFor($, band.text)),
-  })
 }
 
 export async function saveDifficulty($: EngineInterface) {

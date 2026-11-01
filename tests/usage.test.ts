@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { afterTurn } from '../hooks/flow'
-import { emptyRecord } from '../hooks/record'
-import { formatAllowance, readAllowance, shouldFresh, shouldHandoff } from '../hooks/usage'
+import { afterTurn } from '../hooks/features/conversation/presentation/state_management/conversation_turn_controller'
+import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
+import { formatAllowance, readAllowance, shouldFresh, shouldHandoff } from '../hooks/features/conversation/domain/services/allowance'
 import type { ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
 

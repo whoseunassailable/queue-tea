@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { emptyRecord } from '../hooks/record'
-import { CUP_COLUMNS, CUP_ROWS, cupArt, cupOf, DONE_FOR_MS, frameText } from '../hooks/ui/cup'
-import type { CupFacts, Mood } from '../hooks/ui/cup'
+import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
+import { CUP_COLUMNS, CUP_ROWS, cupArt, cupOf, DONE_FOR_MS, frameText } from '../hooks/features/tea_cup/domain/services/cup_mood'
+import type { CupFacts, Mood } from '../hooks/features/tea_cup/domain/services/cup_mood'
 import type { Task } from '../types'
 import { makeTask } from './helpers'
 

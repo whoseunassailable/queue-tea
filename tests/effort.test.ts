@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { applyPending, countToolCall, createTracker } from '../hooks/effort'
-import { emptyRecord } from '../hooks/record'
+import { applyPending, countToolCall, createTracker } from '../hooks/shared/effort/domain/services/effort_tracker'
+import { emptyRecord } from '../hooks/shared/records/data/datasources/record_source'
 import { makeTask } from './helpers'
 
 const MIN = 60_000

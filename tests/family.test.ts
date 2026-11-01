@@ -1,23 +1,10 @@
 import { expect, test } from 'claude-code/testing'
 
-import { checkPrompt, parseCheckAnswer } from '../hooks/check'
-import {
-  activeFeature,
-  childrenOf,
-  filingCandidates,
-  groupBacklog,
-  guessParent,
-  loneTasks,
-  namedTasks,
-  parentChoices,
-  parentOf,
-  parentRefusal,
-  progressOf,
-  progressText,
-} from '../hooks/family'
-import { blockedTasks, rankBacklog } from '../hooks/plan'
-import { newTask, removeTask } from '../hooks/queue'
-import { emptyRecord, parseRecord } from '../hooks/record'
+import { checkPrompt, parseCheckAnswer } from '../hooks/features/message_check/domain/services/check_prompt'
+import { activeFeature, childrenOf, filingCandidates, groupBacklog, guessParent, loneTasks, namedTasks, parentChoices, parentOf, parentRefusal, progressOf, progressText } from '../hooks/shared/backlog/domain/services/families'
+import { blockedTasks, rankBacklog } from '../hooks/shared/backlog/domain/services/ranking'
+import { newTask, removeTask } from '../hooks/shared/records/domain/services/queue_rules'
+import { emptyRecord, parseRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord, Task } from '../types'
 import { makeTask } from './helpers'
 

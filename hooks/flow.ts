@@ -1,133 +1,27 @@
-import type { PluginState } from 'claude-code'
+import { change, changeTask, markUnreadable } from './shared/records/presentation/state_management/records_controller'
+import { isStartingFresh, scheduleFresh, writeHandoff } from './shared/assistant/presentation/state_management/conversation_controller'
+import type { Ports } from './core/ports/ports'
+import { closeBand, showBand } from './core/store/band_queue'
 
-import type { Allowance, Band, CheckAnswer, Ctx, Difficulty, Intent, ParentPick, Priority, ProjectRecord, Task } from '../types'
-import { checkMessage, checkPrompt } from './check'
-import type { Ask } from './check'
-import { checkLines, checkpointPrompt, emptyCheckpoint, firstMessage, parseCheckpoint } from './checkpoint'
+import type { Difficulty, Intent, ParentPick, Priority, ProjectRecord, Task } from '../types'
+import type { Ctx } from './core/env/env'
+import { firstMessage } from './shared/checkpoints/domain/services/checkpoints'
 import { writeDocsLog } from './docslog'
-import { activeFeature, filingCandidates, guessParent, loneTasks, parentOf, parentRefusal, setParent } from './family'
-import {
-  commitsBetween,
-  diffSince,
-  holdReason,
-  listBranches,
-  makeBranch,
-  readDrift,
-  readFacts,
-  readGit,
-  readHead,
-  slugBranch,
-  switchBranch,
-} from './git'
-import type { Host } from './host'
-import { blockedText, isBlocked, wouldLoop } from './plan'
-import { currentTask, newTask, orderQueue, removeTask } from './queue'
-import { readProblem, readRecord, updateRecord } from './record'
-import { dayKey, isoLocal } from './time'
-import { shouldFresh, shouldHandoff, windowKey } from './usage'
+import { activeFeature, parentOf, parentRefusal, setParent } from './shared/backlog/domain/services/families'
+import { diffSince, listBranches, makeBranch, readDrift, readGit, readHead, switchBranch } from './shared/git/data/datasources/git_source'
+import { holdReason, slugBranch } from './shared/git/domain/services/branch_rules'
+import { blockedText, isBlocked, wouldLoop } from './shared/backlog/domain/services/ranking'
+import { currentTask, newTask, removeTask } from './shared/records/domain/services/queue_rules'
+import { readRecord } from './shared/records/data/datasources/record_source'
+import { dayKey, isoLocal } from './shared/time/domain/services/time'
 
-export { firstMessage } from './checkpoint'
-
-export type View = PluginState['queue-tea']
-
-// What the flow needs from the engine. register.tsx builds them from `$`.
-export type Ports = {
-  host: Host
-  ask: Ask
-  clear: () => Promise<void>
-  submit: (text: string, asUser?: boolean) => Promise<void>
-  toast: (text: string) => void
-  status: (text: string | undefined) => void
-  now: () => Promise<number>
-  later: (work: () => Promise<void>) => void
-  newId: () => string
-  get: <K extends keyof View>(key: K) => Promise<View[K]>
-  set: <K extends keyof View>(key: K, value: View[K]) => Promise<void>
-  log: (text: string) => void
-}
+import { once } from './core/session/once'
+export { firstMessage } from './shared/checkpoints/domain/services/checkpoints'
 
 const NOT_A_REPO = 'Not a git repository, so no branches are made'
 const DOCS_LOG = 'docs/task_log.md'
 
 const nowIso = async (p: Ports, ctx: Ctx) => isoLocal(await p.now(), ctx.offsetMinutes)
-
-// One run at a time per key: a second press while the first runs does nothing.
-const running = new Set<string>()
-const once = async <T>(key: string, work: () => Promise<T>, otherwise: T): Promise<T> => {
-  if (running.has(key)) return otherwise
-  running.add(key)
-  try {
-    return await work()
-  } finally {
-    running.delete(key)
-  }
-}
-
-// A band goes up, or waits behind the one showing; never replaces it.
-export const showBand = async (p: Ports, band: Band): Promise<void> => {
-  if ((await p.get('band')).kind === 'none') await p.set('band', band)
-  else await p.set('bandQueue', [...(await p.get('bandQueue')), band])
-}
-
-// Takes the band down and puts up the next one waiting.
-export const closeBand = async (p: Ports): Promise<void> => {
-  const [next, ...rest] = await p.get('bandQueue')
-  await p.set('bandQueue', rest)
-  await p.set('band', next ?? { kind: 'none' })
-}
-
-// A fresh conversation is on its way: no other is started until it is.
-let isFreshPending = false
-const scheduleFresh = (p: Ports, ctx: Ctx, task: Task) => {
-  isFreshPending = true
-  p.later(() => freshConversation(p, ctx, task))
-}
-
-// True while Queue-tea is starting a conversation of its own, so the clear it
-// makes is not taken for one to recover from.
-export const isStartingFresh = () => isFreshPending
-
-// The menu's failed state, with why the record can't be read and whether
-// its last good copy can take its place. Nothing is written to it.
-export const markUnreadable = async (p: Ports, ctx: Ctx): Promise<void> => {
-  try {
-    await p.set('loadError', await readProblem(p.host, ctx.file))
-  } catch (err) {
-    p.log(`reading why the record can't be read failed: ${err instanceof Error ? err.message : String(err)}`)
-    await p.set('loadError', null)
-  }
-  await p.set('load', 'failed')
-}
-
-// Changes the record; on an unreadable one says so in the panel and changes
-// nothing. Returns the record as saved, or null.
-const change = async (p: Ports, ctx: Ctx, fn: (r: ProjectRecord) => ProjectRecord) => {
-  const saved = await updateRecord(p.host, ctx.file, fn, ctx.projectName, ctx.projectPath)
-  if (saved === 'unreadable') {
-    await markUnreadable(p, ctx)
-
-    return null
-  }
-  await p.set('record', saved)
-
-  return saved
-}
-
-const changeTask = (p: Ports, ctx: Ctx, id: string, fn: (t: Task) => Task) =>
-  change(p, ctx, r => ({ ...r, tasks: r.tasks.map(t => (t.id === id ? fn(t) : t)) }))
-
-// Only what Rohan types is checked: not slash commands, hidden prompts, or
-// what a plugin or another session sent.
-export const shouldCheck = (e: {
-  origin: { kind: string }
-  command?: unknown
-  isMeta?: true
-  attachments?: readonly unknown[]
-}): boolean =>
-  e.origin.kind === 'composer' &&
-  e.command === undefined &&
-  e.isMeta === undefined &&
-  (e.attachments === undefined || e.attachments.length === 0)
 
 export const taskSection = (record: ProjectRecord | null) => {
   const current = record === null ? null : currentTask(record.tasks)
@@ -137,87 +31,6 @@ export const taskSection = (record: ProjectRecord | null) => {
     id: 'queue-tea:task',
     scope: 'session' as const,
     text: `The current Queue-tea task is "${current.title}". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`,
-  }
-}
-
-// Decides what happens to a typed message: through to Claude, or held for the
-// band. The intent is for the effort count.
-export const onMessage = async (
-  p: Ports,
-  ctx: Ctx,
-  text: string,
-): Promise<{ verdict: 'pass' | 'drop'; intent: Intent | null; kind: CheckAnswer['kind'] | null }> => {
-  const record = await p.get('record')
-  if (record === null) return { verdict: 'pass', intent: null, kind: null }
-
-  await p.set('isChecking', true)
-  let answer: CheckAnswer | null
-  try {
-    const prompt = checkPrompt(
-      currentTask(record.tasks),
-      orderQueue(record.tasks),
-      text,
-      filingCandidates(record),
-      activeFeature(record)?.id ?? null,
-      loneTasks(record),
-    )
-    answer = await checkMessage(p.ask, prompt, ctx.options.checkTimeoutSeconds * 1000)
-  } finally {
-    await p.set('isChecking', false)
-  }
-
-  if (answer?.kind === 'same' || answer?.kind === 'quick') {
-    return { verdict: 'pass', intent: answer.intent, kind: answer.kind }
-  }
-  if (answer?.kind === 'new') {
-    await showBand(p, {
-      kind: 'file',
-      text,
-      title: answer.title ?? text.slice(0, 60),
-      priority: 'mid',
-      difficulty: answer.difficulty ?? 'medium',
-      intent: answer.intent,
-      ...guessParent(record, text, answer.parent),
-    })
-
-    return { verdict: 'drop', intent: answer.intent, kind: 'new' }
-  }
-
-  const intent = answer?.intent ?? 'improving'
-  await showBand(p, { kind: 'unsure', text, intent, didCheckRun: answer !== null })
-
-  return { verdict: 'drop', intent: answer === null ? null : intent, kind: answer === null ? null : 'unsure' }
-}
-
-// What the repository says now, beside the task's checkpoint; null for a
-// task with nothing saved yet, or when git can't be read.
-export const checkNow = async (p: Ports, ctx: Ctx, task: Task): Promise<string[] | null> => {
-  if (task.handoff === null && task.checkpoint === null) return null
-  try {
-    const now = await readFacts(p.host, ctx.projectPath)
-    const drift = now === null ? [] : await readDrift(p.host, ctx.projectPath, task)
-
-    return checkLines(task, now, drift)
-  } catch (err) {
-    p.log(`checking the repository failed: ${err instanceof Error ? err.message : String(err)}`)
-
-    return null
-  }
-}
-
-// When the clear or the first message fails, the task stays current and
-// Continue is offered, so it can be tried again.
-export const freshConversation = async (p: Ports, ctx: Ctx, task: Task): Promise<void> => {
-  try {
-    const checked = await checkNow(p, ctx, task)
-    await p.clear()
-    await p.submit(firstMessage(task, checked))
-  } catch (err) {
-    p.log(`starting the conversation for ${task.id} failed: ${err instanceof Error ? err.message : String(err)}`)
-    await p.set('notice', `Couldn't open the conversation for ${task.title}. Press Continue to try again.`)
-    await p.set('canContinue', true)
-  } finally {
-    isFreshPending = false
   }
 }
 
@@ -521,7 +334,7 @@ const docsOnce = async (p: Ports, ctx: Ctx, taskId: string, path: string): Promi
 export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
   const current = record === null ? null : currentTask(record.tasks)
-  if (current !== null && !isFreshPending) scheduleFresh(p, ctx, current)
+  if (current !== null && !isStartingFresh()) scheduleFresh(p, ctx, current)
 }
 
 // Switches to the current task's branch, unless something is uncommitted.
@@ -536,98 +349,6 @@ export const switchToTask = async (p: Ports, ctx: Ctx): Promise<'switched' | str
   await p.set('notice', null)
 
   return 'switched'
-}
-
-const HANDOFF_FAILED = "Queue-tea: couldn't write the checkpoint; trying again after the next reply"
-
-const factsNow = async (p: Ports, ctx: Ctx) => {
-  try {
-    return await readFacts(p.host, ctx.projectPath)
-  } catch (err) {
-    p.log(`reading git for the checkpoint failed: ${err instanceof Error ? err.message : String(err)}`)
-
-    return null
-  }
-}
-
-// Asks Claude for the task's checkpoint over the conversation and saves it
-// with what git says now. A reply that isn't one is kept as a plain note.
-export const writeHandoff = async (p: Ports, ctx: Ctx, taskId: string): Promise<Task | null> => {
-  const record = await p.get('record')
-  const task = record?.tasks.find(t => t.id === taskId)
-  if (task === undefined) return null
-  const git = await factsNow(p, ctx)
-  const reply = await p.ask.fork(checkpointPrompt(task, git))
-  if (!reply.isAnswered || reply.text.trim() === '') {
-    p.log(`checkpoint not written: ${reply.isAnswered ? 'empty' : reply.reason}`)
-    p.status(HANDOFF_FAILED)
-
-    return null
-  }
-  const written = await nowIso(p, ctx)
-  const parsed = parseCheckpoint(reply.text, written)
-  const saved = await changeTask(p, ctx, taskId, t => {
-    if (parsed === null) return { ...t, handoff: { text: reply.text.trim(), written } }
-    const before = (t.checkpoint ?? emptyCheckpoint()).seen
-    const seen = before === null ? { at: written, files: [], commands: [], git } : { ...before, git: git ?? before.git }
-
-    return { ...t, handoff: null, checkpoint: { ...parsed, seen } }
-  })
-
-  return saved?.tasks.find(t => t.id === taskId) ?? null
-}
-
-// After each turn: a fresh conversation past the size, and a handoff note
-// once per reset window at the allowance mark. Returns the reset time a note
-// was last written for.
-export const afterTurn = async (
-  p: Ports,
-  ctx: Ctx,
-  reading: { tokens?: number; allowance: Allowance | null },
-  handedOffFor: string | null,
-): Promise<string | null> => {
-  const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
-  if (current === null || isFreshPending) return handedOffFor
-
-  if (shouldFresh(reading.tokens, ctx.options.freshAtTokens)) {
-    isFreshPending = true
-    const task = await writeHandoff(p, ctx, current.id)
-    if (task === null) isFreshPending = false
-    else scheduleFresh(p, ctx, task)
-
-    return handedOffFor
-  }
-
-  const a = reading.allowance
-  if (a !== null && shouldHandoff(a.percent, ctx.options.handoffAtPercent, handedOffFor, a.resetsAt)) {
-    const task = await writeHandoff(p, ctx, current.id)
-
-    return task === null ? handedOffFor : windowKey(a.resetsAt)
-  }
-
-  return handedOffFor
-}
-
-// Sends a held message on to Claude after all, as Rohan's own, and puts up the
-// next band. Returns the message's intent for the effort count.
-export const sendHeld = async (p: Ports): Promise<Intent | null> => {
-  const band = await p.get('band')
-  if (band.kind !== 'file' && band.kind !== 'unsure') return null
-  await closeBand(p)
-  await p.submit(band.text, true)
-
-  return band.intent
-}
-
-// Drops a held message: Claude never sees it and nothing is filed. Puts up
-// the next band, and returns the message so it can go back in the prompt box.
-export const dropHeld = async (p: Ports): Promise<string | null> => {
-  const band = await p.get('band')
-  if (band.kind !== 'file' && band.kind !== 'unsure') return null
-  await closeBand(p)
-
-  return band.text
 }
 
 export type Block = { waitFor: string } | { reason: string }
@@ -648,7 +369,7 @@ const withBlock = (t: Task, block: Block | undefined): Task =>
 const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promise<'queued' | 'none'> => {
   const record = await p.get('record')
   const current = record === null ? null : currentTask(record.tasks)
-  if (current === null || isFreshPending) return 'none'
+  if (current === null || isStartingFresh()) return 'none'
 
   await p.set('busy', 'Saving a checkpoint…')
   let isNoted: boolean
@@ -673,33 +394,6 @@ const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promis
   p.toast(block === undefined ? `Back in the backlog: ${current.title}` : `Blocked: ${current.title}`)
 
   return 'queued'
-}
-
-// After a turn: names the commits that appeared since `before`, the commit
-// and branch the turn started on. A change of branch is no commit.
-export const commitWarning = async (
-  p: Ports,
-  ctx: Ctx,
-  before: { commit: string; branch: string | null } | null,
-): Promise<string | null> => {
-  if (before === null) return null
-  const after = await readHead(p.host, ctx.projectPath)
-  if (after === null || after.commit === before.commit || after.branch !== before.branch) return null
-  let commits: string[]
-  try {
-    commits = await commitsBetween(p.host, ctx.projectPath, before.commit, after.commit)
-  } catch {
-    // Not a descendant (a reset, a rebase): no new commit to name.
-    return null
-  }
-  if (commits.length === 0) return null
-
-  const named = commits.length === 1 ? `a commit appeared: ${commits[0]}` : `${commits.length} commits appeared, newest ${commits[0]}`
-  const text = `During the last turn ${named}. Queue-tea stops Claude's commits, so check it was yours.`
-  await p.set('warning', text)
-  p.toast(`Queue-tea: ${named}`)
-
-  return text
 }
 
 // Removes a queued task, and the git check's hold on it. The tasks under it

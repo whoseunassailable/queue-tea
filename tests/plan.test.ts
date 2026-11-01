@@ -1,18 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import {
-  blockedTasks,
-  blockedText,
-  canWaitFor,
-  effectivePriority,
-  estimateMinutes,
-  isBlocked,
-  nextBudget,
-  rankBacklog,
-  suggest,
-  typicalMinutes,
-  wouldLoop,
-} from '../hooks/plan'
+import { blockedTasks, blockedText, canWaitFor, effectivePriority, estimateMinutes, isBlocked, nextBudget, rankBacklog, suggest, typicalMinutes, wouldLoop } from '../hooks/shared/backlog/domain/services/ranking'
 import { makeTask } from './helpers'
 
 const at = (minute: number) => `2026-10-21T10:${String(minute).padStart(2, '0')}:00+02:00`

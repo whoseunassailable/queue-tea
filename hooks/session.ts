@@ -1,22 +1,9 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Ctx, Options } from '../types'
-import { hostOf } from './host'
-import { carryOverRecords, projectKey, recordPath } from './record'
-import { parseOffset } from './time'
-
-const DEFAULTS: Options = { idleGapMinutes: 15, freshAtTokens: 100000, handoffAtPercent: 90, checkTimeoutSeconds: 10 }
-
-const positive = (value: unknown, fallback: number) =>
-  typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
-
-// The userConfig values, each a positive number or its default.
-export const readOptions = (options: Record<string, unknown>): Options => ({
-  idleGapMinutes: positive(options.idleGapMinutes, DEFAULTS.idleGapMinutes),
-  freshAtTokens: positive(options.freshAtTokens, DEFAULTS.freshAtTokens),
-  handoffAtPercent: positive(options.handoffAtPercent, DEFAULTS.handoffAtPercent),
-  checkTimeoutSeconds: positive(options.checkTimeoutSeconds, DEFAULTS.checkTimeoutSeconds),
-})
+import type { Ctx, Options } from './core/env/env'
+import { hostOf } from './core/host/claude_host'
+import { carryOverRecords, projectKey, recordPath } from './shared/records/data/datasources/record_source'
+import { parseOffset } from './shared/time/domain/services/time'
 
 // Where this session works: the repository's top folder (or the working
 // directory outside one), its record file, and the local time offset.

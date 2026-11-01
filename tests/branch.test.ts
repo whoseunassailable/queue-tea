@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { startTask } from '../hooks/flow'
-import { emptyRecord, parseRecord } from '../hooks/record'
+import { emptyRecord, parseRecord } from '../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord } from '../types'
 import { CTX, fakePorts, makeTask, memoryHost } from './helpers'
 import type { Run } from './helpers'

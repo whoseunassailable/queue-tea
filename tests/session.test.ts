@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { readOptions } from '../hooks/session'
+import { readOptions } from '../hooks/core/session/options'
 
 test('readOptions fills the defaults', () => {
   expect(readOptions({})).toEqual({

@@ -197,7 +197,7 @@ app/
 
 - The mod's tests are in `tests/unit/<feature>/` and `tests/unit/shared/`, with the views' tests in `tests/view/`. `claude plugin test .` finds every `*.test.ts(x)`.
 - A test fakes a repository through the feature's providers, or builds the real one over the in-memory host in `tests/helpers.ts`, as today.
-- `node tools/check_layers.mjs` reads every import under `hooks/` and fails on a broken rule from section 2. Its own tests run with `node --test tools/check_layers.test.mjs`.
+- `node tools/check_layers.mjs` reads every import under `hooks/` and fails on a broken rule from section 2. The tools' own tests run with `node --test 'tools/*.test.mjs'`.
 - The app's tests are `*.spec.ts(x)` under `app/`, run with Vitest, so the mod's test run never picks them up.
 
 ## 8. Getting there

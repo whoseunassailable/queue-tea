@@ -1,0 +1,9 @@
+#!/bin/sh
+# After each commit the version moves on and the installed app catches up. The
+# commit has already happened, so neither can stop it: a failure only warns.
+node tools/version.mjs
+if [ -z "${QUEUE_TEA_NO_APP_REFRESH:-}" ]; then
+  echo 'queue-tea: updating the installed app in the background.'
+  nohup sh app/tools/refresh_app.sh >/dev/null 2>&1 &
+fi
+exit 0

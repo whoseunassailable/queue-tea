@@ -1,6 +1,8 @@
 import { useState } from 'preact/hooks'
 
 import type { Difficulty } from '../../../../../../types'
+import type { EngineApi } from '../../../../../shared/engine_api'
+import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { dayOf, formatSpan } from '../../../../core/domain/format'
 import { Field } from '../../../../core/widgets/field'
 import { GoldReward, XpReward } from '../../../../core/widgets/tags'
@@ -9,6 +11,7 @@ import type { Row } from '../../domain/board'
 import { titleError } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
 import { PriorityControl } from './priority_control'
+import { QuestNotes } from './quest_notes'
 
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
@@ -22,7 +25,7 @@ export type DetailActions = {
   onActiveSaga: () => void
 }
 
-type DetailProps = DetailActions & { realm: string; row: Row | null; hasActive: boolean; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
+type DetailProps = DetailActions & { engine: EngineApi; realm: string; row: Row | null; hasActive: boolean; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
 
 // The title, read until clicked. A field being edited keeps its text when the
 // record changes underneath it.
@@ -128,7 +131,29 @@ const Criteria = ({ lines, onSave }: { lines: string[]; onSave: (lines: string[]
   )
 }
 
-export const QuestDetail = ({ realm, row, hasActive, isBusy, isActiveSaga, isSaved, note, edits, onStart, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
+// Read apart from the board: the pane stands without it, and its own failure
+// stays on its own line.
+const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: string; row: Row; filedOn: string }) => {
+  const { quest } = row
+  const read = useEngineRead(engine, () => engine.readQuestFacts(realm, quest.id), [realm, quest.id])
+  const facts = read.load.status === 'ready' ? read.load.data : null
+  const failure = read.load.status === 'failed' ? read.load.message : read.note
+
+  return (
+    <>
+      {facts !== null && <QuestNotes facts={facts} />}
+      {failure !== null && <p class="hint">{failure}</p>}
+      <dl class="facts">
+        <dt>{t.detail.branch}</dt>
+        <dd class="mono">{quest.branch ?? facts?.branchToBe ?? t.detail.noBranch}</dd>
+        <dt>{t.detail.filed}</dt>
+        <dd>{filedOn}</dd>
+      </dl>
+    </>
+  )
+}
+
+export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSaga, isSaved, note, edits, onStart, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
   if (row === null) {
     return (
       <aside class="detail panel" aria-label={t.detail.label}>
@@ -197,8 +222,18 @@ export const QuestDetail = ({ realm, row, hasActive, isBusy, isActiveSaga, isSav
       {isSealed && <p class="d-star">⊘ {quest.sealedBecause}</p>}
       <h3>{t.detail.description}</h3>
       <Description key={quest.id} value={quest.description} onSave={description => void edits.edit(realm, quest, { description })} />
+      {quest.description === null && quest.goal !== null && (
+        <button type="button" class="link-btn" onClick={() => void edits.edit(realm, quest, { description: quest.goal })}>
+          {t.detail.useGoal}
+        </button>
+      )}
       <h3>{t.detail.criteria}</h3>
       <Criteria lines={quest.criteria} onSave={criteria => void edits.edit(realm, quest, { criteria })} />
+      {quest.criteria.length === 0 && quest.acceptance.length > 0 && (
+        <button type="button" class="link-btn" onClick={() => void edits.edit(realm, quest, { criteria: quest.acceptance })}>
+          {t.detail.useAcceptance(quest.acceptance.length)}
+        </button>
+      )}
       {sagaOf !== null && (
         <>
           <h3>{t.detail.chapters(sagaOf.chapters.length)}</h3>
@@ -210,12 +245,7 @@ export const QuestDetail = ({ realm, row, hasActive, isBusy, isActiveSaga, isSav
         </>
       )}
       <hr />
-      <dl class="facts">
-        <dt>{t.detail.branch}</dt>
-        <dd class="mono">{quest.branch ?? t.detail.noBranch}</dd>
-        <dt>{t.detail.filed}</dt>
-        <dd>{dayOf(quest.created)}</dd>
-      </dl>
+      <Facts engine={engine} realm={realm} row={row} filedOn={dayOf(quest.created)} />
       <div class="d-foot">
         {!row.isChapter && (
           <button type="button" class="link-btn" onClick={onActiveSaga}>

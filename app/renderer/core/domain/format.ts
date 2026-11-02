@@ -25,3 +25,17 @@ export const refillTime = (allowance: Allowance): string | null => {
 
   return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
 }
+
+// Monday first, from a `YYYY-MM-DD` day: the text holds no time zone to get wrong.
+const weekdayIndex = (day: string): number => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7
+
+export const weekdayOf = (day: string): string => t.weekdays[weekdayIndex(day)] ?? ''
+
+export const dayName = (day: string): string => `${weekdayOf(day)} ${dayOf(day)}`
+
+// A moment on this computer's clock.
+export const clockTime = (ms: number): string => {
+  const at = new Date(ms)
+
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+}

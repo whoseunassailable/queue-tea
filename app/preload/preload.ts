@@ -8,8 +8,19 @@ const engine: EngineApi = {
   listProjects: () => ipcRenderer.invoke(CHANNELS.listProjects),
   readProject: key => ipcRenderer.invoke(CHANNELS.readProject, key),
   readGame: () => ipcRenderer.invoke(CHANNELS.readGame),
+  readHoard: () => ipcRenderer.invoke(CHANNELS.readHoard),
+  readChronicle: (scope, day) => ipcRenderer.invoke(CHANNELS.readChronicle, scope, day),
+  readMana: key => ipcRenderer.invoke(CHANNELS.readMana, key),
   readSettings: () => ipcRenderer.invoke(CHANNELS.readSettings),
   saveSettings: patch => ipcRenderer.invoke(CHANNELS.saveSettings, patch),
+  readSettingsPage: () => ipcRenderer.invoke(CHANNELS.readSettingsPage),
+  setTaskLog: (key, path) => ipcRenderer.invoke(CHANNELS.setTaskLog, key, path),
+  showRecord: key => ipcRenderer.invoke(CHANNELS.showRecord, key),
+  openFolder: () => ipcRenderer.invoke(CHANNELS.openFolder),
+  addProject: path => ipcRenderer.invoke(CHANNELS.addProject, path),
+  restoreRealm: key => ipcRenderer.invoke(CHANNELS.restoreRealm, key),
+  installCommand: () => ipcRenderer.invoke(CHANNELS.installCommand),
+  takeOpened: () => ipcRenderer.invoke(CHANNELS.takeOpened),
   readChoices: (key, taskId) => ipcRenderer.invoke(CHANNELS.readChoices, key, taskId),
   setPriority: (key, taskId, priority) => ipcRenderer.invoke(CHANNELS.setPriority, key, taskId, priority),
   togglePlayNext: (key, taskId) => ipcRenderer.invoke(CHANNELS.togglePlayNext, key, taskId),
@@ -21,6 +32,10 @@ const engine: EngineApi = {
   restoreQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.restoreQuest, key, taskId),
   editQuest: (key, taskId, edit) => ipcRenderer.invoke(CHANNELS.editQuest, key, taskId, edit),
   setActiveSaga: (key, taskId) => ipcRenderer.invoke(CHANNELS.setActiveSaga, key, taskId),
+  setTimeBudget: (key, budget) => ipcRenderer.invoke(CHANNELS.setTimeBudget, key, budget),
+  readLive: key => ipcRenderer.invoke(CHANNELS.readLive, key),
+  readQuestFacts: (key, taskId) => ipcRenderer.invoke(CHANNELS.readQuestFacts, key, taskId),
+  switchBranch: key => ipcRenderer.invoke(CHANNELS.switchBranch, key),
   checkStart: (key, taskId) => ipcRenderer.invoke(CHANNELS.checkStart, key, taskId),
   startQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.startQuest, key, taskId),
   openClaude: key => ipcRenderer.invoke(CHANNELS.openClaude, key),
@@ -35,6 +50,18 @@ const engine: EngineApi = {
     ipcRenderer.on(CHANNELS.changed, heard)
 
     return () => ipcRenderer.off(CHANNELS.changed, heard)
+  },
+  onMenu: listener => {
+    const heard = (_: unknown, item: Parameters<typeof listener>[0]) => listener(item)
+    ipcRenderer.on(CHANNELS.menu, heard)
+
+    return () => ipcRenderer.off(CHANNELS.menu, heard)
+  },
+  onOpened: listener => {
+    const heard = (_: unknown, opened: Parameters<typeof listener>[0]) => listener(opened)
+    ipcRenderer.on(CHANNELS.opened, heard)
+
+    return () => ipcRenderer.off(CHANNELS.opened, heard)
   },
   log: (level, text) => ipcRenderer.send(CHANNELS.log, level, text),
 }

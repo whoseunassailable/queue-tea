@@ -466,3 +466,396 @@ body,
 .rm .bar.xp .fill {
   transition: transform 1.2s cubic-bezier(0.2, 0, 0, 1);
 }
+
+/* The pages that look back. */
+.rm .legend .in {
+  background: linear-gradient(180deg, #5fcfa8, #2e9c7e);
+}
+
+.rm .legend .out {
+  background: linear-gradient(180deg, #f4d58c, #e0af4e);
+}
+
+.rm .bar-row .track span {
+  background: linear-gradient(90deg, #8fe3c2, #2e9c7e);
+}
+
+.rm .tbl .title-btn {
+  text-align: left;
+  font-weight: 800;
+}
+
+.rm .tbl tr.tbl-open td {
+  background: var(--sel);
+}
+
+.rm .mana-used {
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.rm .mana-orb.low .liquid {
+  filter: hue-rotate(-140deg) saturate(1.3);
+}
+
+.rm .stage-dragon {
+  display: block;
+  line-height: 0;
+}
+
+.rm .stage-dragon svg {
+  width: 74px;
+  height: 74px;
+}
+
+.rm .stage-dragon.hatchling svg {
+  width: 58px;
+  height: 58px;
+}
+
+.rm .stage-dragon.young svg {
+  width: 64px;
+  height: 64px;
+}
+
+.rm .stage-dragon.adult svg {
+  width: 70px;
+  height: 70px;
+}
+
+.rm .side-link[aria-current='page'] {
+  font-weight: 800;
+}
+
+.rm .guild-h.panel-pad {
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+/* First run, and tabs that can't be used. */
+.rm .first-run {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rm .first-run-box {
+  width: min(520px, 100%);
+  box-sizing: border-box;
+  align-items: center;
+  text-align: center;
+}
+
+.rm .first-run-box img {
+  border-radius: 24px;
+}
+
+.rm .first-run-box h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 400;
+}
+
+.rm .first-run-box p {
+  margin: 0;
+}
+
+.rm .tab[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rm .set-row .mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The board's tools. */
+.rm .board-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rm .board-tools-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rm .board-tools .input {
+  height: 32px;
+  background: var(--pn-solid);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.rm .filters {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rm .filters-h {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink2);
+}
+
+.rm .filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.rm .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rm .board-list mark {
+  background: var(--au-b);
+  color: var(--au-t);
+  border-radius: 3px;
+}
+
+.rm .qrow.drop {
+  box-shadow: inset 0 0 0 2px var(--line);
+  background: var(--sel);
+}
+
+.rm .qrow[draggable='true'] {
+  cursor: grab;
+}
+
+.rm .warning-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  font-weight: 700;
+  color: var(--hi-t);
+  background: var(--hi-b);
+}
+
+.rm .live-line {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--hi-t);
+}
+
+/* The command palette. */
+.rm .palette-scrim {
+  align-items: flex-start;
+  padding-top: 132px;
+}
+
+.rm .palette {
+  width: min(600px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--pn-solid);
+}
+
+.rm .palette-input {
+  height: 44px;
+  font-size: 15px;
+}
+
+.rm .palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(420px, calc(100vh - 260px));
+  overflow-y: auto;
+}
+
+.rm .palette-h {
+  padding: 8px 10px 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--ink2);
+}
+
+.rm .palette-item {
+  min-height: 36px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rm .palette-item.on {
+  background: var(--sel);
+}
+
+.rm .palette-item.dim {
+  color: var(--ink3);
+  cursor: default;
+}
+
+.rm .palette-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.rm .palette-reason {
+  font-weight: 400;
+}
+
+.rm .palette-item kbd {
+  flex: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.rm .palette-hint {
+  margin: 0;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+/* The window narrower than its panes. */
+.rm .side-toggle,
+.rm .detail-close {
+  display: none;
+}
+
+.rm .quests.floating {
+  position: relative;
+}
+
+.rm .quests.floating .qlist {
+  flex-basis: 100%;
+}
+
+.rm .quests.floating .detail {
+  position: fixed;
+  z-index: 4;
+  top: 132px;
+  right: 16px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 148px);
+  overflow-y: auto;
+  box-shadow: 0 16px 40px rgba(30, 24, 60, 0.35);
+}
+
+.rm .quests.floating .detail-close {
+  display: inline-flex;
+  position: fixed;
+  z-index: 5;
+  top: 138px;
+  right: 22px;
+}
+
+.rm .detail-back {
+  flex-basis: 100%;
+  text-align: left;
+}
+
+/* The dial's words go first, so the toolbar stays on one line. */
+@media (max-width: 1179px) {
+  .rm .dial-note {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .rm .side {
+    display: none;
+  }
+
+  .rm.side-open .side {
+    display: flex;
+    position: fixed;
+    z-index: 20;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 260px;
+    margin: 12px;
+    max-height: calc(100vh - 24px);
+  }
+
+  .rm .side-toggle {
+    display: inline-flex;
+  }
+
+  .rm .tab-menu {
+    margin-right: auto;
+  }
+
+  .rm .main {
+    padding-left: 12px;
+  }
+
+  .rm .quests.floating .detail {
+    position: static;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    box-shadow: none;
+  }
+
+  .rm .stage {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rm .col-left,
+  .rm .col-right {
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* What a quest carries, on its detail pane. */
+.rm .notes summary {
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rm .notes-text {
+  margin-top: 6px;
+  white-space: pre-wrap;
+}
+
+.rm .notes-section h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.rm .notes-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.rm .aq-title .title-btn {
+  font: inherit;
+  text-align: left;
+}

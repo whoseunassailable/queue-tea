@@ -21,10 +21,12 @@ const titleOfPart = (choices: Choices, part: string, sagaTitle: string): string 
   return [...choices.features, ...choices.lone].find(c => c.id === part)?.title ?? null
 }
 
-export const NewQuestSheet = ({ engine, view, edits, parentId, onClose }: { engine: EngineApi; view: ReadableView; edits: QuestEdits; parentId: string | null; onClose: () => void }) => {
+type SheetProps = { engine: EngineApi; view: ReadableView; edits: QuestEdits; parentId: string | null; title?: string | undefined; onClose: () => void }
+
+export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }: SheetProps) => {
   // With an active saga the answer has to be given; otherwise a quest stands
   // on its own, as it does in the terminal.
-  const [form, setForm] = useState<QuestForm>(emptyQuestForm(parentId ?? (view.activeSagaId === null ? 'none' : 'unset')))
+  const [form, setForm] = useState<QuestForm>({ ...emptyQuestForm(parentId ?? (view.activeSagaId === null ? 'none' : 'unset')), title: title ?? '' })
   const [touched, setTouched] = useState<readonly QuestField[]>([])
   const [choices, setChoices] = useState<Load<Choices>>({ status: 'loading' })
   const [failure, setFailure] = useState<string | null>(null)

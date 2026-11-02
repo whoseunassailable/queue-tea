@@ -30,3 +30,10 @@ export const DEFAULT_LOG_PATH = 'docs/task_log.md'
 // What each difficulty is worth, for the Finish sheet to offer. Main works out
 // what was really earned.
 export const XP_BY_DIFFICULTY = { light: 10, medium: 25, hard: 50 } as const
+
+// The widths the window changes shape at (section 3 of the design).
+export const DETAIL_FLOATS_BELOW = 1_180
+export const DETAIL_IS_PAGE_BELOW = 900
+
+// How often the active quest's pane measures its lines again.
+export const LINES_REFRESH_MS = 30_000

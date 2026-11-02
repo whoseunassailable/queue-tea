@@ -25,7 +25,17 @@ export const rowsOf = (entries: BoardEntry[], folded: readonly string[] = []): R
     return isFolded ? [saga] : [saga, ...entry.chapters.map(chapter => plain(chapter, true))]
   })
 
-export const allRows = (view: ReadableView, folded: readonly string[] = []): Row[] => [...rowsOf(view.ready, folded), ...rowsOf(view.sealed, folded)]
+// A narrowed board keeps a saga with only the chapters that matched. What's said
+// about the saga itself still has to be about all of it.
+export const withWholeSagas = (rows: Row[], view: ReadableView): Row[] => {
+  const whole = [...view.ready, ...view.sealed]
+
+  return rows.map(row => {
+    const saga = row.sagaOf === null ? undefined : whole.find(entry => entry.quest.id === row.quest.id)
+
+    return saga?.kind === 'saga' ? { ...row, sagaOf: saga } : row
+  })
+}
 
 export const metaOf = (entry: Pick<Row, 'quest' | 'sagaOf'>): string => {
   const { quest, sagaOf } = entry

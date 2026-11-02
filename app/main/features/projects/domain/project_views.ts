@@ -71,6 +71,9 @@ const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, s
   created: task.created,
   description: task.description,
   criteria: task.criteria,
+  fits: row?.fits ?? null,
+  goal: task.checkpoint?.goal || null,
+  acceptance: task.checkpoint?.acceptance ?? [],
 })
 
 const entryOf = (entry: Entry, tasks: Task[], nowMs: number, ranked: Ranked[], playNext: string | null): BoardEntry => {
@@ -118,9 +121,9 @@ const victoryOf = (task: Task): VictoryRow => ({
   xp: xpOf(difficultyOf(task)),
 })
 
-export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile[], nowMs: number): ProjectView => {
+export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile[], nowMs: number, budget: number | null = null): ProjectView => {
   const { tasks, playNext } = record
-  const ranked = rankBacklog(record, null)
+  const ranked = rankBacklog(record, budget)
   const blocked = blockedTasks(tasks)
   const { ready, blocked: stuck } = groupBacklog(ranked, blocked, tasks)
   const current = currentTask(tasks)
@@ -143,5 +146,6 @@ export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile
     victories: wins.slice(0, RECENT_VICTORIES).map(victoryOf),
     victoryCount: wins.length,
     docsLogPath: record.docsLogPath,
+    budget,
   }
 }

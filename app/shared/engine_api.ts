@@ -1,4 +1,5 @@
 import type { Allowance, AppRequest, Difficulty, ParentPick, Priority, Task } from '../../types'
+import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
 // The one typed interface between the window and main. It is IPC now, and the
@@ -41,6 +42,11 @@ export type QuestRow = {
   created: string
   description: string | null
   criteria: string[]
+  // Whether it fits Time I have; null with no time set.
+  fits: boolean | null
+  // What the checkpoint can fill the description and criteria with.
+  goal: string | null
+  acceptance: string[]
 }
 
 export type BoardEntry =
@@ -84,8 +90,10 @@ export type ProjectView =
       victories: VictoryRow[]
       victoryCount: number
       docsLogPath: string | null
+      // Time I have, in minutes; null for any.
+      budget: number | null
     }
-  | { kind: 'unreadable'; key: string; name: string; isNewer: boolean; canRestore: boolean }
+  | { kind: 'unreadable'; key: string; name: string; reason: string; file: string; isNewer: boolean; canRestore: boolean }
 
 export type BadgeId = 'firstFlame' | 'tenTales' | 'dragonSlayer' | 'sagasEnd' | 'earlyBird' | 'nightOwl' | 'weekOfFire'
 export type Badge = { id: BadgeId; need: number; have: number; earnedOn: string | null }
@@ -107,10 +115,84 @@ export type GameState = {
 // What the HUD draws: the game, and the mana from the newest session.
 export type GameView = GameState & { allowance: Allowance | null }
 
+// unreadable counts the records left out because they can't be read.
+export type HoardView = { game: GameState; realms: { key: string; name: string; victories: number; gold: number }[]; unreadable: number }
+
+export type DayTime = { day: string; onQuests: number; elsewhere: number }
+
+export type VictoryLine = {
+  id: string
+  title: string
+  priority: Priority
+  realm: string
+  realmPath: string
+  started: string | null
+  finished: string
+  minutes: number
+  expected: Difficulty
+  actual: Difficulty
+  xp: number
+  improvingMessages: number
+  filesRead: number
+  filesChanged: number
+  linesAdded: number
+  linesRemoved: number
+  filesTouched: number
+  branch: string | null
+  startCommit: string | null
+}
+
+export type ChronicleWeek = {
+  days: DayTime[]
+  victories: VictoryLine[]
+  minutes: number
+  onQuests: number
+  elsewhere: number
+  asExpected: number
+  harder: number
+  easier: number
+  xp: number
+  lastWeek: { victories: number; minutes: number }
+  hasAny: boolean
+  isThisWeek: boolean
+}
+export type ChronicleView = ChronicleWeek & { unreadable: number }
+
+export type ManaActive = { title: string; isBoss: boolean; minutes: number; understandingMessages: number; improvingMessages: number; filesRead: number; filesChanged: number }
+export type ManaLines = { added: number; removed: number; since: string }
+export type ManaAllowance = Allowance & { seenAt: number; isStale: boolean }
+export type ManaWeek = {
+  today: DayTime
+  days: DayTime[]
+  weekMinutes: number
+  lastWeekMinutes: number
+  victories: number
+  inProgress: number
+  active: ManaActive | null
+  byQuest: { title: string; minutes: number }[]
+  elsewhere: number
+}
+export type ManaView = ManaWeek & { realm: string; allowance: ManaAllowance | null; options: Options; lines: ManaLines | null }
+
 export type SkyChoice = 'auto' | 'morning' | 'day' | 'evening' | 'night'
 export type TerminalChoice = 'terminal' | 'iterm' | 'vscode'
 // Folds are the sagas folded, by realm.
-export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice }
+export type ChronicleScope = 'realm' | 'all'
+export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean }
+
+// What the Settings page shows beside the app's own settings.
+export type RecordLine = { key: string; name: string; file: string; hasCopy: boolean; logPath: string | null; isReadable: boolean }
+export type SettingsPage = { folder: string; options: Options; isDefault: boolean; records: RecordLine[]; command: InstalledCommand | null }
+
+// Where the queue-tea command went. needsPath is when that folder may not be on
+// the PATH, so the shell wouldn't find it.
+export type InstalledCommand = { path: string; needsPath: boolean }
+
+// A folder picked in the dialog, at the top of its repository if it has one.
+export type FolderPick = { path: string; name: string; key: string; isKnown: boolean; isRepo: boolean }
+
+// What brought the app forward: a link to a folder, or a Judgement notification.
+export type Opened = { kind: 'folder'; pick: FolderPick } | { kind: 'judgement'; key: string } | { kind: 'failed'; message: string }
 
 // What a form offers: the sagas to file under, the lone quests that can become
 // one, and for one quest what it can move under or wait for.
@@ -119,6 +201,25 @@ export type Choices = { features: QuestChoice[]; lone: QuestChoice[]; parents: Q
 
 export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[] }
 export type Seal = { waitFor: string } | { reason: string }
+
+// What a quest carries, for its detail pane. active is only set for the quest
+// in hand; a figure that can't be had is null and the rest stands.
+export type QuestNote = { title: string; written: string; text: string; sections: { heading: string; lines: string[] }[] | null }
+export type ActiveFacts = {
+  minutes: number
+  today: number
+  started: string | null
+  understandingMessages: number
+  improvingMessages: number
+  filesRead: number
+  filesChanged: number
+  lines: ManaLines | null
+  git: { branch: string | null; head: string | null; uncommitted: string[]; uncommittedCount: number } | null
+}
+export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToBe: string | null; active: ActiveFacts | null }
+
+// What has moved under the quest in hand.
+export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }
 export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty }
 
 // What keeps a quest from starting. The reason is the engine's own sentence,
@@ -162,12 +263,27 @@ export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | n
 // with when the last one was.
 export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null }
 
+// What a menu bar item asks of the window. Most are the key that does the same.
+export type MenuItem = { kind: 'key'; key: string; isMeta: boolean } | { kind: 'showRecord' } | { kind: 'toggleRealms' } | { kind: 'installCommand' }
+
 export type EngineApi = {
   listProjects: () => Promise<Reply<ProjectRow[]>>
   readProject: (key: string) => Promise<Reply<ProjectView>>
   readGame: () => Promise<Reply<GameView>>
+  readHoard: () => Promise<Reply<HoardView>>
+  readChronicle: (scope: string | null, day: string | null) => Promise<Reply<ChronicleView>>
+  readMana: (key: string) => Promise<Reply<ManaView>>
   readSettings: () => Promise<Reply<Settings>>
   saveSettings: (patch: Partial<Settings>) => Promise<Reply<Settings>>
+  readSettingsPage: () => Promise<Reply<SettingsPage>>
+  setTaskLog: (key: string, path: string) => Promise<Reply<null>>
+  showRecord: (key: string | null) => Promise<Reply<null>>
+  openFolder: () => Promise<Reply<FolderPick | null>>
+  addProject: (path: string) => Promise<Reply<string>>
+  restoreRealm: (key: string) => Promise<Reply<string>>
+  installCommand: () => Promise<Reply<InstalledCommand>>
+  // What arrived before the window was listening.
+  takeOpened: () => Promise<Reply<Opened[]>>
   readChoices: (key: string, taskId: string | null) => Promise<Reply<Choices>>
   setPriority: (key: string, taskId: string, priority: Priority) => Promise<Reply<ProjectView>>
   togglePlayNext: (key: string, taskId: string) => Promise<Reply<ProjectView>>
@@ -179,6 +295,10 @@ export type EngineApi = {
   restoreQuest: (key: string, taskId: string) => Promise<Reply<ProjectView>>
   editQuest: (key: string, taskId: string, edit: QuestEdit) => Promise<Reply<ProjectView>>
   setActiveSaga: (key: string, taskId: string | null) => Promise<Reply<ProjectView>>
+  setTimeBudget: (key: string, budget: number | null) => Promise<Reply<ProjectView>>
+  readLive: (key: string) => Promise<Reply<LiveFacts>>
+  readQuestFacts: (key: string, taskId: string) => Promise<Reply<QuestFacts>>
+  switchBranch: (key: string) => Promise<Reply<null>>
   checkStart: (key: string, taskId: string) => Promise<Reply<StartCheck>>
   startQuest: (key: string, taskId: string) => Promise<Reply<StartOutcome>>
   openClaude: (key: string) => Promise<Reply<Handover>>
@@ -189,6 +309,8 @@ export type EngineApi = {
   putBackNow: (key: string, taskId: string) => Promise<Reply<BackOutcome>>
   copyText: (text: string) => Promise<Reply<null>>
   onChange: (listener: () => void) => () => void
+  onMenu: (listener: (item: MenuItem) => void) => () => void
+  onOpened: (listener: (opened: Opened) => void) => () => void
   log: (level: 'warn' | 'error', text: string) => void
 }
 
@@ -196,8 +318,20 @@ export const CHANNELS = {
   listProjects: 'engine:list-projects',
   readProject: 'engine:read-project',
   readGame: 'engine:read-game',
+  readHoard: 'engine:read-hoard',
+  readChronicle: 'engine:read-chronicle',
+  readMana: 'engine:read-mana',
   readSettings: 'engine:read-settings',
   saveSettings: 'engine:save-settings',
+  readSettingsPage: 'engine:read-settings-page',
+  setTaskLog: 'engine:set-task-log',
+  showRecord: 'engine:show-record',
+  openFolder: 'engine:open-folder',
+  addProject: 'engine:add-project',
+  restoreRealm: 'engine:restore-realm',
+  installCommand: 'engine:install-command',
+  takeOpened: 'engine:take-opened',
+  opened: 'engine:opened',
   readChoices: 'engine:read-choices',
   setPriority: 'engine:set-priority',
   togglePlayNext: 'engine:toggle-play-next',
@@ -209,6 +343,10 @@ export const CHANNELS = {
   restoreQuest: 'engine:restore-quest',
   editQuest: 'engine:edit-quest',
   setActiveSaga: 'engine:set-active-saga',
+  setTimeBudget: 'engine:set-time-budget',
+  readLive: 'engine:read-live',
+  readQuestFacts: 'engine:read-quest-facts',
+  switchBranch: 'engine:switch-branch',
   checkStart: 'engine:check-start',
   startQuest: 'engine:start-quest',
   openClaude: 'engine:open-claude',
@@ -219,5 +357,6 @@ export const CHANNELS = {
   putBackNow: 'engine:put-back-now',
   copyText: 'engine:copy-text',
   changed: 'engine:changed',
+  menu: 'engine:menu',
   log: 'engine:log',
 } as const

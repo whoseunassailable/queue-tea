@@ -16,6 +16,7 @@ export type QuestActions = {
   onCheckAgain: () => void
   onCancel: () => void
   onCopy: (text: string) => void
+  onStepBudget: () => void
 }
 
 type Readable = Extract<ProjectView, { kind: 'readable' }>
@@ -39,7 +40,8 @@ export const runFlowKey = (key: QuestKey, view: Readable, flow: QuestFlow | unde
     if (active?.review != null) actions.onFinish(active)
   } else if (key.kind === 'notYet') {
     if (active?.review != null) actions.onNotYet(active)
-  } else return false
+  } else if (key.kind === 'time') actions.onStepBudget()
+  else return false
 
   return true
 }

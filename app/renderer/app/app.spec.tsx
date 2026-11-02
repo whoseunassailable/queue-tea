@@ -51,8 +51,8 @@ describe('every view shows where it is', () => {
   it('done but empty: no realms, and what to try next', async () => {
     await open({ listProjects: async () => ({ ok: true, data: [] }) })
 
-    expect(screen.getByText(t.empty.realmsTitle)).toBeTruthy()
-    expect(screen.getByText(t.empty.realmsLine)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: t.firstRun.title })).toBeTruthy()
+    expect(screen.getByText(t.firstRun.hint)).toBeTruthy()
   })
 
   it('done but empty: an empty board says so', async () => {
@@ -76,15 +76,15 @@ describe('every view shows where it is', () => {
   })
 
   it('an unreadable realm says why, in plain words', async () => {
-    await open(withView({ kind: 'unreadable', key: 'a-000001', name: 'a', isNewer: true, canRestore: false }))
+    await open(withView({ kind: 'unreadable', key: 'a-000001', name: 'a', reason: 'it was written by a newer Queue-tea', file: '/x', isNewer: true, canRestore: false }))
 
-    expect(screen.getByText(t.unreadable.newer)).toBeTruthy()
+    expect(screen.getByText('It was written by a newer Queue-tea.')).toBeTruthy()
   })
 })
 
 describe('the sidebar', () => {
   it('shows a realm that does not read as such', async () => {
-    await open({ listProjects: async () => ({ ok: true, data: [{ kind: 'unreadable', key: 'a-000001', name: 'a' }] }), ...withView({ kind: 'unreadable', key: 'a-000001', name: 'a', isNewer: false, canRestore: false }) })
+    await open({ listProjects: async () => ({ ok: true, data: [{ kind: 'unreadable', key: 'a-000001', name: 'a' }] }), ...withView({ kind: 'unreadable', key: 'a-000001', name: 'a', reason: 'no', file: '/x', isNewer: false, canRestore: false }) })
 
     expect(screen.getByText(t.unreadable.sidebar)).toBeTruthy()
   })
@@ -185,13 +185,13 @@ describe('the rules that hold everywhere', () => {
   })
 
   it('Calm mode marks the window, so every loop stops', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {}, terminal: 'terminal' } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('calm')
   })
 
   it('the sky changes colours and scenery by class alone', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('t-night')
   })

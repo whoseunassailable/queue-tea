@@ -5,6 +5,7 @@ import { ask } from '../../../core/api/engine_client'
 import type { Answer } from '../../../core/api/engine_client'
 import { SAVED_MS, TOASTS_SHOWN, UNDO_DEPTH } from '../../../core/constants/constants'
 import { t } from '../../../l10n/en'
+import type { BoardView } from '../../quests/domain/search'
 
 export type ReadableView = Extract<ProjectView, { kind: 'readable' }>
 
@@ -60,13 +61,17 @@ export type WorkspaceState = {
   won: Won | null
   // What a quest's detail pane should say, by quest.
   questNotes: Record<string, string>
+  // The board's search and filters, by realm.
+  boards: Record<string, BoardView>
+  // The realm the app was last opened on from outside it.
+  detected: string | null
 }
 
 const INITIAL: WorkspaceState = {
   projects: { status: 'loading' },
   project: { status: 'none' },
   game: { status: 'loading' },
-  settings: { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' },
+  settings: { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true },
   selected: null,
   openQuests: {},
   note: null,
@@ -75,6 +80,8 @@ const INITIAL: WorkspaceState = {
   flows: {},
   won: null,
   questNotes: {},
+  boards: {},
+  detected: null,
 }
 
 // Old data stays while a refresh runs. It gives way to the failed state only
@@ -249,11 +256,19 @@ export const createWorkspace = (engine: EngineApi) => {
       await remember({ lastProject: key })
     },
     setSky: (sky: SkyChoice) => remember({ sky }),
+    // A setting shows at once; a failed save says so in the note.
+    changeSettings: (patch: Partial<Settings>) => {
+      set({ settings: { ...state.settings, ...patch } })
+
+      return remember(patch)
+    },
     openQuest: (key: string, questId: string) => set({ openQuests: { ...state.openQuests, [key]: questId } }),
     closeQuest: (key: string) => set({ openQuests: withoutKey(state.openQuests, key) }),
     setFlow: (key: string, flow: QuestFlow | null) => set({ flows: flow === null ? withoutKey(state.flows, key) : { ...state.flows, [key]: flow } }),
     showWon: (won: Won | null) => set({ won }),
     noteFor: (questId: string, text: string | null) => set({ questNotes: text === null ? withoutKey(state.questNotes, questId) : { ...state.questNotes, [questId]: text } }),
+    setDetected: (key: string) => set({ detected: key }),
+    setBoard: (key: string, board: BoardView) => set({ boards: { ...state.boards, [key]: board } }),
     adopt,
     run,
     undo: async () => {

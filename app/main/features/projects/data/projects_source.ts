@@ -6,7 +6,7 @@ import type { Logger } from '../../../core/logger'
 
 export type Scanned =
   | { kind: 'readable'; key: string; file: string; record: ProjectRecord; modifiedAt: number }
-  | { kind: 'unreadable'; key: string; file: string; name: string; isNewer: boolean; canRestore: boolean; modifiedAt: number }
+  | { kind: 'unreadable'; key: string; file: string; name: string; reason: string; isNewer: boolean; canRestore: boolean; modifiedAt: number }
 
 // A record's name: `<key>.json`. The `.bak`, `.lock`, `.tmp` and `.broken-*`
 // files beside it end differently, and a name starting with . is a scratch one.
@@ -27,11 +27,12 @@ const canRestoreFrom = async (host: Host, file: string): Promise<boolean> => {
 export const scanRecord = async (host: Host, folder: string, name: string, log: Logger): Promise<Scanned> => {
   const key = keyOf(name)
   const file = `${folder}/${name}`
-  const unreadable = (isNewer: boolean, canRestore: boolean, modifiedAt: number): Scanned => ({
+  const unreadable = (reason: string, isNewer: boolean, canRestore: boolean, modifiedAt: number): Scanned => ({
     kind: 'unreadable',
     key,
     file,
     name: nameOf(key),
+    reason,
     isNewer,
     canRestore,
     modifiedAt,
@@ -42,13 +43,13 @@ export const scanRecord = async (host: Host, folder: string, name: string, log: 
     const record = parseRecord(text)
     if (record !== 'unreadable') return { kind: 'readable', key, file, record, modifiedAt }
     log.warn(`record ${key} doesn't read`)
-    const { isNewer } = whyUnreadable(text)
+    const { reason, isNewer } = whyUnreadable(text)
 
-    return unreadable(isNewer, !isNewer && (await canRestoreFrom(host, file)), modifiedAt)
+    return unreadable(reason, isNewer, !isNewer && (await canRestoreFrom(host, file)), modifiedAt)
   } catch (err) {
     log.error(`reading record ${key} failed`, err)
 
-    return unreadable(false, false, 0)
+    return unreadable("it couldn't be read from disk", false, false, 0)
   }
 }
 

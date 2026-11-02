@@ -20,7 +20,7 @@ describe('the workspace', () => {
   it('opens the last realm used', async () => {
     const { engine } = fakeEngine({
       listProjects: async () => ({ ok: true, data: [projectRow('a-000001'), projectRow('b-000002')] }),
-      readSettings: async () => ({ ok: true, data: { sky: 'auto', isCalm: false, lastProject: 'b-000002', folds: {}, terminal: 'terminal' } }),
+      readSettings: async () => ({ ok: true, data: { sky: 'auto', isCalm: false, lastProject: 'b-000002', folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }),
     })
     const workspace = createWorkspace(engine)
 

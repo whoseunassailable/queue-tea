@@ -416,6 +416,66 @@ describe('a session putting the quest back itself', () => {
   })
 })
 
+describe('Time I have', () => {
+  const answers = () => {
+    const replies: ((reply: Reply<ProjectView>) => void)[] = []
+    const setTimeBudget = vi.fn<EngineApi['setTimeBudget']>(() => new Promise(done => void replies.push(done)))
+
+    return { replies, setTimeBudget }
+  }
+
+  it('steps on from the last step, not the board on screen, when pressed fast', async () => {
+    const { replies, setTimeBudget } = answers()
+    const { flows } = await open({ setTimeBudget })
+
+    const steps = [flows.stepBudget(KEY, null), flows.stepBudget(KEY, null), flows.stepBudget(KEY, null)]
+
+    expect(setTimeBudget.mock.calls.map(call => call[1])).toEqual([30, 60, 120])
+    replies.forEach(release => release({ ok: true, data: projectView(KEY) }))
+    await Promise.all(steps)
+  })
+
+  it('goes round to any', async () => {
+    const setTimeBudget = vi.fn<EngineApi['setTimeBudget']>(async key => ({ ok: true, data: projectView(key) }))
+    const { flows } = await open({ setTimeBudget })
+
+    await flows.stepBudget(KEY, 120)
+
+    expect(setTimeBudget).toHaveBeenCalledWith(KEY, null)
+  })
+
+  it('starts from the board again once the steps have landed', async () => {
+    const setTimeBudget = vi.fn<EngineApi['setTimeBudget']>(async key => ({ ok: true, data: projectView(key) }))
+    const { flows } = await open({ setTimeBudget })
+
+    await flows.stepBudget(KEY, null)
+    await flows.stepBudget(KEY, 60)
+
+    expect(setTimeBudget).toHaveBeenLastCalledWith(KEY, 120)
+  })
+
+  it('forgets a step that failed', async () => {
+    const setTimeBudget = vi.fn<EngineApi['setTimeBudget']>(async () => ({ ok: false, error: { message: 'No.' } }))
+    const { flows } = await open({ setTimeBudget })
+
+    await flows.stepBudget(KEY, null)
+    await flows.stepBudget(KEY, null)
+
+    expect(setTimeBudget.mock.calls.map(call => call[1])).toEqual([30, 30])
+  })
+
+  it('keeps each realm\'s steps apart', async () => {
+    const { replies, setTimeBudget } = answers()
+    const { flows } = await open({ setTimeBudget })
+
+    const steps = [flows.stepBudget(KEY, null), flows.stepBudget('b-000002', null)]
+
+    expect(setTimeBudget.mock.calls.map(call => call[1])).toEqual([30, 30])
+    replies.forEach(release => release({ ok: true, data: projectView(KEY) }))
+    await Promise.all(steps)
+  })
+})
+
 describe('copying', () => {
   it('says it copied', async () => {
     const { engine, flows, toasts } = await open()

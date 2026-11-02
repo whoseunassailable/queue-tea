@@ -6,10 +6,10 @@ import { t } from '../../../../l10n/en'
 import { askingLine } from '../../domain/flow_lines'
 import type { QuestActions } from '../state_management/flow_keys'
 
-type CardProps = { active: ActiveQuest; session: SessionInfo; actions: QuestActions; kind: 'full' | 'compact' }
+type CardProps = { active: ActiveQuest; session: SessionInfo; actions: QuestActions; kind: 'full' | 'compact'; onDetail?: () => void }
 
 // The quest in hand, on Home at full size and on the board in short.
-export const ActiveCard = ({ active, session, actions, kind }: CardProps) => {
+export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardProps) => {
   const started = active.started === null ? null : dayAndTime(active.started)
   const waiting = askingLine(active, session.state)
 
@@ -30,7 +30,9 @@ export const ActiveCard = ({ active, session, actions, kind }: CardProps) => {
         </h1>
       ) : (
         <p class="aq-title" id="active-title">
-          {active.title}
+          <button type="button" class="title-btn" aria-label={t.detail.openActive(active.title)} onClick={onDetail}>
+            {active.title}
+          </button>
         </p>
       )}
       <p class="q-line">

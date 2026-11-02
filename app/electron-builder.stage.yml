@@ -1,0 +1,6 @@
+# A release build to try beside the real app, with its own id and settings.
+extends: electron-builder.base.yml
+appId: dev.queue-tea.app.stage
+productName: Queue-tea stage
+directories:
+  output: dist/stage

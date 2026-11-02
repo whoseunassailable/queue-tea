@@ -2,7 +2,7 @@
 
 Every project's queue, in a window beside Claude Code. It's Electron with a Preact window, and it runs the mod's own rules over Node. The spec is [docs/workspace-app.md](../docs/workspace-app.md), the design [docs/workspace-app-design.md](../docs/workspace-app-design.md), and the plans [docs/plan-workspace-app.md](../docs/plan-workspace-app.md) and [docs/plan-workspace-app-2.md](../docs/plan-workspace-app-2.md).
 
-Today the window has Home and Quests for every project in `~/.queue-tea`, and every edit: priority, New quest, chapters, Seal…, Part of…, Play next, Remove, Undo, and a quest's title, difficulty, description and criteria. **These edits change your real records**, through the same lock, `.bak` copy and atomic replace as the mod, so a session writing at the same moment can't lose a change.
+Today the window has every screen: Home, Quests, Chronicle, Mana & time, the Hoard, the Guild Hall and Settings, for every project in `~/.queue-tea`, with first run, the failed record, the ⌘K palette, the menu bar and the narrow window. It has every edit: priority, New quest, chapters, Seal…, Part of…, Play next, Remove, Undo, and a quest's title, difficulty, description and criteria. **These edits change your real records**, through the same lock, `.bak` copy and atomic replace as the mod, so a session writing at the same moment can't lose a change.
 
 It also runs a quest from end to end: Start through the git check, onto the quest's branch, and over to Claude Code; Judgement; Finish quest with the task log row and the victory; Back to the board; and sealing the active quest. Start and Finish change your git branches and your task log for real. The app never commits, pushes, merges or pulls: a git command only ever appears as text to copy.
 
@@ -18,13 +18,24 @@ npx --no install-electron    # Electron 45 fetches its binary here, not during i
 npm run dev
 ```
 
+## Install it
+
+```sh
+npm run install-app   # builds, then copies Queue-tea.app to /Applications
+```
+
+Quit the app first. The build is signed ad hoc, so the first time macOS may ask you to confirm opening it. `npm run package` only builds, into `dist/`, and `npm run package:stage` builds a stage app that installs beside it. Install command line tool… in the app's menu then gives you `queue-tea open [path]`.
+
 ## Check it
 
 ```sh
 npm test            # unit and component tests, *.spec.ts(x)
 npm run typecheck   # also fails if the app reaches anything that imports claude-code
 npm run e2e         # builds, then drives the real app on a temporary HOME
+npm run e2e:packaged  # the same, on the built apps themselves
 ```
+
+Keep the Mac awake for the end-to-end run, with `caffeinate -dimsu npm run e2e`: a sleeping display stops the window painting, and the failures look like the app's.
 
 To look at the skies, set `QUEUE_TEA_SHOTS` to a folder before `npm run e2e`. Set `QUEUE_TEA_REAL_COPY` to a folder of record copies to see those too.
 

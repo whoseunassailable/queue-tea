@@ -7,7 +7,7 @@ import { withoutQuest, withPlayNext, withPriority } from '../../domain/edits'
 // Every edit to a realm, as the screens ask for it. The ones a form makes stay
 // quiet on failure, because the form shows the error beside its fields.
 export const questEdits = (engine: EngineApi, workspace: Workspace) => ({
-  setPriority: (key: string, quest: QuestRow, priority: Priority) =>
+  setPriority: (key: string, quest: Pick<QuestRow, 'id' | 'title' | 'priority'>, priority: Priority) =>
     workspace.run({
       key,
       questId: quest.id,

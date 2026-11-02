@@ -1,4 +1,7 @@
-import type { GameView, ProjectView, SessionState } from '../../../../../shared/engine_api'
+import { useState } from 'preact/hooks'
+
+import type { EngineApi, GameView, LiveFacts, ProjectView, SessionState } from '../../../../../shared/engine_api'
+import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { hrefOf, ROUTES } from '../../../../config/routing/routes'
 import { GROWS_AT, HOME_BADGES, HOME_BOARD_ROWS } from '../../../../core/constants/constants'
 import { dayOf, formatMinutes } from '../../../../core/domain/format'
@@ -10,6 +13,7 @@ import { runFlowKey } from '../../../quests/presentation/state_management/flow_k
 import type { QuestActions } from '../../../quests/presentation/state_management/flow_keys'
 import { useQuestKeys } from '../../../quests/presentation/state_management/quest_keys'
 import { ActiveCard } from '../../../quests/presentation/widgets/active_card'
+import { TimeControl } from '../../../quests/presentation/widgets/board_tools'
 import { FlowCard } from '../../../quests/presentation/widgets/flow_card'
 import { JudgementCard } from '../../../quests/presentation/widgets/judgement_card'
 import type { Load, QuestFlow } from '../../../workspace/state_management/workspace_store'
@@ -55,7 +59,7 @@ const NoActive = ({ view, actions }: { view: View; actions: QuestActions }) => {
   )
 }
 
-const Board = ({ view }: { view: View }) => {
+const Board = ({ view, actions }: { view: View; actions: QuestActions }) => {
   const rows = rowsOf(view.ready)
     .filter(r => !r.isChapter || r.quest.isStar)
     .slice(0, HOME_BOARD_ROWS)
@@ -66,6 +70,7 @@ const Board = ({ view }: { view: View }) => {
       <div class="sec-h">
         <h2 id="b-title">{t.board.title}</h2>
         <span class="sec-sub">{t.board.counts(view.canStart, view.sealedCount)}</span>
+        <TimeControl budget={view.budget} onStep={actions.onStepBudget} />
       </div>
       {view.active !== null && total > 0 && <p class="hint">{t.board.startHint}</p>}
       {total === 0 && <p class="hint">{t.empty.boardTitle}. {t.empty.boardLine}</p>}
@@ -135,14 +140,46 @@ const QuestCard = ({ view, flow, actions }: { view: View; flow: QuestFlow | unde
   return <ActiveCard active={view.active} session={view.session} actions={actions} kind="full" />
 }
 
-type HomeProps = { view: View; game: Load<GameView>; flow: QuestFlow | undefined; actions: QuestActions; isSheetOpen: boolean; onPet: () => void }
+const LiveLines = ({ live, note, onSwitch }: { live: LiveFacts | null; note: string | null; onSwitch: () => void }) => (
+  <>
+    {live?.drift.map(line => (
+      <p key={line} class="live-line">
+        ! {line}
+      </p>
+    ))}
+    {live?.mismatch != null && (
+      <p class="live-line">
+        {live.mismatch.uncommitted === null ? t.live.mismatch(live.mismatch.on, live.mismatch.branch) : t.live.mismatchHeld(live.mismatch.on, live.mismatch.branch)}
+        {live.mismatch.uncommitted === null && (
+          <button type="button" class="chip-btn" onClick={onSwitch}>
+            {t.live.switch}
+          </button>
+        )}
+      </p>
+    )}
+    {note !== null && <p class="hint">{note}</p>}
+  </>
+)
 
-export const HomePage = ({ view, game, flow, actions, isSheetOpen, onPet }: HomeProps) => {
-  useQuestKeys(!isSheetOpen, key => {
+type HomeProps = { engine: EngineApi; view: View; game: Load<GameView>; flow: QuestFlow | undefined; actions: QuestActions; isSheetOpen: boolean; letterKeys: boolean; onPet: () => void; onSwitch: (branch: string) => Promise<boolean> }
+
+export const HomePage = ({ engine, view, game, flow, actions, isSheetOpen, letterKeys, onPet, onSwitch }: HomeProps) => {
+  const read = useEngineRead(engine, () => engine.readLive(view.key), [view.key, view.active?.id, view.active?.branch])
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const live = read.load.status === 'ready' ? read.load.data : null
+  const failure = read.note ?? (read.load.status === 'failed' ? read.load.message : null)
+  const warning = live?.warning != null && live.warning !== dismissed ? live.warning : null
+  const switchBranch = () => {
+    if (live?.mismatch?.uncommitted === null) void onSwitch(live.mismatch.branch).then(isDone => isDone && read.refresh())
+  }
+
+  useQuestKeys(!isSheetOpen, letterKeys, key => {
     if (runFlowKey(key, view, flow, actions)) return true
     const next = mainQuest(view)
     if (key.kind === 'start' && view.active === null && next !== undefined) actions.onStart(next)
     else if (key.kind === 'seal' && view.active !== null) actions.onSealActive(view.active)
+    else if (key.kind === 'switch') switchBranch()
+    else if (key.kind === 'dismiss' && warning !== null) setDismissed(warning)
     else return false
 
     return true
@@ -152,10 +189,19 @@ export const HomePage = ({ view, game, flow, actions, isSheetOpen, onPet }: Home
     <main class="stage">
       <div class="col-left">
         <Lair game={game} session={view.session.state} onPet={onPet} />
+        {warning !== null && (
+          <div class="warning-strip panel" role="alert">
+            <span class="grow">{warning}</span>
+            <button type="button" class="chip-btn" onClick={() => setDismissed(warning)}>
+              {t.actions.ok}
+            </button>
+          </div>
+        )}
         <QuestCard view={view} flow={flow} actions={actions} />
+        <LiveLines live={live} note={failure} onSwitch={switchBranch} />
       </div>
       <div class="col-right">
-        <Board view={view} />
+        <Board view={view} actions={actions} />
         <Glory view={view} game={game} />
       </div>
     </main>

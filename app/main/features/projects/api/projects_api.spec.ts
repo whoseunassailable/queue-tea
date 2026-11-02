@@ -123,7 +123,7 @@ describe('listing the realms', () => {
 
     const reply = await readProject(deps, 'new-000003')
 
-    expect(reply).toEqual({ ok: true, data: { kind: 'unreadable', key: 'new-000003', name: 'new', isNewer: true, canRestore: false } })
+    expect(reply).toMatchObject({ ok: true, data: { kind: 'unreadable', key: 'new-000003', name: 'new', isNewer: true, canRestore: false } })
   })
 
   it('offers the last good copy only when it reads', async () => {

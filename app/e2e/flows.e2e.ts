@@ -53,7 +53,12 @@ const stored = async (id: string) => (await onDisk()).tasks.find(t => t.id === i
 // What a session does to the record, written the same way: a whole new file.
 const change = async (edit: (record: ProjectRecord) => ProjectRecord) => writeFile(file, JSON.stringify(edit(await onDisk()), null, 2))
 const editTask = (id: string, over: Partial<Task>) => change(r => ({ ...r, tasks: r.tasks.map(t => (t.id === id ? { ...t, ...over } : t)) }))
-const noRequests = () => change(r => ({ ...r, requests: [] }))
+// A session taking what it was asked. It waits for the app's own write, because
+// unlike a real session this edit doesn't go through the record's lock.
+const noRequests = async () => {
+  await expect.poll(async () => (await onDisk()).requests.length).toBeGreaterThan(0)
+  await change(r => ({ ...r, requests: [] }))
+}
 const terminals = async () => {
   try {
     return await readFile(terminalLog, 'utf8')
@@ -256,6 +261,7 @@ test('with no session, Back to the board goes at once and keeps the branch', asy
 
   await page.keyboard.press('b')
 
+  await expect.poll(async () => (await stored('two')).state).toBe('queued')
   await expect(toast('Back on the board: Second quest')).toBeVisible()
   expect(await stored('two')).toMatchObject({ state: 'queued', branch, startCommit })
 
@@ -272,7 +278,7 @@ test('Back right after Start, before Claude has begun, needs no checkpoint', asy
 
   await page.keyboard.press('b')
 
-  await expect(toast('Back on the board: Second quest')).toBeVisible()
+  await expect.poll(async () => (await stored('two')).state).toBe('queued')
   expect((await onDisk()).requests).toEqual([])
 })
 
@@ -320,9 +326,9 @@ test('when the session ends while a checkpoint is awaited, Put it back now still
   await expect(page.getByText('No Claude Code session is open to save a checkpoint.')).toBeVisible({ timeout: 10_000 })
   await button('Put it back now, without one').click()
 
-  await expect(toast('Back on the board: Second quest')).toBeVisible()
+  // Read from the record: the last test's toast may still be showing.
+  await expect.poll(async () => (await stored('two')).state).toBe('queued')
   expect((await onDisk()).requests).toEqual([])
-  expect((await stored('two')).state).toBe('queued')
 })
 
 test('sealing the active quest puts it back sealed', async () => {
@@ -336,6 +342,7 @@ test('sealing the active quest puts it back sealed', async () => {
   await dialog.getByLabel('Or a reason').fill('waiting for the clinic')
   await dialog.getByRole('button', { name: 'Seal' }).click()
 
+  await expect.poll(async () => (await stored('two')).state).toBe('queued')
   await expect(toast('Sealed: Second quest')).toBeVisible()
   expect(await stored('two')).toMatchObject({ state: 'queued', blockedReason: 'waiting for the clinic' })
 })

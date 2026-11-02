@@ -1,0 +1,10 @@
+# The prod app: what `npm run package` builds into dist/.
+extends: electron-builder.base.yml
+appId: dev.queue-tea.app
+productName: Queue-tea
+# Only here: two apps can't own one scheme, and a merged config can't take a
+# scheme away, so the stage build must never inherit it.
+protocols:
+  - name: Queue-tea
+    schemes:
+      - queue-tea

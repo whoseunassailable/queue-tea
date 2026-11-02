@@ -1,0 +1,18 @@
+# What every build of the app shares.
+directories:
+  output: dist
+files:
+  - out/**
+  - package.json
+# Everything is bundled, so nothing is needed from node_modules.
+electronDist: node_modules/electron/dist
+npmRebuild: false
+afterPack: tools/sign_ad_hoc.cjs
+mac:
+  category: public.app-category.developer-tools
+  icon: ../.claude-plugin/icon.png
+  # Signed ad hoc by afterPack instead. A real certificate is the notarisation
+  # the spec leaves out.
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false

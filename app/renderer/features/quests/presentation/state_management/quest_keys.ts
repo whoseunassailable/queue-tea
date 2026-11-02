@@ -3,7 +3,7 @@ import { useWindowKeys } from '../../../../core/widgets/window_keys'
 
 export type QuestKey =
   | { kind: 'up' | 'down' | 'fold' | 'unfold' | 'playNext' | 'seal' | 'unseal' | 'partOf' | 'activeSaga' | 'remove' }
-  | { kind: 'start' | 'finish' | 'back' | 'open' | 'yes' | 'notYet' | 'checkAgain' | 'cancel' }
+  | { kind: 'start' | 'finish' | 'back' | 'open' | 'yes' | 'notYet' | 'checkAgain' | 'cancel' | 'time' | 'switch' | 'dismiss' | 'detail' }
   | { kind: 'priority'; priority: Priority }
 
 const PRIORITY_KEYS: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
@@ -28,6 +28,10 @@ const LETTERS: Record<string, QuestKey['kind']> = {
   n: 'notYet',
   r: 'checkAgain',
   Escape: 'cancel',
+  Enter: 'detail',
+  t: 'time',
+  w: 'switch',
+  o: 'dismiss',
 }
 
 // A press inside a text field is typing, never a command.
@@ -49,12 +53,25 @@ export const questKeyOf = (event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlK
   return kind === undefined ? null : ({ kind } as QuestKey)
 }
 
+// The keys Settings can switch off: a letter, a digit, or Delete for Remove.
+export const isLetterKey = (key: string): boolean => key.length === 1 || key === 'Backspace'
+
+// Return on a focused button or link is that control's own: it presses it.
+const isOnControl = (target: EventTarget | null): boolean => (target as Element | null)?.closest?.('button, a, summary') != null
+
+// A key the menu bar sent. Choosing from a menu isn't a single-key shortcut, so
+// the Settings switch leaves it alone.
+export const menuKey = (key: string, isMeta: boolean): KeyboardEvent => Object.assign(new KeyboardEvent('keydown', { key, metaKey: isMeta, cancelable: true }), { isFromMenu: true })
+
+const isFromMenu = (event: KeyboardEvent): boolean => (event as KeyboardEvent & { isFromMenu?: boolean }).isFromMenu === true
+
 // A page answers false for a key it has no use for, so that key keeps its
 // ordinary job, such as an arrow scrolling Home.
-export const useQuestKeys = (isOn: boolean, onKey: (key: QuestKey) => boolean | void) => {
+export const useQuestKeys = (isOn: boolean, letterKeys: boolean, onKey: (key: QuestKey) => boolean | void) => {
   useWindowKeys(event => {
-    if (!isOn || isTyping(event.target)) return
+    if (!isOn || isTyping(event.target) || (!letterKeys && !isFromMenu(event) && !event.metaKey && isLetterKey(event.key))) return
     const key = questKeyOf(event)
+    if (key?.kind === 'detail' && isOnControl(event.target)) return
     if (key !== null && onKey(key) !== false) event.preventDefault()
   })
 }

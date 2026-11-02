@@ -13,6 +13,7 @@ import { MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
 import { isProjectKey } from '../../projects/api/projects_api'
 import type { ProjectsDeps } from '../../projects/api/projects_api'
+import { budgetOf } from '../../projects/data/budgets'
 import { scanRecord } from '../../projects/data/projects_source'
 import { sessionsIn, viewOf } from '../../projects/domain/project_views'
 import type { ClaudeDeps } from '../data/claude_code'
@@ -43,7 +44,7 @@ export const scopeOf = async (d: TasksDeps, key: unknown): Promise<Scope> => {
 }
 
 export const realmView = async (d: TasksDeps, key: string, record: ProjectRecord): Promise<ProjectView> =>
-  viewOf(key, record, await sessionsRepositoryImpl(d.host, d.home).list(), d.now())
+  viewOf(key, record, await sessionsRepositoryImpl(d.host, d.home).list(), d.now(), budgetOf(key))
 
 export const isSessionOpen = async (d: TasksDeps, path: string): Promise<boolean> =>
   sessionsIn(await sessionsRepositoryImpl(d.host, d.home).list(), path, d.now()).length > 0

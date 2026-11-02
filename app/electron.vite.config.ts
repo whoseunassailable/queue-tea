@@ -6,6 +6,8 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    // A packaged stage build is still packaged, so it has to be told what it is.
+    define: { QUEUE_TEA_BUILT_FLAVOR: JSON.stringify(process.env.QUEUE_TEA_BUILD_FLAVOR ?? '') },
     build: { lib: { entry: resolve(__dirname, 'main/main.ts') } },
   },
   preload: {

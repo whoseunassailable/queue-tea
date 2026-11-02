@@ -12,8 +12,12 @@ import type { QuestEdits } from '../state_management/quest_edits'
 // 'alone' is On its own; null is nothing picked yet.
 type Picked = string | null
 
-export const MoveDialog = ({ engine, realm, quest, edits, onClose }: { engine: EngineApi; realm: string; quest: QuestRow; edits: QuestEdits; onClose: () => void }) => {
-  const [picked, setPicked] = useState<Picked>(null)
+type MoveProps = { engine: EngineApi; realm: string; quest: QuestRow; preset?: { id: string; title: string } | undefined; edits: QuestEdits; onClose: () => void }
+
+// `preset` is what a quest was dragged onto. It's offered even when the engine
+// wouldn't list it: the move is refused with the engine's own sentence.
+export const MoveDialog = ({ engine, realm, quest, preset, edits, onClose }: MoveProps) => {
+  const [picked, setPicked] = useState<Picked>(preset?.id ?? null)
   const [choices, setChoices] = useState<Load<QuestChoice[]>>({ status: 'loading' })
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -26,7 +30,8 @@ export const MoveDialog = ({ engine, realm, quest, edits, onClose }: { engine: E
     void load()
   }, [])
 
-  const data = choices.status === 'ready' ? choices.data : []
+  const listed = choices.status === 'ready' ? choices.data : []
+  const data = preset === undefined || listed.some(c => c.id === preset.id) ? listed : [...listed, { id: preset.id, title: preset.title, detail: null }]
   const pickedTitle = picked === 'alone' ? t.form.alone : (data.find(c => c.id === picked)?.title ?? null)
   const canGoAlone = quest.parentId !== null
 

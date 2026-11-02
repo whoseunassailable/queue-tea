@@ -1,4 +1,5 @@
 import type { Difficulty } from '../../../../../../types'
+import { nextBudget } from '../../../../../../hooks/shared/backlog/domain/services/ranking'
 import type { ActiveQuest, BackOutcome, EngineApi, FinishOutcome, GitHold, Reply, Seal, StartOutcome } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
 import type { Answer } from '../../../../core/api/engine_client'
@@ -148,12 +149,33 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
   // Its form shows a failure beside its fields, so this stays quiet about one.
   const sealActive = (key: string, quest: Named, seal: Seal) => goBack(key, quest, t.edit.sealed(quest.title), () => engine.putBackQuest(key, quest.id, seal))
 
+  // Where Time I have is heading, by realm. The board only changes when main
+  // answers, so steps pressed faster than that have to build on each other.
+  const heading = new Map<string, number | null>()
+
+  const stepBudget = async (key: string, shown: number | null): Promise<void> => {
+    const budget = nextBudget(heading.has(key) ? heading.get(key)! : shown)
+    heading.set(key, budget)
+    const answer = await ask(engine, () => engine.setTimeBudget(key, budget))
+    const isLatest = heading.get(key) === budget
+    if (isLatest || !answer.ok) heading.delete(key)
+    if (answer.ok) workspace.adopt(key, answer.data)
+    else workspace.say({ tone: 'error', text: answer.message })
+  }
+
+  const switchBranch = async (key: string, branch: string): Promise<boolean> => {
+    const answer = await ask(engine, () => engine.switchBranch(key))
+    workspace.say(answer.ok ? { tone: 'success', text: t.live.switched(branch) } : { tone: 'error', text: answer.message })
+
+    return answer.ok
+  }
+
   const copy = async (text: string): Promise<void> => {
     const answer = await ask(engine, () => engine.copyText(text))
     workspace.say(answer.ok ? { tone: 'info', text: t.flow.copied } : { tone: 'error', text: answer.message })
   }
 
-  return { start, checkAgain, cancel, openClaude, finish, notYet, back, backNow, sealActive, copy }
+  return { start, checkAgain, cancel, openClaude, finish, notYet, back, backNow, sealActive, copy, stepBudget, switchBranch }
 }
 
 export type QuestFlows = ReturnType<typeof questFlows>

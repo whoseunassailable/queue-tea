@@ -13,21 +13,24 @@
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "e2e": "electron-vite build && playwright test"
-  },
-  "dependencies": {
-    "@fontsource/marcellus": "5.3.0",
-    "@fontsource/nunito-sans": "5.3.0",
-    "preact": "10.29.8"
+    "e2e": "electron-vite build && playwright test",
+    "package": "electron-vite build && electron-builder --mac --dir",
+    "package:stage": "QUEUE_TEA_BUILD_FLAVOR=stage electron-vite build && electron-builder --mac --dir --config electron-builder.stage.yml",
+    "install-app": "npm run package && sh tools/install_app.sh",
+    "e2e:packaged": "npm run package:stage && npm run package && QUEUE_TEA_PACKAGED=1 playwright test packaged"
   },
   "devDependencies": {
+    "@fontsource/marcellus": "5.3.0",
+    "@fontsource/nunito-sans": "5.3.0",
     "@playwright/test": "1.64.1",
     "@preact/preset-vite": "2.10.6",
     "@testing-library/preact": "3.2.6",
     "@types/node": "26.6.6",
     "electron": "45.2.1",
+    "electron-builder": "26.0.12",
     "electron-vite": "6.0.0",
     "jsdom": "27.0.1",
+    "preact": "10.29.8",
     "typescript": "5.9.3",
     "vite": "7.3.7",
     "vitest": "3.2.7"

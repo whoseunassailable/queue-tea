@@ -5,6 +5,7 @@ import { projectsFolder } from '../../../core/constants'
 import type { Logger } from '../../../core/logger'
 import { MESSAGES } from '../../../core/messages'
 import { reply } from '../../../core/reply'
+import { budgetOf } from '../data/budgets'
 import { scanRecord, scanRecords } from '../data/projects_source'
 import { rowOf, viewOf } from '../domain/project_views'
 
@@ -37,9 +38,9 @@ export const readProject = async (d: ProjectsDeps, key: unknown): Promise<Reply<
     if (!(await d.host.exists(`${folder}/${name}`))) throw new Error(`no record for ${key}`)
     const scanned = await scanRecord(d.host, folder, name, d.log)
     if (scanned.kind === 'unreadable') {
-      return { kind: 'unreadable', key, name: scanned.name, isNewer: scanned.isNewer, canRestore: scanned.canRestore }
+      return { kind: 'unreadable', key, name: scanned.name, reason: scanned.reason, file: scanned.file, isNewer: scanned.isNewer, canRestore: scanned.canRestore }
     }
 
-    return viewOf(key, scanned.record, await sessionsRepositoryImpl(d.host, d.home).list(), d.now())
+    return viewOf(key, scanned.record, await sessionsRepositoryImpl(d.host, d.home).list(), d.now(), budgetOf(key))
   })
 }

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'preact/hooks'
 
 // Every route in the app. A path is lowercase words naming the screen.
-export const ROUTES = { home: '/home', quests: '/quests' } as const
+export const ROUTES = { home: '/home', quests: '/quests', chronicle: '/chronicle', mana: '/mana', hoard: '/hoard', guild: '/guild', settings: '/settings' } as const
 
 export type Route = (typeof ROUTES)[keyof typeof ROUTES]
 
-export const routeOf = (hash: string): Route => (hash.slice(1) === ROUTES.quests ? ROUTES.quests : ROUTES.home)
+const ALL: readonly Route[] = Object.values(ROUTES)
+
+export const routeOf = (hash: string): Route => ALL.find(route => route === hash.slice(1)) ?? ROUTES.home
 
 export const hrefOf = (route: Route): string => `#${route}`
 

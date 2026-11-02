@@ -1,9 +1,12 @@
 import { useRef, useState } from 'preact/hooks'
 
 import cup from '../../../../../../.claude-plugin/icon.png'
-import type { FolderPick } from '../../../../../shared/engine_api'
+import type { EngineApi, FolderPick } from '../../../../../shared/engine_api'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { t } from '../../../../l10n/en'
+import { needsAnswer, NO_ACCOUNT, pickedOf } from '../../../github/domain/choice'
+import { useGithub } from '../../../github/presentation/state_management/use_github'
+import { GithubPicker } from '../../../github/presentation/widgets/github_picker'
 import { CopyLine } from '../../../quests/presentation/widgets/copy_line'
 import type { RealmFlows } from '../../state_management/realm_flows'
 
@@ -25,19 +28,32 @@ export const FirstRun = ({ onOpenFolder, onCopy }: { onOpenFolder: () => void; o
   </main>
 )
 
-// Nothing is written until this is answered.
-export const AddRealmDialog = ({ pick, isDetected, flows, onClose }: { pick: FolderPick; isDetected: boolean; flows: RealmFlows; onClose: () => void }) => {
+type AddRealmProps = { engine: EngineApi; pick: FolderPick; isDetected: boolean; flows: RealmFlows; onAccount: (key: string, login: string) => void; onCopy: (text: string) => void; onClose: () => void }
+
+// Nothing is written until this is answered, GitHub included when there are
+// accounts to choose from. No accounts, or no gh, doesn't hold anyone up.
+export const AddRealmDialog = ({ engine, pick, isDetected, flows, onAccount, onCopy, onClose }: AddRealmProps) => {
+  const [choice, setChoice] = useState<string | null>(null)
+  const [isTouched, setTouched] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const isSending = useRef(false)
+  const github = useGithub(engine, setChoice)
+  const picked = pickedOf(github.accounts, choice)
 
   const submit = async () => {
-    if (isSending.current) return
+    setTouched(true)
+    if (isSending.current || needsAnswer(github.accounts, picked) || github.isSigningIn) return
     isSending.current = true
     setFailure(null)
     const answer = await flows.add(pick.path, isDetected)
     isSending.current = false
-    if (answer.ok) onClose()
-    else setFailure(answer.message)
+    if (!answer.ok) {
+      setFailure(answer.message)
+
+      return
+    }
+    if (picked !== null && picked !== NO_ACCOUNT) onAccount(answer.data, picked)
+    onClose()
   }
 
   return (
@@ -49,6 +65,7 @@ export const AddRealmDialog = ({ pick, isDetected, flows, onClose }: { pick: Fol
       )}
       <p class="form-line">{t.addRealm.note}</p>
       {!pick.isRepo && <p class="form-line">{t.addRealm.noRepo}</p>}
+      <GithubPicker github={github} picked={picked} error={isTouched && needsAnswer(github.accounts, picked) ? t.github.pickOne : undefined} onPick={setChoice} onCopy={onCopy} />
       <div class="sheet-actions">
         <button type="button" class="btn" onClick={onClose}>
           {t.actions.cancel}

@@ -1,3 +1,4 @@
+import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/task_rules'
 import type { Difficulty, ParentPick, Priority } from '../../../../../types'
 import type { NewQuest, Seal } from '../../../../shared/engine_api'
 import { t } from '../../../l10n/en'
@@ -59,10 +60,11 @@ export const sealError = (form: SealForm): string | undefined => (form.waitFor =
 
 export const sealOf = (form: SealForm): Seal => (form.waitFor !== null ? { waitFor: form.waitFor } : { reason: form.reason.trim() })
 
-// A file, on one line. Main checks the same again before using it.
-export const logPathError = (path: string): string | undefined => {
+// A file, on one line, inside the realm. Main checks the same again.
+export const logPathError = (path: string, realmPath: string): string | undefined => {
   const trimmed = path.trim()
   if (trimmed === '') return t.finish.pathRequired
+  if (trimmed.endsWith('/') || /[\r\n]/.test(trimmed)) return t.finish.pathBad
 
-  return trimmed.endsWith('/') || /[\r\n]/.test(trimmed) ? t.finish.pathBad : undefined
+  return logFileIn(realmPath, trimmed) === null ? t.finish.pathOutside : undefined
 }

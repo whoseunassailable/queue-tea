@@ -6,6 +6,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 
 import { emptyRecord, projectKey } from '../../hooks/shared/records/data/datasources/record_source'
+import { plantGh } from './fake_gh'
 
 const APP = join(__dirname, '..')
 const SHOTS = process.env.QUEUE_TEA_SHOTS
@@ -30,6 +31,7 @@ test.beforeAll(async () => {
   file = join(folder, `${projectKey(realm)}.json`)
   await mkdir(folder, { recursive: true })
   await mkdir(realm)
+  await plantGh(home)
   app = await electron.launch({
     args: [join(APP, 'out/main/main.js')],
     cwd: APP,
@@ -61,6 +63,7 @@ test('Open folder asks first, then adds the realm and writes nothing in the fold
   await expect(asked.getByText("my realm isn't in Queue-tea yet.")).toBeVisible()
   await expect(asked.getByText('Not a git repository, so no branches are made')).toBeVisible()
   expect(await readdir(folder)).toEqual([])
+  await expect(asked.getByText('No GitHub accounts yet.')).toBeVisible()
 
   await asked.getByRole('button', { name: 'Add realm' }).click()
 
@@ -96,7 +99,7 @@ test('Settings shows at once and is remembered', async () => {
 })
 
 test('the task log path is checked, then saved', async () => {
-  await page.getByRole('button', { name: 'Set now… my realm' }).click()
+  await page.getByRole('button', { name: 'Set now…' }).click()
   const dialog = page.getByRole('dialog')
   const field = dialog.getByLabel('Task log path *')
   await expect(field).toHaveValue('docs/task_log.md')
@@ -120,7 +123,7 @@ test('switched off, the single-letter keys do nothing', async () => {
   await expect.poll(async () => (await saved()).letterKeys).toBe(false)
   await writeFile(file, JSON.stringify({ ...JSON.parse(await readFile(file, 'utf8')), tasks: [] }, null, 2))
 
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
   await page.keyboard.press('Meta+n')
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.keyboard.press('Escape')

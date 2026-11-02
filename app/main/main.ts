@@ -7,7 +7,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, she
 import { CHANNELS } from '../shared/engine_api'
 import type { MenuItem, Opened } from '../shared/engine_api'
 import { appMenu } from './core/app_menu'
-import { LOG_FILE, projectsFolder, SETTINGS_FILE, WATCH_SETTLE_MS, WINDOW } from './core/constants'
+import { GH_CODE_WAIT_MS, GH_LOGIN_WAIT_MS, GH_PATHS, LOG_FILE, projectsFolder, SETTINGS_FILE, WATCH_SETTLE_MS, WINDOW } from './core/constants'
 import { appIdOf, flavorOf } from './core/flavor'
 import { createLogger, fileSink } from './core/logger'
 import { MESSAGES } from './core/messages'
@@ -18,6 +18,8 @@ import { watchFolders } from './core/watcher'
 import { readChronicle } from './features/chronicle/api/chronicle_api'
 import { readGame, readHoard } from './features/game/api/game_api'
 import { readMana } from './features/mana/api/mana_api'
+import { githubApi } from './features/github/api/github_api'
+import { libraryApi } from './features/library/api/library_api'
 import { judgementWatch } from './features/notify/domain/judgements'
 import type { Asked } from './features/notify/domain/judgements'
 import { installCommand, openedFromUrl } from './features/opening/api/opening_api'
@@ -91,6 +93,9 @@ const places = {
   },
 }
 
+const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
+const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
+
 const serveEngine = () => {
   ipcMain.handle(CHANNELS.listProjects, () => listProjects(projects))
   ipcMain.handle(CHANNELS.readProject, (_, key: unknown) => readProject(projects, key))
@@ -100,13 +105,23 @@ const serveEngine = () => {
   ipcMain.handle(CHANNELS.readMana, (_, key: unknown) => readMana(quests, key))
   ipcMain.handle(CHANNELS.readSettings, () => readSettings(settings))
   ipcMain.handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))
-  ipcMain.handle(CHANNELS.readSettingsPage, () => realms.readSettingsPage(places))
+  ipcMain.handle(CHANNELS.readSettingsPage, (_, key: unknown) => realms.readSettingsPage(places, key))
   ipcMain.handle(CHANNELS.setTaskLog, (_, key: unknown, path: unknown) => realms.setTaskLog(places, key, path))
   ipcMain.handle(CHANNELS.showRecord, (_, key: unknown) => realms.showRecord(places, key))
   ipcMain.handle(CHANNELS.openFolder, () => realms.openFolder(places))
   ipcMain.handle(CHANNELS.addProject, (_, path: unknown) => realms.addProject(places, path))
   ipcMain.handle(CHANNELS.restoreRealm, (_, key: unknown) => realms.restoreRealm(places, key))
   ipcMain.handle(CHANNELS.installCommand, () => installCommand(places))
+  ipcMain.handle(CHANNELS.readGithub, () => github.readGithub())
+  ipcMain.handle(CHANNELS.startGithubLogin, () => github.startGithubLogin())
+  ipcMain.handle(CHANNELS.openGithubLogin, () => github.openGithubLogin())
+  ipcMain.handle(CHANNELS.awaitGithubLogin, () => github.awaitGithubLogin())
+  ipcMain.handle(CHANNELS.cancelGithubLogin, () => github.cancelGithubLogin())
+  ipcMain.handle(CHANNELS.readLibrary, () => library.readLibrary())
+  ipcMain.handle(CHANNELS.addBook, (_, book: unknown) => library.addBook(book))
+  ipcMain.handle(CHANNELS.setBookPage, (_, id: unknown, page: unknown) => library.setBookPage(id, page))
+  ipcMain.handle(CHANNELS.finishBook, (_, id: unknown) => library.finishBook(id))
+  ipcMain.handle(CHANNELS.removeBook, (_, id: unknown) => library.removeBook(id))
   ipcMain.handle(CHANNELS.takeOpened, () => reply(log, MESSAGES.openFolder, async () => takeOpened()))
   ipcMain.handle(CHANNELS.readChoices, (_, key: unknown, taskId: unknown) => tasks.readChoices(quests, key, taskId))
   ipcMain.handle(CHANNELS.setPriority, (_, key: unknown, taskId: unknown, priority: unknown) => tasks.setPriority(quests, key, taskId, priority))
@@ -243,6 +258,9 @@ app
     appendFileSync(logFile, `${String(err)}\n`)
     app.quit()
   })
+
+// A sign-in doesn't outlive the app.
+app.on('before-quit', () => github.stopGithubLogin())
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) openWindow().catch(err => log.error('opening a window failed', err))

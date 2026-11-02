@@ -122,7 +122,7 @@ test('Home shows the record, the session and the game', async () => {
 })
 
 test('Quests shows the board, with the sealed quest apart', async () => {
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
   await expect(page.locator('.board-list .qc-title').first()).toHaveText('Fix the documentation')
   await expect(page.locator('.fold .qrow.sealed')).toContainText('waiting for the clinic')
   await page.getByRole('link', { name: 'Home' }).click()
@@ -161,7 +161,7 @@ test('the four skies, for looking at', async () => {
     await page.waitForTimeout(400)
     await page.screenshot({ path: join(SHOTS!, `home-${sky.toLowerCase()}.png`) })
   }
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
   await page.getByRole('button', { name: 'Day sky' }).click()
   await page.waitForTimeout(400)
   await page.screenshot({ path: join(SHOTS!, 'quests-day.png') })

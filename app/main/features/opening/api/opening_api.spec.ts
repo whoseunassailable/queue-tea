@@ -173,18 +173,18 @@ describe('installing the command', () => {
 
   it('shows on the Settings page once it\'s there', async () => {
     await made()
-    expect(data(await readSettingsPage(deps)).command).toBeNull()
+    expect(data(await readSettingsPage(deps, null)).command).toBeNull()
 
     data(await installCommand(deps))
 
-    expect(data(await readSettingsPage(deps)).command).toEqual({ path: join(bins.usr, 'queue-tea'), needsPath: false })
+    expect(data(await readSettingsPage(deps, null)).command).toEqual({ path: join(bins.usr, 'queue-tea'), needsPath: false })
   })
 
   it('doesn\'t take someone else\'s queue-tea for its own', async () => {
     await made()
     await writeFile(join(bins.usr, 'queue-tea'), 'theirs')
 
-    expect(data(await readSettingsPage(deps)).command).toBeNull()
+    expect(data(await readSettingsPage(deps, null)).command).toBeNull()
   })
 })
 

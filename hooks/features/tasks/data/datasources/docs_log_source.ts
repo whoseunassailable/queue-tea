@@ -1,6 +1,7 @@
 import type { DocsRow } from '../../domain/repositories/task_log_repository'
 import type { Host } from '../../../../core/host/host'
 import { formatMinutes } from '../../../../shared/time/domain/services/time'
+import { logFileIn } from '../../domain/services/task_rules'
 
 const HEAD = [
   '# Task Log',
@@ -59,7 +60,8 @@ export const writeDocsLog = async (
   row: DocsRow,
   day: string,
 ): Promise<void> => {
-  const file = logPath.startsWith('/') ? logPath : `${projectPath}/${logPath}`
+  const file = logFileIn(projectPath, logPath)
+  if (file === null) throw new Error(`the task log path ${logPath} is outside ${projectPath}`)
   const existing = (await host.exists(file)) ? await host.read(file) : null
   await host.write(file, addRow(existing, row, day))
 }

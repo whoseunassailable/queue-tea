@@ -4,7 +4,7 @@ import type { EngineApi, Reply } from '../../../shared/engine_api'
 import type { Load } from '../../features/workspace/state_management/workspace_store'
 import { ask } from './engine_client'
 
-export type EngineRead<T> = { load: Load<T>; note: string | null; retry: () => void; refresh: () => void }
+export type EngineRead<T> = { load: Load<T>; note: string | null; retry: () => void; refresh: () => void; adopt: (data: T) => void }
 
 // One page's read: it runs when `deps` change and again whenever a record does.
 // What's on screen stays through a refresh, and a refresh that fails says so
@@ -43,10 +43,18 @@ export const useEngineRead = <T>(engine: EngineApi, read: () => Promise<Reply<T>
 
   const refresh = useCallback(() => void run(), [run])
 
+  // What a change handed back, with no need to read it again. A read still on
+  // its way is older than this, so it no longer counts.
+  const adopt = useCallback((data: T) => {
+    number.current += 1
+    setNote(null)
+    setLoad({ status: 'ready', data })
+  }, [])
+
   const retry = () => {
     setLoad({ status: 'loading' })
     void run()
   }
 
-  return { load, note, retry, refresh }
+  return { load, note, retry, refresh, adopt }
 }

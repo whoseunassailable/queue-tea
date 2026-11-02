@@ -14,6 +14,7 @@
 | 3 | Start with the git hold, Judgement, Finish quest with the victory, Back to the board, the terminals, sealing the active quest | 5 | part 2 | **committed** |
 | 4 | Chronicle, Mana & time, Hoard and badges, Settings with Calm mode, the terminal choice and the letter-keys switch, Guild Hall, first run, the failed record, Time I have, search and filters, drag to move, filling a description from the checkpoint, Home's drift line, the branch mismatch with Switch, the commit warning, the palette, the menu bar, the narrow window. | 6 | part 3 | **built** |
 | 5 | The packaged app, the `queue-tea` tool, the `queue-tea://` scheme, the notification, and the current quest's detail pane with its checkpoint card, which was in no build step | 7 | part 4 | **built** |
+| — | After the first install: realm separation, the HUD, GitHub accounts, the Library | new | part 5 | **built, not committed** |
 | 6 | Windows: `Host` file calls and paths, terminals, installer, window buttons, Ctrl shortcuts | new | part 5 and a Windows machine | next, once there's a Windows machine |
 
 Rohan's own steps stand beside these: finish the hand try-out, merge the restructure and part 1, and file the app with `/steep`. The app's live sessions only appear once the mod's half is merged, so part 3 can be built before that but not tried by hand before it.
@@ -180,7 +181,7 @@ Each part gets its detail when the one before it lands, because each is shaped b
 
 ## Part 4: the rest of the screens
 
-**State:** built on 2 Nov 2026, not yet committed. 346 mod tests, 678 app tests and 69 end-to-end checks passed at the end of this part, the last six times running. The mod changed in one place, the session file's `warning`, which is covered by its tests and not yet seen in a real session.
+**State:** built and committed on 2 Nov 2026. 346 mod tests, 678 app tests and 69 end-to-end checks passed at the end of this part, the last six times running. The mod changed in one place, the session file's `warning`, which is covered by its tests and not yet seen in a real session.
 
 **What the real app taught:**
 
@@ -261,7 +262,7 @@ Each part gets its detail when the one before it lands, because each is shaped b
 
 ## Part 5: an app you can install
 
-**State:** built on 2 Nov 2026, not yet committed, on top of part 4, which isn't committed either. 346 mod tests, 784 app tests and 78 end-to-end checks pass, the last five times running, and 7 more on the built app itself.
+**State:** built and committed on 2 Nov 2026 (`dede80f`, `69bd19a`, not pushed), and installed. 346 mod tests, 784 app tests and 78 end-to-end checks pass, the last five times running, and 7 more on the built app itself.
 
 **Seen for real:** a link launching the built app from cold through macOS, with `open -a` on a temporary home, landing on the right realm with a space and an accent in its path. An app that only `open-url` could start can't be tested any other way, because the test driver isn't there yet when it fires.
 
@@ -323,3 +324,36 @@ Each part gets its detail when the one before it lands, because each is shaped b
 - [x] The built app launches, on a temporary `HOME`, as prod, with its art, and refuses a commit. Review focus 5.
 
 **Commit point:** part 5 is done.
+
+---
+
+## After the first install
+
+**State:** built on 2 Nov 2026 from Rohan's notes on the installed app, not yet committed.
+
+**What was checked first, on a copy of the real records:** nothing had crossed between projects. Neither record names the other, and queue-tea has no task log. Settings listed both realms' logs together, which read as if one was set to the other. The board is empty because queue-tea has no open tasks: the app was built through `/brew`, which files nothing.
+
+**Decisions made here:**
+
+- **A realm's log stays in that realm.** Nothing stopped `../Gait-feedback/docs/task_log.md` being given as a path, so the engine now refuses a log outside the project, for the mod and the app alike. This is the one change to the mod.
+- **Settings shows the realm you're in.** Its record and task log, not a list of every realm's, and main sends only that one.
+- **The level is yours, not a project's.** XP, gold and the streak stay across realms, as numbers with no project data in them. Chronicle's All realms stays as a choice you make, defaulting to This realm.
+- **The HUD is for going on.** Mana shows only when it's known. The bar shows what the quest in hand will add, and the line under it always names the next thing worth doing. Chips that go somewhere are links, and they look like it.
+- **GitHub accounts stay in `gh`.** The app holds no tokens: it lists what `gh` knows, and adding one runs `gh`'s own sign-in. Which account a realm belongs to is kept in the app's settings, outside every record and repository.
+- **Connecting a realm names its account; it doesn't change git.** It shows on the realm and in Settings. Pushing goes on as it does today.
+- **Books live in `~/.queue-tea/library.json`**, apart from every record, so no project sees them and every flavor of the app shares them.
+
+### Review focus
+
+1. **A log path that escapes:** `..`, an absolute path elsewhere, a path that leaves and comes back. Refused in the engine, in main and in the form.
+2. **`gh` not installed, signed out, or found only on the Finder's short `PATH`.** The page says what to do; the app can't see it on a shell's `PATH`, so it looks where Homebrew puts it.
+3. **Sign-in cancelled, timed out, or a second one started.** The process doesn't outlive the dialog, and only one runs.
+4. **A realm connected to an account later removed from `gh`.** It says so and offers another, rather than showing a name that no longer works.
+5. **A page number past the end, a book of 0 pages, or a broken library file.** The form says so; a broken file is kept and never overwritten.
+
+### What the building found
+
+- **A press could miss its button.** Pressing a form's button took focus from the field, the field's error appeared, and the button moved out from under the mouse. Component tests have no layout, so only the real app showed it. Fixed in the dialog, for every form.
+- **A book's first page isn't today's reading.** Adding a book you're part way through counted every page as today. A book now keeps where it came in, and the same pages never count twice.
+- **`gh auth status` goes out to GitHub,** so the accounts are read when a dialog opens, not on every record change, and a timeout isn't taken for a lapsed sign-in.
+- **Tested against the real `gh` once:** the list, a real one-time code, and a cancel that left the sign-in as it was and nothing running. Finishing a real second sign-in is Rohan's to try.

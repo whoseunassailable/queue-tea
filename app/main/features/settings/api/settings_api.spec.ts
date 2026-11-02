@@ -44,6 +44,24 @@ describe('settings', () => {
     expect(await deps.host.exists(deps.file)).toBe(false)
   })
 
+  it('keeps which account each realm belongs to', async () => {
+    const saved = await saveSettings(deps, { realmAccounts: { 'a-000001': 'first-account' } })
+
+    expect(saved).toMatchObject({ ok: true, data: { realmAccounts: { 'a-000001': 'first-account' } } })
+  })
+
+  it.each([
+    ['a login that is not one', { 'a-000001': 'not a login' }],
+    ['a list', ['first-account']],
+    ['nothing', null],
+  ])('refuses %s for a realm\'s account, keeping what was saved', async (_, realmAccounts) => {
+    await saveSettings(deps, { realmAccounts: { 'a-000001': 'first-account' } })
+
+    await saveSettings(deps, { realmAccounts })
+
+    expect(await readSettings(deps)).toMatchObject({ ok: true, data: { realmAccounts: { 'a-000001': 'first-account' } } })
+  })
+
   it('a broken settings file falls back to the defaults', async () => {
     await writeFile(deps.file, '{oops')
 

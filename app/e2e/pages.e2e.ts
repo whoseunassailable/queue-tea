@@ -140,7 +140,7 @@ test('Mana & time shows the orb, the week and the boss', async () => {
 })
 
 test('the Hoard counts every realm that reads', async () => {
-  await page.getByRole('link', { name: 'Hoard' }).click()
+  await page.getByRole('link', { name: 'Hoard', exact: true }).click()
 
   await expect(page.getByText('alpha · 2 victories')).toBeVisible()
   await expect(page.getByText('beta · 0 victories')).toBeVisible()

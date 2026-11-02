@@ -14,3 +14,9 @@ export const FORBIDDEN_GIT = ['commit', 'push', 'merge', 'pull'] as const
 
 // Longer than any command or path the window has reason to copy.
 export const COPY_LIMIT = 4_096
+
+// Where gh may be. An app opened from the Finder has no shell PATH to find it on.
+export const GH_PATHS = ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', '/usr/bin/gh']
+export const GH_CODE_WAIT_MS = 20_000
+// As long as GitHub's own one-time code lasts.
+export const GH_LOGIN_WAIT_MS = 15 * 60_000

@@ -128,7 +128,8 @@ describe('Home', () => {
     await open()
 
     expect(screen.getByText('Lv 2')).toBeTruthy()
-    expect(screen.getByText('20 / 200 XP to Lv 3')).toBeTruthy()
+    expect(screen.getByText('180 XP to Lv 3')).toBeTruthy()
+    expect(screen.getByRole('img', { name: '20 / 200 XP to Lv 3' })).toBeTruthy()
     expect(screen.getByText('38% mana')).toBeTruthy()
     expect(screen.getByText(String(GAME.gold))).toBeTruthy()
   })
@@ -185,13 +186,13 @@ describe('the rules that hold everywhere', () => {
   })
 
   it('Calm mode marks the window, so every loop stops', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('calm')
   })
 
   it('the sky changes colours and scenery by class alone', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('t-night')
   })

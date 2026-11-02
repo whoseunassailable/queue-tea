@@ -1,5 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
+import { logFileIn } from '../../../hooks/features/tasks/domain/services/task_rules'
+
 import { addRow, escapeCell, writeDocsLog } from '../../../hooks/features/tasks/data/datasources/docs_log_source'
 import type { DocsRow } from '../../../hooks/features/tasks/domain/repositories/task_log_repository'
 import { memoryHost } from '../../helpers'
@@ -75,4 +77,25 @@ test('writeDocsLog writes the log under the project', async () => {
 
   expect(mem.files.get('/p/docs/task_log.md')).toContain('| Two |')
   expect(mem.files.get('/p/docs/task_log.md')).toContain('| Retry button on the scan page |')
+})
+
+test('a log stays in its project, however its path is written', () => {
+  expect(logFileIn('/p/mine', 'docs/task_log.md')).toBe('/p/mine/docs/task_log.md')
+  expect(logFileIn('/p/mine/', 'docs/../log.md')).toBe('/p/mine/log.md')
+  expect(logFileIn('/p/mine', '/p/mine/docs/log.md')).toBe('/p/mine/docs/log.md')
+
+  expect(logFileIn('/p/mine', '../other/docs/task_log.md')).toBeNull()
+  expect(logFileIn('/p/mine', 'docs/../../other/log.md')).toBeNull()
+  expect(logFileIn('/p/mine', '/p/other/log.md')).toBeNull()
+  expect(logFileIn('/p/mine', '/p/mine-too/log.md')).toBeNull()
+  expect(logFileIn('/p/mine', '../../../../../../etc/log.md')).toBeNull()
+  expect(logFileIn('/p/mine', '.')).toBeNull()
+})
+
+test('a log path that leaves the project writes nothing, anywhere', async () => {
+  const mem = memoryHost()
+
+  await expect(writeDocsLog(mem.host, '/p/mine', '../other/task_log.md', ROW, '2026-10-21')).rejects.toThrow('outside')
+
+  expect([...mem.files.keys()]).toEqual([])
 })

@@ -61,7 +61,7 @@ export const realmFlows = (engine: EngineApi, workspace: Workspace) => {
       else sayFailed(answer.message)
     },
 
-    show: async (key: string | null): Promise<void> => {
+    show: async (key: string): Promise<void> => {
       const answer = await ask(engine, () => engine.showRecord(key))
       if (!answer.ok) sayFailed(answer.message)
     },

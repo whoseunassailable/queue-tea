@@ -13,7 +13,7 @@ import { Refusal, reply } from '../../../core/reply'
 import { isProjectKey } from '../../projects/api/projects_api'
 import { scanRecords } from '../../projects/data/projects_source'
 import { findCommand } from '../../opening/data/command_file'
-import { logPathOf } from '../../tasks/domain/task_input'
+import { logPathIn } from '../../tasks/domain/task_input'
 
 export type RealmsDeps = {
   host: Host
@@ -39,39 +39,42 @@ const realmFile = async (d: RealmsDeps, key: unknown): Promise<{ key: string; fi
   return { key, file }
 }
 
-export const readSettingsPage = (d: RealmsDeps & { commandDirs?: string[] }): Promise<Reply<SettingsPage>> =>
+// The app's own settings, and the one realm you're in: another realm's record
+// or log never reaches this page.
+export const readSettingsPage = (d: RealmsDeps & { commandDirs?: string[] }, key: unknown): Promise<Reply<SettingsPage>> =>
   reply(d.log, MESSAGES.readSettingsPage, async () => {
-    const scanned = await scanRecords(d.host, d.home, d.log)
+    const scanned = key === null ? undefined : (await scanRecords(d.host, d.home, d.log)).find(s => s.key === key)
+    if (key !== null && scanned === undefined) throw new Refusal(MESSAGES.unknownProject)
     const now = d.now()
     const live = (await sessionsRepositoryImpl(d.host, d.home).list()).filter(s => isFresh(s, now)).sort((a, b) => b.heartbeat - a.heartbeat)[0]
-    const records = await Promise.all(
-      scanned.map(async s => ({
-        key: s.key,
-        name: s.kind === 'readable' ? s.record.project.name : s.name,
-        file: s.file.split('/').pop()!,
-        hasCopy: await d.host.exists(backupPath(s.file)),
-        logPath: s.kind === 'readable' ? s.record.docsLogPath : null,
-        isReadable: s.kind === 'readable',
-      })),
-    )
 
     return {
-      folder: projectsFolder(d.home),
       options: live?.options ?? readOptions({}),
       isDefault: live === undefined,
-      records: records.sort((a, b) => a.name.localeCompare(b.name)),
+      realm:
+        scanned === undefined
+          ? null
+          : {
+              key: scanned.key,
+              name: scanned.kind === 'readable' ? scanned.record.project.name : scanned.name,
+              path: scanned.kind === 'readable' ? scanned.record.project.path : '',
+              file: scanned.file.split('/').pop()!,
+              hasCopy: await d.host.exists(backupPath(scanned.file)),
+              logPath: scanned.kind === 'readable' ? scanned.record.docsLogPath : null,
+              isReadable: scanned.kind === 'readable',
+            },
       command: await findCommand(d.host, d.commandDirs ?? []),
     }
   })
 
 export const setTaskLog = (d: RealmsDeps, key: unknown, path: unknown): Promise<Reply<null>> =>
   reply(d.log, MESSAGES.setTaskLog, async () => {
-    const checked = logPathOf(path)
-    if (checked === null) throw new Refusal(MESSAGES.logPathRequired)
     const realm = await realmFile(d, key)
     const scanned = (await scanRecords(d.host, d.home, d.log)).find(s => s.key === realm.key)
     if (scanned?.kind !== 'readable') throw new Refusal(MESSAGES.unreadableRealm)
     const { path: projectPath, name } = scanned.record.project
+    const checked = logPathIn(path, projectPath)
+    if (checked === null) throw new Refusal(MESSAGES.logPathRequired)
     const records = recordsRepositoryImpl(d.host, { cwd: projectPath, home: d.home, projectPath, projectName: name, file: realm.file, offsetMinutes: d.offsetMinutes(), options: readOptions({}) })
     const saved = await records.update(r => ({ ...r, docsLogPath: checked }))
     if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
@@ -82,7 +85,7 @@ export const setTaskLog = (d: RealmsDeps, key: unknown, path: unknown): Promise<
 // By key and never by path: the window can't ask for anything but a record.
 export const showRecord = (d: RealmsDeps, key: unknown): Promise<Reply<null>> =>
   reply(d.log, MESSAGES.showRecord, async () => {
-    d.reveal(key === null ? projectsFolder(d.home) : (await realmFile(d, key)).file)
+    d.reveal((await realmFile(d, key)).file)
 
     return null
   })

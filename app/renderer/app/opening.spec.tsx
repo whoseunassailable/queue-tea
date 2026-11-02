@@ -88,6 +88,7 @@ describe('a link to a folder it doesn\'t know', () => {
     const addProject = vi.fn(async () => ({ ok: true as const, data: 'demo-abc123' }))
     const { arrive } = await open('/home', { listProjects, addProject })
     await arrive({ kind: 'folder', pick: NEW })
+    await screen.findByText(t.github.noAccounts)
     listProjects.mockResolvedValue({ ok: true, data: [projectRow(KEY), projectRow('demo-abc123', { name: 'demo' })] })
 
     await press(t.addRealm.add)
@@ -148,7 +149,7 @@ describe('installing the command', () => {
   it('offers it in Settings', async () => {
     const { engine } = await open('/settings')
 
-    await screen.findByText('b-000002.json')
+    await screen.findByText('a-000001.json')
     await press(t.settings.install)
 
     await waitFor(() => expect(engine.installCommand).toHaveBeenCalled())
@@ -166,7 +167,7 @@ describe('installing the command', () => {
     const path: Reply<InstalledCommand> = { ok: true, data: { path: '/h/.local/bin/queue-tea', needsPath: true } }
     await open('/settings', { installCommand: async () => path })
 
-    await screen.findByText('b-000002.json')
+    await screen.findByText('a-000001.json')
     await press(t.settings.install)
 
     expect(await screen.findByText(t.settings.installedPath('/h/.local/bin/queue-tea'))).toBeTruthy()
@@ -175,7 +176,7 @@ describe('installing the command', () => {
   it('says why not when it can\'t', async () => {
     await open('/settings', { installCommand: async () => ({ ok: false, error: { message: "There's already a queue-tea here." } }) })
 
-    await screen.findByText('b-000002.json')
+    await screen.findByText('a-000001.json')
     await press(t.settings.install)
 
     expect(await screen.findByText("There's already a queue-tea here.")).toBeTruthy()

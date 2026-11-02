@@ -265,7 +265,7 @@ test('with no session, Back to the board goes at once and keeps the branch', asy
   await expect(toast('Back on the board: Second quest')).toBeVisible()
   expect(await stored('two')).toMatchObject({ state: 'queued', branch, startCommit })
 
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
   await expect(page.locator('.detail')).toContainText("Claude's checkpoint wasn't written")
   await shot('back-no-session')
 })

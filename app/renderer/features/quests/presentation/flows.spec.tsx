@@ -521,7 +521,7 @@ describe('the victory', () => {
     const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: { ...BOARD, key }, logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: { ...VICTORY, ...victory } } }))
     const opened = await open(view, {
       finishQuest,
-      readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, ...settings } }),
+      readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {}, ...settings } }),
     })
     await press(t.actions.finish)
     await press(t.finish.go)

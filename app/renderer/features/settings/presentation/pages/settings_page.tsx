@@ -1,6 +1,6 @@
 import { useRef, useState } from 'preact/hooks'
 
-import type { EngineApi, RecordLine, Settings, SettingsPage as PageData, SkyChoice, TerminalChoice } from '../../../../../shared/engine_api'
+import type { EngineApi, RealmLine, Settings, SettingsPage as PageData, SkyChoice, TerminalChoice } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { DEFAULT_LOG_PATH } from '../../../../core/constants/constants'
@@ -8,26 +8,26 @@ import { Dialog } from '../../../../core/widgets/dialog'
 import { Field } from '../../../../core/widgets/field'
 import { ReadView } from '../../../../core/widgets/read_view'
 import { t } from '../../../../l10n/en'
+import { GithubAccounts } from '../../../github/presentation/widgets/github_accounts'
 import { logPathError } from '../../../quests/domain/quest_form'
 
 const SKIES: readonly SkyChoice[] = ['auto', 'morning', 'day', 'evening', 'night']
 const TERMINALS: readonly TerminalChoice[] = ['terminal', 'iterm', 'vscode']
 const CONFIG = '/config'
 
-type Editing = { record: RecordLine }
-
-const LogDialog = ({ engine, record, onDone, onClose }: { engine: EngineApi; record: RecordLine; onDone: () => void; onClose: () => void }) => {
-  const [path, setPath] = useState(record.logPath ?? DEFAULT_LOG_PATH)
+const LogDialog = ({ engine, realm, onDone, onClose }: { engine: EngineApi; realm: RealmLine; onDone: () => void; onClose: () => void }) => {
+  const [path, setPath] = useState(realm.logPath ?? DEFAULT_LOG_PATH)
   const [isTouched, setTouched] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const isSending = useRef(false)
+  const error = logPathError(path, realm.path)
 
   const submit = async () => {
     setTouched(true)
     setFailure(null)
-    if (isSending.current || logPathError(path) !== undefined) return
+    if (isSending.current || error !== undefined) return
     isSending.current = true
-    const answer = await ask(engine, () => engine.setTaskLog(record.key, path.trim()))
+    const answer = await ask(engine, () => engine.setTaskLog(realm.key, path.trim()))
     isSending.current = false
     if (!answer.ok) {
       setFailure(answer.message)
@@ -39,13 +39,14 @@ const LogDialog = ({ engine, record, onDone, onClose }: { engine: EngineApi; rec
   }
 
   return (
-    <Dialog title={t.settings.logTitle(record.name)} onCancel={onClose} onSubmit={() => void submit()}>
+    <Dialog title={t.settings.logTitle(realm.name)} onCancel={onClose} onSubmit={() => void submit()}>
       {failure !== null && (
         <p class="form-banner" role="alert">
           {failure}
         </p>
       )}
-      <Field label={t.finish.path} isRequired value={path} error={isTouched ? logPathError(path) : undefined} onInput={setPath} onBlur={() => setTouched(true)} onEnter={() => void submit()} />
+      <Field label={t.finish.path} isRequired value={path} error={isTouched ? error : undefined} onInput={setPath} onBlur={() => setTouched(true)} onEnter={() => void submit()} />
+      <p class="card-note">{t.settings.logInside}</p>
       <div class="sheet-actions">
         <button type="button" class="btn" onClick={onClose}>
           {t.actions.cancel}
@@ -58,7 +59,7 @@ const LogDialog = ({ engine, record, onDone, onClose }: { engine: EngineApi; rec
   )
 }
 
-type Sections = { page: PageData; settings: Settings; onChange: (patch: Partial<Settings>) => void; onCopy: (text: string) => void; onShow: (key: string | null) => void; onEdit: (editing: Editing) => void }
+type Sections = { page: PageData; settings: Settings; onChange: (patch: Partial<Settings>) => void; onCopy: (text: string) => void }
 
 const Switch = ({ label, isOn, onToggle }: { label: string; isOn: boolean; onToggle: () => void }) => <button type="button" class="switch" role="switch" aria-checked={isOn} aria-label={label} onClick={onToggle} />
 
@@ -136,52 +137,50 @@ const Terminals = ({ settings, onChange }: Pick<Sections, 'settings' | 'onChange
   </section>
 )
 
-const copyText = (record: RecordLine): string => {
-  if (!record.isReadable) return t.settings.cantRead
+const copyText = (realm: RealmLine): string => {
+  if (!realm.isReadable) return t.settings.cantRead
 
-  return record.hasCopy ? t.settings.hasCopy : t.settings.noCopy
+  return realm.hasCopy ? t.settings.hasCopy : t.settings.noCopy
 }
 
-const Records = ({ page, onShow }: Pick<Sections, 'page' | 'onShow'>) => (
-  <section class="panel panel-pad" aria-labelledby="set-records">
+type ThisRealmProps = { realm: RealmLine; account: string | null; onShow: (key: string) => void; onEdit: () => void; onConnect: (realm: RealmLine) => void }
+
+// One realm at a time, so nothing of another realm's is ever on this page.
+const ThisRealm = ({ realm, account, onShow, onEdit, onConnect }: ThisRealmProps) => (
+  <section class="panel panel-pad" aria-labelledby="set-realm">
     <div class="sec-row">
-      <h2 id="set-records">{t.settings.records}</h2>
+      <h2 id="set-realm">{t.settings.thisRealm(realm.name)}</h2>
     </div>
     <div class="set-row">
-      <span class="mono">{page.folder}</span>
-      <button type="button" class="chip-btn" onClick={() => onShow(null)}>
+      <span>
+        {t.settings.record} · <span class="mono">{realm.file}</span>
+      </span>
+      <button type="button" class="chip-btn" onClick={() => onShow(realm.key)}>
         {t.settings.showInFinder}
       </button>
+      <span class="sub">{copyText(realm)}</span>
     </div>
-    {page.records.map(record => (
-      <div key={record.key} class="set-row">
-        <span>
-          {record.name} · <span class="mono">{record.file}</span>
-        </span>
-        <span class="val">{copyText(record)}</span>
-      </div>
-    ))}
-  </section>
-)
-
-const Logs = ({ page, onEdit }: Pick<Sections, 'page' | 'onEdit'>) => (
-  <section class="panel panel-pad" aria-labelledby="set-logs">
-    <div class="sec-row">
-      <h2 id="set-logs">{t.settings.log}</h2>
-    </div>
-    {page.records
-      .filter(record => record.isReadable)
-      .map(record => (
-        <div key={record.key} class="set-row">
+    {realm.isReadable && (
+      <>
+        <div class="set-row">
           <span>
-            {record.name} · {record.logPath === null ? t.settings.notSet : <span class="mono">{record.logPath}</span>}
+            {t.settings.log} · {realm.logPath === null ? t.settings.notSet : <span class="mono">{realm.logPath}</span>}
           </span>
-          <button type="button" class="chip-btn" aria-label={`${record.logPath === null ? t.settings.setNow : t.settings.change} ${record.name}`} onClick={() => onEdit({ record })}>
-            {record.logPath === null ? t.settings.setNow : t.settings.change}
+          <button type="button" class="chip-btn" onClick={onEdit}>
+            {realm.logPath === null ? t.settings.setNow : t.settings.change}
           </button>
-          {record.logPath === null && <span class="sub">{t.settings.notSetLine}</span>}
+          {realm.logPath === null && <span class="sub">{t.settings.notSetLine}</span>}
         </div>
-      ))}
+        <div class="set-row">
+          <span>
+            {t.github.question} · {account === null ? t.github.notConnected : <span class="mono">{t.github.chip(account)}</span>}
+          </span>
+          <button type="button" class="chip-btn" aria-label={account === null ? t.github.connectFor(realm.name) : t.github.changeFor(realm.name)} onClick={() => onConnect(realm)}>
+            {account === null ? t.github.connect : t.settings.change}
+          </button>
+        </div>
+      </>
+    )}
   </section>
 )
 
@@ -225,30 +224,30 @@ const Keyboard = ({ settings, onChange }: Pick<Sections, 'settings' | 'onChange'
   </section>
 )
 
-type PageProps = { engine: EngineApi; settings: Settings; onChange: (patch: Partial<Settings>) => void; onCopy: (text: string) => void; onShow: (key: string | null) => void; onInstall: () => Promise<boolean> }
+type PageProps = { engine: EngineApi; selected: string | null; settings: Settings; onChange: (patch: Partial<Settings>) => void; onCopy: (text: string) => void; onShow: (key: string) => void; onInstall: () => Promise<boolean>; onConnect: (realm: RealmLine) => void }
 
-export const SettingsPage = ({ engine, settings, onChange, onCopy, onShow, onInstall }: PageProps) => {
-  const read = useEngineRead(engine, () => engine.readSettingsPage(), [])
-  const [editing, setEditing] = useState<Editing | null>(null)
+export const SettingsPage = ({ engine, selected, settings, onChange, onCopy, onShow, onInstall, onConnect }: PageProps) => {
+  const read = useEngineRead(engine, () => engine.readSettingsPage(selected), [selected])
+  const [isEditing, setEditing] = useState(false)
 
   return (
     <main class="page">
+      <ReadView read={read} line={t.loading.settings}>
+        {page => (
+          <div class="set-grid">
+            {page.realm !== null && <ThisRealm realm={page.realm} account={settings.realmAccounts[page.realm.key] ?? null} onShow={onShow} onEdit={() => setEditing(true)} onConnect={onConnect} />}
+            <GithubAccounts engine={engine} onCopy={onCopy} />
+            <FromClaude page={page} onCopy={onCopy} />
+            <Opening page={page} onInstall={() => void onInstall().then(isDone => isDone && read.refresh())} />
+            {isEditing && page.realm !== null && <LogDialog engine={engine} realm={page.realm} onDone={read.refresh} onClose={() => setEditing(false)} />}
+          </div>
+        )}
+      </ReadView>
       <div class="set-grid">
         <Motion settings={settings} onChange={onChange} />
         <Terminals settings={settings} onChange={onChange} />
         <Keyboard settings={settings} onChange={onChange} />
       </div>
-      <ReadView read={read} line={t.loading.settings}>
-        {page => (
-          <div class="set-grid">
-            <FromClaude page={page} onCopy={onCopy} />
-            <Records page={page} onShow={onShow} />
-            <Logs page={page} onEdit={setEditing} />
-            <Opening page={page} onInstall={() => void onInstall().then(isDone => isDone && read.refresh())} />
-          </div>
-        )}
-      </ReadView>
-      {editing !== null && <LogDialog engine={engine} record={editing.record} onDone={read.refresh} onClose={() => setEditing(null)} />}
     </main>
   )
 }

@@ -71,7 +71,7 @@ const INITIAL: WorkspaceState = {
   projects: { status: 'loading' },
   project: { status: 'none' },
   game: { status: 'loading' },
-  settings: { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true },
+  settings: { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} },
   selected: null,
   openQuests: {},
   note: null,
@@ -261,6 +261,14 @@ export const createWorkspace = (engine: EngineApi) => {
       set({ settings: { ...state.settings, ...patch } })
 
       return remember(patch)
+    },
+    // One realm's account, leaving every other realm's as it is.
+    setRealmAccount: (key: string, login: string | null) => {
+      const others = withoutKey(state.settings.realmAccounts, key)
+      const realmAccounts = login === null ? others : { ...others, [key]: login }
+      set({ settings: { ...state.settings, realmAccounts } })
+
+      return remember({ realmAccounts })
     },
     openQuest: (key: string, questId: string) => set({ openQuests: { ...state.openQuests, [key]: questId } }),
     closeQuest: (key: string) => set({ openQuests: withoutKey(state.openQuests, key) }),

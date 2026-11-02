@@ -7,6 +7,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 
 import type { ProjectRecord } from '../../types'
 import { emptyRecord, projectKey } from '../../hooks/shared/records/data/datasources/record_source'
+import { plantGh } from './fake_gh'
 import { makeTask } from '../main/features/tasks/api/fixtures'
 
 const APP = join(__dirname, '..')
@@ -34,6 +35,7 @@ test.beforeAll(async () => {
   await mkdir(folder, { recursive: true })
   await mkdir(alpha)
   await mkdir(beta)
+  await plantGh(home)
   await writeFile(realmFile(alpha), JSON.stringify(emptyRecord('alpha', alpha)))
   const record: ProjectRecord = { ...emptyRecord('beta realm café', beta), tasks: [makeTask({ id: 'one', title: 'The quest', state: 'current' })] }
   await writeFile(realmFile(beta), JSON.stringify(record))
@@ -86,6 +88,7 @@ test('a link to a folder it doesn\'t know asks first, and writes nothing until t
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText("fresh isn't in Queue-tea yet.")).toBeVisible()
   expect(await readdir(folder)).toEqual(before)
+  await expect(dialog.getByText('No GitHub accounts yet.')).toBeVisible()
 
   await dialog.getByRole('button', { name: 'Add realm' }).click()
 
@@ -122,7 +125,7 @@ test('Claude asking in the background taps you on the shoulder, once', async () 
 })
 
 test('clicking it opens that realm at the question', async () => {
-  await page.getByRole('link', { name: 'Quests' }).evaluate((a: HTMLAnchorElement) => a.click())
+  await page.getByRole('link', { name: 'Quests', exact: true }).evaluate((a: HTMLAnchorElement) => a.click())
   await sidebarRow('alpha').evaluate((b: HTMLButtonElement) => b.click())
 
   await app.evaluate(() => (globalThis as unknown as { queueTeaLast: { emit: (name: string) => void } }).queueTeaLast.emit('click'))

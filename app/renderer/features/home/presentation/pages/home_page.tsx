@@ -14,6 +14,7 @@ import type { QuestActions } from '../../../quests/presentation/state_management
 import { useQuestKeys } from '../../../quests/presentation/state_management/quest_keys'
 import { ActiveCard } from '../../../quests/presentation/widgets/active_card'
 import { TimeControl } from '../../../quests/presentation/widgets/board_tools'
+import { EmptyBoard } from '../../../quests/presentation/widgets/empty_board'
 import { FlowCard } from '../../../quests/presentation/widgets/flow_card'
 import { JudgementCard } from '../../../quests/presentation/widgets/judgement_card'
 import type { Load, QuestFlow } from '../../../workspace/state_management/workspace_store'
@@ -59,7 +60,7 @@ const NoActive = ({ view, actions }: { view: View; actions: QuestActions }) => {
   )
 }
 
-const Board = ({ view, actions }: { view: View; actions: QuestActions }) => {
+const Board = ({ view, actions, onNewQuest }: { view: View; actions: QuestActions; onNewQuest: () => void }) => {
   const rows = rowsOf(view.ready)
     .filter(r => !r.isChapter || r.quest.isStar)
     .slice(0, HOME_BOARD_ROWS)
@@ -73,7 +74,7 @@ const Board = ({ view, actions }: { view: View; actions: QuestActions }) => {
         <TimeControl budget={view.budget} onStep={actions.onStepBudget} />
       </div>
       {view.active !== null && total > 0 && <p class="hint">{t.board.startHint}</p>}
-      {total === 0 && <p class="hint">{t.empty.boardTitle}. {t.empty.boardLine}</p>}
+      {total === 0 && <EmptyBoard onNewQuest={onNewQuest} />}
       {total > 0 && view.canStart === 0 && <p class="hint">{t.empty.allSealed}</p>}
       {rows.map(row => (
         <div key={row.quest.id} class={row.quest.isStar ? 'qcard main-q' : 'qcard'}>
@@ -107,7 +108,7 @@ const Glory = ({ view, game }: { view: View; game: Load<GameView> }) => (
       <h2 id="g-title">{t.glory.title}</h2>
       {game.status === 'ready' && <span class="sec-sub">{t.glory.line(game.data.victories)}</span>}
     </div>
-    {view.victories.length === 0 && <p class="hint">{t.empty.noVictories}</p>}
+    {view.victories.length === 0 && <p class="hint">{game.status === 'ready' && game.data.victories > 0 ? t.empty.noVictoriesHere : t.empty.noVictories}</p>}
     {view.victories.map(v => (
       <p key={v.id} class="victory-row">
         <span>{v.title}</span>
@@ -161,9 +162,9 @@ const LiveLines = ({ live, note, onSwitch }: { live: LiveFacts | null; note: str
   </>
 )
 
-type HomeProps = { engine: EngineApi; view: View; game: Load<GameView>; flow: QuestFlow | undefined; actions: QuestActions; isSheetOpen: boolean; letterKeys: boolean; onPet: () => void; onSwitch: (branch: string) => Promise<boolean> }
+type HomeProps = { engine: EngineApi; view: View; game: Load<GameView>; flow: QuestFlow | undefined; actions: QuestActions; isSheetOpen: boolean; letterKeys: boolean; onPet: () => void; onNewQuest: () => void; onSwitch: (branch: string) => Promise<boolean> }
 
-export const HomePage = ({ engine, view, game, flow, actions, isSheetOpen, letterKeys, onPet, onSwitch }: HomeProps) => {
+export const HomePage = ({ engine, view, game, flow, actions, isSheetOpen, letterKeys, onPet, onNewQuest, onSwitch }: HomeProps) => {
   const read = useEngineRead(engine, () => engine.readLive(view.key), [view.key, view.active?.id, view.active?.branch])
   const [dismissed, setDismissed] = useState<string | null>(null)
   const live = read.load.status === 'ready' ? read.load.data : null
@@ -201,7 +202,7 @@ export const HomePage = ({ engine, view, game, flow, actions, isSheetOpen, lette
         <LiveLines live={live} note={failure} onSwitch={switchBranch} />
       </div>
       <div class="col-right">
-        <Board view={view} actions={actions} />
+        <Board view={view} actions={actions} onNewQuest={onNewQuest} />
         <Glory view={view} game={game} />
       </div>
     </main>

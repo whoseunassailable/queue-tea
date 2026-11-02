@@ -13,9 +13,9 @@ import type { QuestFlows } from '../state_management/quest_flows'
 
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
-type SheetProps = { realm: string; quest: ActiveQuest; logPath: string | null; flows: QuestFlows; onClose: () => void }
+type SheetProps = { realm: string; realmPath: string; quest: ActiveQuest; logPath: string | null; flows: QuestFlows; onClose: () => void }
 
-export const FinishSheet = ({ realm, quest, logPath, flows, onClose }: SheetProps) => {
+export const FinishSheet = ({ realm, realmPath, quest, logPath, flows, onClose }: SheetProps) => {
   const [actual, setActual] = useState<Difficulty>(quest.difficulty)
   const [path, setPath] = useState(DEFAULT_LOG_PATH)
   const [isTouched, setTouched] = useState(false)
@@ -28,7 +28,7 @@ export const FinishSheet = ({ realm, quest, logPath, flows, onClose }: SheetProp
   const submit = async () => {
     setTouched(true)
     setFailure(null)
-    if (isSending.current || (needsPath && logPathError(path) !== undefined)) return
+    if (isSending.current || (needsPath && logPathError(path, realmPath) !== undefined)) return
     isSending.current = true
     setWorking(true)
     const answer = await flows.finish(realm, quest, actual, needsPath ? path.trim() : null)
@@ -57,7 +57,7 @@ export const FinishSheet = ({ realm, quest, logPath, flows, onClose }: SheetProp
       {needsPath ? (
         <>
           <p class="form-line">{t.finish.askPath}</p>
-          <Field label={t.finish.path} isRequired value={path} error={isTouched ? logPathError(path) : undefined} onInput={setPath} onBlur={() => setTouched(true)} onEnter={() => void submit()} />
+          <Field label={t.finish.path} isRequired value={path} error={isTouched ? logPathError(path, realmPath) : undefined} onInput={setPath} onBlur={() => setTouched(true)} onEnter={() => void submit()} />
           <p class="card-note">{t.finish.firstLine}</p>
         </>
       ) : (

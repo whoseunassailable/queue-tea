@@ -321,12 +321,12 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
    - Line 2: "Detected" when it applies, then the status. Status, first match wins: Needs you (amber) › Working › ▶ current task › "N waiting · ★ title" › "Nothing queued".
    - An unreadable record shows "⚠ name / Couldn't read".
    - Order is last activity at launch, then stable for the session.
-4. Pinned to the bottom: Guild Hall, Hoard and Settings (36 px rows).
+4. Pinned to the bottom: Guild Hall, Hoard, Library and Settings (36 px rows).
 5. The project the app was opened from (`queue-tea open`, or `queue-tea://open?path=` from the tea-cup menu) is selected and tagged Detected. Opened without one, the app shows the last project used. On the very first launch with records it shows a "Pick a project" list beside Open folder….
 
 **Navigation**
 - Tabs in the toolbar for the selected project: Home ⌘1, Quests ⌘2, Chronicle ⌘3, Mana & time ⌘4. The sky dial sits at the right of the toolbar, and the HUD (level and XP, streak, gold, mana) runs under the tabs on every screen.
-- Guild Hall, Hoard and Settings are app-wide pages; Settings is also ⌘,.
+- Guild Hall, Hoard, Library and Settings are app-wide pages; Settings is also ⌘,, and it leads with the realm you're in.
 - Each project keeps its own tab, selection, scroll, folds, search and Time I have while you switch.
 
 **Project switcher**
@@ -947,14 +947,15 @@ BLOCKED… (k), then the feature dialogs: Move (drag or Part of…) and Remove a
 │                       │   ( ) Terminal     (•) iTerm2     ( ) VS Code                                             │
 │                       │   Start runs claude in the project there when no session is open in it.                   │
 │                       │                                                                                           │
-│                       │   Records                                                                                 │
-│                       │   Folder           ~/.queue-tea/projects                             [ Show in Finder ]   │
-│                       │   Gait-feedback    Gait-feedback-232ca6.json · no last good copy yet                      │
-│                       │   queue-tie        queue-tie-c2159f.json · last good copy ✓                               │
+│                       │   This realm · Gait-feedback                                                              │
+│                       │   Record           Gait-feedback-232ca6.json · last good copy        [ Show in Finder ]   │
+│                       │   Task log         docs/task_log.md                                         [ Change… ]   │
+│                       │   GitHub account   @first-account                                           [ Change… ]   │
 │                       │                                                                                           │
-│                       │   Task log, per project                                                                   │
-│                       │   Gait-feedback    docs/task_log.md                                         [ Change… ]   │
-│                       │   queue-tie        asked when the first task here is done                  [ Set now… ]   │
+│                       │   GitHub accounts                               kept by gh; the app holds no tokens       │
+│                       │   first-account                                                                           │
+│                       │   second-account                                         your terminal's account          │
+│                       │   [ Add account… ]                                                                        │
 │                       │                                                                                           │
 │                       │   Opening the app on a project                                                            │
 │                       │   queue-tea open   in a project's terminal                         [ Install command… ]   │
@@ -970,6 +971,7 @@ BLOCKED… (k), then the feature dialogs: Move (drag or Part of…) and Remove a
 ```
 
 - **Layout:** a 420 px label column; 28 px rows; 24 px between sections.
+- **One realm at a time.** The realm section shows only the realm you're in, so another project's record or log is never on this page.
 - **The four /config values** are read-only. With no session they show the defaults, marked "default".
 - **The records are real:** on 26 Oct Gait-feedback had no `.bak` and queue-tie had one; since 27 Oct both records have one.
 

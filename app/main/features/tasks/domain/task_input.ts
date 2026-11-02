@@ -1,4 +1,5 @@
 import type { Difficulty, ParentPick, Priority } from '../../../../../types'
+import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/task_rules'
 import type { NewQuest, QuestEdit, Seal } from '../../../../shared/engine_api'
 import { MESSAGES } from '../../../core/messages'
 import { Refusal } from '../../../core/reply'
@@ -88,6 +89,14 @@ export const logPathOf = (value: unknown): string | null => {
   const path = typeof value === 'string' ? value.trim() : ''
   if (path === '') throw new Refusal(MESSAGES.logPathRequired)
   if (path.endsWith('/') || /[\r\n\0]/.test(path)) throw new Refusal(MESSAGES.logPathBad)
+
+  return path
+}
+
+// As above, and inside this realm: one realm's log never lands in another.
+export const logPathIn = (value: unknown, projectPath: string): string | null => {
+  const path = logPathOf(value)
+  if (path !== null && logFileIn(projectPath, path) === null) throw new Refusal(MESSAGES.logPathOutside)
 
   return path
 }

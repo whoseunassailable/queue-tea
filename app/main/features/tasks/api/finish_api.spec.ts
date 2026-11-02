@@ -132,6 +132,28 @@ describe('Finish quest', () => {
     expect((await onDisk()).docsLogPath).toBeNull()
   })
 
+  it('refuses a first log path into another project, and writes nothing there', async () => {
+    await seed({ tasks: [active({ id: 'one' })] })
+    const other = join(home, 'other-project')
+    await mkdir(other)
+
+    expect(refused(await finishQuest(deps, KEY, 'one', 'medium', '../other-project/task_log.md'))).toBe("The task log has to stay inside this realm's folder.")
+    expect((await onDisk()).tasks[0]!.state).toBe('current')
+    await expect(readFile(join(other, 'task_log.md'), 'utf8')).rejects.toThrow()
+  })
+
+  it('stays won, and writes nothing, when a record already holds a path outside', async () => {
+    await seed({ docsLogPath: '../other-project/task_log.md', tasks: [active({ id: 'one' })] })
+    const other = join(home, 'other-project')
+    await mkdir(other)
+
+    const outcome = data(await finishQuest(deps, KEY, 'one', 'medium', null))
+
+    expect(outcome.logFailedAt).toBe('../other-project/task_log.md')
+    expect((await onDisk()).tasks[0]!.state).toBe('done')
+    await expect(readFile(join(other, 'task_log.md'), 'utf8')).rejects.toThrow()
+  })
+
   it('refuses a difficulty that is not one', async () => {
     await seed({ docsLogPath: 'log.md', tasks: [active({ id: 'one' })] })
 

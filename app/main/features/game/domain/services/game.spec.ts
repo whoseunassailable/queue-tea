@@ -91,6 +91,18 @@ describe('streaks', () => {
   it('is zero with no victories', () => {
     expect(gameOf([], 60, NOW)).toMatchObject({ streak: 0, bestStreak: 0, level: 1, stage: 'egg', xp: 0 })
   })
+
+  it('knows today counts after a win today', () => {
+    expect(gameOf(days('2026-10-27'), 60, NOW).wonToday).toBe(true)
+  })
+
+  it('knows today is still to win with the last win yesterday', () => {
+    expect(gameOf(days('2026-10-26'), 60, NOW)).toMatchObject({ streak: 1, wonToday: false })
+  })
+
+  it('knows today is still to win with no wins at all', () => {
+    expect(gameOf([], 60, NOW).wonToday).toBe(false)
+  })
 })
 
 describe('badges', () => {

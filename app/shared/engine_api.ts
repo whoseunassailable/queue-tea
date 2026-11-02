@@ -109,6 +109,8 @@ export type GameState = {
   stage: Stage
   streak: number
   bestStreak: number
+  // Whether today already counts, or the streak is still to be kept.
+  wonToday: boolean
   badges: Badge[]
 }
 
@@ -178,11 +180,13 @@ export type SkyChoice = 'auto' | 'morning' | 'day' | 'evening' | 'night'
 export type TerminalChoice = 'terminal' | 'iterm' | 'vscode'
 // Folds are the sagas folded, by realm.
 export type ChronicleScope = 'realm' | 'all'
-export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean }
+// realmAccounts says which GitHub account each realm belongs to, by realm.
+export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string> }
 
 // What the Settings page shows beside the app's own settings.
-export type RecordLine = { key: string; name: string; file: string; hasCopy: boolean; logPath: string | null; isReadable: boolean }
-export type SettingsPage = { folder: string; options: Options; isDefault: boolean; records: RecordLine[]; command: InstalledCommand | null }
+export type RealmLine = { key: string; name: string; path: string; file: string; hasCopy: boolean; logPath: string | null; isReadable: boolean }
+// realm is the one you're in; null with none picked.
+export type SettingsPage = { options: Options; isDefault: boolean; realm: RealmLine | null; command: InstalledCommand | null }
 
 // Where the queue-tea command went. needsPath is when that folder may not be on
 // the PATH, so the shell wouldn't find it.
@@ -263,6 +267,20 @@ export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | n
 // with when the last one was.
 export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null }
 
+// The accounts gh knows. isWorking is false when a sign-in has lapsed. The app
+// never holds a token: they stay in gh.
+export type GithubAccount = { login: string; isActive: boolean; isWorking: boolean }
+export type GithubView = { kind: 'missing' } | { kind: 'ready'; accounts: GithubAccount[] }
+export type GithubLoginCode = { code: string; url: string }
+export type GithubAdded = { view: GithubView; added: string | null }
+
+// A book on the shelf. log holds the page you'd reached, one entry a day.
+// firstPage is where you were when it came onto the shelf: read, but not today.
+export type Book = { id: string; title: string; author: string | null; totalPages: number; firstPage: number; page: number; started: string; finished: string | null; log: { day: string; page: number }[] }
+export type BookInput = { title: string; author: string | null; totalPages: number; page: number }
+export type Library = { version: 1; books: Book[] }
+export type LibraryView = { reading: Book[]; finished: Book[]; finishedCount: number; pagesRead: number; pagesThisWeek: number; pagesToday: number }
+
 // What a menu bar item asks of the window. Most are the key that does the same.
 export type MenuItem = { kind: 'key'; key: string; isMeta: boolean } | { kind: 'showRecord' } | { kind: 'toggleRealms' } | { kind: 'installCommand' }
 
@@ -275,13 +293,23 @@ export type EngineApi = {
   readMana: (key: string) => Promise<Reply<ManaView>>
   readSettings: () => Promise<Reply<Settings>>
   saveSettings: (patch: Partial<Settings>) => Promise<Reply<Settings>>
-  readSettingsPage: () => Promise<Reply<SettingsPage>>
+  readSettingsPage: (key: string | null) => Promise<Reply<SettingsPage>>
   setTaskLog: (key: string, path: string) => Promise<Reply<null>>
-  showRecord: (key: string | null) => Promise<Reply<null>>
+  showRecord: (key: string) => Promise<Reply<null>>
   openFolder: () => Promise<Reply<FolderPick | null>>
   addProject: (path: string) => Promise<Reply<string>>
   restoreRealm: (key: string) => Promise<Reply<string>>
   installCommand: () => Promise<Reply<InstalledCommand>>
+  readGithub: () => Promise<Reply<GithubView>>
+  startGithubLogin: () => Promise<Reply<GithubLoginCode>>
+  openGithubLogin: () => Promise<Reply<null>>
+  awaitGithubLogin: () => Promise<Reply<GithubAdded>>
+  cancelGithubLogin: () => Promise<Reply<null>>
+  readLibrary: () => Promise<Reply<LibraryView>>
+  addBook: (book: BookInput) => Promise<Reply<LibraryView>>
+  setBookPage: (id: string, page: number) => Promise<Reply<LibraryView>>
+  finishBook: (id: string) => Promise<Reply<LibraryView>>
+  removeBook: (id: string) => Promise<Reply<LibraryView>>
   // What arrived before the window was listening.
   takeOpened: () => Promise<Reply<Opened[]>>
   readChoices: (key: string, taskId: string | null) => Promise<Reply<Choices>>
@@ -330,6 +358,16 @@ export const CHANNELS = {
   addProject: 'engine:add-project',
   restoreRealm: 'engine:restore-realm',
   installCommand: 'engine:install-command',
+  readGithub: 'engine:read-github',
+  startGithubLogin: 'engine:start-github-login',
+  openGithubLogin: 'engine:open-github-login',
+  awaitGithubLogin: 'engine:await-github-login',
+  cancelGithubLogin: 'engine:cancel-github-login',
+  readLibrary: 'engine:read-library',
+  addBook: 'engine:add-book',
+  setBookPage: 'engine:set-book-page',
+  finishBook: 'engine:finish-book',
+  removeBook: 'engine:remove-book',
   takeOpened: 'engine:take-opened',
   opened: 'engine:opened',
   readChoices: 'engine:read-choices',

@@ -108,6 +108,7 @@ export const gameOf = (records: ProjectRecord[], offsetMinutes: number, nowMs: n
     stage: stageOf(level),
     streak: streakOf(runs, dayKey(nowMs, offsetMinutes)),
     bestStreak: best,
+    wonToday: runs.at(-1)?.at(-1) === dayKey(nowMs, offsetMinutes),
     badges: [
       countBadge('firstFlame', 1, wins),
       countBadge('tenTales', 10, wins),

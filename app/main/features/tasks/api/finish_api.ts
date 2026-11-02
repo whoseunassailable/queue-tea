@@ -7,7 +7,7 @@ import { MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
 import { victoryOf } from '../../game/domain/services/victory'
 import { scanRecords } from '../../projects/data/projects_source'
-import { difficultyOf, logPathOf, questIdOf } from '../domain/task_input'
+import { difficultyOf, logPathIn, questIdOf } from '../domain/task_input'
 import { edit, realmView, scopeOf } from './scope'
 import type { Scope, TasksDeps } from './scope'
 
@@ -49,7 +49,7 @@ export const finishQuest = (d: TasksDeps, key: unknown, taskId: unknown, actual:
     const scope = await scopeOf(d, key)
     const id = questIdOf(taskId)
     const chosen = difficultyOf(actual)
-    const path = logPathOf(logPath)
+    const path = logPathIn(logPath, scope.ctx.projectPath)
     // The use case would finish a quest in any state, and this one may have
     // gone back to the board while the sheet was open.
     if (scope.record.tasks.find(t => t.id === id)?.state !== 'current') throw new Refusal(MESSAGES.notActiveFinish)
@@ -76,7 +76,7 @@ export const retryTaskLog = (d: TasksDeps, key: unknown, taskId: unknown, path: 
   reply(d.log, MESSAGES.retryTaskLog, async () => {
     const scope = await scopeOf(d, key)
     const id = questIdOf(taskId)
-    const checked = logPathOf(path)
+    const checked = logPathIn(path, scope.ctx.projectPath)
     if (checked === null) throw new Refusal(MESSAGES.logPathRequired)
     if (scope.record.tasks.find(t => t.id === id)?.state !== 'done') throw new Refusal(MESSAGES.badQuest)
 

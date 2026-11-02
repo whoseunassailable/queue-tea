@@ -30,6 +30,13 @@ export const Dialog = ({ title, isSheet, onCancel, onSubmit, children }: { title
         aria-modal="true"
         aria-label={title}
         noValidate
+        // Pressing a button at the foot takes focus from the field, whose error
+        // then pushes the button down mid-click, and the click misses. Keeping
+        // the focus where it is leaves the button in place: the press itself
+        // checks every field.
+        onMouseDown={event => {
+          if ((event.target as HTMLElement).closest('.sheet-actions') !== null) event.preventDefault()
+        }}
         onSubmit={event => {
           event.preventDefault()
           onSubmit()

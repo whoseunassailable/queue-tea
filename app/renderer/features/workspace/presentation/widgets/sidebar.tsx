@@ -51,6 +51,7 @@ const Row = ({ row, isSelected, isDetected, onPick }: { row: ProjectRow; isSelec
 const LINKS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.guild, label: t.nav.guild },
   { route: ROUTES.hoard, label: t.nav.hoard },
+  { route: ROUTES.library, label: t.nav.library },
   { route: ROUTES.settings, label: t.nav.settings },
 ]
 

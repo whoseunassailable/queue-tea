@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 
-import type { EngineApi, FolderPick, MenuItem, Opened, SessionState } from '../../shared/engine_api'
+import type { EngineApi, FolderPick, MenuItem, Opened, RealmLine, SessionState } from '../../shared/engine_api'
 import { hrefOf, ROUTES, useRoute } from '../config/routing/routes'
 import type { Route } from '../config/routing/routes'
 import { DETAIL_IS_PAGE_BELOW, PET_MS, SKY_CHECK_MS } from '../core/constants/constants'
@@ -11,9 +11,12 @@ import { Toasts } from '../core/widgets/toasts'
 import { useWindowKeys } from '../core/widgets/window_keys'
 import { useWindowWidth } from '../core/widgets/window_width'
 import { ChroniclePage } from '../features/chronicle/presentation/pages/chronicle_page'
+import { ConnectDialog } from '../features/github/presentation/widgets/connect_dialog'
+import { GithubChip } from '../features/github/presentation/widgets/github_chip'
 import { GuildPage } from '../features/guild/presentation/pages/guild_page'
 import { HoardPage } from '../features/hoard/presentation/pages/hoard_page'
 import { HomePage } from '../features/home/presentation/pages/home_page'
+import { LibraryPage } from '../features/library/presentation/pages/library_page'
 import { ManaPage } from '../features/mana/presentation/pages/mana_page'
 import { paletteEntries } from '../features/palette/domain/palette'
 import { PaletteDialog } from '../features/palette/presentation/widgets/palette_dialog'
@@ -32,6 +35,7 @@ import { RemoveDialog } from '../features/quests/presentation/widgets/remove_dia
 import { SealDialog } from '../features/quests/presentation/widgets/seal_dialog'
 import { VictoryPanel } from '../features/quests/presentation/widgets/victory_panel'
 import { SettingsPage } from '../features/settings/presentation/pages/settings_page'
+import { questAheadOf } from '../features/workspace/domain/momentum'
 import { FailedRecord } from '../features/workspace/presentation/widgets/failed_record'
 import { AddRealmDialog, FirstRun } from '../features/workspace/presentation/widgets/first_run'
 import { Hud } from '../features/workspace/presentation/widgets/hud'
@@ -53,6 +57,7 @@ const TABS: readonly { route: Route; label: string }[] = [
 const MORE_PAGES: readonly { route: Route; label: string }[] = [
   { route: ROUTES.guild, label: t.nav.guild },
   { route: ROUTES.hoard, label: t.nav.hoard },
+  { route: ROUTES.library, label: t.nav.library },
   { route: ROUTES.settings, label: t.nav.settings },
 ]
 
@@ -74,16 +79,17 @@ const useHour = (): number => {
   return hour
 }
 
-type ContentProps = { state: WorkspaceState; workspace: Workspace; engine: EngineApi; route: Route; edits: QuestEdits; flows: QuestFlows; actionsFor: (view: ReadableView) => QuestActions; sheet: Sheet | null; isPaletteOpen: boolean; onSheet: (sheet: Sheet) => void; onCopy: (text: string) => void; onPet: () => void; realms: RealmFlows; onOpenFolder: () => void }
+type ContentProps = { state: WorkspaceState; workspace: Workspace; engine: EngineApi; route: Route; edits: QuestEdits; flows: QuestFlows; actionsFor: (view: ReadableView) => QuestActions; sheet: Sheet | null; isPaletteOpen: boolean; onSheet: (sheet: Sheet) => void; onCopy: (text: string) => void; onPet: () => void; realms: RealmFlows; onOpenFolder: () => void; onConnect: (realm: Pick<RealmLine, 'key' | 'name'>) => void }
 
-const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sheet, isPaletteOpen, onSheet, onCopy, onPet, realms, onOpenFolder }: ContentProps) => {
+const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sheet, isPaletteOpen, onSheet, onCopy, onPet, realms, onOpenFolder, onConnect }: ContentProps) => {
   const isCovered = sheet !== null || isPaletteOpen
   const { projects, project, game, selected } = state
-  // These are about every realm, so they don't wait for one to be picked.
+  // These don't belong to a realm, so they don't wait for one to be picked.
   if (route === ROUTES.guild) return <GuildPage onCopy={onCopy} />
   if (route === ROUTES.hoard) return <HoardPage engine={engine} />
+  if (route === ROUTES.library) return <LibraryPage engine={engine} />
   if (route === ROUTES.settings) {
-    return <SettingsPage engine={engine} settings={state.settings} onChange={patch => void workspace.changeSettings(patch)} onCopy={onCopy} onShow={key => void realms.show(key)} onInstall={realms.install} />
+    return <SettingsPage engine={engine} selected={selected} settings={state.settings} onChange={patch => void workspace.changeSettings(patch)} onCopy={onCopy} onShow={key => void realms.show(key)} onInstall={realms.install} onConnect={onConnect} />
   }
   if (projects.status === 'loading') return <Loading line={t.loading.realms} />
   if (projects.status === 'failed') return <Failed message={projects.message} onRetry={() => void workspace.refresh()} />
@@ -144,7 +150,7 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
     )
   }
 
-  return <HomePage engine={engine} onSwitch={branch => flows.switchBranch(view.key, branch)} view={view} game={game} flow={flow} actions={actions} isSheetOpen={isCovered} letterKeys={state.settings.letterKeys} onPet={onPet} />
+  return <HomePage engine={engine} onSwitch={branch => flows.switchBranch(view.key, branch)} view={view} game={game} flow={flow} actions={actions} isSheetOpen={isCovered} letterKeys={state.settings.letterKeys} onPet={onPet} onNewQuest={() => onSheet({ kind: 'new', parentId: null })} />
 }
 
 type SheetProps = { sheet: Sheet; view: ReadableView; engine: EngineApi; edits: QuestEdits; flows: QuestFlows; onClose: () => void }
@@ -155,7 +161,7 @@ const SheetView = ({ sheet, view, engine, edits, flows, onClose }: SheetProps) =
   if (sheet.kind === 'move') return <MoveDialog engine={engine} realm={key} quest={sheet.quest} preset={sheet.preset} edits={edits} onClose={onClose} />
   if (sheet.kind === 'seal') return <SealDialog engine={engine} realm={key} quest={sheet.quest} isActive={false} onSeal={seal => edits.seal(key, sheet.quest, seal)} onClose={onClose} />
   if (sheet.kind === 'sealActive') return <SealDialog engine={engine} realm={key} quest={sheet.quest} isActive onSeal={seal => flows.sealActive(key, sheet.quest, seal)} onClose={onClose} />
-  if (sheet.kind === 'finish') return <FinishSheet realm={key} quest={sheet.quest} logPath={view.docsLogPath} flows={flows} onClose={onClose} />
+  if (sheet.kind === 'finish') return <FinishSheet realm={key} realmPath={view.path} quest={sheet.quest} logPath={view.docsLogPath} flows={flows} onClose={onClose} />
 
   return <RemoveDialog realm={view.key} quest={sheet.quest} chapters={sheet.chapters} edits={edits} onClose={onClose} />
 }
@@ -166,6 +172,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   const flows = useMemo(() => questFlows(engine, workspace), [engine, workspace])
   const realms = useMemo(() => realmFlows(engine, workspace), [engine, workspace])
   const [adding, setAdding] = useState<{ pick: FolderPick; isDetected: boolean } | null>(null)
+  const [connecting, setConnecting] = useState<Pick<RealmLine, 'key' | 'name'> | null>(null)
   const [isPaletteOpen, setPaletteOpen] = useState(false)
   const [isSideOpen, setSideOpen] = useState(false)
   const [sheet, setSheet] = useState<Sheet | null>(null)
@@ -209,6 +216,11 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   const openFolder = async () => {
     const pick = await realms.openFolder()
     if (pick !== null) setAdding({ pick, isDetected: false })
+  }
+
+  const connect = (key: string, name: string, login: string | null) => {
+    void workspace.setRealmAccount(key, login)
+    workspace.say({ tone: 'success', text: login === null ? t.github.disconnected(name) : t.github.connectedTo(login, name) })
   }
 
   const closeWon = () => {
@@ -322,7 +334,9 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
               ),
             )}
           </nav>}
-          <Hud game={state.game} onRetry={() => void workspace.refresh()} />
+          <Hud game={state.game} quest={questAheadOf(readable)} onRetry={() => void workspace.refresh()}>
+            {readable !== null && <GithubChip login={state.settings.realmAccounts[readable.key] ?? null} onOpen={() => setConnecting(readable)} />}
+          </Hud>
           <SkyDial sky={state.settings.sky} onPick={sky => void workspace.setSky(sky)} />
           {readable !== null && (
             <button type="button" class="icon-btn big panel" aria-label={t.actions.newQuest} onClick={() => setSheet({ kind: 'new', parentId: null })}>
@@ -335,11 +349,12 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
             {state.note}
           </p>
         )}
-        <Content state={state} workspace={workspace} engine={engine} route={route} edits={edits} flows={flows} actionsFor={actionsFor} sheet={sheet} isPaletteOpen={isPaletteOpen} onSheet={setSheet} onCopy={text => void flows.copy(text)} onPet={() => setPetted(true)} realms={realms} onOpenFolder={() => void openFolder()} />
+        <Content state={state} workspace={workspace} engine={engine} route={route} edits={edits} flows={flows} actionsFor={actionsFor} sheet={sheet} isPaletteOpen={isPaletteOpen} onSheet={setSheet} onCopy={text => void flows.copy(text)} onPet={() => setPetted(true)} realms={realms} onOpenFolder={() => void openFolder()} onConnect={setConnecting} />
       </div>
       {sheet !== null && readable !== null && <SheetView sheet={sheet} view={readable} engine={engine} edits={edits} flows={flows} onClose={() => setSheet(null)} />}
       {isPaletteOpen && <PaletteDialog entries={entries} onClose={() => setPaletteOpen(false)} />}
-      {adding !== null && <AddRealmDialog pick={adding.pick} isDetected={adding.isDetected} flows={realms} onClose={() => setAdding(null)} />}
+      {adding !== null && <AddRealmDialog engine={engine} pick={adding.pick} isDetected={adding.isDetected} flows={realms} onAccount={(key, login) => void workspace.setRealmAccount(key, login)} onCopy={text => void flows.copy(text)} onClose={() => setAdding(null)} />}
+      {connecting !== null && <ConnectDialog engine={engine} realm={connecting.name} connected={state.settings.realmAccounts[connecting.key] ?? null} onSave={login => connect(connecting.key, connecting.name, login)} onCopy={text => void flows.copy(text)} onClose={() => setConnecting(null)} />}
       {state.won !== null && <VictoryPanel won={state.won} isCalm={state.settings.isCalm} onClose={closeWon} />}
       <Toasts toasts={state.toasts} onDismiss={workspace.dismiss} />
     </div>

@@ -62,42 +62,47 @@ beforeEach(async () => {
 afterEach(() => rm(home, { recursive: true, force: true }))
 
 describe('the Settings page', () => {
-  it('lists every record with its log and whether it has a last good copy', async () => {
+  it('shows only the realm you\'re in, with its log and whether it has a last good copy', async () => {
     await seed('a-000001', { docsLogPath: 'docs/task_log.md' })
     await seed('b-000002')
-    await writeFile(`${fileOf('b-000002')}.bak`, '{}')
+    await writeFile(`${fileOf('a-000001')}.bak`, '{}')
 
-    const page = data(await readSettingsPage(deps))
+    const page = data(await readSettingsPage(deps, 'a-000001'))
 
-    expect(page.folder).toBe(folder)
-    expect(page.records).toEqual(
-      expect.arrayContaining([
-        { key: 'a-000001', name: 'a', file: 'a-000001.json', hasCopy: false, logPath: 'docs/task_log.md', isReadable: true },
-        { key: 'b-000002', name: 'b', file: 'b-000002.json', hasCopy: true, logPath: null, isReadable: true },
-      ]),
-    )
+    expect(page.realm).toEqual({ key: 'a-000001', name: 'a', path: '/p/a-000001', file: 'a-000001.json', hasCopy: true, logPath: 'docs/task_log.md', isReadable: true })
+    expect(JSON.stringify(page)).not.toContain('b-000002')
   })
 
-  it('keeps a record that doesn\'t read on the list, without its log', async () => {
+  it('shows no realm with none picked', async () => {
+    await seed('a-000001')
+
+    expect(data(await readSettingsPage(deps, null)).realm).toBeNull()
+  })
+
+  it('refuses a realm it doesn\'t know', async () => {
+    expect((await readSettingsPage(deps, 'nope-000000')).ok).toBe(false)
+  })
+
+  it('keeps a record that doesn\'t read, without its log', async () => {
     await writeFile(fileOf('broken-000003'), '{ not json')
 
-    expect(data(await readSettingsPage(deps)).records).toEqual([{ key: 'broken-000003', name: 'broken', file: 'broken-000003.json', hasCopy: false, logPath: null, isReadable: false }])
+    expect(data(await readSettingsPage(deps, 'broken-000003')).realm).toEqual({ key: 'broken-000003', name: 'broken', path: '', file: 'broken-000003.json', hasCopy: false, logPath: null, isReadable: false })
   })
 
   it('shows the defaults, marked, with no session', async () => {
-    expect(data(await readSettingsPage(deps))).toMatchObject({ isDefault: true, options: { freshAtTokens: expect.any(Number) } })
+    expect(data(await readSettingsPage(deps, null))).toMatchObject({ isDefault: true, options: { freshAtTokens: expect.any(Number) } })
   })
 
   it('shows a live session\'s own values', async () => {
     await session({ options: { idleGapMinutes: 7, freshAtTokens: 1, handoffAtPercent: 2, checkTimeoutSeconds: 3 } })
 
-    expect(data(await readSettingsPage(deps))).toMatchObject({ isDefault: false, options: { idleGapMinutes: 7 } })
+    expect(data(await readSettingsPage(deps, null))).toMatchObject({ isDefault: false, options: { idleGapMinutes: 7 } })
   })
 
   it('doesn\'t trust a session gone stale', async () => {
     await session({ heartbeat: NOW - 91_000, options: { idleGapMinutes: 7 } })
 
-    expect(data(await readSettingsPage(deps)).isDefault).toBe(true)
+    expect(data(await readSettingsPage(deps, null)).isDefault).toBe(true)
   })
 })
 
@@ -117,6 +122,17 @@ describe('the task log path', () => {
     await seed('a-000001')
 
     expect(refused(await setTaskLog(deps, 'a-000001', path))).toBe(message)
+    expect(JSON.parse(await readFile(fileOf('a-000001'), 'utf8')).docsLogPath).toBeNull()
+  })
+
+  it.each([
+    ['a path into another project', '../other-project/docs/task_log.md'],
+    ['an absolute path elsewhere', '/p/other-project/docs/task_log.md'],
+    ['a path that leaves and looks back', 'docs/../../other-project/log.md'],
+  ])('refuses %s, so one realm\'s log can\'t land in another', async (_, path) => {
+    await seed('a-000001')
+
+    expect(refused(await setTaskLog(deps, 'a-000001', path))).toBe("The task log has to stay inside this realm's folder.")
     expect(JSON.parse(await readFile(fileOf('a-000001'), 'utf8')).docsLogPath).toBeNull()
   })
 
@@ -140,12 +156,6 @@ describe('showing a record in Finder', () => {
     data(await showRecord(deps, 'a-000001'))
 
     expect(revealed).toEqual([fileOf('a-000001')])
-  })
-
-  it('shows the folder with no key', async () => {
-    data(await showRecord(deps, null))
-
-    expect(revealed).toEqual([folder])
   })
 
   it('never reveals a path made up by the window', async () => {

@@ -9,7 +9,7 @@ import { activeQuest, fakeEngine, projectRow, projectView, quest, SETTINGS_PAGE 
 import { App } from './app'
 
 const KEY = 'a-000001'
-const settings = (over: Partial<Settings>): Reply<Settings> => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, ...over } })
+const settings = (over: Partial<Settings>): Reply<Settings> => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {}, ...over } })
 const page = (over: Partial<SettingsPage>): Reply<SettingsPage> => ({ ok: true, data: { ...SETTINGS_PAGE, ...over } })
 const FAILED: ProjectView = { kind: 'unreadable', key: KEY, name: 'a', reason: "it isn't valid JSON (Unexpected token)", file: '/h/.queue-tea/projects/a-000001.json', isNewer: false, canRestore: true }
 const NEW_FOLDER: FolderPick = { path: '/p/demo', name: 'demo', key: 'demo-abc123', isKnown: false, isRepo: true }
@@ -101,21 +101,22 @@ describe('Settings', () => {
     await waitFor(() => expect(engine.copyText).toHaveBeenCalledWith('/config'))
   })
 
-  it('lists the records and shows them in Finder', async () => {
+  it('shows this realm\'s record, and shows it in Finder', async () => {
     const { engine } = await open('/settings')
 
-    await screen.findByText('b-000002.json')
+    await screen.findByText('a-000001.json')
     await press(t.settings.showInFinder)
 
-    await waitFor(() => expect(engine.showRecord).toHaveBeenCalledWith(null))
+    await waitFor(() => expect(engine.showRecord).toHaveBeenCalledWith('a-000001'))
   })
 })
 
 describe('the task log path in Settings', () => {
+  const NOT_SET = { readSettingsPage: async () => page({ realm: { ...SETTINGS_PAGE.realm!, logPath: null } }) }
   const change = async (over: Partial<EngineApi> = {}) => {
-    const opened = await open('/settings', over)
-    await screen.findByRole('button', { name: `${t.settings.setNow} b` })
-    await press(`${t.settings.setNow} b`)
+    const opened = await open('/settings', { ...NOT_SET, ...over })
+    await screen.findByRole('button', { name: t.settings.setNow })
+    await press(t.settings.setNow)
 
     return { ...opened, field: screen.getByLabelText(`${t.finish.path} *`) as HTMLInputElement }
   }
@@ -128,9 +129,9 @@ describe('the task log path in Settings', () => {
 
   it('starts from the path it has', async () => {
     await open('/settings')
-    await screen.findByRole('button', { name: `${t.settings.change} a` })
+    await screen.findByRole('button', { name: t.settings.change })
 
-    await press(`${t.settings.change} a`)
+    await press(t.settings.change)
 
     expect((screen.getByLabelText(`${t.finish.path} *`) as HTMLInputElement).value).toBe('notes/log.md')
   })
@@ -160,7 +161,7 @@ describe('the task log path in Settings', () => {
 
     await press(t.actions.save)
 
-    await waitFor(() => expect(engine.setTaskLog).toHaveBeenCalledWith('b-000002', 'docs/task_log.md'))
+    await waitFor(() => expect(engine.setTaskLog).toHaveBeenCalledWith('a-000001', 'docs/task_log.md'))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
@@ -178,7 +179,7 @@ describe('the single-letter keys', () => {
   const BOARD = projectView(KEY, { ready: [{ kind: 'quest', quest: quest({ id: 'first', title: 'First', isStar: true }) }], canStart: 1, active: null })
 
   it('stop on Home when switched off', async () => {
-    const { engine } = await open('/home', { readSettings: async () => settings({ letterKeys: false }), readProject: async () => ({ ok: true, data: BOARD }) })
+    const { engine } = await open('/home', { readSettings: async () => settings({ letterKeys: false, realmAccounts: {} }), readProject: async () => ({ ok: true, data: BOARD }) })
 
     await key('s')
 
@@ -186,7 +187,7 @@ describe('the single-letter keys', () => {
   })
 
   it('stop on the board when switched off', async () => {
-    const { engine } = await open('/quests', { readSettings: async () => settings({ letterKeys: false }), readProject: async () => ({ ok: true, data: BOARD }) })
+    const { engine } = await open('/quests', { readSettings: async () => settings({ letterKeys: false, realmAccounts: {} }), readProject: async () => ({ ok: true, data: BOARD }) })
 
     await key('2')
     await key('s')
@@ -197,7 +198,7 @@ describe('the single-letter keys', () => {
 
   it('leave the ⌘ shortcuts alone', async () => {
     const view = projectView(KEY, { active: activeQuest() })
-    const { engine } = await open('/home', { readSettings: async () => settings({ letterKeys: false }), readProject: async () => ({ ok: true, data: view }) })
+    const { engine } = await open('/home', { readSettings: async () => settings({ letterKeys: false, realmAccounts: {} }), readProject: async () => ({ ok: true, data: view }) })
 
     await key('Enter', { metaKey: true })
     await waitFor(() => expect(engine.openClaude).toHaveBeenCalled())
@@ -272,7 +273,7 @@ describe('first run', () => {
     const listProjects = vi.fn<EngineApi['listProjects']>(async () => ({ ok: true, data: [] }))
     const { engine } = await open('/home', { listProjects, openFolder: async () => ({ ok: true, data: NEW_FOLDER }), addProject: vi.fn(async () => ({ ok: true as const, data: 'demo-abc123' })) })
     await press(t.firstRun.open)
-    await screen.findByRole('dialog')
+    await screen.findByText(t.github.noAccounts)
     listProjects.mockResolvedValue({ ok: true, data: [projectRow('demo-abc123')] })
 
     await press(t.addRealm.add)
@@ -285,7 +286,7 @@ describe('first run', () => {
   it('stays open with the reason when it can\'t add', async () => {
     await open('/home', { ...none, openFolder: async () => ({ ok: true, data: NEW_FOLDER }), addProject: async () => ({ ok: false, error: { message: "Couldn't add that realm." } }) })
     await press(t.firstRun.open)
-    await screen.findByRole('dialog')
+    await screen.findByText(t.github.noAccounts)
 
     await press(t.addRealm.add)
 

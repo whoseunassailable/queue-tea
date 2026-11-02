@@ -94,7 +94,7 @@ test.beforeAll(async () => {
     env: { ...process.env, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' },
   })
   page = await app.firstWindow()
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
   await expect(titles().first()).toHaveText('A long hard quest')
 })
 
@@ -200,7 +200,7 @@ test('Home says when the quest\'s branch isn\'t checked out, and Switch fixes it
 
 test('the quest in hand opens in full, with what git says', async () => {
   await writeFile(join(repo, 'a.txt'), 'changed\n')
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
 
   await page.getByRole('button', { name: 'Show the details of A long hard quest' }).click()
 

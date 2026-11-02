@@ -194,7 +194,7 @@ describe('the menu bar', () => {
   })
 
   it('still runs a letter with the letter keys off, as it isn\'t a key press', async () => {
-    const { engine, menu } = await open('/home', BOARD, { readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: false } }) })
+    const { engine, menu } = await open('/home', BOARD, { readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: false, realmAccounts: {} } }) })
 
     await menu({ kind: 'key', key: 's', isMeta: false })
 

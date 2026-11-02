@@ -3,10 +3,11 @@ import type { ChronicleScope, Reply, Settings, SkyChoice, TerminalChoice } from 
 import type { Logger } from '../../../core/logger'
 import { MESSAGES } from '../../../core/messages'
 import { reply } from '../../../core/reply'
+import { isGithubLogin } from '../../github/domain/accounts'
 
 export type SettingsDeps = { host: Host; file: string; log: Logger }
 
-export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true }
+export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} }
 
 const SKIES: readonly SkyChoice[] = ['auto', 'morning', 'day', 'evening', 'night']
 const TERMINALS: readonly TerminalChoice[] = ['terminal', 'iterm', 'vscode']
@@ -21,6 +22,9 @@ const isFolds = (value: unknown): value is Settings['folds'] =>
   !Array.isArray(value) &&
   Object.values(value).every(ids => Array.isArray(ids) && ids.every(id => typeof id === 'string'))
 
+const isRealmAccounts = (value: unknown): value is Settings['realmAccounts'] =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) && Object.values(value).every(isGithubLogin)
+
 // What can be kept from a value read or sent: anything else stays out.
 export const cleanSettings = (value: unknown): Partial<Settings> => {
   const v = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
@@ -33,6 +37,7 @@ export const cleanSettings = (value: unknown): Partial<Settings> => {
     ...(isTerminal(v.terminal) ? { terminal: v.terminal } : {}),
     ...(isScope(v.chronicleScope) ? { chronicleScope: v.chronicleScope } : {}),
     ...(typeof v.letterKeys === 'boolean' ? { letterKeys: v.letterKeys } : {}),
+    ...(isRealmAccounts(v.realmAccounts) ? { realmAccounts: v.realmAccounts } : {}),
   }
 }
 

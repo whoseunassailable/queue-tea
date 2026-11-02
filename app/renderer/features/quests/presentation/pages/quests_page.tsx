@@ -22,6 +22,7 @@ import { ActiveCard } from '../widgets/active_card'
 import { ActiveDetail } from '../widgets/active_detail'
 import { AddChapter } from '../widgets/add_chapter'
 import { SearchAndFilters, TimeControl } from '../widgets/board_tools'
+import { EmptyBoard } from '../widgets/empty_board'
 import { FlowCard } from '../widgets/flow_card'
 import { JudgementCard } from '../widgets/judgement_card'
 import { QuestDetail } from '../widgets/quest_detail'
@@ -208,7 +209,7 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
             )}
           </div>
           {view.activeSaga !== null && <p class="saga-line">{t.board.activeSaga(view.activeSaga)}</p>}
-          {isEmpty && <p class="hint">{t.empty.boardTitle}. {t.empty.boardLine}</p>}
+          {isEmpty && <EmptyBoard onNewQuest={() => onSheet({ kind: 'new', parentId: null })} />}
           {!isEmpty && ready.length === 0 && !isNarrowed && <p class="hint">{t.empty.allSealed}</p>}
           {isNarrowed && rows.length === 0 && (
             <p class="hint">

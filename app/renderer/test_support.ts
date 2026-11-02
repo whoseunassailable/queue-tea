@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HoardView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
+import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -100,6 +100,7 @@ export const GAME: GameView = {
   stage: 'hatchling',
   streak: 1,
   bestStreak: 3,
+  wonToday: true,
   badges: [{ id: 'firstFlame', need: 1, have: 1, earnedOn: '2026-10-20' }],
   allowance: { percent: 62, resetsAt: null },
 }
@@ -152,15 +153,13 @@ export const CHRONICLE: ChronicleView = {
 export const QUEST_FACTS: QuestFacts = { note: null, messages: [], branchToBe: null, active: null }
 
 export const SETTINGS_PAGE: SettingsPage = {
-  folder: '/h/.queue-tea/projects',
   options: { idleGapMinutes: 15, freshAtTokens: 100_000, handoffAtPercent: 90, checkTimeoutSeconds: 10 },
   isDefault: true,
-  records: [
-    { key: 'a-000001', name: 'a', file: 'a-000001.json', hasCopy: true, logPath: 'notes/log.md', isReadable: true },
-    { key: 'b-000002', name: 'b', file: 'b-000002.json', hasCopy: false, logPath: null, isReadable: true },
-  ],
+  realm: { key: 'a-000001', name: 'a', path: '/p/a-000001', file: 'a-000001.json', hasCopy: true, logPath: 'notes/log.md', isReadable: true },
   command: null,
 }
+
+export const LIBRARY: LibraryView = { reading: [], finished: [], finishedCount: 0, pagesRead: 0, pagesThisWeek: 0, pagesToday: 0 }
 
 export const MANA: ManaView = {
   realm: 'queue-tea',
@@ -190,8 +189,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readHoard: async () => ({ ok: true, data: HOARD }),
     readChronicle: vi.fn(async () => ({ ok: true as const, data: CHRONICLE })),
     readMana: vi.fn(async () => ({ ok: true as const, data: MANA })),
-    readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }),
-    saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' as const, chronicleScope: 'realm' as const, letterKeys: true, ...patch } })),
+    readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }),
+    saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' as const, chronicleScope: 'realm' as const, letterKeys: true, realmAccounts: {}, ...patch } })),
     readSettingsPage: async () => ({ ok: true, data: SETTINGS_PAGE }),
     setTaskLog: vi.fn(async () => ({ ok: true as const, data: null })),
     showRecord: vi.fn(async () => ({ ok: true as const, data: null })),
@@ -199,6 +198,16 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     addProject: vi.fn(async (path: string) => ({ ok: true as const, data: path })),
     restoreRealm: vi.fn(async () => ({ ok: true as const, data: 'kept.json' })),
     installCommand: vi.fn(async () => ({ ok: true as const, data: { path: '/usr/local/bin/queue-tea', needsPath: false } })),
+    readGithub: vi.fn(async () => ({ ok: true as const, data: { kind: 'ready' as const, accounts: [] } })),
+    startGithubLogin: vi.fn(async () => ({ ok: true as const, data: { code: 'AAAA-BBBB', url: 'https://github.com/login/device' } })),
+    openGithubLogin: vi.fn(async () => ({ ok: true as const, data: null })),
+    awaitGithubLogin: vi.fn(async () => ({ ok: true as const, data: { view: { kind: 'ready' as const, accounts: [] }, added: null } })),
+    cancelGithubLogin: vi.fn(async () => ({ ok: true as const, data: null })),
+    readLibrary: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
+    addBook: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
+    setBookPage: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
+    finishBook: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
+    removeBook: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
     takeOpened: async () => ({ ok: true, data: [] }),
     readChoices: async () => ({ ok: true, data: { features: [], lone: [], parents: [], waitFor: [] } }),
     setPriority: vi.fn(reply),

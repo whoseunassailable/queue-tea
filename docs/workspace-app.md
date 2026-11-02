@@ -14,7 +14,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 
 ## In this release
 
-- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Guild Hall (read-only), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
+- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (read-only), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
 - **The look:** Jade Peaks. A sky behind every screen follows the clock: morning, day and evening on light panels, the lantern night on dark ones. Settings can fix the sky to one time of day and has Calm mode, which stops every animation.
 - **The game layer:** XP, levels, a lóng that grows from egg to elder, a day streak, gold and seven badges. All of it is worked out from the record.
 - **New record fields:** `description`, `criteria` and `review` on every task, and `requests` on the record.
@@ -142,6 +142,9 @@ Section 6 of the design lists every field: what each screen reads, the new field
 - New fields get their defaults in `withDefaults` and `parseRecord`.
 - Fields one side doesn't know survive the other side's read-modify-write. `parseRecord` already keeps unknown top-level fields; tasks must keep theirs too, with a test for both.
 - Not saved anywhere: the git hold, Time I have, the selection and the search.
+- **One realm's data stays in that realm.** Settings reads only the realm you're in. A task log path can't leave its realm's folder: the engine refuses it for the mod and the app alike. The level, gold and streak are yours rather than a project's, so they run across realms and hold no project data; Chronicle's All realms is a choice you make.
+- **GitHub accounts stay in `gh`.** The app lists what `gh` knows and adds one by running `gh`'s own web sign-in, then puts your terminal's account back. It never holds a token. Which account a realm belongs to is `realmAccounts` in the app's settings, by realm key, in no record or repository. Connecting a realm names its account; it changes nothing about how git pushes.
+- **Books live in `~/.queue-tea/library.json`,** apart from every record, shared by every flavor of the app. A file that doesn't read is left alone and never overwritten.
 - Game numbers are never stored. Pure functions in a `game` feature's `domain/services` work them out from every record and return them through the engine API, following the rules in section 2.2 of the design.
 
 ## Errors and edge cases

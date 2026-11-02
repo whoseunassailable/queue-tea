@@ -859,3 +859,297 @@ body,
   font: inherit;
   text-align: left;
 }
+
+/* The HUD: room inside its frame, chips that go somewhere, and a road to the
+   next level. The panel's double ring takes 4px of every chip's edge. */
+.rm .hud {
+  align-items: stretch;
+}
+
+.rm .hud-chip {
+  height: auto;
+  min-height: 58px;
+  gap: 12px;
+  padding: 9px 20px 9px 16px;
+  border-radius: 14px;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  transition: transform 0.16s ease;
+}
+
+.rm a.hud-chip:hover,
+.rm button.hud-chip:hover {
+  transform: translateY(-1px);
+}
+
+.rm a.hud-chip:focus-visible,
+.rm button.hud-chip:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.rm .hud-chip .ico {
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+
+.rm .hud-chip.lvl {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+.rm .hud-chip.risk {
+  box-shadow: inset 0 0 0 3px var(--pn-solid), inset 0 0 0 4px #e38a3b, 0 12px 30px rgba(30, 24, 60, 0.18);
+}
+
+.rm .road-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rm .road-head b {
+  font-size: 13px;
+  line-height: 15px;
+}
+
+.rm .road-hook {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rm .bar.road {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  overflow: visible;
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line-soft) calc(25% - 1px) 25%);
+}
+
+/* What the quest ahead would add. */
+.rm .bar.road .gain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0 999px 999px 0;
+  background: repeating-linear-gradient(135deg, rgba(224, 175, 78, 0.85) 0 4px, rgba(255, 233, 168, 0.85) 4px 8px);
+}
+
+/* A full-width box that slides, so moving the pearl only moves a transform. */
+.rm .bar.road .pearl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: transform 1.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.rm .bar.road .pearl::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -9px;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #ffe9a8 45%, #e0af4e);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 0 8px rgba(224, 175, 78, 0.8);
+}
+
+.rm .bar.road .pearl::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -16px;
+  width: 32px;
+  height: 32px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 216, 120, 0.75), transparent 68%);
+  opacity: 0;
+}
+
+/* Close to the next level the pearl lights up, and stays lit in Calm mode. */
+.rm .hud-chip.close .pearl::after {
+  opacity: 1;
+}
+
+.rm .hud-chip.close .road-hook {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rm .hud-chip.close .pearl::after {
+    animation: road-glow 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes road-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@media (max-width: 899px) {
+  .rm .hud-chip.lvl {
+    flex-basis: 100%;
+  }
+}
+
+/* GitHub. */
+.rm .gh-chip {
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.rm .gh-chip.connect {
+  border-style: dashed;
+}
+
+.rm .gh-chip {
+  text-align: left;
+}
+
+.rm .hud-chip .ico.gh-mark {
+  fill: currentColor;
+  stroke: none;
+}
+
+.rm .gh-wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rm .gh-add {
+  align-self: flex-start;
+}
+
+.rm .gh-code-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--hov);
+}
+
+.rm .gh-code {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  user-select: all;
+}
+
+.rm .gh-missing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* The empty board. */
+.rm .empty-board {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* The Library. */
+.rm .lib-stats {
+  margin: 0 auto 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+}
+
+.rm .lib-stats .sub {
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.rm .shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+}
+
+.rm .book {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+
+.rm .book-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.rm .book-author {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink2);
+}
+
+.rm .book-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--hov);
+}
+
+.rm .book-bar .fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8fe3c2, #2e9c7e);
+  transform-origin: left center;
+  transition: transform 0.6s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.rm .book-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rm .book-page .input {
+  width: 76px;
+  text-align: right;
+}
+
+.rm .book-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rm .book-done {
+  font-weight: 800;
+}

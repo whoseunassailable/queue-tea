@@ -2,9 +2,11 @@
 
 Every project's queue, in a window beside Claude Code. It's Electron with a Preact window, and it runs the mod's own rules over Node. The spec is [docs/workspace-app.md](../docs/workspace-app.md), the design [docs/workspace-app-design.md](../docs/workspace-app-design.md), and the plans [docs/plan-workspace-app.md](../docs/plan-workspace-app.md) and [docs/plan-workspace-app-2.md](../docs/plan-workspace-app-2.md).
 
-Today the window has every screen: Home, Quests, Chronicle, Mana & time, the Hoard, the Guild Hall and Settings, for every project in `~/.queue-tea`, with first run, the failed record, the ⌘K palette, the menu bar and the narrow window. It has every edit: priority, New quest, chapters, Seal…, Part of…, Play next, Remove, Undo, and a quest's title, difficulty, description and criteria. **These edits change your real records**, through the same lock, `.bak` copy and atomic replace as the mod, so a session writing at the same moment can't lose a change.
+Today the window has every screen: Home, Quests, Chronicle, Mana & time, the Hoard, the Guild Hall, the Library and Settings, for every project in `~/.queue-tea`, with first run, the failed record, the ⌘K palette, the menu bar and the narrow window. It has every edit: priority, New quest, chapters, Seal…, Part of…, Play next, Remove, Undo, and a quest's title, difficulty, description and criteria. **These edits change your real records**, through the same lock, `.bak` copy and atomic replace as the mod, so a session writing at the same moment can't lose a change.
 
 It also runs a quest from end to end: Start through the git check, onto the quest's branch, and over to Claude Code; Judgement; Finish quest with the task log row and the victory; Back to the board; and sealing the active quest. Start and Finish change your git branches and your task log for real. The app never commits, pushes, merges or pulls: a git command only ever appears as text to copy.
+
+A realm can name its GitHub account, from the HUD, Settings, or when it's added. The accounts are the ones `gh` knows, and adding one runs `gh`'s own sign-in: the app holds no tokens, and it needs `brew install gh`. Connecting names the account for you to see; it doesn't change how git pushes. The Library keeps your books in `~/.queue-tea/library.json`, apart from every project.
 
 With a session open, the app asks it through the record. With none, it opens a terminal running `claude`. Until the mod's half is merged and running, a session won't act on what the app asks, so the app shows it waiting.
 

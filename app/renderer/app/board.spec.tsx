@@ -60,7 +60,7 @@ describe('search on the board', () => {
   })
 
   it('keeps a saga for a chapter that matches, and unfolds it', async () => {
-    await open('/quests', BOARD, { readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: { [KEY]: ['saga'] }, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true } }) })
+    await open('/quests', BOARD, { readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: { [KEY]: ['saga'] }, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }) })
     expect(titles()).not.toContain('Pin')
 
     await search('pin')

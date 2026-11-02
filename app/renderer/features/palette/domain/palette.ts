@@ -48,6 +48,7 @@ const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
   { route: ROUTES.mana, label: t.nav.mana, keys: '⌘4' },
   { route: ROUTES.guild, label: t.nav.guild, keys: null },
   { route: ROUTES.hoard, label: t.nav.hoard, keys: null },
+  { route: ROUTES.library, label: t.nav.library, keys: null },
   { route: ROUTES.settings, label: t.nav.settings, keys: '⌘,' },
 ]
 

@@ -78,7 +78,7 @@ test.beforeAll(async () => {
     env: { ...process.env, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' },
   })
   page = await app.firstWindow()
-  await page.getByRole('link', { name: 'Quests' }).click()
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
   await expect(page.locator('.board-list .qc-title').first()).toHaveText('First quest')
 })
 

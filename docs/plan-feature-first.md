@@ -568,7 +568,7 @@ Start a new session there, then check by hand what no test can:
 - the band files a message;
 - Claude's `git commit` is refused.
 
-If any of it fails, `git switch task/brew-slash-words` puts the old mod back at once.
+If any of it fails, `git switch task/workspace-app-docs` puts the old mod back at once.
 
 ---
 

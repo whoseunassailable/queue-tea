@@ -17,9 +17,9 @@ const tree = files => {
 
   return root
 }
-const problems = (files, options) => checkLayers(tree(files), { legacy: [], legacyReaders: [], knownCycles: [], ...options })
-const reports = (files, words, options) => {
-  const found = problems(files, options)
+const problems = files => checkLayers(tree(files))
+const reports = (files, words) => {
+  const found = problems(files)
   assert.ok(found.some(p => p.includes(words)), `expected "${words}" in ${JSON.stringify(found)}`)
 }
 
@@ -88,6 +88,37 @@ test('a controller may import its providers file', () => {
   assert.deepEqual(found, [])
 })
 
+test('the app layer importing a data source is reported', () => {
+  reports(
+    {
+      'app/session/s.ts': "import { y } from '../../shared/b/data/datasources/y'\n",
+      'shared/b/data/datasources/y.ts': 'export const y = 1\n',
+    },
+    'app/session/s.ts',
+  )
+})
+
+test('register.tsx importing an _impl file is reported', () => {
+  reports(
+    {
+      'register.tsx': "import { y } from './features/a/data/repositories/a_repository_impl'\n",
+      'features/a/data/repositories/a_repository_impl.ts': 'export const y = 1\n',
+    },
+    'register.tsx',
+  )
+})
+
+test('the app layer may import a providers file, a controller and a view', () => {
+  const found = problems({
+    'app/menu/m.tsx':
+      "import { a } from '../../features/a/a_providers'\nimport { c } from '../../features/a/presentation/state_management/c'\nimport { v } from '../../features/a/presentation/views/v'\n",
+    'features/a/a_providers.ts': 'export const a = 1\n',
+    'features/a/presentation/state_management/c.ts': 'export const c = 1\n',
+    'features/a/presentation/views/v.tsx': 'export const v = 1\n',
+  })
+  assert.deepEqual(found, [])
+})
+
 for (const layer of ['data/repositories', 'domain/services', 'presentation/views']) {
   test(`a feature importing another feature is reported, from ${layer}`, () => {
     reports(
@@ -142,30 +173,6 @@ test('core, data, views, widgets, app and register.tsx may import claude-code', 
   assert.deepEqual(found, [])
 })
 
-test('a new file importing a flat legacy file is reported', () => {
-  reports(
-    { 'features/a/domain/services/x.ts': "import { y } from '../../../../flow'\n", 'flow.ts': 'export const y = 1\n' },
-    'legacy',
-    { legacy: ['flow.ts'] },
-  )
-})
-
-test('a flat legacy file may import anything', () => {
-  const found = problems(
-    { 'flow.ts': "import { y } from './features/a/data/repositories/y_impl'\n", 'features/a/data/repositories/y_impl.ts': 'export const y = 1\n' },
-    { legacy: ['flow.ts'] },
-  )
-  assert.deepEqual(found, [])
-})
-
-test('a folder on LEGACY_READERS may import a legacy file', () => {
-  const found = problems(
-    { 'features/a/presentation/state_management/c.ts': "import { y } from '../../../../flow'\n", 'flow.ts': 'export const y = 1\n' },
-    { legacy: ['flow.ts'], legacyReaders: ['features/a'] },
-  )
-  assert.deepEqual(found, [])
-})
-
 test('an import cycle is reported, naming its files', () => {
   reports(
     {
@@ -184,17 +191,6 @@ test('a cycle through import type is not one', () => {
   assert.deepEqual(found, [])
 })
 
-test('a cycle listed as known is not reported', () => {
-  const found = problems(
-    {
-      'core/store/a.ts': "import { b } from './b'\nexport const a = b\n",
-      'core/store/b.ts': "import { a } from './a'\nexport const b = a\n",
-    },
-    { knownCycles: ['core/store/a.ts → core/store/b.ts'] },
-  )
-  assert.deepEqual(found, [])
-})
-
 test('a module="./x.tsx" naming no file is reported', () => {
   reports({ 'features/a/presentation/views/v.tsx': '<Client key="cup" module="./teacup.tsx" />\n' }, './teacup.tsx')
 })
@@ -207,10 +203,8 @@ test('a module path naming a file passes', () => {
   assert.deepEqual(found, [])
 })
 
-test('hooks/flow.ts on the legacy list passes; once LEGACY is empty it is reported', () => {
-  const files = { 'flow.ts': 'export const y = 1\n' }
-  assert.deepEqual(problems(files, { legacy: ['flow.ts'] }), [])
-  reports(files, 'flow.ts')
+test('a file straight under hooks/ is reported, so the flat files stay gone', () => {
+  reports({ 'flow.ts': 'export const y = 1\n' }, "hooks/flow.ts isn't in a layer")
 })
 
 test('multi-line imports are read', () => {
@@ -220,5 +214,15 @@ test('multi-line imports are read', () => {
       'features/a/data/repositories/y_impl.ts': 'export const y = 1\nexport const z = 1\n',
     },
     'y_impl',
+  )
+})
+
+test('an inline type import is checked like any other', () => {
+  reports(
+    {
+      'core/widgets/w.ts': "export type W = import('../../shared/x/domain/services/y').Y\n",
+      'shared/x/domain/services/y.ts': 'export type Y = 1\n',
+    },
+    'core/widgets/w.ts',
   )
 })

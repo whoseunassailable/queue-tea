@@ -202,7 +202,7 @@ Every game number is worked out from the records by pure functions. No game fiel
 | ? | needs you | `--attention` |
 | ○ | no session | `#786D63` |
 
-**Cup palette**, from `hooks/ui/cup.ts`: cream `#F1DCB2`, clay `#CFAE7B`, tea `#C8782F`, ink `#3A2A20`, pink `#EE9A9A`, sage `#8DB596`, steam `#B9A88C`.
+**Cup palette**, from `hooks/features/tea_cup/domain/services/cup_mood.ts`: cream `#F1DCB2`, clay `#CFAE7B`, tea `#C8782F`, ink `#3A2A20`, pink `#EE9A9A`, sage `#8DB596`, steam `#B9A88C`.
 
 **Bot colours.** The left column is the logo's neon. The other two are the light-UI text and wash colours, for later use.
 
@@ -1098,7 +1098,7 @@ In the Jade Peaks mockups each helper is a party member: its logo in an 88 px go
 ```
 
 - The tabs are disabled while the record fails to read.
-- The reasons come from `whyUnreadable`; the copy comes from `menu.tsx` and `actions.ts`.
+- The reasons come from `whyUnreadable`; the copy comes from `hooks/app/menu/menu_frame.tsx` and `hooks/app/session/session_rhythm.ts`.
 
 ### 4.16 States across screens
 
@@ -1269,7 +1269,7 @@ COMPONENT STATES · priority control, progress, toasts
 | Tasks | `rankBacklog` (with `why`, `estimate`, `isShort`, `fits`), `groupBacklog`, `blockedTasks`, `blockedText`, `progressOf`, `childrenOf` / `parentOf`, `activeFeature`, `BUDGETS` / `nextBudget` / `budgetLabel`, `formatSpan`, `formatAge`, `canWaitFor`, `parentChoices`, `parentRefusal`, `record.playNext`, `record.feature` |
 | Task detail | every `Task` field; `checkpointSections`, `handoffSections`, `cardNote`; `slugBranch(title, listBranches())`; `readFacts` (branch, head, uncommitted); `diffSince(startCommit)` |
 | New task | `filingCandidates`, `loneTasks`, `parentRefusal`, `newTask` (default `mid`), `estimateMinutes` |
-| Start | `readGit`, `holdReason`, `parseStatusPaths`, `slugBranch`, `makeBranch` / `switchBranch`; the claim in the record (`startOnce`'s record-and-git part, moved out of `flow.ts` as the plan says); sessions |
+| Start | `readGit`, `holdReason`, `parseStatusPaths`, `slugBranch`, `makeBranch` / `switchBranch`; the claim in the record (`startTaskUseCase`); sessions |
 | Done | `difficulty.expected`, `docsLogPath`, `diffSince`, `addRow` / `writeDocsLog`, `finishOnce` |
 | History | `finishedTasks`, `weekOf`, `weekMinutes`, `unassignedMinutesByDay`, both difficulties, `effort.linesAdded/linesRemoved/filesTouched`, from every record for All projects |
 | Usage & time | `formatAllowance` on the session's allowance, `weekMinutes`, `unassignedMinutesByDay`, the current task's `effort`, a live `diffSince` |

@@ -19,7 +19,3 @@ export const grouped = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g,
 // a plain point.
 export const markFor = (heading: string) =>
   /next|left|to do|todo|remaining/i.test(heading) ? '☐' : /changed|changes|done/i.test(heading) ? '✓' : '•'
-
-// The menu the tea cup opens: the list, or one of its views. Every press
-// goes to the same actions the panel used; opening, moving between views and
-// closing write nothing to the record.

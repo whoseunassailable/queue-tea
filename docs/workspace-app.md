@@ -53,20 +53,30 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 
 ### Where the code lives
 
+The app takes the same shape as the mod, on both sides of the window. [architecture.md](architecture.md) has the rules and the picture.
+
 ```
 app/
-  package.json     its own dependencies (node_modules/ is already gitignored)
-  tsconfig.json    doesn't resolve claude-code
-  main/            Electron main: windows, menus, the engine API, file watching, terminals
-  preload/         hands the engine API to the window through contextBridge
-  renderer/        the Preact window: the design's screens and components
+├── package.json              its own dependencies (node_modules/ is already gitignored)
+├── tsconfig.json             doesn't resolve claude-code
+├── main/                     the backend
+│   ├── core/                 a Node host (fs/promises, execFile), logger, settings, the records watcher
+│   ├── features/<feature>/api/   one handler per call: validates input, runs the use case, returns data or an error
+│   └── main.ts               windows, menus, and the providers that wire it all
+├── preload/                  hands the engine API to the window through contextBridge
+└── renderer/                 the frontend: the Preact window
+    ├── app/                  the root and the router
+    ├── config/routing/routes.ts   every route
+    ├── core/                 api/ (the one base file for replies), constants/, widgets/ (panel, chip, HUD, sky, dragon)
+    ├── l10n/                 every string the user reads
+    └── features/<screen>/    data/ (its API calls), domain/, presentation/ (pages, state_management, widgets)
 ```
 
 The app's tests are `*.spec.ts(x)` and run with Vitest, because `claude plugin test .` runs every `*.test.ts(x)` under the plugin folder.
 
 ### One engine, two hosts
 
-The app's main process imports the engine modules from `hooks/` and runs them with a Node `Host` (`fs/promises` and `execFile`), the same shape as `hooks/host.ts`. So the app writes the record through `record.ts` itself:
+The app's main process imports the `domain` folders of `hooks/shared/` and `hooks/features/`, and the git and record data in `hooks/shared/git/data/` and `hooks/shared/records/data/`, and runs them with a Node `Host` (`fs/promises` and `execFile`), the same shape as `hooks/core/host/`. So the app writes the record through the same code as the mod:
 
 - the lock, a `.lock` folder made with `mkdir`, which works across processes;
 - the `.bak` copy;
@@ -74,13 +84,7 @@ The app's main process imports the engine modules from `hooks/` and runs them wi
 
 `updateRecord` reads, changes and writes inside the lock, so the app and a session writing at once can't lose each other's change.
 
-On 27 Oct these modules import nothing from Claude Code: `queue`, `plan`, `family`, `git`, `record`, `docslog`, `time`, `effort`, `usage`, `errand`, `ui/cup`, `ui/status` and `ui/handoff`. Three moves come first, with no change in behaviour:
-
-1. **`hostOf` moves out of `host.ts`.** `host.ts` keeps the `Host` and `RunResult` types and loses its `claude-code` import. Only `actions.ts`, `ports.ts` and `session.ts` import `hostOf`.
-2. **`firstObject` moves out of `check.ts`.** `checkpoint.ts` imports it, and `check.ts` imports `claude-code`.
-3. **The record-and-git parts of ten operations move out of `flow.ts`** into a module without `$`, `hooks/ops.ts`. The ten are `startOnce`, `finishOnce`, `putBackOnce`, `fileTask`, `blockTask`, `unblockTask`, `togglePlayNext`, `removeQueued`, `moveTask` and `setFeature`. Each returns an outcome union (done, held or refused). `flow.ts` calls them, and keeps the view state and the Claude parts: check, fork, clear and submit.
-
-The 296 tests that pass today pass unchanged through the moves. Because the app's tsconfig doesn't resolve `claude-code`, importing `flow.ts`, `check.ts`, `ports.ts`, `session.ts` or `actions.ts` from the app fails its type check. That is the guard that keeps the line.
+The use cases return what happened and never touch view state, so a backend handler runs the same `startTaskUseCase`, `finishTaskUseCase` or `fileTaskUseCase` as the mod's controllers, with repositories built over its own `Host`. Nothing those folders reach imports Claude Code. The rest of `hooks/shared/` does, through `core/ports/`: its controllers, the providers files and the assistant repository stay the mod's. `tools/check_layers.mjs` keeps the `domain` folders clean, and the app's tsconfig doesn't resolve `claude-code`, so importing anything else from the mod fails the app's type check. That is the guard that keeps the line.
 
 ### The engine API
 
@@ -100,7 +104,7 @@ The mod writes `~/.queue-tea/sessions/<session id>.json` at session start, after
 
 The record gets `requests: { id, kind: 'begin' | 'putBack', taskId, at }[]`.
 
-- **Start, with a session open in that project.** The app claims the task and makes or switches the branch itself, through `ops.ts`. Then it adds a `begin` request, so the session sends Claude the task's first message, the same one the mod sends when it starts a task itself.
+- **Start, with a session open in that project.** The app claims the task and makes or switches the branch itself, through the same use case as the mod. Then it adds a `begin` request, so the session sends Claude the task's first message, the same one the mod sends when it starts a task itself.
 - **Back to queue, with a session open.** The app adds a `putBack` request. The session writes Claude's checkpoint and puts the task back. Until then the app shows "Saving a checkpoint…" (criterion 19 of the design).
 - **How the mod handles them.** It checks the record's `mtimeMs` every 2 s and reloads it on a change. It acts only at a safe point, meaning no turn running and an empty prompt box; otherwise it offers Continue in the terminal. It removes a request under the lock as it takes it, so with two sessions only one acts. A `begin` for a task that is no longer current is dropped.
 - **Start, with no session.** The app opens the terminal chosen in Settings, running `claude` in the project. The `begin` request waits in the record, and the mod sends the first message when the session starts.
@@ -133,7 +137,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 - New fields get their defaults in `withDefaults` and `parseRecord`.
 - Fields one side doesn't know survive the other side's read-modify-write. `parseRecord` already keeps unknown top-level fields; tasks must keep theirs too, with a test for both.
 - Not saved anywhere: the git hold, Time I have, the selection and the search.
-- Game numbers are never stored. Pure functions in `app/main/game.ts` work them out from every record and return them through the engine API, following the rules in section 2.2 of the design.
+- Game numbers are never stored. Pure functions in a `game` feature's `domain/services` work them out from every record and return them through the engine API, following the rules in section 2.2 of the design.
 
 ## Errors and edge cases
 
@@ -149,7 +153,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 
 ## Testing
 
-- **The mod.** 296 tests pass on 27 Oct, with the uncommitted /brew fix. They pass unchanged through the engine moves. New tests, in the style of `tests/*.test.ts`, cover `ops.ts`, the session file, requests and `review`.
+- **The mod.** 304 tests pass after the restructure, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
 - **The app's units.** Vitest `*.spec.ts(x)`: the window's components, and main's API run on a Host held in memory, as the mod's tests do.
 - **End to end.** Playwright's Electron driver against a temporary `HOME` with fixture records. The runs: file a task, change priority, Start through a git hold and then past it, Review then Done with the log row, and Back to queue with no session.
 - **The plugin folder.** After `npm install` in `app/`, `claude plugin test .` still finds only the mod's tests. If it picks up files from `app/node_modules`, the app moves out of the plugin folder.
@@ -160,7 +164,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 
 The screens' criteria are 1–28 in section 7 of the design. These cover the rest:
 
-1. After the engine moves, the mod's 296 tests pass and none of them was edited.
+1. The mod's tests pass, and their assertions weren't edited in the restructure.
 2. The app's type check fails if main or the window imports a file that imports `claude-code`.
 3. A record written by the app reads in the mod, and the other way round, and each keeps the fields it doesn't know.
 4. With a session open and idle, a `begin` request is handled within 3 s. While a turn runs it isn't handled, and the terminal offers Continue.
@@ -168,13 +172,13 @@ The screens' criteria are 1–28 in section 7 of the design. These cover the res
 6. Start with no session opens the chosen terminal running `claude` in the project, and the new session sends the task's first message.
 7. `queue-tea open <path>`, `queue-tea://open?path=` and the tea-cup menu's entry each open the app on that project.
 8. The app never runs `git commit`, `push`, `merge` or `pull`. A test checks every command the Host runs.
-9. The game reads the records and never writes them: running `game.ts` over a copy of `~/.queue-tea/projects` leaves every file byte-for-byte the same.
+9. The game reads the records and never writes them: running the game rules over a copy of `~/.queue-tea/projects` leaves every file byte-for-byte the same.
 
 ## Build order, for the plan
 
 1. The engine moves in `hooks/`, with no change in behaviour.
 2. The mod: session files, requests, `review`, the tea-cup entry.
-3. The app's shell: window, sidebar, the engine API, watching, the sky and the HUD, with Home and Quests read-only. `game.ts` comes here, since the HUD needs it.
+3. The app's shell: window, sidebar, the engine API, watching, the sky and the HUD, with Home and Quests read-only. The game rules come here, since the HUD needs them.
 4. Edits: priority, New quest, Part of and Move, Seal…, Play next, Remove, Undo.
 5. Start, Judgement, Done with the victory, and Back to the board, with the terminals.
 6. Chronicle, Mana & time, Hoard and badges, Settings (with the sky and Calm mode), the Guild Hall, first run, the failed record, the palette and the narrow window.

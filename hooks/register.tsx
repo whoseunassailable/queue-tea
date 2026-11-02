@@ -1,165 +1,32 @@
-import { conversationState, afterTurn } from './features/conversation/presentation/state_management/conversation_turn_controller'
-import { errandState, errandFor, giveBack, sendErrand } from './features/errands/presentation/state_management/errands_controller'
-import { commitGuardState, commitWarning } from './features/commit_guard/presentation/state_management/commit_guard_controller'
+import { afterClear, afterEachTurn, checkTyped, runErrand, saveBeforeClear, startSession } from './app/session/session_rhythm'
+import { errandState } from './features/errands/presentation/state_management/errands_controller'
+import { commitGuardState } from './features/commit_guard/presentation/state_management/commit_guard_controller'
 import { gitRepositoryOf } from './shared/git/git_providers'
 import { effortState, flush } from './shared/effort/presentation/state_management/effort_controller'
 import { onViewChange, portsOf } from './core/ports/claude_ports'
-import type { EngineInterface, Register } from 'claude-code'
+import type { Register } from 'claude-code'
 
-import { afterClear, saveBeforeClear, tick, toggleMenu } from './actions'
-import { askDone, checkResume, refreshDrift, refreshLines, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
+import { toggleMenu } from './app/menu/menu_controller'
+import { askDone, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
 import { fileFromCommand } from './features/tasks/presentation/state_management/filing_controller'
 import { runFeature } from './features/tasks/presentation/state_management/queue_controller'
-import { loadRecord } from './shared/records/presentation/state_management/records_controller'
 import { MENU, menuClosed, openMenu } from './core/store/menu'
 import { commandRun } from './shared/checkpoints/domain/services/checkpoints'
-import { ERRAND_NOT_SENT, ERRANDS, errandReply, errandUsage, isErrandTurn, startsAsCommand } from './features/errands/domain/services/errands'
-import type { ErrandKind } from './features/errands/domain/services/errands'
-import { onMessage } from './features/message_check/presentation/state_management/message_check_controller'
+import { ERRANDS, isErrandTurn } from './features/errands/domain/services/errands'
 import { shouldCheck } from './features/message_check/domain/services/check_prompt'
 import { isCommitOrPush } from './features/commit_guard/domain/services/commit_guard'
 import { live } from './core/session/live'
 import { debug } from './core/logger/logger'
 import { getView } from './core/store/view_store'
 import { refreshStatus } from './features/tea_cup/presentation/state_management/tea_cup_controller'
-import { createTracker } from './shared/effort/domain/services/effort_tracker'
-import { loadContext } from './session'
 import { readOptions } from './core/session/options'
-import { renderBand } from './ui/band'
-import { renderMenu } from './ui/menu'
+import { renderBand } from './app/band/band_host'
+import { renderMenu } from './app/menu/menu_frame'
 import { isoLocal } from './shared/time/domain/services/time'
 import { readAllowance } from './features/conversation/domain/services/allowance'
 
 const GUARD_TEXT = 'Queue-tea: commits and pushes are yours to make.'
 const HELD_TEXT = 'Queue-tea: held for the band above the prompt'
-
-// Registers a command, or its `queue-tea-` name when the short one is taken;
-// says so in the menu.
-async function registerCommand($: EngineInterface, name: string, description: string, argumentHint?: string) {
-  const spec = argumentHint === undefined ? { description } : { description, argumentHint }
-  try {
-    await $.command.register({ name, ...spec })
-  } catch (err) {
-    debug(portsOf($), `registering /${name} failed`, err)
-    await $.command.register({ name: `queue-tea-${name}`, ...spec })
-    await portsOf($).set('notice', `/${name} was taken, so it is /queue-tea-${name} here.`)
-  }
-}
-
-async function startSession($: EngineInterface) {
-  try {
-    live.ctx = await loadContext($, live.opts)
-    effortState.tracker = createTracker(live.opts.idleGapMinutes, live.ctx.offsetMinutes)
-  } catch (err) {
-    debug(portsOf($), 'loading the project failed', err)
-  }
-  $.clock.every(150, () => {
-    tick($).catch(() => {})
-  })
-  await loadRecord(portsOf($))
-  await $.tool.register({
-    name: 'task_looks_done',
-    description:
-      'Call when your reply has finished what the current Queue-tea task asked. Rohan is then asked in the Queue-tea menu whether it is done for now.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        checked: {
-          type: 'string',
-          description:
-            'Optional. One line on what you checked before calling, such as the tests you ran and what they showed. Shown to Rohan beside the question.',
-        },
-      },
-    },
-    isDeferred: false,
-  })
-  await registerCommand($, 'queue-tea', 'Open the Queue-tea menu')
-  await registerCommand($, 'done', 'Ask whether the current Queue-tea task is done for now')
-  await registerCommand($, 'steep', 'Steep a message for later: file it as a new Queue-tea task, with no check', '<message>')
-  await registerCommand($, 'brew', 'Do this now, outside the Queue-tea queue: no task, same branch and conversation', '<request>')
-  await registerCommand($, 'instant', 'The same as /brew', '<request>')
-  await registerCommand($, 'tea', 'Ask or explain, outside the Queue-tea queue: no task, no changes', '<question>')
-  await registerCommand($, 'feature', 'Show, set or clear the Queue-tea feature new tasks are offered under', '<task title> | off')
-  try {
-    await checkResume(portsOf($))
-  } catch (err) {
-    debug(portsOf($), 'checking the branch at the start failed', err)
-  }
-  await refreshStatus(portsOf($))
-}
-
-async function afterEachTurn($: EngineInterface) {
-  const wasErrand = errandState.errand?.isRunning === true
-  if (wasErrand) errandState.errand = null
-  effortState.tracker?.activity(await $.clock.now())
-  await flush(portsOf($))
-  if (live.ctx === null) return
-  try {
-    await commitWarning(portsOf($), live.ctx, commitGuardState.turnHead)
-  } catch (err) {
-    debug(portsOf($), 'looking for new commits failed', err)
-  }
-  commitGuardState.turnHead = null
-  try {
-    await refreshDrift(portsOf($), live.ctx)
-  } catch (err) {
-    debug(portsOf($), 'reading the drift failed', err)
-  }
-  try {
-    await refreshLines(portsOf($), live.ctx)
-  } catch (err) {
-    debug(portsOf($), 'measuring the change failed', err)
-  }
-  try {
-    const usage = await $.session.usage()
-    const allowance = readAllowance(usage.rateLimits)
-    // An errand's answer stays on screen: a fresh conversation past the size
-    // waits for the next turn. The note at the allowance mark does not.
-    conversationState.handedOffFor = await afterTurn(
-      portsOf($),
-      live.ctx,
-      { tokens: wasErrand ? undefined : usage.context.tokens, allowance },
-      conversationState.handedOffFor,
-    )
-  } catch (err) {
-    debug(portsOf($), 'the usage check failed', err)
-  }
-}
-
-async function checkTyped($: EngineInterface, text: string): Promise<'pass' | 'drop'> {
-  const ctx = live.ctx
-  if (ctx === null) return 'pass'
-  const p = portsOf($)
-  await p.set('canContinue', false)
-  const { verdict, intent, kind } = await onMessage(p, ctx, text)
-  // A held message counts once it is sent on from the band.
-  if (verdict === 'pass') {
-    effortState.tracker?.route(kind === 'quick' ? 'project' : 'task')
-    if (intent !== null && kind !== 'quick') effortState.tracker?.intent(intent)
-  }
-
-  return verdict
-}
-
-// /brew, /instant and /tea: the errand's note goes in the command's context,
-// and the words go to Claude as Rohan's own once the command is done. Words
-// that start with / are not sent; they go back in the prompt box once the
-// command is done with it.
-async function runErrand($: EngineInterface, kind: ErrandKind, command: string, args: string) {
-  const text = args.trim()
-  if (text === '') return { text: errandUsage(command, kind) }
-  if (startsAsCommand(text)) {
-    portsOf($).later(async () => {
-      await giveBack(portsOf($), command, text)
-    })
-
-    return { text: ERRAND_NOT_SENT }
-  }
-  const note = await errandFor(portsOf($), kind, text)
-  sendErrand(portsOf($), text, command)
-
-  return { text: errandReply(kind), context: [note] }
-}
 
 export const register: Register = (on, options) => {
   live.opts = readOptions(options as Record<string, unknown>)
@@ -255,7 +122,7 @@ export const register: Register = (on, options) => {
   // A /clear goes on under a new session id with the view's values started
   // over and no session.start, so the record is read again here.
   on('classic.SessionStart', async ($, e, next) => {
-    if (e.source === 'clear') await afterClear($)
+    if (e.source === 'clear') await afterClear(portsOf($))
 
     return next(e)
   })
@@ -264,7 +131,7 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'clear' }, async ($, e, next) => {
     if (e.origin.kind === 'composer') {
       try {
-        await saveBeforeClear($)
+        await saveBeforeClear(portsOf($))
       } catch (err) {
         debug(portsOf($), 'the checkpoint before the clear failed', err)
       }
@@ -333,7 +200,7 @@ export const register: Register = (on, options) => {
   // A click on the tea cup opens or closes the menu.
   on('ui.message', async ($, e, next) => {
     const data = e.data as { kind?: unknown } | null
-    if (e.element === 'cup' && typeof data === 'object' && data?.kind === 'press') await toggleMenu($)
+    if (e.element === 'cup' && typeof data === 'object' && data?.kind === 'press') await toggleMenu(portsOf($))
 
     return next(e)
   })

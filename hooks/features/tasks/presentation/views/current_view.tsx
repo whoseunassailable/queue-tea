@@ -1,4 +1,4 @@
-import type { EngineInterface, RenderElement } from 'claude-code'
+import type { RenderElement } from 'claude-code'
 import type { Task } from '../../../../../types'
 import { capital, markFor, total } from '../../../../core/widgets/format'
 import { KEYS } from '../../../../core/widgets/keys'
@@ -11,7 +11,7 @@ import { pressBlock } from '../state_management/queue_controller'
 import { pressBackToQueue, pressCheckAgain, pressContinue, pressDoneNotYet, pressDoneYes, pressStartNext, pressSwitch } from '../state_management/tasks_controller'
 import { familyButtons } from '../widgets/family_buttons'
 
-export async function drawCurrent($: EngineInterface, c: MenuContext): Promise<RenderElement> {
+export async function drawCurrent(c: MenuContext): Promise<RenderElement> {
   const { p, Box, Text, Button, cols, now, today, tasks, current, queue, feature, hold, isAskingDone, canContinue, openRow, checked, busy, drift, mismatch, done, hints, top, bar, tag } = c
   // The feature the current task is part of, or how far its own tasks are.
   const currentParent = current === null ? null : parentOf(current, tasks)

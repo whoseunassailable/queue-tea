@@ -1,4 +1,4 @@
-import type { EngineInterface, RenderElement } from 'claude-code'
+import type { RenderElement } from 'claude-code'
 import type { Task } from '../../../../../types'
 import type { MenuContext } from '../../../../core/widgets/menu_context'
 import { cut } from '../../../../core/widgets/text'
@@ -7,7 +7,7 @@ import { pressCancelPartOf, pressPartOfWith } from '../state_management/queue_co
 
 // Part of…: the features a task can go under, On its own, or Cancel. Asked
 // from a backlog row or the current task, in the view it was asked from.
-export async function drawParenting($: EngineInterface, c: MenuContext, parentingTask: Task): Promise<RenderElement> {
+export async function drawParenting(c: MenuContext, parentingTask: Task): Promise<RenderElement> {
   const { p, Box, Text, Button, cols, tasks, feature, hints, top, bar } = c
   const choices = parentChoices(tasks, parentingTask.id)
   const under = parentOf(parentingTask, tasks)

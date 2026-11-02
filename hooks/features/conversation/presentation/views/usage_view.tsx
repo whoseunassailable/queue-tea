@@ -1,5 +1,4 @@
-import type { EngineInterface, RenderElement } from 'claude-code'
-import { getView } from '../../../../core/store/view_store'
+import type { RenderElement } from 'claude-code'
 import { sum, total } from '../../../../core/widgets/format'
 import type { MenuContext } from '../../../../core/widgets/menu_context'
 import { cut } from '../../../../core/widgets/text'
@@ -7,14 +6,14 @@ import { formatMinutes } from '../../../../shared/time/domain/services/time'
 import { weekChart, weekOf } from '../../../../shared/time/domain/services/week_stats'
 import { formatAllowance } from '../../domain/services/allowance'
 
-export async function drawUsage($: EngineInterface, c: MenuContext): Promise<RenderElement> {
-  const { Box, Text, cols, today, offset, record, tasks, current, allowance, minutes, lines, hints, top, bar } = c
+export async function drawUsage(c: MenuContext): Promise<RenderElement> {
+  const { p, Box, Text, cols, today, offset, record, tasks, current, allowance, minutes, lines, hints, top, bar } = c
   const todayMinutes = minutes[weekOf(today).indexOf(today)] ?? 0
   const outside = sum(weekOf(today).map(day => record?.unassignedMinutesByDay[day] ?? 0))
   const effort = current?.effort
   // Lines are measured from git after each turn; before the first, or with
   // no start commit, none are shown rather than a count of nothing.
-  const measured = await getView($, 'lines')
+  const measured = await p.get('lines')
   const linesSoFar =
     measured === null || measured.taskId !== current?.id ? '' : ` · +${measured.added} −${measured.removed} lines`
 

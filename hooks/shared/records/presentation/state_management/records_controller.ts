@@ -2,7 +2,7 @@ import type { Ctx } from '../../../../core/env/env'
 import { debug } from '../../../../core/logger/logger'
 import type { Ports } from '../../../../core/ports/ports'
 import { live } from '../../../../core/session/live'
-import type { ProjectRecord, Task } from '../../../../../types'
+import type { ProjectRecord } from '../../../../../types'
 import { suggest } from '../../../backlog/domain/services/ranking'
 import type { Saved } from '../../domain/repositories/records_repository'
 import { recordsRepositoryOf } from '../../records_providers'
@@ -36,9 +36,6 @@ export const applySaved = async (p: Ports, ctx: Ctx, saved: Saved) => {
 // nothing. Returns the record as saved, or null.
 export const change = async (p: Ports, ctx: Ctx, fn: (r: ProjectRecord) => ProjectRecord) =>
   applySaved(p, ctx, await recordsRepositoryOf(p, ctx).update(fn))
-
-export const changeTask = (p: Ports, ctx: Ctx, id: string, fn: (t: Task) => Task) =>
-  change(p, ctx, r => ({ ...r, tasks: r.tasks.map(t => (t.id === id ? fn(t) : t)) }))
 
 export async function loadRecord(p: Ports) {
   const ctx = live.ctx

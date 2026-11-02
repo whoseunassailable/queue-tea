@@ -95,24 +95,34 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string): Promi
     d.env.log(`${isResumed ? 'switching to' : 'making'} ${branch} failed: ${err instanceof Error ? err.message : String(err)}`)
     // The claim is taken back, so the task waits as it was.
     const wasNext = record.playNext === taskId
-    const undone = await d.records.update(r => ({
-      ...r,
-      playNext: wasNext && r.playNext === null ? taskId : r.playNext,
-      tasks: r.tasks.map(t =>
-        t.id === taskId && t.state === 'current'
-          ? {
-              ...t,
-              state: 'queued',
-              started: before.started,
-              branch: before.branch,
-              baseBranch: before.baseBranch,
-              startCommit: before.startCommit,
-            }
-          : t,
-      ),
-    }))
+    const verb = isResumed ? 'switch to' : 'make'
+    let undone: Saved
+    try {
+      undone = await d.records.update(r => ({
+        ...r,
+        playNext: wasNext && r.playNext === null ? taskId : r.playNext,
+        tasks: r.tasks.map(t =>
+          t.id === taskId && t.state === 'current'
+            ? {
+                ...t,
+                state: 'queued',
+                started: before.started,
+                branch: before.branch,
+                baseBranch: before.baseBranch,
+                startCommit: before.startCommit,
+              }
+            : t,
+        ),
+      }))
+    } catch (undoErr) {
+      // The file keeps the claim, so the task shows as current. Check again
+      // would find it not queued and only clear the line, so it isn't offered.
+      d.env.log(`taking back ${task.title} failed: ${undoErr instanceof Error ? (undoErr.stack ?? undoErr.message) : String(undoErr)}`)
 
-    return { kind: 'branch_failed', text: `Couldn't ${isResumed ? 'switch to' : 'make'} the branch ${branch}. Check again to retry.`, notice, record: undone }
+      return { kind: 'refused', notice: `Couldn't ${verb} the branch ${branch} or put ${task.title} back in the queue. Press Back to queue to try again.`, record: saved }
+    }
+
+    return { kind: 'branch_failed', text: `Couldn't ${verb} the branch ${branch}. Check again to retry.`, notice, record: undone }
   }
 
   return { kind: 'started', task: saved.tasks.find(t => t.id === taskId)!, notice, record: saved }

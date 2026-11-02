@@ -1,7 +1,7 @@
 import type { Color, EngineInterface, RenderElement, RenderInput } from 'claude-code'
 
 import type { Allowance, OtherProject, Priority, ProjectRecord, Task } from '../../../types'
-import type { View } from '../ports/ports'
+import type { Ports, View } from '../ports/ports'
 
 export function resolvePane($: EngineInterface, e: RenderInput<'Pane'>) {
   return $.ui.resolve(e)
@@ -11,7 +11,7 @@ type Els = ReturnType<typeof resolvePane>
 // What every view of the menu draws from.
 export type MenuContext = {
   e: RenderInput<'Pane'>
-  p: import('../ports/ports').Ports
+  p: Ports
   Box: Els['Box']
   Text: Els['Text']
   Button: Els['Button']
@@ -24,7 +24,6 @@ export type MenuContext = {
   tasks: Task[]
   current: Task | null
   budget: View['budget']
-  ranked: import('../../shared/backlog/domain/services/ranking').Ranked[]
   queue: Task[]
   blocked: Task[]
   waiting: number

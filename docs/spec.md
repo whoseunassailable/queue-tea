@@ -179,7 +179,7 @@ Its mood comes from Queue-tea's own state, first match wins:
 | Done | A task finished in the last 15 minutes, none current | `^ω^`, twinkles |
 | Idle | Anything else: "Nothing queued", or "3 waiting · ★ <task>" | `-ω-`, z's |
 
-- **Animation:** the cup is a `Client` surface module (`hooks/ui/teacup.tsx`) that plays its frames on the surface's own clock. Nothing in the hooks module runs for it and nothing is written, the record or `$.state`. Pointing at it winks.
+- **Animation:** the cup is a `Client` surface module (`hooks/features/tea_cup/presentation/views/teacup.tsx`) that plays its frames on the surface's own clock. Nothing in the hooks module runs for it and nothing is written, the record or `$.state`. Pointing at it winks.
 - **Opening the menu:** a click on the cup (the fullscreen terminal reports clicks; the main screen does not, so the band then names only `/queue-tea`), **Menu** (`m` once the band has the keys), or `/queue-tea`. While a mood is "needs you" for the current task, the menu opens on **Current task**.
 - **Still:** where the surface runs no `Client`, or the cup's module failed (`ui.fault`), the first frame is drawn as plain text. Under 40 columns the band has the words without the cup.
 
@@ -400,6 +400,7 @@ Each also follows the project's graphify rule: with `graphify-out/graph.json` pr
 | Detached HEAD | The menu says so and the task waits |
 | Branch name taken | `-2`, `-3` and so on |
 | Another session started a task first | Start touches nothing in git: the task is claimed in the record before its branch is made. The menu names the task started first, and this one waits in the backlog. When git then refuses the branch, the claim is taken back |
+| Git refuses the branch and the claim can't be taken back | The task stays current, in the menu as in the record, and the menu says to press **Back to queue** to try again |
 | The fresh conversation can't be opened | The task stays current; the menu says so and offers **Continue** |
 | A feature picked in the band is removed or finished by another session before Save | Nothing is filed; the menu says the feature is no longer open and the band stays to pick again |
 | Handoff note not written | No clear; the status line says so; tried again after the next reply |

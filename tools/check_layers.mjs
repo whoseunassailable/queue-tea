@@ -6,18 +6,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, normalize, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Today's flat files. Each task of the restructure takes out what it empties.
-const LEGACY = [
-  'actions.ts',
-  'session.ts',
-  'ui/band.tsx',
-  'ui/menu.tsx',
-]
-// Folders allowed to read a flat file while the restructure is under way.
-const LEGACY_READERS = []
-// Cycles in the flat files, as `a → b`, until the task that moves them.
-const KNOWN_CYCLES = []
-
 const walk = dir =>
   readdirSync(dir).flatMap(name => {
     const path = join(dir, name)
@@ -26,9 +14,8 @@ const walk = dir =>
   })
 
 // Where a file sits: its area, its resource, and its layer and folder.
-const placeOf = (path, legacy) => {
+const placeOf = path => {
   if (path === 'register.tsx') return { area: 'register' }
-  if (legacy.includes(path)) return { area: 'legacy' }
   const parts = path.split('/')
   if (parts[0] === 'app' || parts[0] === 'core') return { area: parts[0], folder: parts[1] }
   if (parts[0] === 'features' || parts[0] === 'shared') {
@@ -49,11 +36,13 @@ const isTypeOnly = (word, names) => {
 }
 
 // Every import and re-export in a file's text.
-const importsOf = text =>
-  [...text.matchAll(/(?:^|\n)\s*(?:import|export)\s+(type\s+)?([^'";]*?\sfrom\s+)?'([^']+)'/g)].map(m => ({
+const importsOf = text => [
+  ...[...text.matchAll(/(?:^|\n)\s*(?:import|export)\s+(type\s+)?([^'";]*?\sfrom\s+)?'([^']+)'/g)].map(m => ({
     source: m[3],
     isType: isTypeOnly(m[1], m[2]),
-  }))
+  })),
+  ...[...text.matchAll(/\bimport\('([^']+)'\)/g)].map(m => ({ source: m[1], isType: true })),
+]
 
 const resolve = (from, source, root) => {
   const base = normalize(join(dirname(from), source))
@@ -63,18 +52,16 @@ const resolve = (from, source, root) => {
 }
 
 const CLAUDE_MAY = place =>
-  ['register', 'legacy', 'app', 'core'].includes(place.area) ||
+  ['register', 'app', 'core'].includes(place.area) ||
   place.layer === 'data' ||
   (place.layer === 'presentation' && ['views', 'widgets'].includes(place.folder))
 
-// What's wrong with `from` importing `to`, or null.
-const edgeProblem = (from, to, toPath, readers, fromPath) => {
-  if (to.area === 'legacy') {
-    const mayRead = ['legacy', 'register'].includes(from.area) || readers.some(folder => fromPath.startsWith(`${folder}/`))
+// Data is reached through a providers file, by everything above it.
+const isData = (to, toPath) => to.layer === 'data' || toPath.endsWith('_impl.ts')
 
-    return mayRead ? null : 'imports a legacy flat file'
-  }
-  if (['legacy', 'register', 'app'].includes(from.area)) return null
+// What's wrong with `from` importing `to`, or null.
+const edgeProblem = (from, to, toPath) => {
+  if (['register', 'app'].includes(from.area)) return isData(to, toPath) ? `${from.area} imports ${toPath}` : null
   if (to.area === 'app' || to.area === 'register') return 'imports the app layer'
   if (from.area === 'core') {
     if (to.area === 'core') return null
@@ -89,7 +76,7 @@ const edgeProblem = (from, to, toPath, readers, fromPath) => {
 
     return isOk ? null : `domain imports ${toPath}`
   }
-  if (from.layer === 'presentation' && (to.layer === 'data' || toPath.endsWith('_impl.ts'))) return `presentation imports ${toPath}`
+  if (from.layer === 'presentation' && isData(to, toPath)) return `presentation imports ${toPath}`
   if (from.layer === 'data' && to.layer === 'presentation') return `data imports ${toPath}`
 
   return null
@@ -118,7 +105,7 @@ const cyclesIn = graph => {
   return [...found.keys()]
 }
 
-export const checkLayers = (root, { legacy = LEGACY, legacyReaders = LEGACY_READERS, knownCycles = KNOWN_CYCLES } = {}) => {
+export const checkLayers = root => {
   const hooks = join(root, 'hooks')
   const files = walk(hooks)
     .map(path => relative(hooks, path))
@@ -127,7 +114,7 @@ export const checkLayers = (root, { legacy = LEGACY, legacyReaders = LEGACY_READ
   const graph = new Map()
 
   for (const path of files) {
-    const place = placeOf(path, legacy)
+    const place = placeOf(path)
     if (place.area === 'unplaced') problems.push(`hooks/${path} isn't in a layer`)
     const text = readFileSync(join(hooks, path), 'utf8')
     const values = []
@@ -139,7 +126,7 @@ export const checkLayers = (root, { legacy = LEGACY, legacyReaders = LEGACY_READ
       if (!source.startsWith('.')) continue
       const target = resolve(path, source, hooks)
       if (target === null) continue
-      const problem = edgeProblem(place, placeOf(target, legacy), target, legacyReaders, path)
+      const problem = edgeProblem(place, placeOf(target), target)
       if (problem !== null) problems.push(`hooks/${path}: ${problem} (${source})`)
       if (!isType) values.push(target)
     }
@@ -148,9 +135,7 @@ export const checkLayers = (root, { legacy = LEGACY, legacyReaders = LEGACY_READ
       if (!existsSync(join(hooks, dirname(path), name))) problems.push(`hooks/${path}: module="${name}" names no file`)
     }
   }
-  for (const cycle of cyclesIn(graph)) {
-    if (!knownCycles.includes(cycle)) problems.push(`import cycle: ${cycle}`)
-  }
+  for (const cycle of cyclesIn(graph)) problems.push(`import cycle: ${cycle}`)
 
   return problems
 }

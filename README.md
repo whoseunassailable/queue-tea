@@ -75,10 +75,12 @@ To work on it, install from your clone instead, so an edit reaches a session on 
 
 ```
 claude plugin test .
+npx -y -p typescript@5.9 tsc -p .
 claude plugin validate .
+node tools/check_layers.mjs
 ```
 
-The design is in [docs/spec.md](docs/spec.md) and the build plan in [docs/plan.md](docs/plan.md).
+The design is in [docs/spec.md](docs/spec.md), the code's shape in [docs/architecture.md](docs/architecture.md) and the build plan in [docs/plan.md](docs/plan.md).
 
 ## License
 

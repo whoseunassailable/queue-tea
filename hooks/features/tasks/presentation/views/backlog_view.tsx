@@ -1,3 +1,4 @@
+import { rankBacklog, blockedText, budgetLabel, formatSpan, isBlocked } from '../../../../shared/backlog/domain/services/ranking'
 import type { EngineInterface, RenderElement, RenderInput } from 'claude-code'
 import type { Task } from '../../../../../types'
 import { pressStartFromBacklog } from '../state_management/tasks_controller'
@@ -7,7 +8,6 @@ import type { MenuContext } from '../../../../core/widgets/menu_context'
 import { cut } from '../../../../core/widgets/text'
 import { childrenOf, groupBacklog, progressOf, progressText } from '../../../../shared/backlog/domain/services/families'
 import type { Group } from '../../../../shared/backlog/domain/services/families'
-import { blockedText, budgetLabel, formatSpan, isBlocked } from '../../../../shared/backlog/domain/services/ranking'
 import type { Ranked } from '../../../../shared/backlog/domain/services/ranking'
 import { PRIORITY_ORDER } from '../../../../shared/records/domain/services/queue_rules'
 import { formatAge, formatMinutes } from '../../../../shared/time/domain/services/time'
@@ -16,7 +16,8 @@ import { pressBlock, pressBudget, pressClearFeature, pressFold, pressPlayNext, p
 import { familyButtons } from '../widgets/family_buttons'
 
 export async function drawBacklog($: EngineInterface, c: MenuContext): Promise<RenderElement> {
-  const { e, Box, Text, Button, p, cols, now, record, tasks, current, budget, ranked, queue, blocked, waiting, feature, others, isChoosingNext, openRow, openParents, hints, top, bar, tag } = c
+  const { e, Box, Text, Button, p, cols, now, record, tasks, current, budget, queue, blocked, waiting, feature, others, isChoosingNext, openRow, openParents, hints, top, bar, tag } = c
+  const ranked = record === null ? [] : rankBacklog(record, budget)
   // A row's own buttons once it is pressed open: Start and Play next for one
   // that can start, Unblock for a blocked one.
   const rowButtons = (task: Task, isBlockedRow: boolean) => (

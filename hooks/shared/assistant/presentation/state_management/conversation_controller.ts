@@ -44,8 +44,9 @@ export const checkNow = async (p: Ports, ctx: Ctx, task: Task): Promise<string[]
 export const freshConversation = async (p: Ports, ctx: Ctx, task: Task): Promise<void> => {
   try {
     const checked = await checkNow(p, ctx, task)
-    await p.clear()
-    await p.submit(firstMessage(task, checked))
+    const assistant = assistantRepositoryOf(p)
+    await assistant.clear()
+    await assistant.submit(firstMessage(task, checked))
   } catch (err) {
     p.log(`starting the conversation for ${task.id} failed: ${err instanceof Error ? err.message : String(err)}`)
     await p.set('notice', `Couldn't open the conversation for ${task.title}. Press Continue to try again.`)

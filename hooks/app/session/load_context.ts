@@ -12,6 +12,7 @@ export async function loadContext($: EngineInterface, options: Options): Promise
 
   return {
     cwd,
+    home,
     projectPath,
     projectName: projectPath.split('/').pop() || projectPath,
     file,

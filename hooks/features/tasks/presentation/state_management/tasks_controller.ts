@@ -10,13 +10,16 @@ import { suggest } from '../../../../shared/backlog/domain/services/ranking'
 import { flush } from '../../../../shared/effort/presentation/state_management/effort_controller'
 import { gitRepositoryOf } from '../../../../shared/git/git_providers'
 import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
+import { isoLocal } from '../../../../shared/time/domain/services/time'
 import { applySaved, markUnreadable } from '../../../../shared/records/presentation/state_management/records_controller'
 import type { Block } from '../../domain/services/task_rules'
 import { finishTaskUseCase } from '../../domain/usecases/finish_task'
 import { putBackUseCase } from '../../domain/usecases/put_back'
 import { saveDocsPathUseCase } from '../../domain/usecases/save_docs_path'
+import { setReviewUseCase } from '../../domain/usecases/set_review'
 import { startTaskUseCase } from '../../domain/usecases/start_task'
 import { switchToTaskUseCase } from '../../domain/usecases/switch_to_task'
+import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
 import { clearHold } from './hold'
 
@@ -90,6 +93,22 @@ export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<void> 
   const line = typeof checked === 'string' ? checked.trim().slice(0, 300) : ''
   await p.set('checked', line === '' ? null : line)
   await p.set('isAskingDone', true)
+  await saveReview(p, { at: 'now', checked: line === '' ? null : line })
+}
+
+// What the app reads to show Review. The terminal's question stands either
+// way, so a failed write is logged and nothing else changes.
+const saveReview = async (p: Ports, review: { at: 'now'; checked: string | null } | null): Promise<void> => {
+  const ctx = live.ctx
+  const record = await p.get('record')
+  const current = record === null ? null : currentTask(record.tasks)
+  if (ctx === null || current === null) return
+  try {
+    const stamped = review === null ? null : { at: isoLocal(await p.now(), ctx.offsetMinutes), checked: review.checked }
+    await applySaved(p, ctx, await setReviewUseCase(tasksDepsOf(p, ctx), current.id, stamped))
+  } catch (err) {
+    debug(p, 'saving the review mark failed', err)
+  }
 }
 
 const sayLogFailed = async (p: Ports, path: string | null) => {
@@ -143,7 +162,11 @@ const docsOnce = async (p: Ports, ctx: Ctx, taskId: string, path: string): Promi
 export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
   const current = record === null ? null : currentTask(record.tasks)
-  if (current !== null && !isStartingFresh()) scheduleFresh(p, ctx, current)
+  if (current === null || isStartingFresh()) return
+  // Continue answers the app's begin too, so the task isn't started twice.
+  const pending = record?.requests.find(q => q.kind === 'begin' && q.taskId === current.id)
+  if (pending !== undefined) await takeRequestUseCase(tasksDepsOf(p, ctx), pending.id)
+  scheduleFresh(p, ctx, current)
 }
 
 // Switches to the current task's branch, unless something is uncommitted.
@@ -305,6 +328,7 @@ export async function pressDoneYes(p: Ports) {
   const current = record === null ? null : currentTask(record.tasks)
   await p.set('isAskingDone', false)
   await p.set('checked', null)
+  await saveReview(p, null)
   if (current !== null) {
     await showBand(p, { kind: 'difficulty', taskId: current.id, picked: current.difficulty.expected })
   }
@@ -313,6 +337,7 @@ export async function pressDoneYes(p: Ports) {
 export async function pressDoneNotYet(p: Ports) {
   await p.set('isAskingDone', false)
   await p.set('checked', null)
+  await saveReview(p, null)
 }
 
 export async function saveDifficulty(p: Ports) {

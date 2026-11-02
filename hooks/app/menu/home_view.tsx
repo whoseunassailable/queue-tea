@@ -6,7 +6,7 @@ import { cut } from '../../core/widgets/text'
 import type { Cup } from '../../features/tea_cup/domain/services/cup_mood'
 import { formatMinutes } from '../../shared/time/domain/services/time'
 import { weekOf } from '../../shared/time/domain/services/week_stats'
-import { pressMenu } from './menu_controller'
+import { pressMenu, pressOpenApp } from './menu_controller'
 
 const EMPTY = "Nothing queued yet. Tell me what you're working on and it becomes the first task."
 
@@ -59,6 +59,9 @@ export async function drawHome(c: MenuContext, cup: Cup): Promise<RenderElement>
           )}
         </Button>
       ))}
+      <Button key="menu:app" plain hotkey="8" onPress={() => void pressOpenApp(p)}>
+        {'Open in Queue-tea app'}
+      </Button>
       {hints}
     </Box>
   )

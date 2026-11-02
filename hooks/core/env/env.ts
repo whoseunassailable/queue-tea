@@ -7,6 +7,7 @@ export type Options = {
 
 export type Ctx = {
   cwd: string
+  home: string
   projectPath: string
   projectName: string
   file: string

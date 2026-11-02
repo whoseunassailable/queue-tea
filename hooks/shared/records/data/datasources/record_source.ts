@@ -46,6 +46,7 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
   feature: null,
   tasks: [],
   unassignedMinutesByDay: {},
+  requests: [],
 })
 
 // A record written before a field existed gets the field's empty value. A
@@ -59,6 +60,9 @@ const withDefaults = (t: Partial<Task>): Task =>
     blockedReason: null,
     checkpoint: null,
     parentId: null,
+    description: null,
+    criteria: [],
+    review: null,
     ...t,
   }) as Task
 
@@ -72,6 +76,7 @@ export const parseRecord = (text: string): ProjectRecord | 'unreadable' => {
           playNext: parsed.playNext ?? null,
           feature: parsed.feature ?? null,
           tasks: parsed.tasks.map(withDefaults),
+          requests: Array.isArray(parsed.requests) ? parsed.requests : [],
         } as ProjectRecord)
       : 'unreadable'
   } catch {
@@ -142,7 +147,7 @@ const replaceWith = async (host: Host, file: string, text: string): Promise<void
   const tag = [...crypto.getRandomValues(new Uint8Array(4))].map(b => b.toString(16).padStart(2, '0')).join('')
   const tmp = `${file}.${tag}.tmp`
   await host.write(tmp, text)
-  const moved = await host.run(['mv', '-f', tmp, file])
+  const moved = await host.move(tmp, file)
   if (moved.exitCode !== 0) throw new Error(`mv of the record failed: ${moved.stderr}`)
 }
 
@@ -164,16 +169,16 @@ const LOCK_WAIT_MS = 50
 const withLock = async <T>(host: Host, file: string, work: () => Promise<T>): Promise<T> => {
   const lock = `${file}.lock`
   for (let tries = 0; tries < LOCK_TRIES; tries += 1) {
-    if ((await host.run(['mkdir', lock])).exitCode === 0) break
+    if ((await host.makeDir(lock)).exitCode === 0) break
     // No lock there: the folder above is missing, before the first record of
     // all, or the lock was let go just now. Either way, try again at once.
-    if (!(await host.exists(lock))) await host.run(['mkdir', '-p', file.slice(0, file.lastIndexOf('/'))])
+    if (!(await host.exists(lock))) await host.makeDirs(file.slice(0, file.lastIndexOf('/')))
     else await host.sleep(LOCK_WAIT_MS)
   }
   try {
     return await work()
   } finally {
-    await host.run(['rmdir', lock])
+    await host.removeDir(lock)
   }
 }
 

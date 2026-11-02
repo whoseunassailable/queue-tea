@@ -33,5 +33,5 @@ export type Ports = Env & {
     fill: (text: string) => Promise<{ isFilled: boolean }>
     send: (text: string) => Promise<{ drop?: unknown }>
   }
-  session: { usage: () => Promise<SessionUsage>; append: (note: string) => Promise<void> }
+  session: { id: () => Promise<string>; usage: () => Promise<SessionUsage>; append: (note: string) => Promise<void> }
 }

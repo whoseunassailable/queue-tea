@@ -10,6 +10,7 @@ import { ERRAND_NOT_SENT, errandReply, errandUsage, startsAsCommand } from '../.
 import type { ErrandKind } from '../../features/errands/domain/services/errands'
 import { errandFor, errandState, giveBack, sendErrand } from '../../features/errands/presentation/state_management/errands_controller'
 import { onMessage } from '../../features/message_check/presentation/state_management/message_check_controller'
+import { followRecord } from '../../features/tasks/presentation/state_management/requests_controller'
 import { checkResume, refreshDrift, refreshLines } from '../../features/tasks/presentation/state_management/tasks_controller'
 import { refreshStatus } from '../../features/tea_cup/presentation/state_management/tea_cup_controller'
 import { isStartingFresh, writeHandoff } from '../../shared/assistant/presentation/state_management/conversation_controller'
@@ -18,12 +19,17 @@ import { effortState, flush } from '../../shared/effort/presentation/state_manag
 import { currentTask } from '../../shared/records/domain/services/queue_rules'
 import { loadRecord } from '../../shared/records/presentation/state_management/records_controller'
 import { recordsRepositoryOf } from '../../shared/records/records_providers'
+import { HEARTBEAT_MS } from '../../shared/sessions/domain/services/session_rules'
 import { isoLocal } from '../../shared/time/domain/services/time'
 import { loadContext } from './load_context'
+import { beat } from './session_beat'
 
 // A typed /clear saves a checkpoint first only past this size: a smaller
 // conversation holds little the turns haven't saved already.
 const CLEAR_CHECKPOINT_TOKENS = 20_000
+
+// How often a session looks for what the app changed.
+const FOLLOW_MS = 2_000
 
 // Registers a command, or its `queue-tea-` name when the short one is taken;
 // says so in the menu.
@@ -79,13 +85,25 @@ export async function startSession($: EngineInterface) {
     debug(portsOf($), 'checking the branch at the start failed', err)
   }
   await refreshStatus(portsOf($))
+  await beat(portsOf($))
+  $.clock.every(HEARTBEAT_MS, () => {
+    // beat logs its own failures.
+    void beat(portsOf($))
+  })
+  $.clock.every(FOLLOW_MS, () => {
+    const ctx = live.ctx
+    if (ctx === null) return
+    followRecord(portsOf($), ctx).catch(err => debug(portsOf($), "following the app's changes failed", err))
+  })
 }
 
 export async function afterEachTurn($: EngineInterface) {
   const wasErrand = errandState.errand?.isRunning === true
   if (wasErrand) errandState.errand = null
+  live.isTurnRunning = false
   effortState.tracker?.activity(await $.clock.now())
   await flush(portsOf($))
+  await beat(portsOf($))
   if (live.ctx === null) return
   try {
     await commitWarning(portsOf($), live.ctx, commitGuardState.turnHead)
@@ -177,6 +195,7 @@ export async function pressRestore(p: Ports) {
 export async function afterClear(p: Ports) {
   await loadRecord(p)
   if (!isStartingFresh()) await checkResume(p)
+  await beat(p)
 }
 
 // Before a /clear Rohan types during a task: a checkpoint, so the clear loses

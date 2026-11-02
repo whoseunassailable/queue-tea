@@ -30,7 +30,7 @@ export const finishTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, actua
     ...r,
     tasks: r.tasks.map(t =>
       t.id === taskId
-        ? { ...t, state: 'done', finished, difficulty: { ...t.difficulty, actual }, effort: { ...t.effort, ...diff } }
+        ? { ...t, state: 'done', finished, review: null, difficulty: { ...t.difficulty, actual }, effort: { ...t.effort, ...diff } }
         : t,
     ),
   }))

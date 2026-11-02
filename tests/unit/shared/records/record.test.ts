@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { backupPath, carryOverRecords, emptyRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
+import { backupPath, carryOverRecords, emptyRecord, parseRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord } from '../../../../types'
 import { makeTask, memoryHost } from '../../../helpers'
 
@@ -248,4 +248,32 @@ test('the first record of all makes its folder before the lock', async () => {
     expect.stringMatching(/^mv -f /),
     `rmdir ${FILE}.lock`,
   ])
+})
+
+test('a record from before the app reads with the new fields empty', () => {
+  const old = { version: 1, project: { name: 'p', path: '/p' }, tasks: [{ title: 'A', created: 'x' }] }
+
+  const read = parseRecord(JSON.stringify(old))
+
+  if (read === 'unreadable') throw new Error('should read')
+  expect(read.requests).toEqual([])
+  expect(read.tasks[0]).toMatchObject({ description: null, criteria: [], review: null })
+})
+
+test('requests that are not a list read as none', () => {
+  const read = parseRecord(JSON.stringify({ version: 1, project: { name: 'p', path: '/p' }, tasks: [], requests: 'nonsense' }))
+
+  if (read === 'unreadable') throw new Error('should read')
+  expect(read.requests).toEqual([])
+})
+
+test('fields one side does not know survive a write by the other', async () => {
+  const written = { ...emptyRecord('p', '/p'), fromTheApp: 1, tasks: [{ ...makeTask({ title: 'A' }), fromTheApp: 2 }] }
+  const mem = memoryHost({ files: { [FILE]: JSON.stringify(written) } })
+
+  await updateRecord(mem.host, FILE, r => ({ ...r, playNext: null }), 'p', '/p')
+
+  const after = JSON.parse(mem.files.get(FILE)!)
+  expect(after.fromTheApp).toBe(1)
+  expect(after.tasks[0].fromTheApp).toBe(2)
 })

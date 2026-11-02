@@ -61,6 +61,7 @@ export function portsOf($: EngineInterface): Ports {
       send: text => $.prompt.submit({ text, asUser: true }),
     },
     session: {
+      id: () => $.session.id(),
       usage: () => $.session.usage(),
       append: async note => {
         await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: note }] } })

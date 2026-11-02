@@ -68,6 +68,29 @@ export async function loadRecord(p: Ports) {
   }
 }
 
+// The record again when something else changed it: the app or another
+// session. Nothing waits on this, so it shows no loading state. Returns the
+// fresh record, or null when there is nothing new.
+export async function reloadIfChanged(p: Ports, ctx: Ctx): Promise<ProjectRecord | null> {
+  const at = await p.host.modifiedAt(ctx.file)
+  const isFirstLook = live.recordSeenAt === null
+  if (at === null || at === live.recordSeenAt) return null
+  live.recordSeenAt = at
+  if (isFirstLook) return null
+
+  const record = await recordsRepositoryOf(p, ctx).read()
+  if (record === 'unreadable') {
+    await markUnreadable(p, ctx)
+
+    return null
+  }
+  await p.set('record', record)
+  await p.set('loadError', null)
+  await p.set('load', 'ready')
+
+  return record
+}
+
 export async function changeRecord(p: Ports, fn: (r: ProjectRecord) => ProjectRecord) {
   const ctx = live.ctx
   if (ctx === null) return

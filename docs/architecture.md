@@ -1,7 +1,7 @@
 # Queue-tea architecture
 
 - **Date:** 2026-10-28
-- **State:** built for the mod: `hooks/` has this shape. The app in `app/` takes the same shape when it's built.
+- **State:** built for the mod: `hooks/` has this shape. The app in `app/` takes the same shape, and its first part is built.
 - **Why:** the repository's rule that "the architecture fits the size of the part, and its layers stay apart". What the user sees and the business rules live apart, for the mod, the app's frontend and backend, and the storage.
 
 Queue-tea is built **feature-first, with three layers per feature**, the same shape as Gait-feedback's `mobile/lib/`. Inside a feature it is **MVVM**:
@@ -136,13 +136,14 @@ If git isn't clear, "Starting a task" comes back with the reason, nothing is cla
 | `shared/checkpoints/` | reading and writing checkpoints and handoff notes, and the note a card shows | `checkpoint.ts`, `ui/handoff.ts`, `firstObject` from `check.ts` |
 | `shared/effort/` | the tracker counting each turn's work, and writing it to the record | `effort.ts`; `actions.ts`: `flush` |
 | `shared/time/` | days, offsets, durations, the week's figures | `time.ts`, `ui/status.ts` without `statusText` |
+| `shared/sessions/` | the session files that tell the app where Claude Code is, and when one has gone stale | new with the app |
 
 ### The core and the app
 
 | Folder | What it holds | Came from |
 |---|---|---|
 | `core/env/` | the plain types everything shares: the context, the options, the clock, ids and the log | `Ctx` and `Options` in `types/index.d.ts` |
-| `core/host/` | the file and process seam (`Host`) and its Claude Code source | `host.ts` |
+| `core/host/` | the file and process seam (`Host`) and its Claude Code source. The engine has no rename or mkdir, so the mod's `Host` runs commands where the app's uses Node's calls; Windows gets its own in `claude_host.ts` | `host.ts` |
 | `core/ports/` | the engine as one object, `Ports`, and how it's built from Claude Code | `Ports` in `flow.ts`, `portsOf` in `ports.ts`, `Ask` and `askOf` in `check.ts` |
 | `core/store/` | the view state every controller writes and every view reads; the band's queue; opening and closing the menu | the atoms in `ports.ts`; `flow.ts`: `showBand`, `closeBand`; `actions.ts`: `openMenu`, `closeMenu`, `menuClosed` |
 | `core/logger/` | one logger for the whole mod | `debug` in `ports.ts` |
@@ -150,7 +151,7 @@ If git isn't clear, "Starting a task" comes back with the reason, nothing is cla
 | `core/widgets/` | `cut`, the menu's keys, the helpers in `format.ts`, and `MenuContext`, what every menu view is drawn with | `cut` in `ui/status.ts`, `ui/keys.ts`, the shared helpers in `ui/menu.tsx` |
 | `app/menu/` | the menu frame, its failed and loading states, the routes between the views, Help | the frame of `ui/menu.tsx`, `toggleMenu` and `pressMenu` |
 | `app/band/` | the band's host: the cup, then whichever feature's question is up | `ui/band.tsx` |
-| `app/session/` | the session's rhythm, which crosses features: start, each turn's end, the tick, a /clear, restoring a record | `register.tsx`: `startSession`, `afterEachTurn`, `checkTyped`, `runErrand`; `session.ts`: `loadContext`; `actions.ts`: `tick`, `afterClear`, `saveBeforeClear`, `pressRestore` |
+| `app/session/` | the session's rhythm, which crosses features: start, each turn's start and end, the tick, the session file, a /clear, restoring a record | `register.tsx`: `startSession`, `afterEachTurn`, `checkTyped`, `runErrand`; `session.ts`: `loadContext`; `actions.ts`: `tick`, `afterClear`, `saveBeforeClear`, `pressRestore` |
 | `register.tsx` | the hooks, tools and commands, in their old order | `register.tsx` |
 | `types/index.d.ts` | the plugin's state declaration, and the data model it names: tasks, the record, bands. Claude Code refuses an import in this file, so these types stay here and `domain/` imports them from it | the same file, without `GitState`, `CheckAnswer`, `Options` and `Ctx` |
 
@@ -173,8 +174,9 @@ flowchart LR
 
 ```
 app/
+├── shared/engine_api.ts      the typed interface between the window and main
 ├── main/                     the backend
-│   ├── core/                 a Node host (fs/promises, execFile), logger, settings, the records watcher
+│   ├── core/                 a Node host (fs/promises, execFile), logger, the records watcher, platform/
 │   ├── features/<feature>/api/   one handler per call: validates input, runs the use case, returns data or an error
 │   └── main.ts               windows, menus, and the providers that wire it all
 ├── preload/                  hands the API to the window

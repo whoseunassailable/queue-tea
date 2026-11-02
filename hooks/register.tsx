@@ -1,3 +1,4 @@
+import { beat, endBeat } from './app/session/session_beat'
 import { afterClear, afterEachTurn, checkTyped, runErrand, saveBeforeClear, startSession } from './app/session/session_rhythm'
 import { errandState } from './features/errands/presentation/state_management/errands_controller'
 import { commitGuardState } from './features/commit_guard/presentation/state_management/commit_guard_controller'
@@ -93,6 +94,11 @@ export const register: Register = (on, options) => {
   // and whether the turn is an errand's.
   on('turn.start', async ($, e, next) => {
     if (isErrandTurn(e, errandState.errand)) errandState.errand = { ...errandState.errand!, isRunning: true }
+    if (e.agentId === undefined) {
+      live.isTurnRunning = true
+      // At once, so the app's dragon steams for a short turn too.
+      await beat(portsOf($))
+    }
     if (e.agentId === undefined && live.ctx !== null) {
       try {
         commitGuardState.turnHead = await gitRepositoryOf(portsOf($), live.ctx).head()
@@ -115,6 +121,7 @@ export const register: Register = (on, options) => {
 
   on('session.end', async ($, e, next) => {
     await flush(portsOf($))
+    await endBeat(portsOf($))
 
     return next(e)
   })

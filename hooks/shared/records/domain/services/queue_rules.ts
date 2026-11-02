@@ -54,6 +54,9 @@ export const newTask = (input: {
   },
   files: { read: [], changed: [] },
   parentId: input.parentId ?? null,
+  description: null,
+  criteria: [],
+  review: null,
 })
 
 export const setPriority = (tasks: Task[], id: string, priority: Priority): Task[] =>

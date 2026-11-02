@@ -8,5 +8,5 @@ import type { Deps } from './deps'
 export const putBackUseCase = (d: Deps, taskId: string, block: Block | undefined) =>
   d.records.update(r => ({
     ...r,
-    tasks: r.tasks.map(t => (t.id === taskId && t.state === 'current' ? withBlock({ ...t, state: 'queued' }, block) : t)),
+    tasks: r.tasks.map(t => (t.id === taskId && t.state === 'current' ? withBlock({ ...t, state: 'queued', review: null }, block) : t)),
   }))

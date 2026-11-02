@@ -1,12 +1,12 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** spec, waiting for Rohan's review. Not built. After the review comes the implementation plan. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design).
+- **State:** being built. Part 1 is done on `task/workspace-app`: the mod's side, and a read-only first window with Home and Quests ([plan-workspace-app.md](plan-workspace-app.md)). Steps 4 to 7 and Windows are next. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
 
-A Mac app beside Claude Code. It shows every project Queue-tea knows, with its queue, its current task and its history. It also does the queue's own work: filing, priority, features, blocking, starting a task on its branch, and finishing it with the task-log row. Claude Code opens only for the work itself.
+A desktop app beside Claude Code, for the Mac first and Windows after it. It shows every project Queue-tea knows, with its queue, its current task and its history. It also does the queue's own work: filing, priority, features, blocking, starting a task on its branch, and finishing it with the task-log row. Claude Code opens only for the work itself.
 
 The terminal mod keeps working as it does today. The app and the mod read and write the same record, through the same engine code.
 
@@ -25,6 +25,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 
 - **The Board tab.** It comes with tasks side by side (sub-project 4), when In progress and Review can hold several cards.
 - **The other 2.0 sub-projects:** helpers handed work from the Guild Hall (2), Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4) and lifecycle hardening (5). No placeholders for any of them.
+- **Windows.** It comes after the Mac (see Decisions).
 - **A phone or web app.** The window talks to the engine through one typed API, so HTTP can sit behind it later.
 - **Also left out:** a menu-bar cup, notarisation and auto-update.
 - **From the game:** a shop to spend gold, naming the dragon, and quests or rewards from the helpers.
@@ -36,6 +37,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | --- | --- | --- |
 | Where it runs | A native Mac app | Rohan's pick over a browser app or a pane in Claude Code Desktop |
 | Which shell | Electron, TypeScript end to end, a Preact window | One engine shared with the mod; SwiftUI would need the engine rewritten or bridged |
+| Windows | After the Mac, kept possible throughout | Rohan wants both (2 Nov). The window carries over with Electron, but there's no Windows machine to test on yet. Nothing Mac-only sits outside `hooks/core/host/claude_host.ts` and `app/main/core/platform/`, and the record's save and lock go through `Host` methods, so Windows is new code in those two places. It also needs its own terminals, installer, window buttons and Ctrl shortcuts |
 | Control | Full control in the app | The app edits the record, runs the git check, makes branches, finishes tasks and writes the task log; Claude Code opens only for the work |
 | Phone | Later, kept possible | The engine sits behind one typed API |
 | Tasks layout | The ranked list in state sections; the Board later | Keeps the ★ order and families together, and fits a narrow window |
@@ -59,8 +61,9 @@ The app takes the same shape as the mod, on both sides of the window. [architect
 app/
 ├── package.json              its own dependencies (node_modules/ is already gitignored)
 ├── tsconfig.json             doesn't resolve claude-code
+├── shared/engine_api.ts      the typed interface between the window and main
 ├── main/                     the backend
-│   ├── core/                 a Node host (fs/promises, execFile), logger, settings, the records watcher
+│   ├── core/                 a Node host (fs/promises, execFile), logger, the records watcher, platform/
 │   ├── features/<feature>/api/   one handler per call: validates input, runs the use case, returns data or an error
 │   └── main.ts               windows, menus, and the providers that wire it all
 ├── preload/                  hands the engine API to the window through contextBridge
@@ -98,7 +101,7 @@ Main watches the folders `~/.queue-tea/projects` and `~/.queue-tea/sessions`, no
 
 ### Sessions: the mod tells the app where Claude Code is
 
-The mod writes `~/.queue-tea/sessions/<session id>.json` at session start, after each turn and every 30 s, and removes it at session end. Its shape is in section 6 of the design. A file whose heartbeat is older than 90 s counts as no session, which covers a session that crashed. With several fresh files for one project, the pill shows "several sessions".
+The mod writes `~/.queue-tea/sessions/<session id>.json` at session start, as each turn starts and ends, and every 30 s, and removes it at session end. Its shape is in section 6 of the design. A file whose heartbeat is older than 90 s counts as no session, which covers a session that crashed; the next session to start removes such files. With several fresh files for one project, the pill shows "several sessions".
 
 ### Requests: the app asks a session to act
 
@@ -153,7 +156,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 
 ## Testing
 
-- **The mod.** 304 tests pass after the restructure, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
+- **The mod.** 334 tests pass with part 1, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
 - **The app's units.** Vitest `*.spec.ts(x)`: the window's components, and main's API run on a Host held in memory, as the mod's tests do.
 - **End to end.** Playwright's Electron driver against a temporary `HOME` with fixture records. The runs: file a task, change priority, Start through a git hold and then past it, Review then Done with the log row, and Back to queue with no session.
 - **The plugin folder.** After `npm install` in `app/`, `claude plugin test .` still finds only the mod's tests. If it picks up files from `app/node_modules`, the app moves out of the plugin folder.
@@ -184,7 +187,7 @@ The screens' criteria are 1–28 in section 7 of the design. These cover the res
 6. Chronicle, Mana & time, Hoard and badges, Settings (with the sky and Calm mode), the Guild Hall, first run, the failed record, the palette and the narrow window.
 7. The build, the `queue-tea` tool, the URL scheme and the notification.
 
-## To check first
+## Checked
 
-- **Whether the mod can send the first message at session start.** A plugin's submit is refused inside `command.run`, so test this before step 2 depends on it.
-- **Whether `claude plugin test .` reaches into `app/node_modules`.** Check right after the first `npm install`.
+- **The mod can send the first message at session start.** Requests are handled from a timer and never inside a hook, so a submit isn't refused. Seen on 2 Nov in a real Claude Code 2.1.316 session: the file appeared in 0.9 s, the `begin` request was taken at 2.9 s, Claude answered the first message, and the file went when the session ended.
+- **`claude plugin test .` doesn't reach into `app/node_modules`.** The test count was the same after `npm install`, so the app stays in the plugin folder.

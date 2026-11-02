@@ -1,5 +1,6 @@
 import type { On } from 'claude-code'
 import type { Ports, View } from '../hooks/core/ports/ports'
+import { unixFiles } from '../hooks/core/host/host'
 import type { Host } from '../hooks/core/host/host'
 import type { Ctx } from '../hooks/core/env/env'
 import type { Task } from '../types'
@@ -39,15 +40,19 @@ export const makeTask = (over: Partial<Task> = {}): Task => {
     },
     files: { read: [], changed: [] },
     parentId: null,
+    description: null,
+    criteria: [],
+    review: null,
     ...over,
   }
 }
 
 export type Run = { stdout?: string; exitCode?: number }
 
-// A host held in memory: files in a map, `mv` as a rename in that map, plain
-// `mkdir` and `rmdir` as folders in a set, every other argv answered from
-// `git` by `argv.join(' ')`; an argv it lacks exits 1. Sleeps end at once.
+// A host held in memory: files in a map, `mv` as a rename and `rm` as a delete
+// in that map, plain `mkdir` and `rmdir` as folders in a set, every other argv
+// answered from `git` by `argv.join(' ')`; an argv it lacks exits 1. Sleeps end
+// at once. Each write and move counts as one tick of `modifiedAt`.
 export const memoryHost = (
   options: { files?: Record<string, string>; git?: Record<string, Run> } = {},
 ) => {
@@ -56,6 +61,9 @@ export const memoryHost = (
   const runs: string[][] = []
   const writes: string[] = []
   const git = { ...(options.git ?? {}) }
+  const changed = new Map<string, number>()
+  let tick = 0
+  const stamp = (path: string) => changed.set(path, (tick += 1))
   const result = (exitCode: number, stdout = '') => ({ exitCode, stdout, stderr: '' })
 
   const host: Host = {
@@ -68,6 +76,7 @@ export const memoryHost = (
     },
     write: async (path, text) => {
       files.set(path, text)
+      stamp(path)
       writes.push(path)
     },
     run: async argv => {
@@ -79,6 +88,12 @@ export const memoryHost = (
         if (from === undefined || to === undefined || text === undefined) return result(1)
         files.delete(from)
         files.set(to, text)
+        stamp(to)
+
+        return result(0)
+      }
+      if (argv[0] === 'rm') {
+        files.delete(argv[2] ?? '')
 
         return result(0)
       }
@@ -101,6 +116,10 @@ export const memoryHost = (
         .map(path => path.slice(dir.length + 1))
         .filter(name => !name.includes('/')),
     sleep: async () => {},
+    // Through `host.run` when called, so a test that swaps `run` swaps these.
+    ...unixFiles((argv, cwd) => host.run(argv, cwd)),
+    modifiedAt: async path => (files.has(path) ? (changed.get(path) ?? 0) : null),
+    open: async url => host.run(['open', url]),
   }
 
   return { files, dirs, runs, writes, git, host }
@@ -117,7 +136,14 @@ export const answerHost = (on: On, mem: ReturnType<typeof memoryHost>) => {
     value: (await mem.host.list(e.path)).map(name => ({ name, kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false })),
   }))
   on('fs.read', async (_, e) => ({ value: await mem.host.read(e.path) }))
+  on('session.id', () => ({ value: 's-test' }))
   on('fs.write', async (_, e) => ({ value: await mem.host.write(e.path, e.text) }))
+  on('fs.stat', async (_, e) => {
+    const mtimeMs = await mem.host.modifiedAt(e.path)
+    if (mtimeMs === null) throw new Error(`ENOENT: ${e.path}`)
+
+    return { value: { kind: 'file' as const, size: 0, mtimeMs, isLink: false } as never }
+  })
   on('process.run', async (_, e) => ({
     value: { ...(await mem.host.run([...e.argv])), isStdoutTruncated: false, isStderrTruncated: false },
   }))
@@ -160,7 +186,7 @@ export const fakePorts = (
     openParents: [],
     ...options.view,
   }
-  const done = { clears: 0, asUser: [] as boolean[], submits: [] as string[], toasts: [] as string[], logs: [] as string[], statuses: [] as (string | undefined)[] }
+  const done = { promptText: '', clears: 0, asUser: [] as boolean[], submits: [] as string[], toasts: [] as string[], logs: [] as string[], statuses: [] as (string | undefined)[] }
   const later: (() => Promise<void>)[] = []
   let id = 0
   const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
@@ -195,8 +221,8 @@ export const fakePorts = (
     },
     log: text => done.logs.push(text),
     ui: { open: async () => ({ isPlaced: true }), close: async () => {} },
-    prompt: { read: async () => ({ text: '' }), fill: async () => ({ isFilled: true }), send: async () => ({}) },
-    session: { usage: async () => ({ context: { tokens: 0 }, rateLimits: [] }) as never, append: async () => {} },
+    prompt: { read: async () => ({ text: done.promptText }), fill: async () => ({ isFilled: true }), send: async () => ({}) },
+    session: { id: async () => 's-1', usage: async () => ({ context: { tokens: 0 }, rateLimits: [] }) as never, append: async () => {} },
   }
   const settle = async () => {
     while (later.length > 0) await later.shift()!()
@@ -207,6 +233,7 @@ export const fakePorts = (
 
 export const CTX: Ctx = {
   cwd: '/p',
+  home: '/h',
   projectPath: '/p',
   projectName: 'p',
   file: '/h/.queue-tea/projects/p-000000.json',

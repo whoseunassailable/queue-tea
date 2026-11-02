@@ -57,7 +57,17 @@ export type Task = {
   // The feature this task is part of; null for a task on its own. One level
   // deep: a task with tasks under it is part of none.
   parentId: string | null
+  // What the task is for and how to tell it's finished. Any task can become a
+  // feature, so every task has them.
+  description: string | null
+  criteria: string[]
+  // Set when Claude says the task looks done, cleared by Rohan's answer.
+  review: { at: string; checked: string | null } | null
 }
+
+// What the app asks an open session to do. The session removes it under the
+// lock as it takes it, so with two sessions only one acts.
+export type AppRequest = { id: string; kind: 'begin' | 'putBack'; taskId: string; at: string }
 
 export type ProjectRecord = {
   version: 1
@@ -69,6 +79,7 @@ export type ProjectRecord = {
   feature: string | null
   tasks: Task[]
   unassignedMinutesByDay: Record<string, number>
+  requests: AppRequest[]
 }
 
 // What a new task is filed under: nothing, a task already there, or a new

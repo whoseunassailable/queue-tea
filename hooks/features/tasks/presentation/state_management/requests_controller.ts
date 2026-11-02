@@ -51,7 +51,7 @@ export const handleRequests = async (p: Ports, ctx: Ctx): Promise<Handled> => {
     scheduleFresh(p, ctx, task)
   } else {
     await flush(p)
-    await putBack(p, ctx)
+    await putBack(p, ctx, taken.request.block)
   }
 
   return 'handled'

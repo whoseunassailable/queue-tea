@@ -3,6 +3,8 @@ import { expect, test } from 'claude-code/testing'
 import { pressOpenApp } from '../../../hooks/app/menu/menu_controller'
 import { live } from '../../../hooks/core/session/live'
 import { handleRequests, followRecord } from '../../../hooks/features/tasks/presentation/state_management/requests_controller'
+import { addRequestUseCase } from '../../../hooks/features/tasks/domain/usecases/add_request'
+import { dropRequestsUseCase } from '../../../hooks/features/tasks/domain/usecases/drop_requests'
 import { takeRequestUseCase } from '../../../hooks/features/tasks/domain/usecases/take_request'
 import { continueTask, pressDoneNotYet, pressDoneYes, putBack, taskLooksDone } from '../../../hooks/features/tasks/presentation/state_management/tasks_controller'
 import { finishTaskUseCase } from '../../../hooks/features/tasks/domain/usecases/finish_task'
@@ -177,4 +179,48 @@ test('with no app installed, the menu says so', async () => {
   await pressOpenApp(ports)
 
   expect(view.notice).toContain('may not be installed')
+})
+
+test('a putBack carrying a seal puts the task back sealed', async () => {
+  const task = makeTask({ state: 'current', title: 'Build it' })
+  const { mem, ports } = setup([task], [request({ kind: 'putBack', taskId: task.id, block: { reason: 'waiting for the clinic' } })])
+
+  expect(await handleRequests(ports, CTX)).toBe('handled')
+
+  const back = onDisk(mem).tasks.find(t => t.id === task.id)!
+  expect(back.state).toBe('queued')
+  expect(back.blockedReason).toBe('waiting for the clinic')
+})
+
+test('adding a request the task already has leaves one', async () => {
+  const task = makeTask({ state: 'current' })
+  const { mem, ports } = setup([task])
+  const deps = tasksDepsOf(ports, CTX)
+
+  await addRequestUseCase(deps, CTX, 'begin', task.id)
+  await addRequestUseCase(deps, CTX, 'begin', task.id)
+
+  expect(onDisk(mem).requests.map(q => q.kind)).toEqual(['begin'])
+  expect(onDisk(mem).requests[0]!.taskId).toBe(task.id)
+})
+
+test('another kind of request for the same task is added beside it', async () => {
+  const task = makeTask({ state: 'current' })
+  const { mem, ports } = setup([task])
+  const deps = tasksDepsOf(ports, CTX)
+
+  await addRequestUseCase(deps, CTX, 'begin', task.id)
+  await addRequestUseCase(deps, CTX, 'putBack', task.id, { waitFor: 'other' })
+
+  expect(onDisk(mem).requests.map(q => q.kind)).toEqual(['begin', 'putBack'])
+  expect(onDisk(mem).requests[1]!.block).toEqual({ waitFor: 'other' })
+})
+
+test('dropping a task\'s requests leaves those of other tasks', async () => {
+  const task = makeTask({ state: 'current' })
+  const { mem, ports } = setup([task], [request({ id: 'mine', taskId: task.id }), request({ id: 'other', taskId: 'someone-else' })])
+
+  await dropRequestsUseCase(tasksDepsOf(ports, CTX), task.id)
+
+  expect(onDisk(mem).requests.map(q => q.id)).toEqual(['other'])
 })

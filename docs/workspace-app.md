@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 and 2 are done on `task/workspace-app`: the mod's side, Home and Quests, and every edit ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Steps 5 to 7 and Windows are next. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
+- **State:** being built. Parts 1 to 3 are done on `task/workspace-app`: the mod's side, Home and Quests, every edit, and a quest from Start to Finish ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Steps 6 and 7 and Windows are next. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -47,7 +47,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | Guild Hall (the Tea Room) | In, read-only | Cheap, carries the character, and teaches the @-mentions that work today |
 | Single-letter keys | The terminal's letters, off inside text fields, a switch in Settings | Same muscle memory in both places |
 | Description and criteria | On every task, collapsed when empty | Any task becomes a feature once it has children |
-| VS Code | Open the folder with `code`, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
+| VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
 | The rest | The suggested answers in section 8 of the design | Rohan took them all on 2026-10-27 |
 | Build and install | **New in this spec:** a local, unsigned build from one npm script, copied to /Applications | One user; notarisation and auto-update would be work with no reader |
 
@@ -105,10 +105,10 @@ The mod writes `~/.queue-tea/sessions/<session id>.json` at session start, as ea
 
 ### Requests: the app asks a session to act
 
-The record gets `requests: { id, kind: 'begin' | 'putBack', taskId, at }[]`.
+The record gets `requests: { id, kind: 'begin' | 'putBack', taskId, at, block? }[]`. `block` is what a `putBack` seals the task on, because the session writes the checkpoint first.
 
 - **Start, with a session open in that project.** The app claims the task and makes or switches the branch itself, through the same use case as the mod. Then it adds a `begin` request, so the session sends Claude the task's first message, the same one the mod sends when it starts a task itself.
-- **Back to queue, with a session open.** The app adds a `putBack` request. The session writes Claude's checkpoint and puts the task back. Until then the app shows "Saving a checkpoint…" (criterion 19 of the design).
+- **Back to queue, with a session open.** The app adds a `putBack` request. The session writes Claude's checkpoint and puts the task back. Until then the app shows "Saving a checkpoint…" (criterion 19 of the design), with Put it back now for when the session is busy or has gone. If a `begin` is still waiting, Claude hasn't started, so the request is dropped and the task goes back at once.
 - **How the mod handles them.** It checks the record's `mtimeMs` every 2 s and reloads it on a change. It acts only at a safe point, meaning no turn running and an empty prompt box; otherwise it offers Continue in the terminal. It removes a request under the lock as it takes it, so with two sessions only one acts. A `begin` for a task that is no longer current is dropped.
 - **Start, with no session.** The app opens the terminal chosen in Settings, running `claude` in the project. The `begin` request waits in the record, and the mod sends the first message when the session starts.
 - **Back to queue, with no session.** The app puts the task back at once, keeps its branch, start commit, time and priority, and says Claude's checkpoint wasn't written (today's wording).
@@ -130,7 +130,9 @@ Each of the three selects the project and tags it Detected.
 Settings offers Terminal (the default), iTerm2 and VS Code.
 
 - **Terminal and iTerm2:** a new window running `claude` in the project, opened through `osascript`.
-- **VS Code:** `code <path>`, `claude` copied to the clipboard, and the toast "Paste it in VS Code's terminal".
+- **VS Code:** the folder opened with `open -a "Visual Studio Code"`, `claude` copied to the clipboard, and the toast "Paste it in VS Code's terminal". Not `code`, because an app opened from the Finder doesn't get the shell's `PATH`.
+
+Open in Claude Code never starts a second session: with one open it only brings the chosen terminal forward. The choice is kept in the app's settings, with Terminal as the default.
 
 ## Data
 
@@ -156,7 +158,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 
 ## Testing
 
-- **The mod.** 341 tests pass with part 2, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
+- **The mod.** 345 tests pass with part 3, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
 - **The app's units.** Vitest `*.spec.ts(x)`: the window's components, and main's API run on a Host held in memory, as the mod's tests do.
 - **End to end.** Playwright's Electron driver against a temporary `HOME` with fixture records. The runs: file a task, change priority, Start through a git hold and then past it, Review then Done with the log row, and Back to queue with no session.
 - **The plugin folder.** After `npm install` in `app/`, `claude plugin test .` still finds only the mod's tests. If it picks up files from `app/node_modules`, the app moves out of the plugin folder.

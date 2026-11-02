@@ -66,8 +66,9 @@ export type Task = {
 }
 
 // What the app asks an open session to do. The session removes it under the
-// lock as it takes it, so with two sessions only one acts.
-export type AppRequest = { id: string; kind: 'begin' | 'putBack'; taskId: string; at: string }
+// lock as it takes it, so with two sessions only one acts. A putBack can carry
+// what the task goes back blocked on.
+export type AppRequest = { id: string; kind: 'begin' | 'putBack'; taskId: string; at: string; block?: { waitFor: string } | { reason: string } }
 
 export type ProjectRecord = {
   version: 1

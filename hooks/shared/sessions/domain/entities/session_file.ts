@@ -11,6 +11,9 @@ export type SessionFile = {
   isTurnRunning: boolean
   cup: { mood: 'idle' | 'working' | 'attention' | 'done'; line: string }
   allowance: Allowance | null
+  // The commit warning, which otherwise lives only in the session. Absent from
+  // a file written by an older mod.
+  warning?: string | null
   options: Options
   heartbeat: number
   startedAt: number

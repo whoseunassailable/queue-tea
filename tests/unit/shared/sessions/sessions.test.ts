@@ -72,6 +72,17 @@ test('a beat writes where the session is, and its current task', async () => {
   expect(written?.options).toEqual(CTX.options)
 })
 
+test('a beat carries the commit warning, so the app can show it', async () => {
+  const mem = memoryHost()
+  const { ports } = fakePorts(mem, { view: { warning: 'During the last turn a commit appeared.' } })
+  live.ctx = CTX
+
+  await beat(ports)
+
+  const [written] = await readSessions(mem.host, CTX.home)
+  expect(written?.warning).toBe('During the last turn a commit appeared.')
+})
+
 test('a beat under a new id, after a /clear, removes the old file', async () => {
   fresh()
   const mem = memoryHost()

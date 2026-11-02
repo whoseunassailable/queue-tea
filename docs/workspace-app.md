@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 to 3 are done on `task/workspace-app`: the mod's side, Home and Quests, every edit, and a quest from Start to Finish ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Steps 6 and 7 and Windows are next. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
+- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -49,7 +49,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | Description and criteria | On every task, collapsed when empty | Any task becomes a feature once it has children |
 | VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
 | The rest | The suggested answers in section 8 of the design | Rohan took them all on 2026-10-27 |
-| Build and install | **New in this spec:** a local, unsigned build from one npm script, copied to /Applications | One user; notarisation and auto-update would be work with no reader |
+| Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and auto-update would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
 
 ## Architecture
 
@@ -119,11 +119,11 @@ The record gets `requests: { id, kind: 'begin' | 'putBack', taskId, at, block? }
 
 ### Opening on a project
 
-- `queue-tea open [path]` is installed from the app's menu (Install command line tool…).
-- `queue-tea://open?path=<path>` is the app's URL scheme.
+- `queue-tea open [path]` is installed from the app's menu (Install command line tool…) or Settings. It goes in the first of `/usr/local/bin`, `/opt/homebrew/bin` and `~/.local/bin` the app can write to, and never replaces a file that isn't its own.
+- `queue-tea://open?path=<path>` is the app's URL scheme, claimed by the prod build only.
 - The tea-cup menu in the terminal gets "Open in Queue-tea app", which opens that URL for the session's project.
 
-Each of the three selects the project and tags it Detected.
+The command only builds that URL, so there is one way in. Each of the three selects the project and tags it Detected. A link can come from any web page, so it can only select a realm or open Add realm, which asks first; nothing is written on a link's word.
 
 ### Terminals
 
@@ -158,7 +158,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 
 ## Testing
 
-- **The mod.** 345 tests pass with part 3, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
+- **The mod.** 346 tests pass with part 5, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
 - **The app's units.** Vitest `*.spec.ts(x)`: the window's components, and main's API run on a Host held in memory, as the mod's tests do.
 - **End to end.** Playwright's Electron driver against a temporary `HOME` with fixture records. The runs: file a task, change priority, Start through a git hold and then past it, Review then Done with the log row, and Back to queue with no session.
 - **The plugin folder.** After `npm install` in `app/`, `claude plugin test .` still finds only the mod's tests. If it picks up files from `app/node_modules`, the app moves out of the plugin folder.

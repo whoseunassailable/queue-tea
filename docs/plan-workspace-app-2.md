@@ -11,10 +11,10 @@
 | Part | What it adds | Build step | Needs first | State |
 |---|---|---|---|---|
 | 2 | Edits: priority, New quest, Part of and Move, Seal…, Play next, Remove, Undo, sagas folding | 4 | part 1 | **committed** |
-| 3 | Start with the git hold, Judgement, Finish quest with the victory, Back to the board, the terminals, sealing the active quest | 5 | part 2 | **built** |
-| 4 | Chronicle, Mana & time, Hoard and badges, Settings with Calm mode, the terminal choice and the letter-keys switch, Guild Hall, first run, the failed record, Time I have, search and filters, drag to move, filling a description from the checkpoint, Home's drift line, the branch mismatch with Switch, the commit warning, the palette, the menu bar, the narrow window | 6 | part 3 | next |
-| 5 | The packaged app, the `queue-tea` tool, the `queue-tea://` scheme, the notification | 7 | part 4 | after that |
-| 6 | Windows: `Host` file calls and paths, terminals, installer, window buttons, Ctrl shortcuts | new | part 5 and a Windows machine | last |
+| 3 | Start with the git hold, Judgement, Finish quest with the victory, Back to the board, the terminals, sealing the active quest | 5 | part 2 | **committed** |
+| 4 | Chronicle, Mana & time, Hoard and badges, Settings with Calm mode, the terminal choice and the letter-keys switch, Guild Hall, first run, the failed record, Time I have, search and filters, drag to move, filling a description from the checkpoint, Home's drift line, the branch mismatch with Switch, the commit warning, the palette, the menu bar, the narrow window. | 6 | part 3 | **built** |
+| 5 | The packaged app, the `queue-tea` tool, the `queue-tea://` scheme, the notification, and the current quest's detail pane with its checkpoint card, which was in no build step | 7 | part 4 | **built** |
+| 6 | Windows: `Host` file calls and paths, terminals, installer, window buttons, Ctrl shortcuts | new | part 5 and a Windows machine | next, once there's a Windows machine |
 
 Rohan's own steps stand beside these: finish the hand try-out, merge the restructure and part 1, and file the app with `/steep`. The app's live sessions only appear once the mod's half is merged, so part 3 can be built before that but not tried by hand before it.
 
@@ -92,7 +92,7 @@ Each part gets its detail when the one before it lands, because each is shaped b
 
 ## Part 3: setting out and coming back
 
-**State:** built on 2 Nov 2026, not yet committed. 345 mod tests, 408 app tests and 36 end-to-end checks pass, the last run twice over. Nothing here can be tried by hand on live sessions until the mod's half is merged.
+**State:** built and committed on 2 Nov 2026 (`ceea4a7`, `fed7c12`), not pushed. 345 mod tests, 408 app tests and 36 end-to-end checks pass, the last run twice over. Nothing here can be tried by hand on live sessions until the mod's half is merged.
 
 **Seen in a real session:** Claude Code 2.1.316 running this mod took a `putBack` carrying a seal within 8 s of starting: the quest went back sealed and the request left the record. That session had no conversation, so no checkpoint was written; a checkpoint and a seal together are covered by tests only.
 
@@ -175,3 +175,151 @@ Each part gets its detail when the one before it lands, because each is shaped b
 - [x] On the real app with a temporary `HOME`, a real git repository and a stand-in `osascript` on the `PATH`, so no terminal really opens: Start through a git hold and past it, onto the branch; Judgement then Finish with the log row and the victory; Back with no session; seal the active quest; a `begin` and a `putBack` with a session file in place; the first finish asking for the path.
 
 **Commit point:** the app can run a quest from start to finish.
+
+---
+
+## Part 4: the rest of the screens
+
+**State:** built on 2 Nov 2026, not yet committed. 346 mod tests, 678 app tests and 69 end-to-end checks passed at the end of this part, the last six times running. The mod changed in one place, the session file's `warning`, which is covered by its tests and not yet seen in a real session.
+
+**What the real app taught:**
+
+- **The board only changes when main answers, so a key pressed faster than that is working from old numbers.** Three quick presses of `t` each stepped on from the same value. The steps now build on each other.
+- **A narrowed saga still has to tell the truth about itself.** With only one chapter matching, the detail pane and Remove both counted one chapter. They now read the whole saga.
+- **Letters found in order aren't a match worth leading with.** "hoard" highlighted Back to the board, which couldn't run, so Return did nothing. Sections now go by their best match.
+- **Mapping Return for the board took it from the focused button**, which keyboard users rely on. It now stays with the button.
+- **The two end-to-end failures that weren't the app:** a test standing in for a session has to wait for the app's write, as it edits without the lock; and a toast from the test before can pass a check early, so the record is what gets read.
+
+**Goal:** every screen in the design's sections 4.10 to 4.18 exists, and the board has its tools.
+
+**Architecture:** a page is a feature in the window and, where it reads something new, a feature in main: `app/main/features/<feature>/` holds a pure `domain` and one `api` file, as `game` does. A page that isn't about one realm (Hoard, Guild Hall, Settings) renders before the realm checks in `Content`. Every page reads through one hook, `useEngineRead`, so loading, done and failed look the same everywhere and old data stays on screen during a refresh. What's view state stays view state: the week, Time I have, the search and the filters are per realm and never saved.
+
+**Decisions made here:**
+
+- **The commit warning needs the mod.** It lives in the session's memory, where the app can't see it, so the session file gains `warning`. It is the only change to the mod in this part.
+- **The Install command row waits for part 5.** The design says no placeholders, and the tool doesn't exist until then.
+- **A folder is only ever chosen in main's dialog**, and the window passes back the path it was given, checked again before a record is written.
+- **Finder is reached by realm key, never by a path from the window.** A window that could name any path could reveal anything.
+- **Guild Hall reads the helpers from `agents/*.md` at build time.** A description's first sentence only names the helper, so the card shows the rest.
+- **Time I have lives in main's memory**, because every edit hands back a fresh board that must rank by it too. It is written nowhere and resets on quit.
+- **Still missing after this part:** the current quest's own detail pane (design 4.4, with the checkpoint card and live lines). It was in no build step, so it's now on the road in part 5.
+- **Also left out, as the design's pane resizing and window memory:** the sidebar and detail pane are fixed widths, and the window's size and position aren't remembered yet. Neither is on the road's list; they go with part 5's packaging if they earn it.
+
+### Review focus
+
+1. **A week with no time at all, and a day with time but no victories.** The chart doesn't divide by zero, and the summary says so. Test in stage A.
+2. **A broken record on an app-wide page.** Hoard, Chronicle's All realms and Settings still show the realms that read. Tests in stages A and B.
+3. **Use the last good copy on a newer record.** Never offered, and refused in main if asked anyway: an older copy would lose the newer work. Test in stage B.
+4. **Open folder on a folder inside a repository, or one that already has a record.** The record is keyed on the repository's top folder, and a known one is selected rather than overwritten. Test in stage B.
+5. **The Task log path set from Settings** follows the same rules as the Finish sheet. Test in stage B.
+6. **Search and a saga.** A chapter that matches keeps its saga on screen, and the fold doesn't hide it. Test in stage C.
+7. **Dragging a quest onto itself, a chapter, or a saga that refuses.** The refusal shows and nothing moves. Test in stage C.
+8. **⌘K's actions when one can't run.** It shows dim with its reason and Return does nothing. Test in stage D.
+9. **Letter keys off.** They stop on every page, and the ⌘ shortcuts don't. Test in stage B.
+
+### Stage A: the pages that only read
+
+**Files:** `app/main/features/chronicle/`, `app/main/features/mana/`, `app/main/features/game/api/game_api.ts`; `app/renderer/features/chronicle/`, `mana/`, `hoard/`, `guild/`; `core/widgets/week_chart.tsx`, `core/api/use_engine_read.ts`, `config/routing/routes.ts`, `features/workspace/presentation/widgets/sidebar.tsx`, `app/renderer/app/app.tsx`; `app/e2e/pages.e2e.ts`
+
+**Produces:** `readChronicle(scope, day): Reply<ChronicleView>`; `readMana(key): Reply<ManaView>`; `readHoard(): Reply<HoardView>`; `useEngineRead(engine, read, deps)`; routes `/chronicle`, `/mana`, `/hoard`, `/guild`; tabs ⌘1 to ⌘4.
+
+- [x] Tests: the week's sums and who was harder or easier, over fixture records; last week for the empty state; a chapter of the record with no time; review focus 1 and 2; gold by realm lists a realm with no victories; the helpers parse from the real `agents/*.md`.
+
+**Commit point:** the app can look back.
+
+### Stage B: Settings, first run and the failed record
+
+**Files:** `app/main/features/settings/api/`, `app/main/features/projects/api/`, `app/renderer/features/settings/`, `features/first_run/`, `features/workspace/presentation/widgets/failed_record.tsx`; `app/e2e/settings.e2e.ts`
+
+**Produces:** `readSettingsPage()`, `setTaskLog(key, path)`, `showRecord(key | null)`, `openFolder()`, `addProject(path)`, `restoreRecord(key)`; `Settings.letterKeys`, `Settings.chronicleScope`; `ProjectView` unreadable gains `reason` and `file`.
+
+- [x] Forms follow `CLAUDE.md`. Review focus 2, 3, 4, 5 and 9.
+
+**Commit point:** the app can be set up and put right.
+
+### Stage C: the board's tools
+
+**Files:** `presentation/widgets/time_control.tsx`, `search_box.tsx`, `filters_popover.tsx`, `domain/search.ts`, `quest_row.tsx`, `move_dialog.tsx`, `quest_detail.tsx`, `home_page.tsx`, `app/main/features/tasks/api/live_api.ts`, `hooks/shared/sessions/`
+
+**Produces:** `readProject(key, budget)`; `readLive(key): Reply<LiveFacts>`; `switchBranch(key)`; `SessionFile.warning`; `QuestRow.goal` and `QuestRow.acceptance`.
+
+- [x] Review focus 6 and 7, and search over 500 quests within 50 ms.
+
+**Commit point:** the board has its tools.
+
+### Stage D: the palette, the menu bar and the narrow window
+
+**Files:** `app/renderer/features/palette/`, `app/main/core/app_menu.ts`, `app/renderer/core/theme/app.css`, `presentation/pages/quest_page.tsx`
+
+**Produces:** ⌘K; the menu bar, whose Task menu sends the window the same keys; the breakpoints at 1180 and 900 px.
+
+- [x] Review focus 8. ⌘K opens within 100 ms. Every Task menu action has a key.
+
+**Commit point:** part 4 is done.
+
+---
+
+## Part 5: an app you can install
+
+**State:** built on 2 Nov 2026, not yet committed, on top of part 4, which isn't committed either. 346 mod tests, 784 app tests and 78 end-to-end checks pass, the last five times running, and 7 more on the built app itself.
+
+**Seen for real:** a link launching the built app from cold through macOS, with `open -a` on a temporary home, landing on the right realm with a space and an accent in its path. An app that only `open-url` could start can't be tested any other way, because the test driver isn't there yet when it fires.
+
+**Not seen yet:** the install itself, since `npm run install-app` replaces an app on your Mac and is yours to run; `queue-tea open` and the tea cup through the registered link, which need that install; and macOS showing the banner, which may first ask for permission. The tests stand in for showing it, and everything that decides to show it and what a click does are the real ones.
+
+**What the real app taught:**
+
+- **A merged config can't take something away.** The stage build's empty `protocols` was merged with prod's, so it still claimed `queue-tea://`. The claim now sits only in the prod file, and a test reads the built app's own `Info.plist`.
+- **This build tool's ad hoc option does nothing.** It skipped signing and reported nothing as wrong. `afterPack` signs the app, and a test verifies the signature on the built bundle.
+- **Everything the window needs is bundled**, so the app's runtime dependencies were 434 stray files in the build. They're dev dependencies now.
+- **A check that crashes can look like a check that passes.** Taking the guard off the notification threw inside a `try`, which also meant no notification, so the test still passed. It now fails if anything was logged.
+
+**Goal:** Queue-tea is an app in /Applications that opens on a project from the terminal, from the tea cup or from a link, and taps you on the shoulder when Claude says a quest looks done.
+
+**Architecture:** the mod's tea cup already opens `queue-tea://open?path=`, so the link is the one way in: `queue-tea open` is a small shell script that builds it. Main turns a link into a picked folder through the same code as Open folder, and hands it to the window, which asks for it at start-up too, so a link that launched the app isn't lost. The notification is worked out in main from the same scan of the records, because it has to work for a realm the window isn't showing.
+
+**Decisions made here:**
+
+- **A link can only select or ask.** It can come from any web page, so a known realm is selected and an unknown one opens Add realm, which asks first. Nothing is written on a link's word.
+- **Only the prod build claims `queue-tea://`.** Dev and stage install side by side, and two apps can't own one scheme.
+- **The tool never replaces a file that isn't its own.** `/usr/local/bin` often needs an admin, so it goes in the first of `/usr/local/bin`, `/opt/homebrew/bin` and `~/.local/bin` it can write to, and says so when that last one isn't on your `PATH`.
+- **The build is signed ad hoc.** An Apple Silicon Mac won't run an unsigned app, and a real certificate is the notarisation the spec left out.
+- **Copying to /Applications is a script you run**, because it replaces an app on your Mac and registers the link. The build itself goes to `app/dist`.
+
+### Review focus
+
+1. **A link with no path, a relative path, a folder that isn't there, or a path with spaces and accents.** Nothing happens that the window doesn't show, and the path comes through whole. Test in stage B.
+2. **A link that launches the app.** It arrives before the window exists, and still lands. Test in stage B.
+3. **`review` set on a realm that isn't selected, on a window in the background, or already set when the app opens.** The first two notify once; the last doesn't. Test in stage B.
+4. **A `queue-tea` already on the `PATH` that isn't ours.** It's left alone, and the app says so. Test in stage B.
+5. **The packaged app reaching what only exists in development**: the helpers' art, the fonts, the flavor, the log folder. Test in stage C, on the built app.
+
+### Stage A: the quest in hand, in full
+
+**Files:** `app/main/features/tasks/api/detail_api.ts`, `app/renderer/features/quests/presentation/widgets/active_detail.tsx`, `quest_notes.tsx`, `quest_detail.tsx`, `active_card.tsx`, `quests_page.tsx`
+
+**Produces:** `readQuestFacts(key, taskId): Reply<QuestFacts>`: the checkpoint or handoff note, what it was filed with, the branch it will get, and for the active quest its time, effort, files, lines and git.
+
+- [x] Tests: a checkpoint with its sections, a plain note, none; a branch name that's taken; the lines refreshing every 30 s while the pane shows; git that can't be read leaves the rest standing.
+
+**Commit point:** nothing about a quest is hidden.
+
+### Stage B: the ways in
+
+**Files:** `app/main/features/opening/`, `app/main/features/notify/`, `app/main/main.ts`, `app/main/core/app_menu.ts`, `features/workspace/state_management/workspace_store.ts`, `sidebar.tsx`, `settings_page.tsx`, `app/e2e/opening.e2e.ts`
+
+**Produces:** `pathFromUrl(url)`; `takeOpened(): Reply<Opened[]>`, `onOpened(listener)`; `installCommand(): Reply<InstalledCommand>`; the Detected tag; `judgementWatch(deps)`.
+
+- [x] Review focus 1 to 4. The tool is tested by running it, with a stand-in `open`.
+
+**Commit point:** the app opens on a project.
+
+### Stage C: the build
+
+**Files:** `app/electron-builder.yml`, `app/package.json`, `app/tools/install_app.sh`, `app/e2e/packaged.e2e.ts`, `app/README.md`
+
+**Produces:** `npm run package`, `npm run package:stage`, `npm run install-app`.
+
+- [x] The built app launches, on a temporary `HOME`, as prod, with its art, and refuses a commit. Review focus 5.
+
+**Commit point:** part 5 is done.

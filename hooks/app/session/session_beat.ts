@@ -34,6 +34,7 @@ const writeBeat = async (p: Ports, ctx: Ctx): Promise<void> => {
     isTurnRunning: live.isTurnRunning,
     cup: { mood: cup.mood, line: cup.line },
     allowance: await p.get('allowance'),
+    warning: await p.get('warning'),
     options: ctx.options,
     heartbeat: now,
     startedAt: live.startedAt,

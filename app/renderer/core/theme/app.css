@@ -1,0 +1,152 @@
+/* What the app adds to the mockups' look: a real window, and the states every
+   view can be in. Only transform and opacity animate. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.rm {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+
+.rm .side {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+
+.rm .main {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* The window drags from the sidebar's head and the toolbar's gaps. */
+.rm .lights,
+.rm .top {
+  -webkit-app-region: drag;
+}
+
+.rm .top > *,
+.rm .realm {
+  -webkit-app-region: no-drag;
+}
+
+.rm .tag.okay,
+.rm .tag.low {
+  background: var(--card);
+  color: var(--ink2);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+
+.rm .qrow.sealed {
+  opacity: 0.72;
+}
+
+.rm .sealed-rows {
+  flex: 1 1 100%;
+  margin-top: 8px;
+}
+
+.rm .fold {
+  flex-wrap: wrap;
+}
+
+.rm .dragon-size {
+  display: inline-block;
+  transform-origin: 50% 100%;
+}
+
+.rm .dial-btn {
+  font-size: 15px;
+}
+
+.rm .mark.working::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.rm .realm-l2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rm .state {
+  align-self: flex-start;
+  box-sizing: border-box;
+  max-width: 480px;
+  margin: 24px 0;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.rm .state-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.rm .state-line {
+  margin: 0;
+  color: var(--ink2);
+}
+
+.rm .side-note {
+  margin: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.rm .note {
+  margin: 12px 0 0;
+  padding: 8px 14px;
+  font-weight: 700;
+}
+
+.rm .spinner {
+  flex: none;
+  transform-origin: center;
+  animation: qt-spin 1s linear infinite;
+}
+
+.rm .spinner circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.rm .spinner-track {
+  stroke: var(--line-soft);
+}
+
+.rm .spinner-arc {
+  stroke: var(--line);
+  stroke-dasharray: 18 40;
+  stroke-linecap: round;
+}
+
+@keyframes qt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rm .spinner {
+    animation: none;
+  }
+}

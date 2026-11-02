@@ -58,3 +58,11 @@ export type SealForm = { waitFor: string | null; reason: string }
 export const sealError = (form: SealForm): string | undefined => (form.waitFor === null && form.reason.trim() === '' ? t.form.sealRequired : undefined)
 
 export const sealOf = (form: SealForm): Seal => (form.waitFor !== null ? { waitFor: form.waitFor } : { reason: form.reason.trim() })
+
+// A file, on one line. Main checks the same again before using it.
+export const logPathError = (path: string): string | undefined => {
+  const trimmed = path.trim()
+  if (trimmed === '') return t.finish.pathRequired
+
+  return trimmed.endsWith('/') || /[\r\n]/.test(trimmed) ? t.finish.pathBad : undefined
+}

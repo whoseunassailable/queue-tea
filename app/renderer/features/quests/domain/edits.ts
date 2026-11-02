@@ -32,3 +32,5 @@ export const withoutQuest = (id: string) => (view: ReadableView): ReadableView =
   ready: dropQuest(view.ready, id),
   sealed: dropQuest(view.sealed, id),
 })
+
+export const withoutReview = (view: ReadableView): ReadableView => (view.active === null ? view : { ...view, active: { ...view.active, review: null } })

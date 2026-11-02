@@ -1,4 +1,4 @@
-import type { ProjectRecord, Task } from '../../../../../types'
+import type { AppRequest, ProjectRecord, Task } from '../../../../../types'
 import { activeFeature, groupBacklog, progressOf } from '../../../../../hooks/shared/backlog/domain/services/families'
 import type { Entry } from '../../../../../hooks/shared/backlog/domain/services/families'
 import { blockedTasks, blockedText, estimateMinutes, isBlocked, rankBacklog, suggest } from '../../../../../hooks/shared/backlog/domain/services/ranking'
@@ -31,8 +31,8 @@ export const sessionInfoOf = (sessions: SessionFile[], projectPath: string, nowM
 // First match wins: needs you, working, the current task, what waits, nothing.
 export const statusOf = (record: ProjectRecord, session: SessionState): ProjectStatus => {
   const current = currentTask(record.tasks)
-  const needsYou = session === 'needsYou' || current?.review != null
-  if (needsYou) return { kind: 'needsYou' }
+  if (current?.review != null) return { kind: 'judgement' }
+  if (session === 'needsYou') return { kind: 'needsYou' }
   if (session === 'working') return { kind: 'working' }
   if (current !== null) return { kind: 'current', title: current.title }
   const waiting = record.tasks.filter(t => t.state === 'queued').length
@@ -93,7 +93,7 @@ const entryOf = (entry: Entry, tasks: Task[], nowMs: number, ranked: Ranked[], p
   }
 }
 
-const activeOf = (task: Task): ActiveQuest => ({
+const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   id: task.id,
   title: task.title,
   priority: task.priority,
@@ -106,6 +106,8 @@ const activeOf = (task: Task): ActiveQuest => ({
   improvingMessages: task.effort.improvingMessages,
   filesChanged: task.effort.filesChanged,
   review: task.review,
+  criteria: task.criteria,
+  asking: requests.find(q => q.taskId === task.id)?.kind ?? null,
 })
 
 const victoryOf = (task: Task): VictoryRow => ({
@@ -131,7 +133,7 @@ export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile
     name: record.project.name,
     path: record.project.path,
     session: sessionInfoOf(sessions, record.project.path, nowMs),
-    active: current === null ? null : activeOf(current),
+    active: current === null ? null : activeOf(current, record.requests),
     ready: ready.map(entry),
     sealed: stuck.map(entry),
     canStart: ranked.length,
@@ -140,5 +142,6 @@ export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile
     activeSagaId: activeFeature(record)?.id ?? null,
     victories: wins.slice(0, RECENT_VICTORIES).map(victoryOf),
     victoryCount: wins.length,
+    docsLogPath: record.docsLogPath,
   }
 }

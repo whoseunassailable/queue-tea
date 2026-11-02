@@ -161,8 +161,8 @@ describe('the status line', () => {
     expect(await statusOf(record('a', [now]), session({ isTurnRunning: true, cup: { mood: 'attention', line: '' } }))).toMatchObject({ status: { kind: 'needsYou' } })
   })
 
-  it('a task waiting for an answer needs you with no session open', async () => {
-    expect(await statusOf(record('a', [task({ id: 'x', state: 'current', review: { at: 'x', checked: null } })]))).toMatchObject({ status: { kind: 'needsYou' } })
+  it('a task waiting for an answer asks for Judgement with no session open', async () => {
+    expect(await statusOf(record('a', [task({ id: 'x', state: 'current', review: { at: 'x', checked: null } })]))).toMatchObject({ status: { kind: 'judgement' } })
   })
 
   it('a session that crashed counts as none after 90 s', async () => {

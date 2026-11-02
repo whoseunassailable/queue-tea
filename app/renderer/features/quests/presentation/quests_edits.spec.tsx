@@ -132,7 +132,7 @@ describe('sagas', () => {
   it('a folded saga holding the ★ still shows it', async () => {
     const star = quest({ id: 'star', title: 'Star chapter', isStar: true, why: 'urgent', parentId: 'saga' })
     const view = projectView(KEY, { canStart: 1, ready: [{ ...SAGA, chapters: [star], hasStar: true } as BoardEntry] })
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: { [KEY]: ['saga'] } } }) }, view)
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: { [KEY]: ['saga'] }, terminal: 'terminal' } }) }, view)
 
     expect(document.querySelector('.qrow .qc-title')?.textContent).toBe('The saga')
     expect(screen.getByText('★ Star chapter · urgent')).toBeTruthy()

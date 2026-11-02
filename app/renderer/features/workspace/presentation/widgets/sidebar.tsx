@@ -4,6 +4,7 @@ import { t } from '../../../../l10n/en'
 import type { Load } from '../../state_management/workspace_store'
 
 const statusLine = (status: ProjectStatus): string => {
+  if (status.kind === 'judgement') return t.status.judgement
   if (status.kind === 'needsYou') return t.status.needsYou
   if (status.kind === 'working') return t.status.working
   if (status.kind === 'current') return t.status.current(status.title)
@@ -36,7 +37,7 @@ const Row = ({ row, isSelected, onPick }: { row: ProjectRow; isSelected: boolean
           <span class="realm-name">{row.name}</span>
           {row.waiting > 0 && <span class="count">{row.waiting}</span>}
         </span>
-        <span class="realm-l2">{statusLine(row.status)}</span>
+        <span class="realm-l2">{row.status.kind === 'judgement' || row.status.kind === 'needsYou' ? <b>{statusLine(row.status)}</b> : statusLine(row.status)}</span>
       </>
     )}
   </button>

@@ -431,3 +431,38 @@ body,
 .rm .toast-item.error {
   box-shadow: 0 0 0 1.5px var(--urg-t), 0 8px 24px rgba(0, 0, 0, 0.3);
 }
+
+/* Setting out and coming back: the lines on a card. */
+.rm .card-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.rm .card-note b {
+  color: var(--ink);
+}
+
+.rm .m-title {
+  margin: 0;
+  font-weight: 800;
+}
+
+.rm .mcard .btn .spinner,
+.rm .sheet .btn .spinner,
+.rm .steps .spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.rm .sheet .btn .spinner {
+  margin-right: 6px;
+}
+
+.rm .sheet .seg {
+  align-self: flex-start;
+}
+
+.rm .bar.xp .fill {
+  transition: transform 1.2s cubic-bezier(0.2, 0, 0, 1);
+}

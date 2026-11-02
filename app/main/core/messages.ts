@@ -25,6 +25,22 @@ export const MESSAGES = {
   restoreQuest: "Couldn't bring the quest back. Try again.",
   editQuest: "Couldn't save your change. Try again.",
   setActiveSaga: "Couldn't change the active saga. Try again.",
+  checkStart: "Couldn't check git for this realm. Try again.",
+  startQuest: "Couldn't start the quest. Try again.",
+  openClaude: "Couldn't open Claude Code. Try again.",
+  copyText: "Couldn't copy that. Try again.",
+  notYet: "Couldn't save your answer. Try again.",
+  finishQuest: "Couldn't finish the quest. Try again.",
+  retryTaskLog: "Couldn't write the task log. Try again.",
+  putBackQuest: "Couldn't put the quest back on the board. Try again.",
+  notActiveFinish: 'That quest is no longer the active one, so nothing was finished.',
+  notActiveBack: 'That quest is no longer the active one, so nothing changed.',
+  logPathRequired: 'Task log path is required.',
+  logPathBad: 'Enter a file path, such as docs/task_log.md.',
+  questGone: "The board has changed, so that quest can't start now. Pick it again.",
+  folderGone: (path: string) => `This realm's folder isn't at ${path} any more, so nothing was started. Put it back, then try again.`,
+  sealedQuest: (title: string, why: string) => `${title} is sealed: ${why}. Unseal it first.`,
+  startedFirst: (other: string, title: string) => `${other} was started first, maybe in another session, so ${title} waits on the board.`,
 } as const
 
 // The engine's refusals, in the screens' words. Whole phrases only, so a quest
@@ -35,6 +51,12 @@ const GAME_WORDS: readonly (readonly [string, string])[] = [
   ['so its tasks go under that.', 'so its chapters go under that.'],
   ["has tasks of its own, so it can't be part of another.", "has chapters of its own, so it can't be part of another saga."],
   ['That would make the two tasks wait for each other.', 'That would make the two quests wait for each other.'],
+  ['waits in the backlog.', 'waits on the board.'],
+  ['is no longer in the backlog.', 'has left the quest board.'],
+  [' is blocked: ', ' is sealed: '],
+  ['Unblock it first.', 'Unseal it first.'],
+  ['so this task starts again on', 'so this quest starts again on'],
+  ['Press Back to queue to try again.', 'Press Back to the board to try again.'],
 ]
 
 export const inGameWords = (sentence: string): string => GAME_WORDS.reduce((text, [engine, game]) => text.replace(engine, game), sentence)

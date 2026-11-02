@@ -20,3 +20,13 @@ export const STAGE_SCALE = { egg: 0.6, hatchling: 1, young: 1.08, adult: 1.16, e
 
 // The level each stage grows out of.
 export const GROWS_AT = { egg: 2, hatchling: 5, young: 10, adult: 20, elder: null } as const
+
+// The files a git hold lists before +N more.
+export const HOLD_FILES_SHOWN = 7
+
+// Where the task log goes unless someone says otherwise.
+export const DEFAULT_LOG_PATH = 'docs/task_log.md'
+
+// What each difficulty is worth, for the Finish sheet to offer. Main works out
+// what was really earned.
+export const XP_BY_DIFFICULTY = { light: 10, medium: 25, hard: 50 } as const

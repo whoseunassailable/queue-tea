@@ -179,7 +179,7 @@ describe('Undo', () => {
   it('stays in its own realm', async () => {
     const { engine, workspace, edits } = await open({
       listProjects: async () => ({ ok: true, data: [projectRow(KEY), projectRow('b-000002')] }),
-      readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: KEY, folds: {} } }),
+      readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: KEY, folds: {}, terminal: 'terminal' } }),
     })
     await edits.setPriority(KEY, ROW, 'urgent')
 

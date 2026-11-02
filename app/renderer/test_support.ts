@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-import type { EngineApi, GameView, ProjectRow, ProjectView, QuestRow, Reply } from '../shared/engine_api'
+import type { ActiveQuest, EngineApi, GameView, ProjectRow, ProjectView, QuestRow, Reply, Victory } from '../shared/engine_api'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -20,6 +20,41 @@ export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   criteria: [],
   ...over,
 })
+
+export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
+  id: 'active',
+  title: 'Active one',
+  priority: 'high',
+  difficulty: 'hard',
+  xp: 50,
+  branch: 'task/active',
+  minutes: 14,
+  started: '2026-10-27T16:00:00+01:00',
+  isBoss: false,
+  improvingMessages: 1,
+  filesChanged: 2,
+  review: null,
+  criteria: [],
+  asking: null,
+  ...over,
+})
+
+export const VICTORY: Victory = {
+  kind: 'quest',
+  title: 'Active one',
+  actual: 'hard',
+  expected: 'hard',
+  xp: 50,
+  gold: 50,
+  level: 2,
+  didLevelUp: false,
+  xpIntoLevel: 70,
+  xpToNextLevel: 200,
+  nextLevelAt: 300,
+  hoard: 170,
+  stage: 'hatchling',
+  newBadges: [],
+}
 
 export const projectRow = (key: string, over: Partial<Extract<ProjectRow, { kind: 'readable' }>> = {}): ProjectRow => ({
   kind: 'readable',
@@ -47,6 +82,7 @@ export const projectView = (key: string, over: Partial<Extract<ProjectView, { ki
   activeSagaId: null,
   victories: [],
   victoryCount: 0,
+  docsLogPath: 'docs/task_log.md',
   ...over,
 })
 
@@ -73,8 +109,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     listProjects: async () => ({ ok: true, data: [projectRow('a-000001')] }),
     readProject: async key => ({ ok: true, data: projectView(key) }),
     readGame: async () => ({ ok: true, data: GAME }),
-    readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {} } }),
-    saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, ...patch } })),
+    readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' } }),
+    saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' as const, ...patch } })),
     readChoices: async () => ({ ok: true, data: { features: [], lone: [], parents: [], waitFor: [] } }),
     setPriority: vi.fn(reply),
     togglePlayNext: vi.fn(reply),
@@ -86,6 +122,15 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     restoreQuest: vi.fn(reply),
     editQuest: vi.fn(reply),
     setActiveSaga: vi.fn(reply),
+    checkStart: vi.fn(async () => ({ ok: true as const, data: { kind: 'clear' as const, step: { kind: 'make' as const, branch: 'task/first', from: 'main' } } })),
+    startQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { kind: 'started' as const, view: projectView(key), branch: 'task/first', notice: null, handover: { kind: 'session' as const } } })),
+    openClaude: vi.fn(async () => ({ ok: true as const, data: { kind: 'opened' as const, terminal: 'terminal' as const } })),
+    notYet: vi.fn(reply),
+    finishQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: VICTORY } })),
+    retryTaskLog: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null } })),
+    putBackQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: null } })),
+    putBackNow: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: { lastAt: null } } })),
+    copyText: vi.fn(async () => ({ ok: true as const, data: null })),
     onChange: listener => {
       listeners.add(listener)
 

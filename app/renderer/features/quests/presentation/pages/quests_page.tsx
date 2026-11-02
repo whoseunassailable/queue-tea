@@ -1,15 +1,20 @@
 import type { Priority } from '../../../../../../types'
+import type { ActiveQuest } from '../../../../../shared/engine_api'
 import { dayOf } from '../../../../core/domain/format'
 import { Spinner } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
-import type { ReadableView } from '../../../workspace/state_management/workspace_store'
+import type { QuestFlow, ReadableView } from '../../../workspace/state_management/workspace_store'
 import { allRows, openRow, rowsOf, stepFrom } from '../../domain/board'
 import type { Row } from '../../domain/board'
+import { runFlowKey } from '../state_management/flow_keys'
+import type { QuestActions } from '../state_management/flow_keys'
 import type { QuestEdits } from '../state_management/quest_edits'
 import { useQuestKeys } from '../state_management/quest_keys'
 import type { QuestKey } from '../state_management/quest_keys'
 import { ActiveCard } from '../widgets/active_card'
 import { AddChapter } from '../widgets/add_chapter'
+import { FlowCard } from '../widgets/flow_card'
+import { JudgementCard } from '../widgets/judgement_card'
 import { QuestDetail } from '../widgets/quest_detail'
 import { QuestRowView } from '../widgets/quest_row'
 
@@ -17,6 +22,8 @@ import { QuestRowView } from '../widgets/quest_row'
 export type Sheet =
   | { kind: 'new'; parentId: string | null }
   | { kind: 'seal'; quest: Row['quest'] }
+  | { kind: 'sealActive'; quest: ActiveQuest }
+  | { kind: 'finish'; quest: ActiveQuest }
   | { kind: 'move'; quest: Row['quest'] }
   | { kind: 'remove'; quest: Row['quest']; chapters: number }
 
@@ -28,12 +35,15 @@ type PageProps = {
   isRefreshing: boolean
   isSheetOpen: boolean
   edits: QuestEdits
+  flow: QuestFlow | undefined
+  actions: QuestActions
+  questNotes: Record<string, string>
   onOpen: (id: string) => void
   onFold: (id: string) => void
   onSheet: (sheet: Sheet) => void
 }
 
-export const QuestsPage = ({ view, picked, folded, savedQuest, isRefreshing, isSheetOpen, edits, onOpen, onFold, onSheet }: PageProps) => {
+export const QuestsPage = ({ view, picked, folded, savedQuest, isRefreshing, isSheetOpen, edits, flow, actions, questNotes, onOpen, onFold, onSheet }: PageProps) => {
   const ready = rowsOf(view.ready, folded)
   const sealed = rowsOf(view.sealed, folded)
   const rows = allRows(view, folded)
@@ -50,7 +60,15 @@ export const QuestsPage = ({ view, picked, folded, savedQuest, isRefreshing, isS
   }
   const toggleActiveSaga = (row: Row) => void edits.setActiveSaga(view.key, view.activeSagaId === row.quest.id ? null : row.quest)
 
+  const canStart = (row: Row | null): row is Row => row !== null && view.active === null && row.quest.sealedBecause === null
+
   useQuestKeys(!isSheetOpen, (key: QuestKey) => {
+    if (runFlowKey(key, view, flow, actions)) return
+    if (key.kind === 'start') {
+      if (canStart(open)) actions.onStart(open.quest)
+
+      return
+    }
     if (key.kind === 'up' || key.kind === 'down') {
       const next = stepFrom(rows, open?.quest.id, key.kind === 'up' ? -1 : 1)
       if (next !== null) onOpen(next.quest.id)
@@ -95,7 +113,9 @@ export const QuestsPage = ({ view, picked, folded, savedQuest, isRefreshing, isS
   return (
     <main class="quests">
       <div class="qlist">
-        {view.active !== null && <ActiveCard active={view.active} session={view.session} kind="compact" />}
+        {flow !== undefined && <FlowCard flow={flow} actions={actions} />}
+        {flow === undefined && view.active !== null && view.active.review !== null && <JudgementCard active={view.active} actions={actions} kind="compact" />}
+        {flow === undefined && view.active !== null && view.active.review === null && <ActiveCard active={view.active} session={view.session} actions={actions} kind="compact" />}
         <section class="board-list panel" aria-labelledby="qb-h">
           <div class="sec-row">
             <h2 id="qb-h">{t.board.title}</h2>
@@ -129,6 +149,9 @@ export const QuestsPage = ({ view, picked, folded, savedQuest, isRefreshing, isS
         realm={view.key}
         row={open}
         hasActive={view.active !== null}
+        isBusy={flow?.kind === 'working'}
+        note={open === null ? undefined : questNotes[open.quest.id]}
+        onStart={() => canStart(open) && actions.onStart(open.quest)}
         isActiveSaga={open !== null && view.activeSagaId === open.quest.id}
         isSaved={open !== null && open.quest.id === savedQuest}
         edits={edits}

@@ -21,6 +21,15 @@ const engine: EngineApi = {
   restoreQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.restoreQuest, key, taskId),
   editQuest: (key, taskId, edit) => ipcRenderer.invoke(CHANNELS.editQuest, key, taskId, edit),
   setActiveSaga: (key, taskId) => ipcRenderer.invoke(CHANNELS.setActiveSaga, key, taskId),
+  checkStart: (key, taskId) => ipcRenderer.invoke(CHANNELS.checkStart, key, taskId),
+  startQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.startQuest, key, taskId),
+  openClaude: key => ipcRenderer.invoke(CHANNELS.openClaude, key),
+  notYet: (key, taskId) => ipcRenderer.invoke(CHANNELS.notYet, key, taskId),
+  finishQuest: (key, taskId, actual, logPath) => ipcRenderer.invoke(CHANNELS.finishQuest, key, taskId, actual, logPath),
+  retryTaskLog: (key, taskId, path) => ipcRenderer.invoke(CHANNELS.retryTaskLog, key, taskId, path),
+  putBackQuest: (key, taskId, seal) => ipcRenderer.invoke(CHANNELS.putBackQuest, key, taskId, seal),
+  putBackNow: (key, taskId) => ipcRenderer.invoke(CHANNELS.putBackNow, key, taskId),
+  copyText: text => ipcRenderer.invoke(CHANNELS.copyText, text),
   onChange: listener => {
     const heard = () => listener()
     ipcRenderer.on(CHANNELS.changed, heard)

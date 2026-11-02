@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron'
 
 import { CHANNELS } from '../shared/engine_api'
 import { LOG_FILE, projectsFolder, SETTINGS_FILE, WATCH_SETTLE_MS, WINDOW } from './core/constants'
@@ -13,7 +13,10 @@ import { windowChrome } from './core/platform/mac'
 import { watchFolders } from './core/watcher'
 import { readGame } from './features/game/api/game_api'
 import { listProjects, readProject } from './features/projects/api/projects_api'
-import { readSettings, saveSettings } from './features/settings/api/settings_api'
+import { DEFAULT_SETTINGS, readSettings, saveSettings } from './features/settings/api/settings_api'
+import * as back from './features/tasks/api/back_api'
+import * as finish from './features/tasks/api/finish_api'
+import * as setOut from './features/tasks/api/start_api'
 import * as tasks from './features/tasks/api/tasks_api'
 import { sessionsFolder } from '../../hooks/shared/sessions/domain/services/session_rules'
 
@@ -48,7 +51,16 @@ const host = nodeHost(log, async url => {
 const projects = { host, home, now: () => Date.now(), log }
 const game = { ...projects, offsetMinutes: () => -new Date().getTimezoneOffset() }
 const settings = { host, file: join(app.getPath('userData'), SETTINGS_FILE), log }
-const quests = { ...game, newId: () => `t-${randomBytes(4).toString('hex')}` }
+const quests = {
+  ...game,
+  newId: () => `t-${randomBytes(4).toString('hex')}`,
+  terminal: async () => {
+    const chosen = await readSettings(settings)
+
+    return chosen.ok ? chosen.data.terminal : DEFAULT_SETTINGS.terminal
+  },
+  copy: (text: string) => clipboard.writeText(text),
+}
 
 const serveEngine = () => {
   ipcMain.handle(CHANNELS.listProjects, () => listProjects(projects))
@@ -67,6 +79,15 @@ const serveEngine = () => {
   ipcMain.handle(CHANNELS.restoreQuest, (_, key: unknown, taskId: unknown) => tasks.restoreQuest(quests, key, taskId))
   ipcMain.handle(CHANNELS.editQuest, (_, key: unknown, taskId: unknown, edit: unknown) => tasks.editQuest(quests, key, taskId, edit))
   ipcMain.handle(CHANNELS.setActiveSaga, (_, key: unknown, taskId: unknown) => tasks.setActiveSaga(quests, key, taskId))
+  ipcMain.handle(CHANNELS.checkStart, (_, key: unknown, taskId: unknown) => setOut.checkStart(quests, key, taskId))
+  ipcMain.handle(CHANNELS.startQuest, (_, key: unknown, taskId: unknown) => setOut.startQuest(quests, key, taskId))
+  ipcMain.handle(CHANNELS.openClaude, (_, key: unknown) => setOut.openClaude(quests, key))
+  ipcMain.handle(CHANNELS.notYet, (_, key: unknown, taskId: unknown) => finish.notYet(quests, key, taskId))
+  ipcMain.handle(CHANNELS.finishQuest, (_, key: unknown, taskId: unknown, actual: unknown, logPath: unknown) => finish.finishQuest(quests, key, taskId, actual, logPath))
+  ipcMain.handle(CHANNELS.retryTaskLog, (_, key: unknown, taskId: unknown, path: unknown) => finish.retryTaskLog(quests, key, taskId, path))
+  ipcMain.handle(CHANNELS.putBackQuest, (_, key: unknown, taskId: unknown, seal: unknown) => back.putBackQuest(quests, key, taskId, seal))
+  ipcMain.handle(CHANNELS.putBackNow, (_, key: unknown, taskId: unknown) => back.putBackNow(quests, key, taskId))
+  ipcMain.handle(CHANNELS.copyText, (_, text: unknown) => setOut.copyText(quests, text))
   ipcMain.on(CHANNELS.log, (_, level: unknown, text: unknown) => {
     const line = `window: ${String(text)}`
     if (level === 'warn') log.warn(line)

@@ -1,9 +1,5 @@
 import type { Task } from '../../../../../types'
-import type { Ctx } from '../../../../../hooks/core/env/env'
-import { readOptions } from '../../../../../hooks/core/session/options'
-import { taskLogRepositoryImpl } from '../../../../../hooks/features/tasks/data/repositories/task_log_repository_impl'
 import { blockTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/block_task'
-import type { Deps } from '../../../../../hooks/features/tasks/domain/usecases/deps'
 import { editTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/edit_task'
 import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/file_task'
 import { moveTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/move_task'
@@ -15,56 +11,12 @@ import { togglePlayNextUseCase } from '../../../../../hooks/features/tasks/domai
 import { unblockTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/unblock_task'
 import { childrenOf, filingCandidates, loneTasks, parentChoices, progressOf, progressText } from '../../../../../hooks/shared/backlog/domain/services/families'
 import { canWaitFor } from '../../../../../hooks/shared/backlog/domain/services/ranking'
-import { gitRepositoryImpl } from '../../../../../hooks/shared/git/data/repositories/git_repository_impl'
-import { recordsRepositoryImpl } from '../../../../../hooks/shared/records/data/repositories/records_repository_impl'
-import type { Saved } from '../../../../../hooks/shared/records/domain/repositories/records_repository'
-import { sessionsRepositoryImpl } from '../../../../../hooks/shared/sessions/data/repositories/sessions_repository_impl'
-import type { Choices, ProjectView, QuestChoice, Reply } from '../../../../shared/engine_api'
-import { projectsFolder } from '../../../core/constants'
+import type { Choices, QuestChoice, Reply } from '../../../../shared/engine_api'
 import { inGameWords, MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
-import { isProjectKey } from '../../projects/api/projects_api'
-import type { ProjectsDeps } from '../../projects/api/projects_api'
-import { scanRecord } from '../../projects/data/projects_source'
-import type { Scanned } from '../../projects/data/projects_source'
-import { viewOf } from '../../projects/domain/project_views'
 import { newQuestOf, priorityOf, questEditOf, questIdOf, sealOf } from '../domain/task_input'
-
-export type TasksDeps = ProjectsDeps & { offsetMinutes: () => number; newId: () => string }
-
-type Scope = { key: string; deps: Deps; ctx: Ctx; record: Extract<Scanned, { kind: 'readable' }>['record'] }
-
-// The mod's own repositories over the app's host, for one realm's record.
-const scopeOf = async (d: TasksDeps, key: unknown): Promise<Scope> => {
-  if (!isProjectKey(key)) throw new Refusal(MESSAGES.unknownProject)
-  const folder = projectsFolder(d.home)
-  const name = `${key}.json`
-  if (!(await d.host.exists(`${folder}/${name}`))) throw new Refusal(MESSAGES.unknownProject)
-  const scanned = await scanRecord(d.host, folder, name, d.log)
-  if (scanned.kind === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
-
-  const { path, name: projectName } = scanned.record.project
-  const ctx: Ctx = { cwd: path, home: d.home, projectPath: path, projectName, file: scanned.file, offsetMinutes: d.offsetMinutes(), options: readOptions({}) }
-  const deps: Deps = {
-    records: recordsRepositoryImpl(d.host, ctx),
-    git: gitRepositoryImpl(d.host, path),
-    taskLog: taskLogRepositoryImpl(d.host, path),
-    env: { now: async () => d.now(), newId: d.newId, log: text => d.log.debug(text) },
-  }
-
-  return { key, deps, ctx, record: scanned.record }
-}
-
-// One edit: the record changes under its lock, and the window gets the realm
-// as it is now.
-const edit = (d: TasksDeps, key: unknown, failure: string, work: (scope: Scope) => Promise<Saved>): Promise<Reply<ProjectView>> =>
-  reply(d.log, failure, async () => {
-    const scope = await scopeOf(d, key)
-    const saved = await work(scope)
-    if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
-
-    return viewOf(scope.key, saved, await sessionsRepositoryImpl(d.host, d.home).list(), d.now())
-  })
+import { edit, scopeOf } from './scope'
+import type { TasksDeps } from './scope'
 
 export const setPriority = (d: TasksDeps, key: unknown, taskId: unknown, priority: unknown) =>
   edit(d, key, MESSAGES.setPriority, ({ deps }) => setPriorityUseCase(deps, questIdOf(taskId), priorityOf(priority)))

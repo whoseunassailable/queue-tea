@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 
-import type { EngineApi, GameView, ProjectRow, ProjectView, Reply, Settings, SkyChoice } from '../../../../shared/engine_api'
+import type { ActiveQuest, EngineApi, GameView, GitHold, ProjectRow, ProjectView, Reply, Settings, SkyChoice, TerminalChoice, Victory } from '../../../../shared/engine_api'
 import { ask } from '../../../core/api/engine_client'
 import type { Answer } from '../../../core/api/engine_client'
 import { SAVED_MS, TOASTS_SHOWN, UNDO_DEPTH } from '../../../core/constants/constants'
@@ -13,6 +13,8 @@ export type Toast = {
   tone: 'info' | 'success' | 'warning' | 'error'
   text: string
   action?: { label: string; run: () => void }
+  // A badge: it stays longer, and Esc closes it.
+  isLong?: boolean
 }
 
 // One change to a realm. The preview shows in the same frame; the call is the
@@ -26,6 +28,16 @@ export type Edit = {
   undo?: { said: string; call: () => Promise<Reply<ProjectView>> }
   isQuiet?: boolean
 }
+
+// What a realm's quest is in the middle of. Not saved anywhere: it is the
+// window's own, per realm.
+export type QuestFlow =
+  | { kind: 'working'; questId: string; title: string; line: string }
+  | { kind: 'held'; questId: string; title: string; hold: GitHold; isChecking: boolean }
+  | { kind: 'refused'; questId: string; title: string; message: string }
+  | { kind: 'openFailed'; terminal: TerminalChoice; command: string }
+
+export type Won = { victory: Victory; logPath: string | null }
 
 // A view that waits for something is always in one of these.
 export type Load<T> = { status: 'loading' } | { status: 'ready'; data: T } | { status: 'failed'; message: string }
@@ -43,18 +55,26 @@ export type WorkspaceState = {
   toasts: Toast[]
   // The quest whose chip shows ✓ for a moment.
   savedQuest: string | null
+  flows: Record<string, QuestFlow>
+  // The victory panel, until it's closed.
+  won: Won | null
+  // What a quest's detail pane should say, by quest.
+  questNotes: Record<string, string>
 }
 
 const INITIAL: WorkspaceState = {
   projects: { status: 'loading' },
   project: { status: 'none' },
   game: { status: 'loading' },
-  settings: { sky: 'auto', isCalm: false, lastProject: null, folds: {} },
+  settings: { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' },
   selected: null,
   openQuests: {},
   note: null,
   toasts: [],
   savedQuest: null,
+  flows: {},
+  won: null,
+  questNotes: {},
 }
 
 // Old data stays while a refresh runs. It gives way to the failed state only
@@ -64,6 +84,13 @@ const nextLoad = <T>(was: Load<T> | { status: 'none' }, answer: Answer<T>): { lo
   if (was.status === 'ready') return { load: was, failedOver: answer.message }
 
   return { load: { status: 'failed', message: answer.message }, failedOver: null }
+}
+
+// The quest a session has just put back, as it was asked to.
+const wentBack = (was: WorkspaceState['project'], now: WorkspaceState['project']): ActiveQuest | null => {
+  if (was.status !== 'ready' || now.status !== 'ready' || was.data.kind !== 'readable' || now.data.kind !== 'readable' || was.data.key !== now.data.key) return null
+
+  return was.data.active?.asking === 'putBack' && now.data.active === null ? was.data.active : null
 }
 
 export const createWorkspace = (engine: EngineApi) => {
@@ -86,8 +113,11 @@ export const createWorkspace = (engine: EngineApi) => {
     const number = readNumber
     const answer = await ask(engine, () => engine.readProject(key))
     if (number !== readNumber || editsOnTheWay > 0) return
-    const { load, failedOver } = nextLoad(state.project, answer)
+    const was = state.project
+    const { load, failedOver } = nextLoad(was, answer)
     set({ project: load, ...(failedOver === null ? {} : { note: failedOver }) })
+    const back = wentBack(was, load)
+    if (back !== null) say({ tone: 'success', text: t.flow.backOnBoard(back.title) })
   }
 
   const loadGame = async () => {
@@ -140,6 +170,15 @@ export const createWorkspace = (engine: EngineApi) => {
   }
 
   const isShowing = (key: string) => state.selected === key
+
+  // A view main handed back. Whatever read began before it is out of date.
+  const adopt = (key: string, view: ProjectView) => {
+    if (!isShowing(key)) return
+    readNumber += 1
+    set({ project: { status: 'ready', data: view } })
+  }
+
+  const withoutKey = <T>(from: Record<string, T>, key: string): Record<string, T> => Object.fromEntries(Object.entries(from).filter(([k]) => k !== key))
 
   const showSaved = (questId: string) => {
     set({ savedQuest: questId })
@@ -211,11 +250,17 @@ export const createWorkspace = (engine: EngineApi) => {
     },
     setSky: (sky: SkyChoice) => remember({ sky }),
     openQuest: (key: string, questId: string) => set({ openQuests: { ...state.openQuests, [key]: questId } }),
+    closeQuest: (key: string) => set({ openQuests: withoutKey(state.openQuests, key) }),
+    setFlow: (key: string, flow: QuestFlow | null) => set({ flows: flow === null ? withoutKey(state.flows, key) : { ...state.flows, [key]: flow } }),
+    showWon: (won: Won | null) => set({ won }),
+    noteFor: (questId: string, text: string | null) => set({ questNotes: text === null ? withoutKey(state.questNotes, questId) : { ...state.questNotes, [questId]: text } }),
+    adopt,
     run,
     undo: async () => {
       if (state.selected !== null) await undoLast(state.selected)
     },
     dismiss,
+    dismissBadges: () => set({ toasts: state.toasts.filter(toast => toast.isLong !== true) }),
     say,
     toggleFold: async (key: string, questId: string) => {
       const folded = state.settings.folds[key] ?? []

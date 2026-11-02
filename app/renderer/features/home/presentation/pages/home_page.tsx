@@ -6,8 +6,13 @@ import { Dragon } from '../../../../core/widgets/art'
 import { PriorityTag, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
 import { metaOf, rowsOf } from '../../../quests/domain/board'
+import { runFlowKey } from '../../../quests/presentation/state_management/flow_keys'
+import type { QuestActions } from '../../../quests/presentation/state_management/flow_keys'
+import { useQuestKeys } from '../../../quests/presentation/state_management/quest_keys'
 import { ActiveCard } from '../../../quests/presentation/widgets/active_card'
-import type { Load } from '../../../workspace/state_management/workspace_store'
+import { FlowCard } from '../../../quests/presentation/widgets/flow_card'
+import { JudgementCard } from '../../../quests/presentation/widgets/judgement_card'
+import type { Load, QuestFlow } from '../../../workspace/state_management/workspace_store'
 
 type View = Extract<ProjectView, { kind: 'readable' }>
 
@@ -26,17 +31,26 @@ const Lair = ({ game, session, onPet }: { game: Load<GameView>; session: Session
   )
 }
 
-const NoActive = ({ view }: { view: View }) => {
-  const next = rowsOf(view.ready).find(r => r.quest.isStar)
+const mainQuest = (view: View) => rowsOf(view.ready).find(r => r.quest.isStar)?.quest
+
+const NoActive = ({ view, actions }: { view: View; actions: QuestActions }) => {
+  const next = mainQuest(view)
 
   return (
     <section class="quest panel" aria-labelledby="active-title">
       <h1 class="q-title" id="active-title">
         {t.quest.noneTitle}
       </h1>
-      <p class="q-line">{next === undefined ? t.quest.noneEmpty : t.quest.noneLine(next.quest.title)}</p>
-      {next?.quest.why != null && <p class="hint">★ {next.quest.why}</p>}
+      <p class="q-line">{next === undefined ? t.quest.noneEmpty : t.quest.noneLine(next.title)}</p>
+      {next?.why != null && <p class="hint">★ {next.why}</p>}
       <p class="q-status">{t.session[view.session.state]}</p>
+      {next !== undefined && (
+        <div class="q-actions">
+          <button type="button" class="btn primary" onClick={() => actions.onStart(next)}>
+            {t.actions.startNamed(next.title)}
+          </button>
+        </div>
+      )}
     </section>
   )
 }
@@ -113,15 +127,37 @@ const Glory = ({ view, game }: { view: View; game: Load<GameView> }) => (
   </section>
 )
 
-export const HomePage = ({ view, game, onPet }: { view: View; game: Load<GameView>; onPet: () => void }) => (
-  <main class="stage">
-    <div class="col-left">
-      <Lair game={game} session={view.session.state} onPet={onPet} />
-      {view.active === null ? <NoActive view={view} /> : <ActiveCard active={view.active} session={view.session} kind="full" />}
-    </div>
-    <div class="col-right">
-      <Board view={view} />
-      <Glory view={view} game={game} />
-    </div>
-  </main>
-)
+const QuestCard = ({ view, flow, actions }: { view: View; flow: QuestFlow | undefined; actions: QuestActions }) => {
+  if (flow !== undefined) return <FlowCard flow={flow} actions={actions} />
+  if (view.active === null) return <NoActive view={view} actions={actions} />
+  if (view.active.review !== null) return <JudgementCard active={view.active} actions={actions} kind="full" />
+
+  return <ActiveCard active={view.active} session={view.session} actions={actions} kind="full" />
+}
+
+type HomeProps = { view: View; game: Load<GameView>; flow: QuestFlow | undefined; actions: QuestActions; isSheetOpen: boolean; onPet: () => void }
+
+export const HomePage = ({ view, game, flow, actions, isSheetOpen, onPet }: HomeProps) => {
+  useQuestKeys(!isSheetOpen, key => {
+    if (runFlowKey(key, view, flow, actions)) return true
+    const next = mainQuest(view)
+    if (key.kind === 'start' && view.active === null && next !== undefined) actions.onStart(next)
+    else if (key.kind === 'seal' && view.active !== null) actions.onSealActive(view.active)
+    else return false
+
+    return true
+  })
+
+  return (
+    <main class="stage">
+      <div class="col-left">
+        <Lair game={game} session={view.session.state} onPet={onPet} />
+        <QuestCard view={view} flow={flow} actions={actions} />
+      </div>
+      <div class="col-right">
+        <Board view={view} />
+        <Glory view={view} game={game} />
+      </div>
+    </main>
+  )
+}

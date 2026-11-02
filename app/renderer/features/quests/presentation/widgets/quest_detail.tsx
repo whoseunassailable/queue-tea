@@ -13,6 +13,7 @@ import { PriorityControl } from './priority_control'
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
 export type DetailActions = {
+  onStart: () => void
   onSeal: () => void
   onUnseal: () => void
   onPartOf: () => void
@@ -21,7 +22,7 @@ export type DetailActions = {
   onActiveSaga: () => void
 }
 
-type DetailProps = DetailActions & { realm: string; row: Row | null; hasActive: boolean; isActiveSaga: boolean; isSaved: boolean; edits: QuestEdits }
+type DetailProps = DetailActions & { realm: string; row: Row | null; hasActive: boolean; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
 
 // The title, read until clicked. A field being edited keeps its text when the
 // record changes underneath it.
@@ -127,7 +128,7 @@ const Criteria = ({ lines, onSave }: { lines: string[]; onSave: (lines: string[]
   )
 }
 
-export const QuestDetail = ({ realm, row, hasActive, isActiveSaga, isSaved, edits, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
+export const QuestDetail = ({ realm, row, hasActive, isBusy, isActiveSaga, isSaved, note, edits, onStart, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
   if (row === null) {
     return (
       <aside class="detail panel" aria-label={t.detail.label}>
@@ -170,6 +171,11 @@ export const QuestDetail = ({ realm, row, hasActive, isActiveSaga, isSaved, edit
       </div>
       <div class="q-actions">
         {!isSealed && (
+          <button type="button" class="btn primary" disabled={hasActive || isBusy} onClick={onStart}>
+            {quest.isStar ? t.actions.startMain : t.actions.start}
+          </button>
+        )}
+        {!isSealed && (
           <button type="button" class="btn" onClick={onPlayNext}>
             {quest.isPlayNext ? t.actions.playNextOff : t.actions.playNext}
           </button>
@@ -185,6 +191,7 @@ export const QuestDetail = ({ realm, row, hasActive, isActiveSaga, isSaved, edit
         )}
       </div>
       {hasActive && <p class="hint">{t.board.startHint}</p>}
+      {note !== undefined && <p class="card-note">⚠ {note}</p>}
       <hr />
       {quest.why !== null && <p class="d-star">{t.detail.main(quest.why)}</p>}
       {isSealed && <p class="d-star">⊘ {quest.sealedBecause}</p>}

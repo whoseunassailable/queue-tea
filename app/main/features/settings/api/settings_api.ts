@@ -1,16 +1,18 @@
 import type { Host } from '../../../../../hooks/core/host/host'
-import type { Reply, Settings, SkyChoice } from '../../../../shared/engine_api'
+import type { Reply, Settings, SkyChoice, TerminalChoice } from '../../../../shared/engine_api'
 import type { Logger } from '../../../core/logger'
 import { MESSAGES } from '../../../core/messages'
 import { reply } from '../../../core/reply'
 
 export type SettingsDeps = { host: Host; file: string; log: Logger }
 
-export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {} }
+export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' }
 
 const SKIES: readonly SkyChoice[] = ['auto', 'morning', 'day', 'evening', 'night']
+const TERMINALS: readonly TerminalChoice[] = ['terminal', 'iterm', 'vscode']
 
 const isSky = (value: unknown): value is SkyChoice => SKIES.includes(value as SkyChoice)
+const isTerminal = (value: unknown): value is TerminalChoice => TERMINALS.includes(value as TerminalChoice)
 const isLastProject = (value: unknown): value is string | null => value === null || typeof value === 'string'
 const isFolds = (value: unknown): value is Settings['folds'] =>
   typeof value === 'object' &&
@@ -27,6 +29,7 @@ export const cleanSettings = (value: unknown): Partial<Settings> => {
     ...(typeof v.isCalm === 'boolean' ? { isCalm: v.isCalm } : {}),
     ...(isLastProject(v.lastProject) ? { lastProject: v.lastProject } : {}),
     ...(isFolds(v.folds) ? { folds: v.folds } : {}),
+    ...(isTerminal(v.terminal) ? { terminal: v.terminal } : {}),
   }
 }
 

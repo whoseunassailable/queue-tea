@@ -12,13 +12,18 @@ import { useWindowKeys } from '../core/widgets/window_keys'
 import { HomePage } from '../features/home/presentation/pages/home_page'
 import { QuestsPage } from '../features/quests/presentation/pages/quests_page'
 import type { Sheet } from '../features/quests/presentation/pages/quests_page'
+import type { QuestActions } from '../features/quests/presentation/state_management/flow_keys'
 import { questEdits } from '../features/quests/presentation/state_management/quest_edits'
 import type { QuestEdits } from '../features/quests/presentation/state_management/quest_edits'
+import { questFlows } from '../features/quests/presentation/state_management/quest_flows'
+import type { QuestFlows } from '../features/quests/presentation/state_management/quest_flows'
 import { isTyping } from '../features/quests/presentation/state_management/quest_keys'
+import { FinishSheet } from '../features/quests/presentation/widgets/finish_sheet'
 import { MoveDialog } from '../features/quests/presentation/widgets/move_dialog'
 import { NewQuestSheet } from '../features/quests/presentation/widgets/new_quest_sheet'
 import { RemoveDialog } from '../features/quests/presentation/widgets/remove_dialog'
 import { SealDialog } from '../features/quests/presentation/widgets/seal_dialog'
+import { VictoryPanel } from '../features/quests/presentation/widgets/victory_panel'
 import { Hud } from '../features/workspace/presentation/widgets/hud'
 import { Sidebar } from '../features/workspace/presentation/widgets/sidebar'
 import { SkyDial } from '../features/workspace/presentation/widgets/sky_dial'
@@ -53,9 +58,9 @@ const Unreadable = ({ view }: { view: Extract<ProjectView, { kind: 'unreadable' 
   <Empty title={t.unreadable.title} line={view.isNewer ? t.unreadable.newer : view.canRestore ? t.unreadable.restorable : t.unreadable.broken} />
 )
 
-type ContentProps = { state: WorkspaceState; workspace: Workspace; route: Route; edits: QuestEdits; sheet: Sheet | null; onSheet: (sheet: Sheet) => void; onPet: () => void }
+type ContentProps = { state: WorkspaceState; workspace: Workspace; route: Route; edits: QuestEdits; actionsFor: (view: ReadableView) => QuestActions; sheet: Sheet | null; onSheet: (sheet: Sheet) => void; onPet: () => void }
 
-const Content = ({ state, workspace, route, edits, sheet, onSheet, onPet }: ContentProps) => {
+const Content = ({ state, workspace, route, edits, actionsFor, sheet, onSheet, onPet }: ContentProps) => {
   const { projects, project, game, selected } = state
   if (projects.status === 'loading') return <Loading line={t.loading.realms} />
   if (projects.status === 'failed') return <Failed message={projects.message} onRetry={() => void workspace.refresh()} />
@@ -65,6 +70,8 @@ const Content = ({ state, workspace, route, edits, sheet, onSheet, onPet }: Cont
   if (project.status === 'failed') return <Failed message={project.message} onRetry={() => void workspace.refresh()} />
   const view = project.data
   if (view.kind === 'unreadable') return <Unreadable view={view} />
+  const flow = state.flows[view.key]
+  const actions = actionsFor(view)
   if (route === ROUTES.quests) {
     return (
       <QuestsPage
@@ -75,6 +82,9 @@ const Content = ({ state, workspace, route, edits, sheet, onSheet, onPet }: Cont
         isRefreshing={game.status === 'loading'}
         isSheetOpen={sheet !== null}
         edits={edits}
+        flow={flow}
+        actions={actions}
+        questNotes={state.questNotes}
         onOpen={id => workspace.openQuest(view.key, id)}
         onFold={id => void workspace.toggleFold(view.key, id)}
         onSheet={onSheet}
@@ -82,12 +92,17 @@ const Content = ({ state, workspace, route, edits, sheet, onSheet, onPet }: Cont
     )
   }
 
-  return <HomePage view={view} game={game} onPet={onPet} />
+  return <HomePage view={view} game={game} flow={flow} actions={actions} isSheetOpen={sheet !== null} onPet={onPet} />
 }
 
-const SheetView = ({ sheet, view, engine, edits, onClose }: { sheet: Sheet; view: ReadableView; engine: EngineApi; edits: QuestEdits; onClose: () => void }) => {
+type SheetProps = { sheet: Sheet; view: ReadableView; engine: EngineApi; edits: QuestEdits; flows: QuestFlows; onClose: () => void }
+
+const SheetView = ({ sheet, view, engine, edits, flows, onClose }: SheetProps) => {
+  const { key } = view
   if (sheet.kind === 'new') return <NewQuestSheet engine={engine} view={view} edits={edits} parentId={sheet.parentId} onClose={onClose} />
-  if (sheet.kind === 'seal') return <SealDialog engine={engine} realm={view.key} quest={sheet.quest} edits={edits} onClose={onClose} />
+  if (sheet.kind === 'seal') return <SealDialog engine={engine} realm={key} quest={sheet.quest} isActive={false} onSeal={seal => edits.seal(key, sheet.quest, seal)} onClose={onClose} />
+  if (sheet.kind === 'sealActive') return <SealDialog engine={engine} realm={key} quest={sheet.quest} isActive onSeal={seal => flows.sealActive(key, sheet.quest, seal)} onClose={onClose} />
+  if (sheet.kind === 'finish') return <FinishSheet realm={key} quest={sheet.quest} logPath={view.docsLogPath} flows={flows} onClose={onClose} />
   if (sheet.kind === 'move') return <MoveDialog engine={engine} realm={view.key} quest={sheet.quest} edits={edits} onClose={onClose} />
 
   return <RemoveDialog realm={view.key} quest={sheet.quest} chapters={sheet.chapters} edits={edits} onClose={onClose} />
@@ -96,6 +111,7 @@ const SheetView = ({ sheet, view, engine, edits, onClose }: { sheet: Sheet; view
 export const App = ({ workspace, engine }: { workspace: Workspace; engine: EngineApi }) => {
   const state = useWorkspace(workspace)
   const edits = useMemo(() => questEdits(engine, workspace), [engine, workspace])
+  const flows = useMemo(() => questFlows(engine, workspace), [engine, workspace])
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const route = useRoute()
   const hour = useHour()
@@ -110,8 +126,29 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   const readable = state.project.status === 'ready' && state.project.data.kind === 'readable' ? state.project.data : null
   const session = readable?.session.state ?? 'none'
 
+  const actionsFor = (view: ReadableView): QuestActions => ({
+    onStart: quest => void flows.start(view.key, quest),
+    onFinish: quest => setSheet({ kind: 'finish', quest }),
+    onBack: quest => void flows.back(view.key, quest),
+    onBackNow: quest => void flows.backNow(view.key, quest),
+    onSealActive: quest => setSheet({ kind: 'sealActive', quest }),
+    onNotYet: quest => void flows.notYet(view.key, quest),
+    onOpenClaude: () => {
+      if (view.active !== null) void flows.openClaude(view.key, view.active)
+    },
+    onCheckAgain: () => void flows.checkAgain(view.key),
+    onCancel: () => flows.cancel(view.key),
+    onCopy: text => void flows.copy(text),
+  })
+
+  const closeWon = () => {
+    workspace.showWon(null)
+    workspace.dismissBadges()
+  }
+
   // ⌘N and ⌘Z work from every screen. Inside a text field ⌘Z is the field's.
   useWindowKeys(event => {
+    if (event.key === 'Escape' && state.won !== null) closeWon()
     if (!event.metaKey || sheet !== null) return
     if (event.key === 'n' && readable !== null) {
       event.preventDefault()
@@ -122,7 +159,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
     }
   })
 
-  const classes = ['rm', `t-${skyOf(state.settings.sky, hour)}`, moodOf(session), isPetted ? 'pet' : '', state.settings.isCalm ? 'calm' : ''].filter(c => c !== '')
+  const classes = ['rm', `t-${skyOf(state.settings.sky, hour)}`, state.won === null ? moodOf(session) : 'm-cheer', isPetted ? 'pet' : '', state.settings.isCalm ? 'calm' : ''].filter(c => c !== '')
 
   return (
     <div class={classes.join(' ')} data-testid="root">
@@ -150,9 +187,10 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
             {state.note}
           </p>
         )}
-        <Content state={state} workspace={workspace} route={route} edits={edits} sheet={sheet} onSheet={setSheet} onPet={() => setPetted(true)} />
+        <Content state={state} workspace={workspace} route={route} edits={edits} actionsFor={actionsFor} sheet={sheet} onSheet={setSheet} onPet={() => setPetted(true)} />
       </div>
-      {sheet !== null && readable !== null && <SheetView sheet={sheet} view={readable} engine={engine} edits={edits} onClose={() => setSheet(null)} />}
+      {sheet !== null && readable !== null && <SheetView sheet={sheet} view={readable} engine={engine} edits={edits} flows={flows} onClose={() => setSheet(null)} />}
+      {state.won !== null && <VictoryPanel won={state.won} isCalm={state.settings.isCalm} onClose={closeWon} />}
       <Toasts toasts={state.toasts} onDismiss={workspace.dismiss} />
     </div>
   )

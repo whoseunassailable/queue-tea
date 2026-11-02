@@ -11,3 +11,6 @@ export const WINDOW = { width: 1280, height: 800, minWidth: 720, minHeight: 560 
 
 // The app never runs these. Git commands appear only as text to copy.
 export const FORBIDDEN_GIT = ['commit', 'push', 'merge', 'pull'] as const
+
+// Longer than any command or path the window has reason to copy.
+export const COPY_LIMIT = 4_096

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 
-import type { EngineApi, QuestChoice, QuestRow } from '../../../../../shared/engine_api'
+import type { EngineApi, QuestChoice, Seal } from '../../../../../shared/engine_api'
+import type { Answer } from '../../../../core/api/engine_client'
 import { ask } from '../../../../core/api/engine_client'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { Field, Pick } from '../../../../core/widgets/field'
@@ -9,9 +10,10 @@ import { t } from '../../../../l10n/en'
 import type { Load } from '../../../workspace/state_management/workspace_store'
 import { sealError, sealOf } from '../../domain/quest_form'
 import type { SealForm } from '../../domain/quest_form'
-import type { QuestEdits } from '../state_management/quest_edits'
 
-export const SealDialog = ({ engine, realm, quest, edits, onClose }: { engine: EngineApi; realm: string; quest: QuestRow; edits: QuestEdits; onClose: () => void }) => {
+type SealProps = { engine: EngineApi; realm: string; quest: { id: string; title: string }; isActive: boolean; onSeal: (seal: Seal) => Promise<Answer<unknown>>; onClose: () => void }
+
+export const SealDialog = ({ engine, realm, quest, isActive, onSeal, onClose }: SealProps) => {
   const [form, setForm] = useState<SealForm>({ waitFor: null, reason: '' })
   const [filter, setFilter] = useState('')
   const [choices, setChoices] = useState<Load<QuestChoice[]>>({ status: 'loading' })
@@ -31,7 +33,7 @@ export const SealDialog = ({ engine, realm, quest, edits, onClose }: { engine: E
     setTouched(true)
     setFailure(null)
     if (sealError(form) !== undefined) return
-    const answer = await edits.seal(realm, quest, sealOf(form))
+    const answer = await onSeal(sealOf(form))
     if (answer.ok) onClose()
     else setFailure(answer.message)
   }
@@ -42,6 +44,7 @@ export const SealDialog = ({ engine, realm, quest, edits, onClose }: { engine: E
   return (
     <Dialog title={t.form.sealTitle} isSheet onCancel={onClose} onSubmit={() => void submit()}>
       <p class="form-line">{t.form.sealAsk(quest.title)}</p>
+      {isActive && <p class="form-line">{t.form.sealActive}</p>}
       {failure !== null && (
         <p class="form-banner" role="alert">
           {failure}

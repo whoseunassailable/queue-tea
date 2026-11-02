@@ -97,7 +97,7 @@ describe('the sidebar', () => {
 })
 
 describe('Home', () => {
-  const active = { id: 'x', title: 'The boss', priority: 'urgent', difficulty: 'hard', xp: 50, branch: 'task/x', minutes: 43, started: '2026-10-20T22:17:00+02:00', isBoss: true, improvingMessages: 4, filesChanged: 40, review: null } as const
+  const active = { id: 'x', title: 'The boss', priority: 'urgent', difficulty: 'hard', xp: 50, branch: 'task/x', minutes: 43, started: '2026-10-20T22:17:00+02:00', isBoss: true, improvingMessages: 4, filesChanged: 40, review: null, criteria: [] as string[], asking: null } as const
 
   it('shows the active quest with its reward and time', async () => {
     await open(withView(projectView('a-000001', { active, session: { state: 'working', allowance: null } })))
@@ -112,7 +112,8 @@ describe('Home', () => {
   it('shows Judgement when Claude says it looks done, with what it checked', async () => {
     await open(withView(projectView('a-000001', { active: { ...active, review: { at: 'x', checked: 'ran the tests' } } })))
 
-    expect(document.querySelector('.q-status')?.textContent).toBe(`${t.quest.judgement} · ${t.quest.checked('ran the tests')}`)
+    expect(screen.getByRole('heading', { name: t.judgement.ask('The boss') })).toBeTruthy()
+    expect(document.querySelector('.card-note')?.textContent).toBe(`${t.judgement.checked} ran the tests`)
   })
 
   it('with no active quest, names the main quest and why', async () => {
@@ -184,13 +185,13 @@ describe('the rules that hold everywhere', () => {
   })
 
   it('Calm mode marks the window, so every loop stops', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {} } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {}, terminal: 'terminal' } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('calm')
   })
 
   it('the sky changes colours and scenery by class alone', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {} } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('t-night')
   })

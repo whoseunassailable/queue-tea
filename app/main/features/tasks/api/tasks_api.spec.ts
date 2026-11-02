@@ -10,7 +10,7 @@ import type { NewQuest, ProjectView } from '../../../../shared/engine_api'
 import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import * as api from './tasks_api'
-import type { TasksDeps } from './tasks_api'
+import type { TasksDeps } from './scope'
 
 const KEY = 'demo-abc123'
 const NOW = Date.parse('2026-10-27T17:50:00Z')
@@ -71,7 +71,7 @@ beforeEach(async () => {
   file = `${home}/.queue-tea/projects/${KEY}.json`
   logged.length = 0
   const log = createLogger('dev', line => logged.push(line))
-  deps = { host: nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' })), home, now: () => NOW, log, offsetMinutes: () => 60, newId: () => `t-new${(ids += 1)}` }
+  deps = { host: nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' })), home, now: () => NOW, log, offsetMinutes: () => 60, newId: () => `t-new${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {} }
 })
 afterEach(() => rm(home, { recursive: true, force: true }))
 

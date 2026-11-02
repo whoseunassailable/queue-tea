@@ -7,7 +7,7 @@ const Item = ({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => v
   const [isHeld, setHeld] = useState(false)
   useEffect(() => {
     if (isHeld) return undefined
-    const timer = setTimeout(() => onDismiss(toast.id), toast.action === undefined ? TOAST_MS : TOAST_ACTION_MS)
+    const timer = setTimeout(() => onDismiss(toast.id), toast.action === undefined && toast.isLong !== true ? TOAST_MS : TOAST_ACTION_MS)
 
     return () => clearTimeout(timer)
   }, [isHeld, toast, onDismiss])

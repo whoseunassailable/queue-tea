@@ -22,7 +22,7 @@ export const priorityOf = (value: unknown): Priority => {
   return value as Priority
 }
 
-const difficultyOf = (value: unknown): Difficulty => {
+export const difficultyOf = (value: unknown): Difficulty => {
   if (!DIFFICULTIES.includes(value as Difficulty)) throw new Refusal(MESSAGES.badValue)
 
   return value as Difficulty
@@ -80,6 +80,16 @@ export const questEditOf = (value: unknown): QuestEdit => {
     ...(v.criteria === undefined ? {} : { criteria: criteriaOf(v.criteria) }),
     ...(v.difficulty === undefined ? {} : { difficulty: difficultyOf(v.difficulty) }),
   }
+}
+
+// The task log's path, or null when none was given. A file, on one line.
+export const logPathOf = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null
+  const path = typeof value === 'string' ? value.trim() : ''
+  if (path === '') throw new Refusal(MESSAGES.logPathRequired)
+  if (path.endsWith('/') || /[\r\n\0]/.test(path)) throw new Refusal(MESSAGES.logPathBad)
+
+  return path
 }
 
 export const sealOf = (value: unknown): Seal => {

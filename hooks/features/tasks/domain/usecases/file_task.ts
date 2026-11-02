@@ -12,6 +12,8 @@ export type FileInput = {
   difficulty: Difficulty
   intent: Intent
   parent?: ParentPick | null
+  description?: string | null
+  criteria?: string[]
 }
 
 export type FileResult =
@@ -28,15 +30,19 @@ export const fileTaskUseCase = async (d: Deps, ctx: Ctx, input: FileInput): Prom
     pick.kind === 'new'
       ? newTask({ title: pick.title.trim(), priority: input.priority, difficulty: 'medium', messages: [], now, id: d.env.newId() })
       : null
-  const task = newTask({
-    title: input.title,
-    priority: input.priority,
-    difficulty: input.difficulty,
-    messages: [input.text],
-    now,
-    id: d.env.newId(),
-    parentId: pick.kind === 'task' ? pick.id : (feature?.id ?? null),
-  })
+  const task: Task = {
+    ...newTask({
+      title: input.title,
+      priority: input.priority,
+      difficulty: input.difficulty,
+      messages: [input.text],
+      now,
+      id: d.env.newId(),
+      parentId: pick.kind === 'task' ? pick.id : (feature?.id ?? null),
+    }),
+    description: input.description ?? null,
+    criteria: input.criteria ?? [],
+  }
   // The feature may have gone since the band went up: checked against the
   // record as it is now.
   let refused = null as string | null

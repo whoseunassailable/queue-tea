@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Part 1 is done on `task/workspace-app`: the mod's side, and a read-only first window with Home and Quests ([plan-workspace-app.md](plan-workspace-app.md)). Steps 4 to 7 and Windows are next. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
+- **State:** being built. Parts 1 and 2 are done on `task/workspace-app`: the mod's side, Home and Quests, and every edit ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Steps 5 to 7 and Windows are next. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -156,7 +156,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 
 ## Testing
 
-- **The mod.** 334 tests pass with part 1, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
+- **The mod.** 341 tests pass with part 2, and they keep passing as the app is built. New tests, in the style of `tests/unit/`, cover the session file, requests and `review`.
 - **The app's units.** Vitest `*.spec.ts(x)`: the window's components, and main's API run on a Host held in memory, as the mod's tests do.
 - **End to end.** Playwright's Electron driver against a temporary `HOME` with fixture records. The runs: file a task, change priority, Start through a git hold and then past it, Review then Done with the log row, and Back to queue with no session.
 - **The plugin folder.** After `npm install` in `app/`, `claude plugin test .` still finds only the mod's tests. If it picks up files from `app/node_modules`, the app moves out of the plugin folder.

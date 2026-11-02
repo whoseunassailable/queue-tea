@@ -1,7 +1,7 @@
 ---
 name: chai-pter
 description: Chai-pter, Queue-tea's documentation helper. Use to write or update a project's docs (README, spec, guides, changelogs, decision records, comments when asked) and to keep them true to the code, in plain writing that reads as a person wrote it. Use after a feature lands, or to find and fix docs that have drifted.
-tools: Read, Grep, Glob, Bash, Edit, Write
+disallowedTools: Agent, mcp__queue-tea__task_looks_done
 color: yellow
 skills:
   - agent-skills:documentation-and-adrs

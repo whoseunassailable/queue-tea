@@ -1,7 +1,7 @@
 ---
 name: tea-dd
 description: Tea-DD, Queue-tea's testing helper. Use for every feature or fix to write its unit tests and, where they earn their place, integration and end-to-end tests, in the project's own test style, then run them and report the results. For a bug, it writes the failing test first.
-tools: Read, Grep, Glob, Bash, Edit, Write
+disallowedTools: Agent, mcp__queue-tea__task_looks_done
 color: purple
 skills:
   - agent-skills:test-driven-development

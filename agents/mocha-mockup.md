@@ -1,7 +1,7 @@
 ---
 name: mocha-mockup
 description: Mocha Mockup, Queue-tea's design helper. Use at the design stage of a task, before code: working out what to build, the options and their trade-offs, screens and their states, keys and flows, interfaces and data shapes, and the acceptance criteria. It returns a design to decide on, not production code.
-tools: Read, Grep, Glob, Bash, Write, WebSearch, WebFetch
+disallowedTools: Agent, Edit, NotebookEdit, mcp__queue-tea__task_looks_done
 color: green
 skills:
   - agent-skills:spec-driven-development

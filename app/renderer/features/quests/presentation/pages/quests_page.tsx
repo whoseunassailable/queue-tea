@@ -1,45 +1,96 @@
-import type { ProjectView } from '../../../../../shared/engine_api'
+import type { Priority } from '../../../../../../types'
 import { dayOf } from '../../../../core/domain/format'
 import { Spinner } from '../../../../core/widgets/states'
-import { PriorityTag, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
-import { allRows, metaOf, openRow, rowsOf } from '../../domain/board'
+import type { ReadableView } from '../../../workspace/state_management/workspace_store'
+import { allRows, openRow, rowsOf, stepFrom } from '../../domain/board'
 import type { Row } from '../../domain/board'
+import type { QuestEdits } from '../state_management/quest_edits'
+import { useQuestKeys } from '../state_management/quest_keys'
+import type { QuestKey } from '../state_management/quest_keys'
 import { ActiveCard } from '../widgets/active_card'
+import { AddChapter } from '../widgets/add_chapter'
 import { QuestDetail } from '../widgets/quest_detail'
+import { QuestRowView } from '../widgets/quest_row'
 
-type View = Extract<ProjectView, { kind: 'readable' }>
+// What the page opens above itself.
+export type Sheet =
+  | { kind: 'new'; parentId: string | null }
+  | { kind: 'seal'; quest: Row['quest'] }
+  | { kind: 'move'; quest: Row['quest'] }
+  | { kind: 'remove'; quest: Row['quest']; chapters: number }
 
-const RowButton = ({ row, isOpen, onOpen }: { row: Row; isOpen: boolean; onOpen: (id: string) => void }) => {
-  const { quest, isChapter } = row
-  const parts = ['qrow', isChapter ? 'child' : '', isOpen ? 'sel' : '', quest.sealedBecause === null ? '' : 'sealed'].filter(part => part !== '')
-
-  return (
-    <li>
-      <button type="button" class={parts.join(' ')} aria-pressed={isOpen ? 'true' : 'false'} onClick={() => onOpen(quest.id)}>
-        <span class="qr-mark" aria-label={quest.isStar ? t.board.mainQuest : undefined}>
-          {quest.isStar ? '★' : ''}
-        </span>
-        <span class="qc-body">
-          <span class="qc-title">{quest.title}</span>
-          <span class="qc-sub">{metaOf(row)}</span>
-          {quest.why !== null && <span class="qc-sub">★ {quest.why}</span>}
-        </span>
-        <span class="qc-side">
-          <PriorityTag priority={quest.priority} />
-          <XpReward xp={quest.xp} />
-        </span>
-      </button>
-    </li>
-  )
+type PageProps = {
+  view: ReadableView
+  picked: string | undefined
+  folded: readonly string[]
+  savedQuest: string | null
+  isRefreshing: boolean
+  isSheetOpen: boolean
+  edits: QuestEdits
+  onOpen: (id: string) => void
+  onFold: (id: string) => void
+  onSheet: (sheet: Sheet) => void
 }
 
-export const QuestsPage = ({ view, picked, isRefreshing, onOpen }: { view: View; picked: string | undefined; isRefreshing: boolean; onOpen: (id: string) => void }) => {
-  const ready = rowsOf(view.ready)
-  const sealed = rowsOf(view.sealed)
-  const open = openRow(allRows(view), picked)
+export const QuestsPage = ({ view, picked, folded, savedQuest, isRefreshing, isSheetOpen, edits, onOpen, onFold, onSheet }: PageProps) => {
+  const ready = rowsOf(view.ready, folded)
+  const sealed = rowsOf(view.sealed, folded)
+  const rows = allRows(view, folded)
+  const open = openRow(rows, picked)
   const isEmpty = ready.length === 0 && sealed.length === 0
   const last = view.victories[0]?.finished ?? null
+
+  const remove = (row: Row) => {
+    if (row.sagaOf !== null) onSheet({ kind: 'remove', quest: row.quest, chapters: row.sagaOf.chapters.length })
+    else void edits.remove(view.key, row.quest)
+  }
+  const unseal = (row: Row) => {
+    if (row.quest.sealedBecause !== null) void edits.unseal(view.key, row.quest)
+  }
+  const toggleActiveSaga = (row: Row) => void edits.setActiveSaga(view.key, view.activeSagaId === row.quest.id ? null : row.quest)
+
+  useQuestKeys(!isSheetOpen, (key: QuestKey) => {
+    if (key.kind === 'up' || key.kind === 'down') {
+      const next = stepFrom(rows, open?.quest.id, key.kind === 'up' ? -1 : 1)
+      if (next !== null) onOpen(next.quest.id)
+
+      return
+    }
+    if (open === null) return
+    if (key.kind === 'fold' || key.kind === 'unfold') {
+      if (open.sagaOf !== null && (key.kind === 'fold') !== open.isFolded) onFold(open.quest.id)
+      else if (key.kind === 'fold' && open.quest.parentId !== null) onOpen(open.quest.parentId)
+    } else if (key.kind === 'priority') {
+      if (key.priority !== open.quest.priority) void edits.setPriority(view.key, open.quest, key.priority)
+    } else if (key.kind === 'playNext') void edits.togglePlayNext(view.key, open.quest)
+    else if (key.kind === 'seal') onSheet({ kind: 'seal', quest: open.quest })
+    else if (key.kind === 'unseal') unseal(open)
+    else if (key.kind === 'partOf') onSheet({ kind: 'move', quest: open.quest })
+    else if (key.kind === 'activeSaga') toggleActiveSaga(open)
+    else remove(open)
+  })
+
+  const rowOf = (row: Row) => (
+    <QuestRowView
+      key={row.quest.id}
+      row={row}
+      isOpen={row.quest.id === open?.quest.id}
+      isSaved={row.quest.id === savedQuest}
+      onOpen={onOpen}
+      onFold={onFold}
+      onPriority={(r, priority: Priority) => void edits.setPriority(view.key, r.quest, priority)}
+    />
+  )
+  // Each unfolded saga ends with its Add a chapter row.
+  const withAdds = (list: Row[]) =>
+    list.flatMap((row, i) => {
+      const next = list[i + 1]
+      const saga = row.isChapter ? [...list.slice(0, i)].reverse().find(r => r.sagaOf !== null) : row
+      const endsSaga = saga?.sagaOf != null && !saga.isFolded && next?.isChapter !== true
+
+      return endsSaga ? [rowOf(row), <AddChapter key={`add-${saga.quest.id}`} realm={view.key} saga={saga.quest} edits={edits} />] : [rowOf(row)]
+    })
 
   return (
     <main class="quests">
@@ -59,31 +110,35 @@ export const QuestsPage = ({ view, picked, isRefreshing, onOpen }: { view: View;
           {view.activeSaga !== null && <p class="saga-line">{t.board.activeSaga(view.activeSaga)}</p>}
           {isEmpty && <p class="hint">{t.empty.boardTitle}. {t.empty.boardLine}</p>}
           {!isEmpty && ready.length === 0 && <p class="hint">{t.empty.allSealed}</p>}
-          {ready.length > 0 && (
-            <ul class="rows">
-              {ready.map(row => (
-                <RowButton key={row.quest.id} row={row} isOpen={row.quest.id === open?.quest.id} onOpen={onOpen} />
-              ))}
-            </ul>
-          )}
+          {ready.length > 0 && <ul class="rows">{withAdds(ready)}</ul>}
+          <button type="button" class="add-row" onClick={() => onSheet({ kind: 'new', parentId: null })}>
+            + {t.actions.newQuest}
+          </button>
         </section>
         <section class="fold panel" aria-label={t.board.sealed}>
           <h2>{t.board.sealed}</h2>
           <span class="sec-sub">{sealed.length === 0 ? `0 · ${t.board.sealedNone}` : view.sealedCount}</span>
-          {sealed.length > 0 && (
-            <ul class="rows sealed-rows">
-              {sealed.map(row => (
-                <RowButton key={row.quest.id} row={row} isOpen={row.quest.id === open?.quest.id} onOpen={onOpen} />
-              ))}
-            </ul>
-          )}
+          {sealed.length > 0 && <ul class="rows sealed-rows">{sealed.map(rowOf)}</ul>}
         </section>
         <section class="fold panel" aria-label={t.board.victories}>
           <h2>{t.board.victories}</h2>
           <span class="sec-sub">{t.board.victoriesLine(view.victoryCount, last === null ? null : dayOf(last))}</span>
         </section>
       </div>
-      <QuestDetail row={open} hasActive={view.active !== null} />
+      <QuestDetail
+        realm={view.key}
+        row={open}
+        hasActive={view.active !== null}
+        isActiveSaga={open !== null && view.activeSagaId === open.quest.id}
+        isSaved={open !== null && open.quest.id === savedQuest}
+        edits={edits}
+        onSeal={() => open !== null && onSheet({ kind: 'seal', quest: open.quest })}
+        onUnseal={() => open !== null && unseal(open)}
+        onPartOf={() => open !== null && onSheet({ kind: 'move', quest: open.quest })}
+        onRemove={() => open !== null && remove(open)}
+        onPlayNext={() => open !== null && void edits.togglePlayNext(view.key, open.quest)}
+        onActiveSaga={() => open !== null && toggleActiveSaga(open)}
+      />
     </main>
   )
 }

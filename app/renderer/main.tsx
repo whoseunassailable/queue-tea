@@ -16,5 +16,5 @@ window.addEventListener('error', event => window.engine.log('error', `window err
 window.addEventListener('unhandledrejection', event => window.engine.log('error', `window rejection: ${String(event.reason)}`))
 
 const workspace = createWorkspace(window.engine)
-render(<App workspace={workspace} />, document.getElementById('root')!)
+render(<App workspace={workspace} engine={window.engine} />, document.getElementById('root')!)
 workspace.start().catch(err => window.engine.log('error', `starting failed: ${String(err)}`))

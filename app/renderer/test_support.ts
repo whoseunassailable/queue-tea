@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-import type { EngineApi, GameView, ProjectRow, ProjectView, QuestRow } from '../shared/engine_api'
+import type { EngineApi, GameView, ProjectRow, ProjectView, QuestRow, Reply } from '../shared/engine_api'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -12,6 +12,7 @@ export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   why: null,
   isStar: false,
   isPlayNext: false,
+  parentId: null,
   sealedBecause: null,
   branch: null,
   created: '2026-10-20T09:00:00+02:00',
@@ -43,6 +44,7 @@ export const projectView = (key: string, over: Partial<Extract<ProjectView, { ki
   canStart: 0,
   sealedCount: 0,
   activeSaga: null,
+  activeSagaId: null,
   victories: [],
   victoryCount: 0,
   ...over,
@@ -62,6 +64,8 @@ export const GAME: GameView = {
   allowance: { percent: 62, resetsAt: null },
 }
 
+const reply = async (key: string): Promise<Reply<ProjectView>> => ({ ok: true, data: projectView(key) })
+
 // An engine held in memory. A test swaps any call, and `fire` plays a change.
 export const fakeEngine = (over: Partial<EngineApi> = {}) => {
   const listeners = new Set<() => void>()
@@ -69,8 +73,19 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     listProjects: async () => ({ ok: true, data: [projectRow('a-000001')] }),
     readProject: async key => ({ ok: true, data: projectView(key) }),
     readGame: async () => ({ ok: true, data: GAME }),
-    readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null } }),
-    saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, ...patch } })),
+    readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {} } }),
+    saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, ...patch } })),
+    readChoices: async () => ({ ok: true, data: { features: [], lone: [], parents: [], waitFor: [] } }),
+    setPriority: vi.fn(reply),
+    togglePlayNext: vi.fn(reply),
+    fileQuest: vi.fn(reply),
+    moveQuest: vi.fn(reply),
+    sealQuest: vi.fn(reply),
+    unsealQuest: vi.fn(reply),
+    removeQuest: vi.fn(reply),
+    restoreQuest: vi.fn(reply),
+    editQuest: vi.fn(reply),
+    setActiveSaga: vi.fn(reply),
     onChange: listener => {
       listeners.add(listener)
 

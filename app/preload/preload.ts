@@ -10,6 +10,17 @@ const engine: EngineApi = {
   readGame: () => ipcRenderer.invoke(CHANNELS.readGame),
   readSettings: () => ipcRenderer.invoke(CHANNELS.readSettings),
   saveSettings: patch => ipcRenderer.invoke(CHANNELS.saveSettings, patch),
+  readChoices: (key, taskId) => ipcRenderer.invoke(CHANNELS.readChoices, key, taskId),
+  setPriority: (key, taskId, priority) => ipcRenderer.invoke(CHANNELS.setPriority, key, taskId, priority),
+  togglePlayNext: (key, taskId) => ipcRenderer.invoke(CHANNELS.togglePlayNext, key, taskId),
+  fileQuest: (key, quest) => ipcRenderer.invoke(CHANNELS.fileQuest, key, quest),
+  moveQuest: (key, taskId, parentId) => ipcRenderer.invoke(CHANNELS.moveQuest, key, taskId, parentId),
+  sealQuest: (key, taskId, seal) => ipcRenderer.invoke(CHANNELS.sealQuest, key, taskId, seal),
+  unsealQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.unsealQuest, key, taskId),
+  removeQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.removeQuest, key, taskId),
+  restoreQuest: (key, taskId) => ipcRenderer.invoke(CHANNELS.restoreQuest, key, taskId),
+  editQuest: (key, taskId, edit) => ipcRenderer.invoke(CHANNELS.editQuest, key, taskId, edit),
+  setActiveSaga: (key, taskId) => ipcRenderer.invoke(CHANNELS.setActiveSaga, key, taskId),
   onChange: listener => {
     const heard = () => listener()
     ipcRenderer.on(CHANNELS.changed, heard)

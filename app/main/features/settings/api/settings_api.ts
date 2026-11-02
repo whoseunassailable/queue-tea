@@ -6,12 +6,17 @@ import { reply } from '../../../core/reply'
 
 export type SettingsDeps = { host: Host; file: string; log: Logger }
 
-export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null }
+export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {} }
 
 const SKIES: readonly SkyChoice[] = ['auto', 'morning', 'day', 'evening', 'night']
 
 const isSky = (value: unknown): value is SkyChoice => SKIES.includes(value as SkyChoice)
 const isLastProject = (value: unknown): value is string | null => value === null || typeof value === 'string'
+const isFolds = (value: unknown): value is Settings['folds'] =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every(ids => Array.isArray(ids) && ids.every(id => typeof id === 'string'))
 
 // What can be kept from a value read or sent: anything else stays out.
 export const cleanSettings = (value: unknown): Partial<Settings> => {
@@ -21,6 +26,7 @@ export const cleanSettings = (value: unknown): Partial<Settings> => {
     ...(isSky(v.sky) ? { sky: v.sky } : {}),
     ...(typeof v.isCalm === 'boolean' ? { isCalm: v.isCalm } : {}),
     ...(isLastProject(v.lastProject) ? { lastProject: v.lastProject } : {}),
+    ...(isFolds(v.folds) ? { folds: v.folds } : {}),
   }
 }
 

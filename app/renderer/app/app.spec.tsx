@@ -11,7 +11,7 @@ import { App } from './app'
 const open = async (over: Partial<EngineApi> = {}) => {
   const { engine, fire } = fakeEngine(over)
   const workspace = createWorkspace(engine)
-  const view = render(<App workspace={workspace} />)
+  const view = render(<App workspace={workspace} engine={engine} />)
   await workspace.start()
 
   return { engine, fire, workspace, ...view }
@@ -30,7 +30,7 @@ describe('every view shows where it is', () => {
   it('loading: a progress indicator and what is happening', async () => {
     const { engine } = fakeEngine({ listProjects: never, readGame: never })
     const workspace = createWorkspace(engine)
-    render(<App workspace={workspace} />)
+    render(<App workspace={workspace} engine={engine} />)
     void workspace.start()
 
     await waitFor(() => expect(screen.getAllByText(t.loading.realms).length).toBeGreaterThan(0))
@@ -41,7 +41,7 @@ describe('every view shows where it is', () => {
   it('partly loaded: the quests show while the hoard is still being read', async () => {
     const { engine } = fakeEngine({ readGame: never, ...withView(projectView('a-000001', { name: 'Gait' })) })
     const workspace = createWorkspace(engine)
-    render(<App workspace={workspace} />)
+    render(<App workspace={workspace} engine={engine} />)
     void workspace.start()
 
     await waitFor(() => expect(screen.getByText(t.board.title)).toBeTruthy())
@@ -184,13 +184,13 @@ describe('the rules that hold everywhere', () => {
   })
 
   it('Calm mode marks the window, so every loop stops', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: true, lastProject: null, folds: {} } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('calm')
   })
 
   it('the sky changes colours and scenery by class alone', async () => {
-    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null } }) })
+    await open({ readSettings: async () => ({ ok: true, data: { sky: 'night', isCalm: false, lastProject: null, folds: {} } }) })
 
     expect(document.querySelector('.rm')?.className).toContain('t-night')
   })

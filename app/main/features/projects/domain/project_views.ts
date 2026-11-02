@@ -57,7 +57,7 @@ export const rowOf = (key: string, record: ProjectRecord, sessions: SessionFile[
 const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, starId: string | null, playNext: string | null): QuestRow => ({
   id: task.id,
   title: task.title,
-  priority: row?.priority ?? task.priority,
+  priority: task.priority,
   difficulty: task.difficulty.expected,
   xp: xpOf(task.difficulty.expected),
   estimateMinutes: row?.estimate ?? estimateMinutes(task, tasks),
@@ -65,6 +65,7 @@ const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, s
   why: task.id === starId ? (row?.why ?? null) : null,
   isStar: task.id === starId,
   isPlayNext: task.id === playNext,
+  parentId: task.parentId,
   sealedBecause: isBlocked(task, tasks) ? blockedText(task, tasks) : null,
   branch: task.branch,
   created: task.created,
@@ -136,6 +137,7 @@ export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile
     canStart: ranked.length,
     sealedCount: blocked.length,
     activeSaga: activeFeature(record)?.title ?? null,
+    activeSagaId: activeFeature(record)?.id ?? null,
     victories: wins.slice(0, RECENT_VICTORIES).map(victoryOf),
     victoryCount: wins.length,
   }

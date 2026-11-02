@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -13,6 +14,7 @@ import { watchFolders } from './core/watcher'
 import { readGame } from './features/game/api/game_api'
 import { listProjects, readProject } from './features/projects/api/projects_api'
 import { readSettings, saveSettings } from './features/settings/api/settings_api'
+import * as tasks from './features/tasks/api/tasks_api'
 import { sessionsFolder } from '../../hooks/shared/sessions/domain/services/session_rules'
 
 // How often the window hears from main with no file event, so a session that
@@ -46,6 +48,7 @@ const host = nodeHost(log, async url => {
 const projects = { host, home, now: () => Date.now(), log }
 const game = { ...projects, offsetMinutes: () => -new Date().getTimezoneOffset() }
 const settings = { host, file: join(app.getPath('userData'), SETTINGS_FILE), log }
+const quests = { ...game, newId: () => `t-${randomBytes(4).toString('hex')}` }
 
 const serveEngine = () => {
   ipcMain.handle(CHANNELS.listProjects, () => listProjects(projects))
@@ -53,6 +56,17 @@ const serveEngine = () => {
   ipcMain.handle(CHANNELS.readGame, () => readGame(game))
   ipcMain.handle(CHANNELS.readSettings, () => readSettings(settings))
   ipcMain.handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))
+  ipcMain.handle(CHANNELS.readChoices, (_, key: unknown, taskId: unknown) => tasks.readChoices(quests, key, taskId))
+  ipcMain.handle(CHANNELS.setPriority, (_, key: unknown, taskId: unknown, priority: unknown) => tasks.setPriority(quests, key, taskId, priority))
+  ipcMain.handle(CHANNELS.togglePlayNext, (_, key: unknown, taskId: unknown) => tasks.togglePlayNext(quests, key, taskId))
+  ipcMain.handle(CHANNELS.fileQuest, (_, key: unknown, quest: unknown) => tasks.fileQuest(quests, key, quest))
+  ipcMain.handle(CHANNELS.moveQuest, (_, key: unknown, taskId: unknown, parentId: unknown) => tasks.moveQuest(quests, key, taskId, parentId))
+  ipcMain.handle(CHANNELS.sealQuest, (_, key: unknown, taskId: unknown, seal: unknown) => tasks.sealQuest(quests, key, taskId, seal))
+  ipcMain.handle(CHANNELS.unsealQuest, (_, key: unknown, taskId: unknown) => tasks.unsealQuest(quests, key, taskId))
+  ipcMain.handle(CHANNELS.removeQuest, (_, key: unknown, taskId: unknown) => tasks.removeQuest(quests, key, taskId))
+  ipcMain.handle(CHANNELS.restoreQuest, (_, key: unknown, taskId: unknown) => tasks.restoreQuest(quests, key, taskId))
+  ipcMain.handle(CHANNELS.editQuest, (_, key: unknown, taskId: unknown, edit: unknown) => tasks.editQuest(quests, key, taskId, edit))
+  ipcMain.handle(CHANNELS.setActiveSaga, (_, key: unknown, taskId: unknown) => tasks.setActiveSaga(quests, key, taskId))
   ipcMain.on(CHANNELS.log, (_, level: unknown, text: unknown) => {
     const line = `window: ${String(text)}`
     if (level === 'warn') log.warn(line)

@@ -34,8 +34,6 @@ describe('refreshing the installed app', () => {
     await writeFile(join(app, 'package.json'), '{ "version": "1.2.0" }\n')
     await standIn('npm', `mkdir -p "${join(app, 'dist/mac-arm64')}"`)
     await standIn('osascript', '')
-    await standIn('sleep', '')
-    await standIn('pgrep', 'exit 1')
   })
   afterEach(() => rm(folder, { recursive: true, force: true }))
 
@@ -50,15 +48,15 @@ describe('refreshing the installed app', () => {
     await expect(stat(lock())).rejects.toThrow()
   })
 
-  it('waits for the app to quit, rather than pulling it out from under you', async () => {
-    await standIn('pgrep', `[ "$(grep -c '^pgrep' "${join(folder, 'journal')}")" -ge 3 ] && exit 1\nexit 0`)
+  it('installs while the app is open, without waiting for it to quit', async () => {
+    await standIn('pgrep', 'exit 0')
 
     await refresh()
 
     const said = await journal()
-    expect(said).toContain('Quit Queue-tea')
-    expect(said.indexOf('sleep')).toBeGreaterThan(-1)
-    expect(said.indexOf('install\n')).toBeGreaterThan(said.indexOf('sleep'))
+    expect(said).toContain('install\n')
+    expect(said).not.toContain('Quit')
+    expect(said).toContain('Version 1.2.0 is installed')
   })
 
   it('says so when the build fails, and installs nothing', async () => {

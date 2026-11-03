@@ -26,9 +26,9 @@ npm run dev
 npm run install-app   # builds, then copies Queue-tea.app to /Applications
 ```
 
-Quit the app first. The build is signed ad hoc, so the first time macOS may ask you to confirm opening it. `npm run package` only builds, into `dist/`, and `npm run package:stage` builds a stage app that installs beside it. Install command line tool… in the app's menu then gives you `queue-tea open [path]`.
+The app can stay open. The build is signed ad hoc, so the first time macOS may ask you to confirm opening it. `npm run package` only builds, into `dist/`, and `npm run package:stage` builds a stage app that installs beside it. Install command line tool… in the app's menu then gives you `queue-tea open [path]`.
 
-You rarely need to run this by hand: after every commit `tools/refresh_app.sh` does it in the background. It tells you with a notification when the new version is in, or asks you to quit the app first if it's open, and what it did is in `~/Library/Logs/Queue-tea/refresh.log`. About Queue-tea in the app's menu shows which version you have.
+You rarely need to run this by hand: after every commit `tools/refresh_app.sh` does it in the background. It tells you with a notification when the new version is in, and what it did is in `~/Library/Logs/Queue-tea/refresh.log`. An open app moves to the new version by itself: it waits until you're in another app with no dialog open, no text field in use and nothing being saved, then restarts behind what you're using, on the same screen and in the same place. A new major version (2.0.0, 3.0.0) asks first if you're using the window, with Restart now and Later. Sessions in Terminal keep running through a restart. About Queue-tea in the app's menu shows which version you have.
 
 ## Check it
 

@@ -27,7 +27,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 - **The other 2.0 sub-projects:** helpers handed work from the Guild Hall (2), Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4) and lifecycle hardening (5). No placeholders for any of them.
 - **Windows.** It comes after the Mac (see Decisions).
 - **A phone or web app.** The window talks to the engine through one typed API, so HTTP can sit behind it later.
-- **Also left out:** a menu-bar cup, notarisation and auto-update.
+- **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own commits.
 - **From the game:** a shop to spend gold, naming the dragon, and quests or rewards from the helpers.
 - **Commit, Push, Merge and Pull buttons, ever.** Git commands appear only as text to copy (criterion 3 of the design).
 
@@ -49,7 +49,8 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | Description and criteria | On every task, collapsed when empty | Any task becomes a feature once it has children |
 | VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
 | The rest | The suggested answers in section 8 of the design | Rohan took them all on 2026-10-27 |
-| Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and auto-update would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
+| Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and downloaded updates would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
+| Updating an open app | Added 2026-11-03. Each commit's build is swapped in under the open app, which restarts itself when you're away from it with nothing half done, back on the same screen and in the same place. A new major version asks first if you're using the window | Rohan asked that an update never stop his work unless it's a big one. Restarting is the only way to run new code: the open app can't reload its own files |
 
 ## Architecture
 
@@ -98,6 +99,20 @@ Edits are optimistic. The window changes in the same frame, main writes within 3
 ### Watching for changes
 
 Main watches the folders `~/.queue-tea/projects` and `~/.queue-tea/sessions`, not single files: the atomic replace swaps the file, so a watch on the file goes stale. Because `fs.watch` on macOS can drop or repeat events, every event is checked against the file's `mtimeMs`. A changed record is reloaded and sent to the window, its changed rows flash, and a field being edited keeps its text (section 4.16 of the design).
+
+### Updating while open
+
+`tools/install_app.sh` copies the new build in beside the open app and swaps it in by renaming, never by writing over files: macOS kills an app whose open files change under it, and a renamed bundle keeps everything the open app has already read.
+
+Every 30 seconds a packaged app compares the version in its bundle's `Info.plist` with its own. When they differ, the rules in `main/features/update/domain/update_watch.ts` decide:
+
+| Situation | What the app does |
+| --- | --- |
+| No window of ours has the keyboard, and nothing is half done | Restarts behind what you're using (`open -g`, then `showInactive`) |
+| You're using the window, minor or patch version | Waits |
+| You're using the window, new major version | Asks once: Restart now, or Later. Later waits like a minor one |
+
+Half done means a dialog is open, a text field holds the keyboard, or an engine call that changes something is still running. Calls that only read (`list-`, `read-`, `check-`) don't count: the window rereads every 30 seconds, so they would hold an update off for good. Before it exits, the app writes the window's screen and bounds to `restart.json` in its settings folder. The new copy reads it once, deletes it and opens the window there. With no window open, the new copy opens none until the Dock icon is clicked.
 
 ### Sessions: the mod tells the app where Claude Code is
 

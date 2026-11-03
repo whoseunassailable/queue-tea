@@ -82,6 +82,14 @@ export const MESSAGES = {
   startedFirst: (other: string, title: string) => `${other} was started first, maybe in another session, so ${title} waits on the board.`,
 } as const
 
+// The one question an update asks, for a new major version.
+export const UPDATE_TEXT = {
+  ready: (version: string) => `Queue-tea ${version} is installed`,
+  detail: "It's a big update, so Queue-tea restarts to use it. Your quests are saved, and sessions in Terminal keep running. Choose Later and it restarts on its own the next time you step away.",
+  restartNow: 'Restart now',
+  later: 'Later',
+} as const
+
 // The engine's refusals, in the screens' words. Whole phrases only, so a quest
 // that happens to have "task" in its title keeps it.
 const GAME_WORDS: readonly (readonly [string, string])[] = [

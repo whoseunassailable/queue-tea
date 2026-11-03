@@ -33,13 +33,7 @@ refresh() {
   [ ! -e "$lock/again" ] || return 0
 
   version=$(node -p "require('./package.json').version")
-  if pgrep -x Queue-tea >/dev/null; then
-    say "Version $version is ready. Quit Queue-tea and it installs itself."
-    while pgrep -x Queue-tea >/dev/null; do
-      [ ! -e "$lock/again" ] || return 0
-      sleep 5
-    done
-  fi
+  # An open app moves over by itself; see install_app.sh.
   sh tools/install_app.sh || return 1
   rm -rf dist
   say "Version $version is installed."

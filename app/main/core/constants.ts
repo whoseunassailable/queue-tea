@@ -20,3 +20,11 @@ export const GH_PATHS = ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', '/usr/bin/
 export const GH_CODE_WAIT_MS = 20_000
 // As long as GitHub's own one-time code lasts.
 export const GH_LOGIN_WAIT_MS = 15 * 60_000
+
+// How often the app looks for a newer copy of itself on disk.
+export const UPDATE_CHECK_MS = 30_000
+// Left in the settings folder by an update restart, for the new copy to read once.
+export const RESTART_FILE = 'restart.json'
+// Run in the window: true while a restart would lose something, which is a
+// dialog open or a text field holding the keyboard.
+export const BUSY_PROBE = "document.querySelector('[role=dialog]') !== null || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName ?? '') || document.activeElement?.isContentEditable === true"

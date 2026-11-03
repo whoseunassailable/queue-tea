@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { EngineApi, GitHold, ProjectView, Reply, StartCheck, StartOutcome } from '../../../../../shared/engine_api'
+import type { ContinueOutcome, EngineApi, GitHold, ProjectView, Reply, StartCheck, StartOutcome } from '../../../../../shared/engine_api'
 import { t } from '../../../../l10n/en'
 import { activeQuest, fakeEngine, projectView, VICTORY } from '../../../../test_support'
 import { createWorkspace } from '../../../workspace/state_management/workspace_store'
@@ -32,6 +32,20 @@ const open = async (over: Partial<EngineApi> = {}, view: ProjectView = projectVi
 const started = (over: Partial<Extract<StartOutcome, { kind: 'started' }>> = {}): Reply<StartOutcome> => ({
   ok: true,
   data: { kind: 'started', view: projectView(KEY, { active: ACTIVE }), branch: 'task/first', notice: null, handover: { kind: 'session' }, ...over },
+})
+
+describe('opening VS Code for the active quest', () => {
+  it.each([null, '2026-11-03T16:00:00-06:00'])('only asks to paste Claude when Claude owns the quest (Codex since: %s)', async codexSince => {
+    const active = { ...ACTIVE, codexSince }
+    const { flows, toasts } = await open(
+      { openClaude: async () => ({ ok: true, data: { kind: 'opened', terminal: 'vscode' } }) },
+      projectView(KEY, { active }),
+    )
+
+    await flows.openClaude(KEY, active)
+
+    expect(toasts()).toEqual(codexSince === null ? [t.flow.pasteVsCode] : [])
+  })
 })
 
 describe('Start', () => {
@@ -249,7 +263,7 @@ describe('Finish quest', () => {
   })
 
   it('says each badge earned, for a while longer than other toasts', async () => {
-    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: null, minutes: 1, victory: { ...VICTORY, newBadges: ['nightOwl'] } } }))
+    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: null, minutes: 1, victory: { ...VICTORY, newBadges: ['nightOwl'] }, isCodexTimeLost: false } }))
     const { flows, workspace } = await open({ finishQuest })
 
     await flows.finish(KEY, ACTIVE, 'hard', null)
@@ -258,7 +272,7 @@ describe('Finish quest', () => {
   })
 
   it('says it won with a toast when the game had no answer', async () => {
-    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: null, minutes: 14, victory: null } }))
+    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: null, minutes: 14, victory: null, isCodexTimeLost: false } }))
     const { flows, workspace, toasts } = await open({ finishQuest })
 
     await flows.finish(KEY, ACTIVE, 'hard', null)
@@ -276,7 +290,7 @@ describe('Finish quest', () => {
   })
 
   it('offers Try again when the log could not be written, and it works', async () => {
-    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: 'log.md', minutes: 1, victory: VICTORY } }))
+    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: 'log.md', minutes: 1, victory: VICTORY, isCodexTimeLost: false } }))
     const { engine, flows, workspace } = await open({ finishQuest })
 
     await flows.finish(KEY, ACTIVE, 'hard', null)
@@ -289,7 +303,7 @@ describe('Finish quest', () => {
   })
 
   it('offers Try again again when the retry fails too', async () => {
-    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: 'log.md', minutes: 1, victory: VICTORY } }))
+    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: 'log.md', minutes: 1, victory: VICTORY, isCodexTimeLost: false } }))
     const retryTaskLog = vi.fn<EngineApi['retryTaskLog']>(async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: 'log.md' } }))
     const { flows, workspace } = await open({ finishQuest, retryTaskLog })
     await flows.finish(KEY, ACTIVE, 'hard', null)
@@ -336,7 +350,7 @@ describe('Back to the board', () => {
 
   it('stays quiet while a session is asked, and the view shows it waiting', async () => {
     const asked = projectView(KEY, { active: activeQuest({ asking: 'putBack' }) })
-    const { flows, toasts, workspace } = await open({ putBackQuest: async () => ({ ok: true, data: { view: asked, went: 'asked', missedCheckpoint: null } }) })
+    const { flows, toasts, workspace } = await open({ putBackQuest: async () => ({ ok: true, data: { view: asked, went: 'asked', missedCheckpoint: null, isCodexTimeLost: false } }) })
 
     await flows.back(KEY, ACTIVE)
 
@@ -345,7 +359,7 @@ describe('Back to the board', () => {
   })
 
   it('tells of the checkpoint it missed, beside the quest', async () => {
-    const { flows, workspace } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: { lastAt: '2026-10-26T16:35:00+01:00' } } }) })
+    const { flows, workspace } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: { lastAt: '2026-10-26T16:35:00+01:00' }, isCodexTimeLost: false } }) })
 
     await flows.back(KEY, ACTIVE)
 
@@ -353,7 +367,7 @@ describe('Back to the board', () => {
   })
 
   it('tells of it with no checkpoint to fall back on', async () => {
-    const { flows, workspace } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: { lastAt: null } } }) })
+    const { flows, workspace } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: { lastAt: null }, isCodexTimeLost: false } }) })
 
     await flows.back(KEY, ACTIVE)
 
@@ -361,7 +375,7 @@ describe('Back to the board', () => {
   })
 
   it('a quest started again forgets the note', async () => {
-    const { flows, workspace } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: { lastAt: null } } }) })
+    const { flows, workspace } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: { lastAt: null }, isCodexTimeLost: false } }) })
     await flows.back(KEY, ACTIVE)
 
     await flows.start(KEY, { id: 'active', title: 'Active one' })
@@ -379,7 +393,7 @@ describe('Back to the board', () => {
   })
 
   it('sealing the active quest says Sealed, and keeps a failure for its form', async () => {
-    const putBackQuest = vi.fn<EngineApi['putBackQuest']>(async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: null } }))
+    const putBackQuest = vi.fn<EngineApi['putBackQuest']>(async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: null, isCodexTimeLost: false } }))
     const { flows, toasts } = await open({ putBackQuest })
 
     await flows.sealActive(KEY, ACTIVE, { reason: 'waiting' })
@@ -492,5 +506,170 @@ describe('copying', () => {
     await flows.copy('git status')
 
     expect(workspace.getState().toasts).toMatchObject([{ tone: 'error', text: "Couldn't copy that." }])
+  })
+})
+
+describe('Start in Codex', () => {
+  it('asks the engine for Claude Code when no platform is given', async () => {
+    const { engine, flows } = await open({ startQuest: vi.fn<EngineApi['startQuest']>(async () => started()) })
+
+    await flows.start(KEY, QUEST)
+
+    expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'first', 'claude')
+  })
+
+  it('asks the engine to start it in Codex, and says it set out with Codex', async () => {
+    const { engine, flows, toasts } = await open({ startQuest: vi.fn<EngineApi['startQuest']>(async () => started()) })
+
+    await flows.start(KEY, QUEST, 'codex')
+
+    expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'first', 'codex')
+    expect(toasts()).toEqual([t.flow.setOutCodex('First quest', 'task/first')])
+  })
+
+  it('keeps Codex through a hold, so Check again starts it in Codex', async () => {
+    const checkStart = vi.fn<EngineApi['checkStart']>(async () => ({ ok: true, data: { kind: 'held', hold: HOLD } }))
+    const startQuest = vi.fn<EngineApi['startQuest']>(async () => started())
+    const { flows, flow } = await open({ checkStart, startQuest })
+
+    await flows.start(KEY, QUEST, 'codex')
+    expect(flow()).toMatchObject({ kind: 'held', platform: 'codex' })
+
+    checkStart.mockResolvedValue({ ok: true, data: { kind: 'clear', step: { kind: 'noRepo' } } })
+    await flows.checkAgain(KEY)
+
+    expect(startQuest).toHaveBeenCalledTimes(1)
+    expect(startQuest).toHaveBeenCalledWith(KEY, 'first', 'codex')
+  })
+
+  it('keeps Codex through a hold at the start itself, and through a refusal', async () => {
+    const startQuest = vi.fn<EngineApi['startQuest']>(async () => ({ ok: true, data: { kind: 'held', hold: HOLD } }))
+    const { flows, flow } = await open({ startQuest })
+
+    await flows.start(KEY, QUEST, 'codex')
+    expect(flow()).toMatchObject({ kind: 'held', platform: 'codex' })
+
+    startQuest.mockResolvedValueOnce({ ok: false, error: { message: 'The other one was started first.' } })
+    await flows.checkAgain(KEY)
+    expect(flow()).toMatchObject({ kind: 'refused', platform: 'codex' })
+
+    startQuest.mockResolvedValueOnce(started())
+    await flows.checkAgain(KEY)
+    expect(startQuest.mock.calls.map(call => call[2])).toEqual(['codex', 'codex', 'codex'])
+  })
+
+  it('says the Codex line is copied when VS Code has to have it pasted', async () => {
+    const { flows, toasts } = await open({ startQuest: async () => started({ handover: { kind: 'opened', terminal: 'vscode' } }) })
+
+    await flows.start(KEY, QUEST, 'codex')
+
+    expect(toasts()).toContain(t.flow.pasteCodex)
+    expect(toasts()).not.toContain(t.flow.pasteVsCode)
+  })
+})
+
+const moved = (over: Partial<ContinueOutcome> = {}): Reply<ContinueOutcome> => ({
+  ok: true,
+  data: { view: projectView(KEY, { active: { ...ACTIVE, codexSince: '2026-10-27T18:50:00+01:00' } }), handover: { kind: 'opened', terminal: 'terminal' }, isCodexTimeLost: false, ...over },
+})
+
+describe('Continue in', () => {
+  it('shows its line while the quest moves to Codex, then says Codex has it', async () => {
+    const move = held<ContinueOutcome>()
+    const continueIn = vi.fn<EngineApi['continueIn']>(() => move.reply)
+    const { flows, flow, toasts, workspace } = await open({ continueIn })
+
+    const running = flows.continueIn(KEY, ACTIVE, 'codex')
+    expect(flow()).toMatchObject({ kind: 'working', line: t.flow.toCodex })
+
+    move.release(moved())
+    await running
+
+    expect(continueIn).toHaveBeenCalledWith(KEY, 'active', 'codex')
+    expect(flow()).toBeUndefined()
+    expect(toasts()).toEqual([t.flow.nowCodex('Active one')])
+    expect(workspace.getState().project).toMatchObject({ data: { active: { codexSince: '2026-10-27T18:50:00+01:00' } } })
+  })
+
+  it('bringing it back says Claude Code has it again', async () => {
+    const { flows, flow, toasts } = await open({ continueIn: async () => moved() })
+
+    const running = flows.continueIn(KEY, ACTIVE, 'claude')
+    expect(flow()).toMatchObject({ kind: 'working', line: t.flow.toClaude })
+    await running
+
+    expect(toasts()).toEqual([t.flow.nowClaude('Active one')])
+  })
+
+  it('a refusal leaves the quest where it was, says why, and Try again asks again', async () => {
+    const refusal = 'Claude Code is still working on Active one. Nothing has changed.'
+    const continueIn = vi.fn<EngineApi['continueIn']>(async () => ({ ok: false, error: { message: refusal } }))
+    const { flows, flow, workspace } = await open({ continueIn })
+
+    await flows.continueIn(KEY, ACTIVE, 'codex')
+
+    expect(flow()).toBeUndefined()
+    const toast = workspace.getState().toasts[0]
+    expect(toast).toMatchObject({ tone: 'error', text: refusal, action: { label: t.failed.tryAgain } })
+    toast?.action?.run()
+    await vi.waitFor(() => expect(continueIn).toHaveBeenCalledTimes(2))
+    expect(continueIn).toHaveBeenLastCalledWith(KEY, 'active', 'codex')
+  })
+
+  it('keeps the line to copy when Codex would not open', async () => {
+    const { flows, flow } = await open({ continueIn: async () => moved({ handover: { kind: 'failed', terminal: 'iterm', command: "cd '/p' && codex 'brief'" } }) })
+
+    await flows.continueIn(KEY, ACTIVE, 'codex')
+
+    expect(flow()).toEqual({ kind: 'openFailed', terminal: 'iterm', command: "cd '/p' && codex 'brief'" })
+  })
+
+  it('a second press while it moves asks nothing more', async () => {
+    const move = held<ContinueOutcome>()
+    const continueIn = vi.fn<EngineApi['continueIn']>(() => move.reply)
+    const { flows } = await open({ continueIn })
+
+    const running = flows.continueIn(KEY, ACTIVE, 'codex')
+    await flows.continueIn(KEY, ACTIVE, 'codex')
+    move.release(moved())
+    await running
+
+    expect(continueIn).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("Codex's time not added", () => {
+  it('says so, for a while, when a quest comes back to Claude Code', async () => {
+    const { flows, workspace } = await open({ continueIn: async () => moved({ isCodexTimeLost: true }) })
+
+    await flows.continueIn(KEY, ACTIVE, 'claude')
+
+    expect(workspace.getState().toasts).toContainEqual(expect.objectContaining({ tone: 'error', text: t.flow.codexTimeLost, isLong: true }))
+  })
+
+  it('says so when a quest is finished', async () => {
+    const { flows, toasts } = await open({
+      finishQuest: async key => ({ ok: true, data: { view: projectView(key), logPath: 'log.md', logFailedAt: null, minutes: 14, victory: VICTORY, isCodexTimeLost: true } }),
+    })
+
+    await flows.finish(KEY, ACTIVE, 'hard', null)
+
+    expect(toasts()).toContain(t.flow.codexTimeLost)
+  })
+
+  it('says so when a quest goes back', async () => {
+    const { flows, toasts } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: null, isCodexTimeLost: true } }) })
+
+    await flows.back(KEY, ACTIVE)
+
+    expect(toasts()).toContain(t.flow.codexTimeLost)
+  })
+
+  it('says nothing of it when the time was added', async () => {
+    const { flows, toasts } = await open({ putBackQuest: async key => ({ ok: true, data: { view: projectView(key), went: 'back', missedCheckpoint: null, isCodexTimeLost: false } }) })
+
+    await flows.back(KEY, ACTIVE)
+
+    expect(toasts()).not.toContain(t.flow.codexTimeLost)
   })
 })

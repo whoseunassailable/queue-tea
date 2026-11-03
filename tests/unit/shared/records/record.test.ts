@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { backupPath, carryOverRecords, emptyRecord, parseRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
 import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../hooks/shared/records/domain/services/helpers'
 import { newTask } from '../../../../hooks/shared/records/domain/services/queue_rules'
-import type { ProjectRecord } from '../../../../types'
+import type { ProjectRecord, Task } from '../../../../types'
 import { makeTask, memoryHost } from '../../../helpers'
 
 const FILE = recordPath('/Users/example', 'example-app-abc123')
@@ -320,4 +320,23 @@ test('onlyHelpers drops repeats and keeps the list order', () => {
 test('isHelperId knows only the four', () => {
   expect(isHelperId('tea-dd')).toBe(true)
   for (const v of ['general-purpose', '', 3, null]) expect(isHelperId(v)).toBe(false)
+})
+
+test("a task saved before Codex reads as Claude Code's, and a new task starts with Claude Code", () => {
+  const old = makeTask({ state: 'current' }) as Partial<Task>
+  delete old.codexSince
+  const read = parseRecord(json({ ...emptyRecord('p', '/p'), tasks: [old as Task] }))
+
+  expect(read === 'unreadable' ? 'unreadable' : read.tasks[0]?.codexSince).toBeNull()
+  expect(newTask({ title: 'X', priority: 'mid', difficulty: 'light', messages: [], now: '2026-10-21T09:00:00+02:00', id: 't-1' }).codexSince).toBeNull()
+})
+
+test('when a task went to Codex survives a write and a read', async () => {
+  const mem = memoryHost()
+  const task = makeTask({ state: 'current', codexSince: '2026-10-21T09:00:00+02:00' })
+
+  await updateRecord(mem.host, FILE, r => ({ ...r, tasks: [task] }), 'p', '/p')
+  const read = await readRecord(mem.host, FILE, 'p', '/p')
+
+  expect(read === 'unreadable' ? 'unreadable' : read.tasks[0]?.codexSince).toBe('2026-10-21T09:00:00+02:00')
 })

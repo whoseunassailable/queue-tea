@@ -201,3 +201,46 @@ describe('Put it back now, without one', () => {
     expect((await putBackNow(deps, KEY, 'one')).ok).toBe(false)
   })
 })
+
+describe('Back to the board for a quest with Codex', () => {
+  const CODEX_SINCE = '2026-10-27T18:00:00+01:00'
+
+  it('goes back straight away with its time on Codex, though a session is open, asking it nothing', async () => {
+    await session()
+    await seed({ tasks: [active({ codexSince: CODEX_SINCE })] })
+    const dir = join(home, '.codex/sessions/2026/10/27')
+    await mkdir(dir, { recursive: true })
+    // 10 minutes with Codex.
+    await writeFile(
+      join(dir, 'rollout-a.jsonl'),
+      `${JSON.stringify({ timestamp: '2026-10-27T17:00:00Z', type: 'session_meta', payload: { cwd: PATH } })}\n${JSON.stringify({ timestamp: '2026-10-27T17:10:00Z', type: 'event_msg' })}\n`,
+    )
+
+    const outcome = data(await putBackQuest(deps, KEY, 'one', null))
+
+    expect(outcome).toMatchObject({ went: 'back', missedCheckpoint: null, isCodexTimeLost: false })
+    expect((await onDisk()).tasks[0]).toMatchObject({ state: 'queued', codexSince: null, branch: 'task/fix', minutesByDay: { '2026-10-27': 24 } })
+    expect((await onDisk()).requests).toEqual([])
+  })
+
+  it("still goes back when Codex's log can't be read, and says its time on Codex wasn't added", async () => {
+    await seed({ tasks: [active({ codexSince: CODEX_SINCE })] })
+    const exists = deps.host.exists
+    deps = {
+      ...deps,
+      host: {
+        ...deps.host,
+        exists: async path => {
+          if (path.includes('/.codex/')) throw new Error('EPERM: operation not permitted')
+
+          return exists(path)
+        },
+      },
+    }
+
+    const outcome = data(await putBackQuest(deps, KEY, 'one', null))
+
+    expect(outcome).toMatchObject({ went: 'back', isCodexTimeLost: true })
+    expect((await onDisk()).tasks[0]).toMatchObject({ state: 'queued', codexSince: null, minutesByDay: { '2026-10-27': 14 } })
+  })
+})

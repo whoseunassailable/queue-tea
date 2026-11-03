@@ -198,7 +198,8 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   const isTab = TABS.some(tab => tab.route === route)
 
   const actionsFor = (view: ReadableView): QuestActions => ({
-    onStart: quest => void flows.start(view.key, quest),
+    onStart: (quest, platform) => void flows.start(view.key, quest, platform),
+    onContinueIn: (quest, platform) => void flows.continueIn(view.key, quest, platform),
     onFinish: quest => setSheet({ kind: 'finish', quest }),
     onBack: quest => void flows.back(view.key, quest),
     onBackNow: quest => void flows.backNow(view.key, quest),

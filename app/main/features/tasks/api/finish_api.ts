@@ -69,6 +69,7 @@ export const finishQuest = (d: TasksDeps, key: unknown, taskId: unknown, actual:
       logFailedAt: logged.logFailedAt,
       minutes: minutesOf(logged.record, id),
       victory: await victoryFor(d, scope, id),
+      isCodexTimeLost: finished.isCodexTimeLost,
     }
   })
 

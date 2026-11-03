@@ -4,6 +4,7 @@ import { Spinner } from '../../../../core/widgets/states'
 import { GoldReward, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
 import { askingLine } from '../../domain/flow_lines'
+import { ClaudeOut } from './claude_out'
 import type { QuestActions } from '../state_management/flow_keys'
 
 type CardProps = { active: ActiveQuest; session: SessionInfo; actions: QuestActions; kind: 'full' | 'compact'; onDetail?: () => void }
@@ -12,6 +13,7 @@ type CardProps = { active: ActiveQuest; session: SessionInfo; actions: QuestActi
 export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardProps) => {
   const started = active.started === null ? null : dayAndTime(active.started)
   const waiting = askingLine(active, session.state)
+  const isWithCodex = active.codexSince !== null
 
   return (
     <section class={kind === 'full' ? 'quest panel' : 'active-q panel'} aria-labelledby="active-title">
@@ -46,7 +48,9 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
           <span class="q-saga">{t.quest.effort(active.improvingMessages, active.filesChanged)}</span>
         </div>
       )}
-      {waiting === null ? (
+      {isWithCodex ? (
+        <p class="q-status">{t.quest.withCodex(dayAndTime(active.codexSince!))}</p>
+      ) : waiting === null ? (
         <p class="q-status">{t.session[session.state]}</p>
       ) : (
         <ul class="steps" role="status">
@@ -58,6 +62,7 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
           </li>
         </ul>
       )}
+      {!isWithCodex && <ClaudeOut allowance={session.allowance} />}
       {active.asking === 'putBack' ? (
         <div class="q-actions">
           <button type="button" class="btn" onClick={() => actions.onBackNow(active)}>
@@ -67,7 +72,7 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
       ) : (
         <div class="q-actions">
           <button type="button" class="btn primary" onClick={actions.onOpenClaude}>
-            {t.actions.openClaude}
+            {isWithCodex ? t.actions.showCodex : t.actions.openClaude}
           </button>
           <button type="button" class="btn go" onClick={() => actions.onFinish(active)}>
             {t.actions.finish}
@@ -78,6 +83,14 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
           <button type="button" class="btn" onClick={() => actions.onSealActive(active)}>
             {t.actions.seal}
           </button>
+          <button type="button" class="btn" onClick={() => actions.onContinueIn(active, isWithCodex ? 'claude' : 'codex')}>
+            {isWithCodex ? t.actions.continueClaude : t.actions.continueCodex}
+          </button>
+          {isWithCodex && (
+            <button type="button" class="btn" onClick={() => actions.onContinueIn(active, 'codex')}>
+              {t.actions.reopenCodex}
+            </button>
+          )}
         </div>
       )}
     </section>

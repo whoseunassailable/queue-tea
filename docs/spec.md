@@ -20,7 +20,7 @@ Rohan works on several projects with Claude Code and wants to:
 
 - Switching to another task before the current one is done. An urgent task waits at the front of the queue.
 - Reopening a finished task. Coming back to it files a new task.
-- Time spent outside Claude Code, such as in the editor. The mod cannot see it.
+- Time spent outside Claude Code, such as in the editor. The mod cannot see it. Codex is the one exception: its time is read from its own log (see [Time](#time)).
 - The weekly board. It is a separate project with its own spec.
 
 ## Words used here
@@ -30,6 +30,7 @@ Rohan works on several projects with Claude Code and wants to:
 | Project | One git repository, taken at its top folder. A repository with an app, a server and a website in separate folders is one project. A folder that is not a git repository is a project too, without branches |
 | Task | One piece of work: a feature, a fix, a clean-up |
 | Current task | The one task being worked on in a project. There is at most one |
+| Codex | OpenAI's Codex CLI, which the workspace app can put on the current task in place of Claude Code. See [Codex in place of Claude Code](#codex-in-place-of-claude-code) |
 | Feature | A task with other tasks filed under it, one level deep. It is a task like any other: it waits in the queue, starts and finishes the same way |
 | Active feature | The feature Rohan says he is working within; new work is offered under it, never filed under it without his say |
 | Queue | The project's waiting tasks, in priority order |
@@ -104,6 +105,16 @@ A task can be filed under another, its feature (`parentId` in the record). One l
 ### Coming back later
 
 A session that opens in a project with a current task shows that task in the menu with **Continue**, above it a card of the note it carries on from: the checkpoint Claude wrote, or a plain handoff note when that is newer or the only one. Continue sends the first message from that note and the task's messages. When the checked-out branch is not the task's branch, the menu says so and offers **Switch**. Switch works only when nothing is uncommitted; otherwise the menu says what is uncommitted and leaves it to Rohan.
+
+### Codex in place of Claude Code
+
+In the workspace app ([workspace-app.md](workspace-app.md)), a task can run on OpenAI's Codex CLI instead of Claude Code. Claude Code stays the default; Codex is there for when the 5-hour allowance runs out partway through a task. The mod's menu has no Codex buttons, so every move below is made in the app. There is still at most one current task.
+
+- **Starting on Codex.** **Start in Codex** runs the git check and makes or switches the branch as [Starting a task](#starting-a-task) does. Then, in place of the fresh conversation, the app writes a brief to `~/.queue-tea/briefs/<task id>.md` and opens the terminal chosen in its Settings, in the project's folder, running `codex --sandbox workspace-write --ask-for-approval on-request "<brief>"`. The brief is read from that file, so its quotes and line breaks reach Codex intact. With VS Code as the terminal, the folder opens and the line is copied to paste. No Claude Code session is asked to do anything.
+- **The brief.** Queue-tea's rules come first: stay in the project's folder and on the task's branch; never commit, push, merge, rebase, cherry-pick, revert, reset or tag, and never run `gh pr merge`; ask before deleting files outside the task's own changes, installing software or reaching the network; name the command and what it printed when saying a check passed; say when the task looks done and what's left. After them comes the same first message Claude Code gets: the title, the description and criteria, the messages filed with the task, its latest checkpoint or handoff note, and what git says now.
+- **Moving to Codex.** **Continue in Codex** moves the current task to Codex. While a Claude Code turn is running in the project it is refused and nothing changes; the app says to wait for the turn to end, or stop it with Esc, and try again. Otherwise any request the app left for a session about this task is dropped, so Claude Code won't take it up, and Codex opens with the brief. No checkpoint is written for the move: the brief carries the latest one.
+- **Back to Claude Code.** **Continue in Claude Code** adds the task's time on Codex (see [Time](#time)) and hands the task over the way the app's Start does: a request to an open session, or a terminal running `claude`. Codex's window stays open, and the app's toast asks Rohan to close it so only one works on the task. Pressing **Continue** in a Claude Code session's menu does the same: it adds the time on Codex first, then Claude takes the task.
+- **While Codex has the task,** a Claude Code session in the project still counts its time, but to the project, as when no task is current; its messages and files go to no task. Putting the task back, from the menu or the app, writes no handoff note, since Claude has nothing to note.
 
 ## The message check
 
@@ -301,6 +312,7 @@ Each write first takes a lock, a folder beside the file (`<record>.lock`) that o
 - created, started and finished dates
 - time, per day
 - effort (below)
+- when it went to Codex (`codexSince`), or null while Claude Code has it. A record from before Codex reads as Claude Code's
 
 An example with made-up values:
 
@@ -341,6 +353,8 @@ An example with made-up values:
 
 The time between two moments of activity (a message of Rohan's, a turn of Claude's starting or ending, a tool call) counts when the gap is 15 minutes or less, and not at all when it is longer. It goes to the current task, by day, so a week adds up across days. Quick questions, and anything while no task is current, count toward the project (`unassignedMinutesByDay`) and no task.
 
+Codex runs without the mod, so its time comes from Codex's own session logs, `~/.codex/sessions/<yyyy>/<mm>/<dd>/rollout-*.jsonl`. When a task leaves Codex (Done, Back to queue, Blocked…, or **Continue in Claude Code**), Queue-tea reads the sessions run in the project's folder since the task went to Codex and adds their time to the task by the same 15-minute rule, by day. When the log can't be read, the action still happens without that time, and the menu's notice (or a toast in the app) says "Couldn't read Codex's log, so this task's time on Codex wasn't added." Only the day folders from the day before the move to the day after now are read, so a Codex session started earlier than that and carried on since is missed. While Codex has the task, a Claude Code session's time goes to the project.
+
 ### Effort
 
 - Understanding and improving messages, from the message check.
@@ -377,6 +391,8 @@ It finds them inside chained commands (`cd x && git commit`) and with `git -C <p
 
 Because the guard can miss a spelling, the mod also looks after each turn: it notes the commit checked out when a turn starts, and when the turn ends on the same branch with new commits on top, a toast and a warning line in the menu name them ("During the last turn a commit appeared: 1a2b3c4 …"). A commit Rohan makes in another terminal during a turn is named too; the line asks him to check it was his. A change of branch is not counted.
 
+None of this covers a task on Codex, which runs without the mod: no guard, no message check, no band and no effort counts. In their place, the app always starts Codex with `--sandbox workspace-write --ask-for-approval on-request`, whatever Rohan's Codex config says. The workspace-write sandbox keeps `.git` read-only, so Codex can't commit: on Codex 0.141.0, `git add` fails with "Operation not permitted" on `.git/index.lock`. With on-request approval, anything that would run outside the sandbox waits for Rohan's yes. The brief asks for the same in words ([Codex in place of Claude Code](#codex-in-place-of-claude-code)).
+
 ## Helpers
 
 Subagents that come with the plugin, in `agents/`, one file each. Claude hands one a piece of a task when Rohan names it or the work matches its description; Rohan can also @-mention it. Each starts with skills from other plugins (the `skills` field), loaded in full when it is spawned as a subagent; a skill that isn't installed is left out. They are subagents, so the [git guard](#the-git-guard) refuses their commits and pushes too.
@@ -408,6 +424,9 @@ Each also follows the project's graphify rule: with `graphify-out/graph.json` pr
 | Record written by a newer Queue-tea | The failed state says to update Queue-tea, and offers no copy: an older one would lose the newer work |
 | Record cannot be written | Nothing is cleared or started; the error goes to the debug log |
 | Two sessions in one project | They share the record, one write at a time; the menu reads it again after each turn |
+| **Continue in Codex** while a Claude Code turn runs | Refused, and nothing changes. The app says to wait for the turn to end or stop it with Esc, then try again |
+| Codex's log can't be read when a task leaves Codex | The task still finishes, goes back or moves; its time on Codex isn't added, and a notice or toast says so |
+| The brief can't be written | Codex isn't opened, and the app shows its open-failed card, as for a terminal that won't open |
 
 ## Settings
 

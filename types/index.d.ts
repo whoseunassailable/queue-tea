@@ -68,7 +68,13 @@ export type Task = {
   review: { at: string; checked: string | null } | null
   // Which helpers Claude works with on this task, which have run, and whether Claude has had its one reminder at done.
   helpers: TaskHelpers
+  // When the task went to the Codex CLI; null while Claude Code has it. Codex
+  // runs without the mod, so its time is read from Codex's log when it leaves.
+  codexSince: string | null
 }
+
+// Who works on a task in progress.
+export type Platform = 'claude' | 'codex'
 
 // What the app asks an open session to do. The session removes it under the
 // lock as it takes it, so with two sessions only one acts. A putBack can carry

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import type { Platform } from '../../../../../types'
 
 import type { ActiveQuest, EngineApi, GameView, GitHold, ProjectRow, ProjectView, Reply, Settings, SkyChoice, TerminalChoice, Victory } from '../../../../shared/engine_api'
 import { ask } from '../../../core/api/engine_client'
@@ -34,8 +35,8 @@ export type Edit = {
 // window's own, per realm.
 export type QuestFlow =
   | { kind: 'working'; questId: string; title: string; line: string }
-  | { kind: 'held'; questId: string; title: string; hold: GitHold; isChecking: boolean }
-  | { kind: 'refused'; questId: string; title: string; message: string }
+  | { kind: 'held'; questId: string; title: string; hold: GitHold; isChecking: boolean; platform: Platform }
+  | { kind: 'refused'; questId: string; title: string; message: string; platform: Platform }
   | { kind: 'openFailed'; terminal: TerminalChoice; command: string }
 
 export type Won = { victory: Victory; logPath: string | null }

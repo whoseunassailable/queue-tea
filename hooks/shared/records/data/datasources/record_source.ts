@@ -64,6 +64,7 @@ const withDefaults = (t: Partial<Task>): Task =>
     description: null,
     criteria: [],
     review: null,
+    codexSince: null,
     ...t,
     helpers: readHelpers(t.helpers),
   }) as Task

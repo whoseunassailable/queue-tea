@@ -218,3 +218,22 @@ describe('Finish quest', () => {
     expect(logged.join('\n')).toContain('folder went away')
   })
 })
+
+describe('Finish quest with Codex', () => {
+  it('adds its time on Codex first, so the win and the log row count it', async () => {
+    await seed({ docsLogPath: 'docs/task_log.md', tasks: [active({ id: 'one', title: 'Fix it', priority: 'high', codexSince: '2026-10-27T18:00:00+01:00', minutesByDay: { '2026-10-27': 14 } })] })
+    const dir = join(home, '.codex/sessions/2026/10/27')
+    await mkdir(dir, { recursive: true })
+    // 10 minutes with Codex.
+    await writeFile(
+      join(dir, 'rollout-a.jsonl'),
+      `${JSON.stringify({ timestamp: '2026-10-27T17:00:00Z', type: 'session_meta', payload: { cwd: repo } })}\n${JSON.stringify({ timestamp: '2026-10-27T17:10:00Z', type: 'event_msg' })}\n`,
+    )
+
+    const outcome = data(await finishQuest(deps, KEY, 'one', 'medium', null))
+
+    expect(outcome).toMatchObject({ minutes: 24, isCodexTimeLost: false })
+    expect((await onDisk()).tasks[0]).toMatchObject({ state: 'done', codexSince: null, minutesByDay: { '2026-10-27': 24 } })
+    expect(await readFile(join(repo, 'docs/task_log.md'), 'utf8')).toContain('| Fix it | High | Medium | 24m |')
+  })
+})

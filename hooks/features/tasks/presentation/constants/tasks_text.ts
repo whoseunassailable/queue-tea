@@ -35,6 +35,7 @@ export const STEEP_USAGE = (command: string): string => `Write the task after th
 export const STEEP_PICK = 'Pick its priority in the band above the prompt.'
 
 export const SAVING_CHECKPOINT = 'Saving a checkpoint…'
+export const CODEX_TIME_LOST = "Couldn't read Codex's log, so this task's time on Codex wasn't added."
 export const CHECKPOINT_FAILED = "Couldn't save a checkpoint, so Start will begin from what was saved before."
 export const BACK_IN_BACKLOG = (title: string): string => `Back in the backlog: ${title}`
 export const BLOCKED = (title: string): string => `Blocked: ${title}`

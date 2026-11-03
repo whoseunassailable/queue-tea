@@ -70,3 +70,18 @@ test('with no current task, minutes go to the project and nothing else changes',
   expect(after.unassignedMinutesByDay).toEqual({ '2026-10-21': 4 })
   expect(after.tasks[0]).toEqual(queued)
 })
+
+test("with Codex on the current task, the session's minutes go to the project and the task is left as it was", () => {
+  const tracker = createTracker(15, 0)
+  tracker.activity(T0)
+  tracker.toolCall('Read', { file_path: '/r/a.ts' })
+  tracker.toolCall('Edit', { file_path: '/r/b.ts' })
+  tracker.intent('improving')
+  tracker.activity(T0 + 4 * MIN)
+
+  const withCodex = makeTask({ state: 'current', codexSince: '2026-10-21T09:00:00+02:00', minutesByDay: { '2026-10-21': 2 } })
+  const after = applyPending({ ...emptyRecord('p', '/p'), tasks: [withCodex] }, tracker.take())
+
+  expect(after.unassignedMinutesByDay).toEqual({ '2026-10-21': 4 })
+  expect(after.tasks[0]).toEqual(withCodex)
+})

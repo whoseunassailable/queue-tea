@@ -1,4 +1,4 @@
-import type { ProjectRecord, Task } from '../../../../../types'
+import type { Platform, ProjectRecord, Task } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import { blockedText, isBlocked } from '../../../../shared/backlog/domain/services/ranking'
 import { holdReason, slugBranch } from '../../../../shared/git/domain/services/branch_rules'
@@ -19,7 +19,7 @@ export type StartResult =
   | { kind: 'started'; task: Task; notice: string | null; record: ProjectRecord }
 
 // The git check, then the claim, then the branch.
-export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string): Promise<StartResult> => {
+export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, platform: Platform = 'claude'): Promise<StartResult> => {
   const record = await d.records.read()
   if (record === 'unreadable') return { kind: 'unreadable' }
   const task = record.tasks.find(t => t.id === taskId)
@@ -74,6 +74,7 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string): Promi
           : {
               ...t,
               state: 'current',
+              codexSince: platform === 'codex' ? started : null,
               started: t.started ?? started,
               branch,
               baseBranch: isResumed ? t.baseBranch : git.isRepo ? git.branch : null,
@@ -106,6 +107,7 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string): Promi
             ? {
                 ...t,
                 state: 'queued',
+                codexSince: null,
                 started: before.started,
                 branch: before.branch,
                 baseBranch: before.baseBranch,

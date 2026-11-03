@@ -41,6 +41,7 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   criteria: [],
   helpers: ['tea-dd'],
   asking: null,
+  codexSince: null,
   ...over,
 })
 
@@ -229,11 +230,12 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     checkStart: vi.fn(async () => ({ ok: true as const, data: { kind: 'clear' as const, step: { kind: 'make' as const, branch: 'task/first', from: 'main' } } })),
     startQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { kind: 'started' as const, view: projectView(key), branch: 'task/first', notice: null, handover: { kind: 'session' as const } } })),
     openClaude: vi.fn(async () => ({ ok: true as const, data: { kind: 'opened' as const, terminal: 'terminal' as const } })),
+    continueIn: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), handover: { kind: 'opened' as const, terminal: 'terminal' as const }, isCodexTimeLost: false } })),
     notYet: vi.fn(reply),
-    finishQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: VICTORY } })),
+    finishQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: VICTORY, isCodexTimeLost: false } })),
     retryTaskLog: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null } })),
-    putBackQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: null } })),
-    putBackNow: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: { lastAt: null } } })),
+    putBackQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: null, isCodexTimeLost: false } })),
+    putBackNow: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: { lastAt: null }, isCodexTimeLost: false } })),
     copyText: vi.fn(async () => ({ ok: true as const, data: null })),
     onChange: listener => {
       listeners.add(listener)

@@ -1,3 +1,4 @@
+import type { Platform } from '../../../../../../types'
 import type { ActiveQuest, ProjectView } from '../../../../../shared/engine_api'
 import type { QuestFlow } from '../../../workspace/state_management/workspace_store'
 import type { QuestKey } from './quest_keys'
@@ -6,7 +7,8 @@ type Named = { id: string; title: string }
 
 // What the cards, the pages and the keys can ask of the quest in hand.
 export type QuestActions = {
-  onStart: (quest: Named) => void
+  onStart: (quest: Named, platform?: Platform) => void
+  onContinueIn: (quest: ActiveQuest, platform: Platform) => void
   onFinish: (quest: ActiveQuest) => void
   onBack: (quest: ActiveQuest) => void
   onBackNow: (quest: ActiveQuest) => void

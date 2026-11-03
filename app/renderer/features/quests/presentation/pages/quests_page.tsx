@@ -254,7 +254,8 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
         hasActive={view.active !== null}
         isBusy={flow?.kind === 'working'}
         note={open === null ? undefined : questNotes[open.quest.id]}
-        onStart={() => canStart(open) && actions.onStart(open.quest)}
+        onStart={platform => canStart(open) && actions.onStart(open.quest, platform)}
+        allowance={view.session.allowance}
         isActiveSaga={open !== null && view.activeSagaId === open.quest.id}
         isSaved={open !== null && open.quest.id === savedQuest}
         edits={edits}

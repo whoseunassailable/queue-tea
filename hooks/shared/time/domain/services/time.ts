@@ -21,6 +21,23 @@ export const addMinutes = (
   minutes: number,
 ): Record<string, number> => ({ ...byDay, [day]: round2((byDay[day] ?? 0) + minutes) })
 
+export const mergeMinutes = (byDay: Record<string, number>, more: Record<string, number>): Record<string, number> =>
+  Object.entries(more).reduce((sum, [day, minutes]) => addMinutes(sum, day, minutes), byDay)
+
+// Minutes per day from moments of activity, counted the way a session's are:
+// each gap up to the idle limit.
+export const minutesOfStamps = (stamps: number[], gapMinutes: number, offsetMinutes: number): Record<string, number> => {
+  let last: number | null = null
+  let byDay: Record<string, number> = {}
+  for (const ms of [...stamps].sort((a, b) => a - b)) {
+    const minutes = accrue(last, ms, gapMinutes)
+    if (minutes > 0) byDay = addMinutes(byDay, dayKey(ms, offsetMinutes), minutes)
+    last = ms
+  }
+
+  return byDay
+}
+
 export const formatMinutes = (m: number): string => {
   const whole = Math.floor(m)
   const hours = Math.floor(whole / 60)

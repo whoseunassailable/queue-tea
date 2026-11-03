@@ -1,5 +1,5 @@
 import type { Checkpoint, CommandRun, GitFacts, Task } from '../../../../../types'
-import { FIRST_MESSAGE_LABELS } from '../constants/checkpoints_text'
+import { CODEX_RULES, FIRST_MESSAGE_LABELS } from '../constants/checkpoints_text'
 import { firstObject } from './first_object'
 
 // A task's checkpoint: what Claude writes at a handoff, beside what
@@ -229,3 +229,7 @@ export const firstMessage = (task: Task, checked: string[] | null = null): strin
 
   return parts.join('\n\n')
 }
+
+// Codex's first prompt: Queue-tea's rules, then what Claude would get.
+export const codexBrief = (task: Task, folder: string, checked: string[] | null): string =>
+  `${CODEX_RULES(folder, task.branch)}\n\n${firstMessage(task, checked)}`

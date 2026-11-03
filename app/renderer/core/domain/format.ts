@@ -26,6 +26,10 @@ export const refillTime = (allowance: Allowance): string | null => {
   return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
 }
 
+// Claude's allowance is used up until it resets; unknown counts as not.
+export const isClaudeOut = (allowance: Allowance | null, nowMs: number): boolean =>
+  allowance !== null && allowance.percent >= 100 && (allowance.resetsAt === null || Date.parse(allowance.resetsAt) > nowMs)
+
 // Monday first, from a `YYYY-MM-DD` day: the text holds no time zone to get wrong.
 const weekdayIndex = (day: string): number => (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7
 

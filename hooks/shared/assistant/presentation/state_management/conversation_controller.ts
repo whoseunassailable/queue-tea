@@ -1,7 +1,8 @@
 import type { Ctx } from '../../../../core/env/env'
 import type { Ports } from '../../../../core/ports/ports'
 import type { Task } from '../../../../../types'
-import { checkLines, firstMessage } from '../../../checkpoints/domain/services/checkpoints'
+import { firstMessage } from '../../../checkpoints/domain/services/checkpoints'
+import { checkNowUseCase } from '../../../checkpoints/domain/usecases/check_now'
 import { gitRepositoryOf } from '../../../git/git_providers'
 import { recordsRepositoryOf } from '../../../records/records_providers'
 import { markUnreadable } from '../../../records/presentation/state_management/records_controller'
@@ -22,28 +23,11 @@ export const scheduleFresh = (p: Ports, ctx: Ctx, task: Task) => {
 // makes is not taken for one to recover from.
 export const isStartingFresh = () => isFreshPending
 
-// What the repository says now, beside the task's checkpoint; null for a
-// task with nothing saved yet, or when git can't be read.
-export const checkNow = async (p: Ports, ctx: Ctx, task: Task): Promise<string[] | null> => {
-  if (task.handoff === null && task.checkpoint === null) return null
-  try {
-    const git = gitRepositoryOf(p, ctx)
-    const now = await git.facts()
-    const drift = now === null ? [] : await git.drift(task)
-
-    return checkLines(task, now, drift)
-  } catch (err) {
-    p.log(`checking the repository failed: ${err instanceof Error ? err.message : String(err)}`)
-
-    return null
-  }
-}
-
 // When the clear or the first message fails, the task stays current and
 // Continue is offered, so it can be tried again.
 export const freshConversation = async (p: Ports, ctx: Ctx, task: Task): Promise<void> => {
   try {
-    const checked = await checkNow(p, ctx, task)
+    const checked = await checkNowUseCase(gitRepositoryOf(p, ctx), p.log, task)
     const assistant = assistantRepositoryOf(p)
     await assistant.clear()
     await assistant.submit(firstMessage(task, checked))

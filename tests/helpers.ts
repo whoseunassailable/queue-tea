@@ -44,6 +44,7 @@ export const makeTask = (over: Partial<Task> = {}): Task => {
     criteria: [],
     review: null,
     helpers: { on: [], ran: [], reminded: false },
+    codexSince: null,
     ...over,
   }
 }

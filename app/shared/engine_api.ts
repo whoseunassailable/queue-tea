@@ -1,4 +1,4 @@
-import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Priority, Task } from '../../types'
+import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -72,6 +72,8 @@ export type ActiveQuest = {
   helpers: HelperId[]
   // What an open session has been asked to do and hasn't yet.
   asking: AppRequest['kind'] | null
+  // When it went to Codex; null while Claude Code has it.
+  codexSince: string | null
 }
 
 export type VictoryRow = { id: string; title: string; finished: string; minutes: number; xp: number }
@@ -241,6 +243,7 @@ export type StartCheck = { kind: 'held'; hold: GitHold } | { kind: 'clear'; step
 // How the quest reached Claude Code. Failed keeps the line to copy.
 export type Handover = { kind: 'session' } | { kind: 'opened'; terminal: TerminalChoice } | { kind: 'failed'; terminal: TerminalChoice; command: string }
 export type StartOutcome = { kind: 'held'; hold: GitHold } | { kind: 'started'; view: ProjectView; branch: string | null; notice: string | null; handover: Handover }
+export type ContinueOutcome = { view: ProjectView; handover: Handover; isCodexTimeLost: boolean }
 
 // What a win earned. Worked out after the win is saved.
 export type VictoryKind = 'quest' | 'boss' | 'saga'
@@ -263,12 +266,13 @@ export type Victory = {
 
 // logFailedAt is the path when the row couldn't be written; the win stands.
 export type LogOutcome = { view: ProjectView; logPath: string | null; logFailedAt: string | null }
-export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | null }
+// isCodexTimeLost: Codex's log couldn't be read, so its time wasn't added.
+export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | null; isCodexTimeLost: boolean }
 
 // Asked: an open session writes the checkpoint, then the quest goes back. Back:
 // it has gone. missedCheckpoint is set when Claude's checkpoint wasn't written,
 // with when the last one was.
-export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null }
+export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null; isCodexTimeLost: boolean }
 
 // The accounts gh knows. isWorking is false when a sign-in has lapsed. The app
 // never holds a token: they stay in gh.
@@ -331,8 +335,9 @@ export type EngineApi = {
   readQuestFacts: (key: string, taskId: string) => Promise<Reply<QuestFacts>>
   switchBranch: (key: string) => Promise<Reply<null>>
   checkStart: (key: string, taskId: string) => Promise<Reply<StartCheck>>
-  startQuest: (key: string, taskId: string) => Promise<Reply<StartOutcome>>
+  startQuest: (key: string, taskId: string, platform: Platform) => Promise<Reply<StartOutcome>>
   openClaude: (key: string) => Promise<Reply<Handover>>
+  continueIn: (key: string, taskId: string, platform: Platform) => Promise<Reply<ContinueOutcome>>
   notYet: (key: string, taskId: string) => Promise<Reply<ProjectView>>
   finishQuest: (key: string, taskId: string, actual: Difficulty, logPath: string | null) => Promise<Reply<FinishOutcome>>
   retryTaskLog: (key: string, taskId: string, path: string) => Promise<Reply<LogOutcome>>
@@ -391,6 +396,7 @@ export const CHANNELS = {
   checkStart: 'engine:check-start',
   startQuest: 'engine:start-quest',
   openClaude: 'engine:open-claude',
+  continueIn: 'engine:continue-in',
   notYet: 'engine:not-yet',
   finishQuest: 'engine:finish-quest',
   retryTaskLog: 'engine:retry-task-log',

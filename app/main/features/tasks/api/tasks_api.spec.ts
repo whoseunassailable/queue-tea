@@ -45,6 +45,7 @@ const task = (over: Partial<Task> & { id: string }): Task =>
     criteria: [],
     review: null,
     helpers: { on: ['tea-dd'], ran: [], reminded: false },
+    codexSince: null,
     ...over,
   }) as Task
 

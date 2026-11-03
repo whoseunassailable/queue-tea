@@ -59,6 +59,7 @@ export const newTask = (input: {
   criteria: [],
   review: null,
   helpers: defaultHelpers(),
+  codexSince: null,
 })
 
 export const setPriority = (tasks: Task[], id: string, priority: Priority): Task[] =>

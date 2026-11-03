@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveQuest, EngineApi, GitHold, ProjectRow, ProjectView, Reply, SessionState, Settings, StartCheck, Victory } from '../../../../shared/engine_api'
 import { App } from '../../../app/app'
+import { dayAndTime, refillTime } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
 import { activeQuest, fakeEngine, projectRow, projectView, quest, VICTORY } from '../../../test_support'
 import { createWorkspace } from '../../workspace/state_management/workspace_store'
@@ -45,7 +46,7 @@ describe('Start from Home', () => {
 
     await press(t.actions.startNamed('First quest'))
 
-    await waitFor(() => expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'first'))
+    await waitFor(() => expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'first', 'claude'))
   })
 
   it('s starts the main quest', async () => {
@@ -291,7 +292,7 @@ describe('the active quest', () => {
   })
 
   it('Back to the board and b both put it back', async () => {
-    const putBackQuest = vi.fn<EngineApi['putBackQuest']>(async () => ({ ok: true, data: { view: withActive(), went: 'asked', missedCheckpoint: null } }))
+    const putBackQuest = vi.fn<EngineApi['putBackQuest']>(async () => ({ ok: true, data: { view: withActive(), went: 'asked', missedCheckpoint: null, isCodexTimeLost: false } }))
     const { engine } = await open(withActive(), { putBackQuest })
 
     await press(t.actions.back)
@@ -518,7 +519,7 @@ describe('the Finish sheet', () => {
 
 describe('the victory', () => {
   const won = async (victory: Partial<Victory> = {}, settings: Partial<Settings> = {}, view: ProjectView = withActive()) => {
-    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: { ...BOARD, key }, logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: { ...VICTORY, ...victory } } }))
+    const finishQuest = vi.fn<EngineApi['finishQuest']>(async key => ({ ok: true, data: { view: { ...BOARD, key }, logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: { ...VICTORY, ...victory }, isCodexTimeLost: false } }))
     const opened = await open(view, {
       finishQuest,
       readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {}, ...settings } }),
@@ -616,5 +617,117 @@ describe('the victory', () => {
     await won()
 
     expect(document.querySelectorAll('.cn')).toHaveLength(8)
+  })
+})
+
+describe('Start in Codex', () => {
+  it('on Home, starts the main quest in Codex, beside Start ★', async () => {
+    const { engine } = await open(BOARD)
+
+    await press(t.actions.startCodex)
+
+    await waitFor(() => expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'first', 'codex'))
+  })
+
+  it('in the detail pane, starts the quest open in it in Codex', async () => {
+    window.location.hash = '#/quests'
+    const { engine, workspace } = await open(BOARD)
+    await act(async () => workspace.openQuest(KEY, 'second'))
+
+    await press(t.actions.startCodex)
+
+    await waitFor(() => expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'second', 'codex'))
+  })
+
+  it('is dimmed while a quest is active, and missing on a sealed quest', async () => {
+    window.location.hash = '#/quests'
+    const { workspace } = await open(withActive())
+    expect(button(t.actions.startCodex).disabled).toBe(true)
+
+    await act(async () => workspace.openQuest(KEY, 'stuck'))
+    expect(screen.queryByRole('button', { name: t.actions.startCodex })).toBeNull()
+  })
+})
+
+describe('the active quest and Codex', () => {
+  const SINCE = '2026-10-27T18:00:00+01:00'
+
+  it('with Claude Code, offers Continue in Codex, which moves it', async () => {
+    const { engine } = await open(withActive())
+
+    expect(button(t.actions.openClaude)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t.actions.reopenCodex })).toBeNull()
+    await press(t.actions.continueCodex)
+
+    await waitFor(() => expect(engine.continueIn).toHaveBeenCalledWith(KEY, 'active', 'codex'))
+  })
+
+  it('with Codex, says since when in place of the session, and offers Show Codex instead of Open in Claude Code', async () => {
+    const { engine } = await open(withActive({ codexSince: SINCE }))
+
+    expect(screen.getByText(t.quest.withCodex(dayAndTime(SINCE)))).toBeTruthy()
+    expect(screen.queryByText(t.session.open)).toBeNull()
+    expect(screen.queryByRole('button', { name: t.actions.openClaude })).toBeNull()
+    await press(t.actions.showCodex)
+
+    await waitFor(() => expect(engine.openClaude).toHaveBeenCalledWith(KEY))
+  })
+
+  it('with Codex, Continue in Claude Code brings it back, and Open Codex again opens Codex on it', async () => {
+    const view = withActive({ codexSince: SINCE })
+    const { engine } = await open(view, { continueIn: vi.fn(async () => ({ ok: true as const, data: { view, handover: { kind: 'opened' as const, terminal: 'terminal' as const }, isCodexTimeLost: false } })) })
+
+    await press(t.actions.continueClaude)
+    await waitFor(() => expect(engine.continueIn).toHaveBeenCalledWith(KEY, 'active', 'claude'))
+    await press(t.actions.reopenCodex)
+    await waitFor(() => expect(engine.continueIn).toHaveBeenLastCalledWith(KEY, 'active', 'codex'))
+  })
+
+  it('a refusal to move shows why, and the quest stays with Claude Code', async () => {
+    const message = 'Claude Code is still working on Active one. Wait for its turn to end, or stop it with Esc in its terminal, then try again. Nothing has changed.'
+    await open(withActive({}, 'working'), { continueIn: async () => ({ ok: false, error: { message } }) })
+
+    await press(t.actions.continueCodex)
+
+    expect(await screen.findByText(message)).toBeTruthy()
+    expect(button(t.actions.continueCodex)).toBeTruthy()
+  })
+})
+
+describe("when Claude's allowance is used up", () => {
+  const allowance = { percent: 100, resetsAt: new Date(Date.now() + 3_600_000).toISOString() }
+  const line = `! ${t.quest.claudeOut(refillTime(allowance))}`
+  const out = (view: ProjectView): ProjectView => ({ ...(view as Extract<ProjectView, { kind: 'readable' }>), session: { state: 'open', allowance } })
+
+  it('says Codex can carry on beside Start on Home, with Start ★ still first', async () => {
+    await open(out(BOARD))
+
+    expect(screen.getByText(line)).toBeTruthy()
+    const actions = screen.getAllByRole('button').map(b => b.textContent)
+    expect(actions.indexOf(t.actions.startNamed('First quest'))).toBeLessThan(actions.indexOf(t.actions.startCodex))
+  })
+
+  it('says so in the detail pane of a quest that can start', async () => {
+    window.location.hash = '#/quests'
+    const { workspace } = await open(out(BOARD))
+    await act(async () => workspace.openQuest(KEY, 'second'))
+
+    expect(within(screen.getByRole('complementary', { name: t.detail.label })).getByText(line)).toBeTruthy()
+  })
+
+  it('says so on a quest with Claude Code, and not on one with Codex', async () => {
+    await open(out(withActive()))
+    expect(screen.getByText(line)).toBeTruthy()
+    cleanup()
+
+    await open(out(withActive({ codexSince: '2026-10-27T18:00:00+01:00' })))
+    expect(screen.queryByText(line)).toBeNull()
+  })
+
+  it('says nothing while the allowance lasts', async () => {
+    await open({ ...(BOARD as Extract<ProjectView, { kind: 'readable' }>), session: { state: 'open', allowance: { percent: 99, resetsAt: allowance.resetsAt } } })
+
+    expect(screen.queryByText(line)).toBeNull()
+    expect(screen.queryByText(/allowance is used up/)).toBeNull()
   })
 })

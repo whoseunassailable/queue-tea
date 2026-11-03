@@ -17,6 +17,7 @@ import { helperToRemind } from '../../domain/services/task_rules'
 import type { Block } from '../../domain/services/task_rules'
 import { markRemindedUseCase, noteHelperUseCase } from '../../domain/usecases/helpers_run'
 import { finishTaskUseCase } from '../../domain/usecases/finish_task'
+import { leaveCodexUseCase } from '../../domain/usecases/leave_codex'
 import { putBackUseCase } from '../../domain/usecases/put_back'
 import { saveDocsPathUseCase } from '../../domain/usecases/save_docs_path'
 import { setReviewUseCase } from '../../domain/usecases/set_review'
@@ -24,7 +25,7 @@ import { startTaskUseCase } from '../../domain/usecases/start_task'
 import { switchToTaskUseCase } from '../../domain/usecases/switch_to_task'
 import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
-import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
+import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
 import { clearHold } from './hold'
 
 const DOCS_LOG = 'docs/task_log.md'
@@ -175,6 +176,7 @@ const finishOnce = async (p: Ports, ctx: Ctx, taskId: string, actual: Difficulty
   await p.set('record', result.record)
   await p.set('isAskingDone', false)
   await p.set('checked', null)
+  if (result.isCodexTimeLost) await p.set('notice', CODEX_TIME_LOST)
   if (result.askPath) {
     await showBand(p, { kind: 'docsPath', taskId, suggested: DOCS_LOG })
 
@@ -207,6 +209,12 @@ export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
   const current = record === null ? null : currentTask(record.tasks)
   if (current === null || isStartingFresh()) return
+  // Continuing here takes the task back from Codex, with Codex's time so far.
+  if (current.codexSince !== null) {
+    const deps = tasksDepsOf(p, ctx)
+    if (await leaveCodexUseCase(deps, ctx, current.id)) await p.set('notice', CODEX_TIME_LOST)
+    if ((await applySaved(p, ctx, await deps.records.read())) === null) return
+  }
   // Continue answers the app's begin too, so the task isn't started twice.
   const pending = record?.requests.find(q => q.kind === 'begin' && q.taskId === current.id)
   if (pending !== undefined) await takeRequestUseCase(tasksDepsOf(p, ctx), pending.id)
@@ -239,14 +247,16 @@ const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promis
   await p.set('busy', SAVING_CHECKPOINT)
   let isNoted: boolean
   try {
-    isNoted = (await writeHandoff(p, ctx, current.id)) !== null
+    // Claude Code has nothing to note for a task Codex was working on.
+    isNoted = current.codexSince !== null || (await writeHandoff(p, ctx, current.id)) !== null
   } catch (err) {
     p.log(`the handoff note failed: ${err instanceof Error ? err.message : String(err)}`)
     isNoted = false
   } finally {
     await p.set('busy', null)
   }
-  const saved = await applySaved(p, ctx, await putBackUseCase(tasksDepsOf(p, ctx), current.id, block))
+  const back = await putBackUseCase(tasksDepsOf(p, ctx), ctx, current.id, block)
+  const saved = await applySaved(p, ctx, back.saved)
   if (saved === null) return 'none'
 
   await p.set('isAskingDone', false)
@@ -256,6 +266,7 @@ const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promis
   await p.set('isChoosingNext', true)
   await p.set('drift', [])
   if (!isNoted) await p.set('notice', CHECKPOINT_FAILED)
+  if (back.isCodexTimeLost) await p.set('notice', CODEX_TIME_LOST)
   p.toast(block === undefined ? BACK_IN_BACKLOG(current.title) : BLOCKED(current.title))
 
   return 'queued'

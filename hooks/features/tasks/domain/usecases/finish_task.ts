@@ -2,20 +2,22 @@ import type { Difficulty, ProjectRecord } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import { isoLocal } from '../../../../shared/time/domain/services/time'
 import type { Deps } from './deps'
+import { leaveCodexUseCase } from './leave_codex'
 import { logRow } from './log_row'
 
 export type FinishResult =
   | { kind: 'unreadable' }
   | { kind: 'skipped' }
-  | { kind: 'saved'; record: ProjectRecord; askPath: boolean; logFailedAt: string | null }
+  | { kind: 'saved'; record: ProjectRecord; askPath: boolean; logFailedAt: string | null; isCodexTimeLost: boolean }
 
-// Marks the task done with its change size, then logs it. With no log path
+// Adds its time on Codex, marks the task done with its change size, then logs it. With no log path
 // yet, nothing is logged and the path is asked for.
 export const finishTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, actual: Difficulty): Promise<FinishResult> => {
   const record = await d.records.read()
   if (record === 'unreadable') return { kind: 'unreadable' }
   const before = record.tasks.find(t => t.id === taskId) ?? null
   if (before === null || before.state === 'done') return { kind: 'skipped' }
+  const isCodexTimeLost = await leaveCodexUseCase(d, ctx, taskId)
   let diff = { linesAdded: 0, linesRemoved: 0, filesTouched: 0 }
   if (before.startCommit) {
     try {
@@ -35,7 +37,7 @@ export const finishTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, actua
     ),
   }))
   if (saved === 'unreadable') return { kind: 'unreadable' }
-  if (saved.docsLogPath === null) return { kind: 'saved', record: saved, askPath: true, logFailedAt: null }
+  if (saved.docsLogPath === null) return { kind: 'saved', record: saved, askPath: true, logFailedAt: null, isCodexTimeLost }
 
-  return { kind: 'saved', record: saved, askPath: false, logFailedAt: await logRow(d, ctx, saved, taskId, saved.docsLogPath) }
+  return { kind: 'saved', record: saved, askPath: false, logFailedAt: await logRow(d, ctx, saved, taskId, saved.docsLogPath), isCodexTimeLost }
 }

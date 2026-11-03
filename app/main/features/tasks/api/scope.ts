@@ -3,6 +3,7 @@ import type { Ctx } from '../../../../../hooks/core/env/env'
 import { readOptions } from '../../../../../hooks/core/session/options'
 import { taskLogRepositoryImpl } from '../../../../../hooks/features/tasks/data/repositories/task_log_repository_impl'
 import type { Deps } from '../../../../../hooks/features/tasks/domain/usecases/deps'
+import { codexRepositoryImpl } from '../../../../../hooks/shared/codex/data/repositories/codex_repository_impl'
 import { gitRepositoryImpl } from '../../../../../hooks/shared/git/data/repositories/git_repository_impl'
 import { recordsRepositoryImpl } from '../../../../../hooks/shared/records/data/repositories/records_repository_impl'
 import type { Saved } from '../../../../../hooks/shared/records/domain/repositories/records_repository'
@@ -37,6 +38,7 @@ export const scopeOf = async (d: TasksDeps, key: unknown): Promise<Scope> => {
     records: recordsRepositoryImpl(d.host, ctx),
     git: gitRepositoryImpl(d.host, path),
     taskLog: taskLogRepositoryImpl(d.host, path),
+    codex: codexRepositoryImpl(d.host, d.home),
     env: { now: async () => d.now(), newId: d.newId, log: text => d.log.debug(text) },
   }
 

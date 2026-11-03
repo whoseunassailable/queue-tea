@@ -113,6 +113,7 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   criteria: task.criteria,
   helpers: task.helpers.on,
   asking: requests.find(q => q.taskId === task.id)?.kind ?? null,
+  codexSince: task.codexSince,
 })
 
 const victoryOf = (task: Task): VictoryRow => ({

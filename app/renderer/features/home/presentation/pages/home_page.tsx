@@ -13,6 +13,7 @@ import { runFlowKey } from '../../../quests/presentation/state_management/flow_k
 import type { QuestActions } from '../../../quests/presentation/state_management/flow_keys'
 import { useQuestKeys } from '../../../quests/presentation/state_management/quest_keys'
 import { ActiveCard } from '../../../quests/presentation/widgets/active_card'
+import { ClaudeOut } from '../../../quests/presentation/widgets/claude_out'
 import { TimeControl } from '../../../quests/presentation/widgets/board_tools'
 import { EmptyBoard } from '../../../quests/presentation/widgets/empty_board'
 import { FlowCard } from '../../../quests/presentation/widgets/flow_card'
@@ -49,10 +50,14 @@ const NoActive = ({ view, actions }: { view: View; actions: QuestActions }) => {
       <p class="q-line">{next === undefined ? t.quest.noneEmpty : t.quest.noneLine(next.title)}</p>
       {next?.why != null && <p class="hint">★ {next.why}</p>}
       <p class="q-status">{t.session[view.session.state]}</p>
+      {next !== undefined && <ClaudeOut allowance={view.session.allowance} />}
       {next !== undefined && (
         <div class="q-actions">
           <button type="button" class="btn primary" onClick={() => actions.onStart(next)}>
             {t.actions.startNamed(next.title)}
+          </button>
+          <button type="button" class="btn" onClick={() => actions.onStart(next, 'codex')}>
+            {t.actions.startCodex}
           </button>
         </div>
       )}

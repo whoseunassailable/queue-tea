@@ -14,7 +14,7 @@ import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import { makeTask } from './fixtures'
 import type { TasksDeps } from './scope'
-import { checkStart, copyText, openClaude, startQuest } from './start_api'
+import { checkStart, continueIn, copyText, openClaude, startQuest } from './start_api'
 
 const KEY = 'demo-abc123'
 const NOW = Date.parse('2026-10-27T17:50:00Z')
@@ -57,7 +57,7 @@ const started = (outcome: StartOutcome) => {
 
   return outcome
 }
-const session = async (over: { heartbeat?: number } = {}) => {
+const session = async (over: { heartbeat?: number; isTurnRunning?: boolean } = {}) => {
   await mkdir(join(home, '.queue-tea/sessions'), { recursive: true })
   await writeFile(join(home, '.queue-tea/sessions/s-1.json'), JSON.stringify({ id: 's-1', projectPath: repo, recordFile: file, currentTaskId: null, isTurnRunning: false, cup: { mood: 'idle', line: '' }, allowance: null, options: {}, heartbeat: NOW, startedAt: NOW, ...over }))
 }
@@ -207,7 +207,7 @@ describe('the check before Start', () => {
     await writeFile(file, JSON.stringify({ ...emptyRecord('demo', gone), tasks: [makeTask({ id: 'one' })] }))
 
     expect(refused(await checkStart(deps, KEY, 'one'))).toContain(gone)
-    expect(refused(await startQuest(deps, KEY, 'one'))).toContain(gone)
+    expect(refused(await startQuest(deps, KEY, 'one', 'claude'))).toContain(gone)
     expect((await onDisk()).tasks[0]!.state).toBe('queued')
   })
 })
@@ -216,7 +216,7 @@ describe('Start', () => {
   it('makes the branch from where it stood, claims the quest and opens a terminal with nothing open', async () => {
     await seed({ tasks: [makeTask({ id: 'one', title: 'Fix the documentation' })] })
 
-    const outcome = started(data(await startQuest(deps, KEY, 'one')))
+    const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(await git('branch', '--show-current')).toBe('task/fix-documentation')
     const task = (await onDisk()).tasks[0]!
@@ -234,7 +234,7 @@ describe('Start', () => {
     await session()
     await seed({ tasks: [makeTask({ id: 'one' })] })
 
-    const outcome = started(data(await startQuest(deps, KEY, 'one')))
+    const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(outcome.handover).toEqual({ kind: 'session' })
     expect(terminalRuns).toEqual([])
@@ -245,14 +245,14 @@ describe('Start', () => {
     await session({ heartbeat: NOW - 91_000 })
     await seed({ tasks: [makeTask({ id: 'one' })] })
 
-    expect(started(data(await startQuest(deps, KEY, 'one'))).handover.kind).toBe('opened')
+    expect(started(data(await startQuest(deps, KEY, 'one', 'claude'))).handover.kind).toBe('opened')
   })
 
   it('returns a quest put back to its own branch and keeps its start commit', async () => {
     await git('branch', 'task/mine')
     await seed({ tasks: [makeTask({ id: 'one', branch: 'task/mine', startCommit: 'abc', baseBranch: 'main' })] })
 
-    started(data(await startQuest(deps, KEY, 'one')))
+    started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(await git('branch', '--show-current')).toBe('task/mine')
     expect((await onDisk()).tasks[0]).toMatchObject({ startCommit: 'abc', branch: 'task/mine' })
@@ -261,7 +261,7 @@ describe('Start', () => {
   it('says so when the quest\'s branch was deleted', async () => {
     await seed({ tasks: [makeTask({ id: 'one', title: 'Fix it', branch: 'task/gone' })] })
 
-    const outcome = started(data(await startQuest(deps, KEY, 'one')))
+    const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(outcome.notice).toBe('task/gone was gone, so this quest starts again on task/fix, made from main.')
   })
@@ -271,7 +271,7 @@ describe('Start', () => {
     await mkdir(plain)
     await writeFile(file, JSON.stringify({ ...emptyRecord('demo', plain), tasks: [makeTask({ id: 'one' })] }))
 
-    const outcome = started(data(await startQuest(deps, KEY, 'one')))
+    const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(outcome.notice).toBe('Not a git repository, so no branches are made')
     expect(outcome.branch).toBeNull()
@@ -281,7 +281,7 @@ describe('Start', () => {
     await seed({ tasks: [makeTask({ id: 'one' })] })
     await writeFile(join(repo, 'b.txt'), 'b\n')
 
-    expect(held(data(await startQuest(deps, KEY, 'one')))).toMatchObject({ kind: 'uncommitted', reason: '1 file not committed' })
+    expect(held(data(await startQuest(deps, KEY, 'one', 'claude')))).toMatchObject({ kind: 'uncommitted', reason: '1 file not committed' })
     expect((await onDisk()).tasks[0]!.state).toBe('queued')
     expect((await onDisk()).requests).toEqual([])
     expect(await git('branch', '--show-current')).toBe('main')
@@ -292,7 +292,7 @@ describe('Start', () => {
     const real = deps.host.run
     deps = { ...deps, host: { ...deps.host, run: (argv, cwd) => (argv.includes('switch') ? Promise.resolve({ exitCode: 1, stdout: '', stderr: 'locked' }) : real(argv, cwd)) } }
 
-    const hold = held(data(await startQuest(deps, KEY, 'one')))
+    const hold = held(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(hold).toMatchObject({ kind: 'branch', reason: "Couldn't make the branch task/fix. Check again to retry.", command: null })
     expect((await onDisk()).tasks[0]).toMatchObject({ state: 'queued', branch: null, started: null })
@@ -303,7 +303,7 @@ describe('Start', () => {
     terminalExit = 1
     await seed({ tasks: [makeTask({ id: 'one' })] })
 
-    const outcome = started(data(await startQuest(deps, KEY, 'one')))
+    const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
     expect(outcome.handover).toEqual({ kind: 'failed', terminal: 'terminal', command: `cd '${repo}' && claude` })
     expect((await onDisk()).tasks[0]!.state).toBe('current')
@@ -313,12 +313,12 @@ describe('Start', () => {
   it('names the quest that got there first when two start at once', async () => {
     await seed({ tasks: [makeTask({ id: 'mine', state: 'current', title: 'The other one' }), makeTask({ id: 'one', title: 'This one' })] })
 
-    expect(refused(await startQuest(deps, KEY, 'one'))).toBe('The other one was started first, maybe in another session, so This one waits on the board.')
+    expect(refused(await startQuest(deps, KEY, 'one', 'claude'))).toBe('The other one was started first, maybe in another session, so This one waits on the board.')
   })
 
   it('never runs a commit, a push, a merge or a pull', async () => {
     await seed({ tasks: [makeTask({ id: 'one' })] })
-    await startQuest(deps, KEY, 'one')
+    await startQuest(deps, KEY, 'one', 'claude')
 
     const words = allRuns.filter(argv => argv[0] === 'git').map(argv => argv[1])
     expect(words).toContain('switch')
@@ -353,5 +353,125 @@ describe('copying text', () => {
   it('refuses what isn\'t text', async () => {
     expect((await copyText(deps, 42)).ok).toBe(false)
     expect(copied).toEqual([])
+  })
+})
+
+// Codex's log for the repo: one session, its lines at the moments given.
+const codexLog = async (stamps: string[]) => {
+  const dir = join(home, '.codex/sessions/2026/10/27')
+  await mkdir(dir, { recursive: true })
+  const lines = stamps.map((timestamp, i) => JSON.stringify(i === 0 ? { timestamp, type: 'session_meta', payload: { cwd: repo } } : { timestamp, type: 'event_msg' }))
+  await writeFile(join(dir, 'rollout-a.jsonl'), `${lines.join('\n')}\n`)
+}
+const brief = (id: string) => readFile(join(home, '.queue-tea/briefs', `${id}.md`), 'utf8')
+const CODEX_SINCE = '2026-10-27T18:00:00+01:00'
+
+describe('Start in Codex', () => {
+  it('claims the quest with Codex, asks no session, and opens Codex with the brief', async () => {
+    await session()
+    await seed({ tasks: [makeTask({ id: 'one', title: 'Fix the documentation' })] })
+
+    const outcome = started(data(await startQuest(deps, KEY, 'one', 'codex')))
+
+    expect(outcome.handover).toEqual({ kind: 'opened', terminal: 'terminal' })
+    expect((await onDisk()).tasks[0]).toMatchObject({ state: 'current', branch: 'task/fix-documentation', codexSince: '2026-10-27T18:50:00+01:00' })
+    expect((await onDisk()).requests).toEqual([])
+    expect(terminalRuns).toHaveLength(1)
+    expect(terminalRuns[0]!.join(' ')).toContain('codex --sandbox workspace-write --ask-for-approval on-request')
+    expect((await brief('one')).startsWith(`From Queue-tea, before you start:\n- You're working on one task, in ${repo}, on the branch task/fix-documentation.`)).toBe(true)
+    expect(await brief('one')).toContain('Task: Fix the documentation')
+    if (outcome.view.kind !== 'readable') throw new Error('should read')
+    expect(outcome.view.active).toMatchObject({ id: 'one', codexSince: '2026-10-27T18:50:00+01:00', asking: null })
+  })
+
+  it('refuses a platform it does not know, and changes nothing', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' })] })
+
+    expect(refused(await startQuest(deps, KEY, 'one', 'gemini'))).toBe('Pick Claude Code or Codex.')
+    expect((await onDisk()).tasks[0]).toMatchObject({ state: 'queued', branch: null, codexSince: null })
+    expect(await git('branch', '--show-current')).toBe('main')
+    expect(terminalRuns).toEqual([])
+  })
+})
+
+describe('Continue in', () => {
+  it('refuses to move a quest to Codex while Claude Code is working on it, and changes nothing', async () => {
+    await session({ isTurnRunning: true })
+    await seed({ tasks: [makeTask({ id: 'one', title: 'This one', state: 'current', branch: 'task/one' })] })
+    const before = await readFile(file, 'utf8')
+
+    expect(refused(await continueIn(deps, KEY, 'one', 'codex'))).toBe(
+      'Claude Code is still working on This one. Wait for its turn to end, or stop it with Esc in its terminal, then try again. Nothing has changed.',
+    )
+    expect(await readFile(file, 'utf8')).toBe(before)
+    expect(terminalRuns).toEqual([])
+  })
+
+  it('moves the quest to Codex between turns, takes back what the session was asked, and opens Codex with the brief', async () => {
+    await session()
+    await seed({
+      tasks: [makeTask({ id: 'one', title: 'This one', state: 'current' })],
+      requests: [{ id: 'q-0', kind: 'begin', taskId: 'one', at: '2026-10-27T18:49:00+01:00' }],
+    })
+
+    const outcome = data(await continueIn(deps, KEY, 'one', 'codex'))
+
+    expect(outcome).toMatchObject({ handover: { kind: 'opened', terminal: 'terminal' }, isCodexTimeLost: false })
+    expect((await onDisk()).tasks[0]!.codexSince).toBe('2026-10-27T18:50:00+01:00')
+    expect((await onDisk()).requests).toEqual([])
+    expect(terminalRuns[0]!.join(' ')).toContain('codex --sandbox')
+    expect(await brief('one')).toContain('Task: This one')
+  })
+
+  it('brings the quest back to Claude Code with its time on Codex, and asks for it to begin', async () => {
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current', codexSince: CODEX_SINCE, minutesByDay: { '2026-10-27': 5 } })] })
+    // 10 and 10 minutes with Codex.
+    await codexLog(['2026-10-27T17:00:00Z', '2026-10-27T17:10:00Z', '2026-10-27T17:20:00Z'])
+
+    const outcome = data(await continueIn(deps, KEY, 'one', 'claude'))
+
+    expect(outcome).toMatchObject({ handover: { kind: 'opened', terminal: 'terminal' }, isCodexTimeLost: false })
+    expect((await onDisk()).tasks[0]).toMatchObject({ state: 'current', codexSince: null, minutesByDay: { '2026-10-27': 25 } })
+    expect((await onDisk()).requests.map(q => ({ kind: q.kind, taskId: q.taskId }))).toEqual([{ kind: 'begin', taskId: 'one' }])
+    expect(terminalRuns[0]!.join(' ')).toContain('claude')
+  })
+
+  it('refuses a quest that is not the active one', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' })] })
+
+    expect(refused(await continueIn(deps, KEY, 'one', 'codex'))).toBe('That quest is no longer the active one, so nothing moved.')
+    expect((await onDisk()).tasks[0]!.codexSince).toBeNull()
+  })
+
+  it('refuses a platform it does not know', async () => {
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current' })] })
+
+    expect(refused(await continueIn(deps, KEY, 'one', 'gemini'))).toBe('Pick Claude Code or Codex.')
+  })
+})
+
+describe('Open for a quest with Codex', () => {
+  it('keeps the recovery command on Codex when bringing the terminal forward fails', async () => {
+    terminalExit = 1
+    await seed({ tasks: [makeTask({ id: 'one', title: 'Keep working', state: 'current', codexSince: CODEX_SINCE })] })
+
+    const handover = data(await openClaude(deps, KEY))
+
+    expect(handover.kind).toBe('failed')
+    if (handover.kind !== 'failed') throw new Error('should fail')
+    expect(handover.command).toContain('codex --sandbox workspace-write --ask-for-approval on-request')
+    expect(handover.command).toContain('Task: Keep working')
+    expect(handover.command).not.toContain('&& claude')
+    expect((await onDisk()).tasks[0]!.codexSince).toBe(CODEX_SINCE)
+    expect((await onDisk()).requests).toEqual([])
+  })
+
+  it('only brings the terminal forward, so a second Codex or a Claude Code session is not started', async () => {
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current', codexSince: CODEX_SINCE })] })
+
+    expect(data(await openClaude(deps, KEY))).toEqual({ kind: 'opened', terminal: 'terminal' })
+    expect(terminalRuns).toHaveLength(1)
+    expect(terminalRuns[0]!.join(' ')).not.toContain('claude')
+    expect(terminalRuns[0]!.join(' ')).not.toContain('codex')
   })
 })

@@ -21,6 +21,7 @@ export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   fits: null,
   goal: null,
   acceptance: [],
+  helpers: ['tea-dd'],
   ...over,
 })
 
@@ -38,6 +39,7 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   filesChanged: 2,
   review: null,
   criteria: [],
+  helpers: ['tea-dd'],
   asking: null,
   ...over,
 })

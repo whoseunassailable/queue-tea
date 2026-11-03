@@ -322,6 +322,12 @@ describe('Guild Hall', () => {
     await waitFor(() => expect(engine.copyText).toHaveBeenCalledWith('@queue-tea:tea-dd'))
   })
 
+  it('the Guild Hall says where helpers are turned on', async () => {
+    await open('/guild')
+
+    expect(screen.getByText(t.guild.where)).toBeTruthy()
+  })
+
   it('offers nothing that hands work to a helper', async () => {
     await open('/guild')
 

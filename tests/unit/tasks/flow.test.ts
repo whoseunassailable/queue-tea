@@ -1,12 +1,15 @@
 import { expect, test } from 'claude-code/testing'
 
 import { fileTask } from '../../../hooks/features/tasks/presentation/state_management/filing_controller'
-import { finishDocs, finishTask, startTask, taskLooksDone, taskSection } from '../../../hooks/features/tasks/presentation/state_management/tasks_controller'
+import { finishDocs, finishTask, noteHelperRun, startTask, taskLooksDone, taskSection } from '../../../hooks/features/tasks/presentation/state_management/tasks_controller'
 import { firstMessage } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { onMessage } from '../../../hooks/features/message_check/presentation/state_management/message_check_controller'
 import { shouldCheck } from '../../../hooks/features/message_check/domain/services/check_prompt'
 import { emptyRecord } from '../../../hooks/shared/records/data/datasources/record_source'
-import type { ProjectRecord } from '../../../types'
+import { ASKED, DIDNT_RUN, HELPER_LINES, REMIND, TASK_LINE } from '../../../hooks/features/tasks/presentation/constants/tasks_text'
+import { helperToRemind } from '../../../hooks/features/tasks/domain/services/task_rules'
+import { live } from '../../../hooks/core/session/live'
+import type { HelperId, ProjectRecord } from '../../../types'
 import { CTX, fakePorts, makeTask, memoryHost } from '../../helpers'
 import type { Run } from '../../helpers'
 
@@ -262,6 +265,21 @@ test('the compose section names the task only while one is current', () => {
   expect(taskSection(null)).toBeNull()
 })
 
+test('the compose section adds a line for each helper that is on, in work order', () => {
+  const current = makeTask({ title: 'Retry button', state: 'current', helpers: { on: ['commit-chai-n', 'tea-dd'], ran: [], reminded: false } })
+  const line = (id: HelperId) => HELPER_LINES.find(([h]) => h === id)![1]
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
+    [TASK_LINE('Retry button'), line('tea-dd'), line('commit-chai-n')].join('\n'),
+  )
+})
+
+test('with no helpers on, the compose section is the task line alone', () => {
+  const current = makeTask({ title: 'Retry button', state: 'current' })
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(TASK_LINE('Retry button'))
+})
+
 test('firstMessage includes the handoff note when there is one', () => {
   const task = makeTask({ title: 'Retry button', messages: ['add a retry button', 'make it blue'] })
 
@@ -285,4 +303,91 @@ test('an unreadable record stops the start: no branch, no clear', async () => {
   expect(mem.runs.some(argv => argv.includes('switch'))).toBe(false)
   expect(done.clears).toBe(0)
   expect(mem.files.get(CTX.file)).toBe('{bad')
+})
+
+const helpersOf = (on: HelperId[], ran: HelperId[] = [], reminded = false) => ({ on, ran, reminded })
+const doneSetup = (on: HelperId[], failWrite = false) => {
+  live.ctx = CTX
+  const task = makeTask({ state: 'current', helpers: helpersOf(on) })
+  const mem = memoryHost({ files: withRecord({ ...emptyRecord('p', '/p'), tasks: [task] }) })
+  if (failWrite) {
+    // Only the first write fails: the reminder mark; the review mark after it saves.
+    const run = mem.host.run
+    let isFailed = false
+    mem.host.run = async (argv, cwd) => {
+      if (argv[0] !== 'mv' || isFailed) return run(argv, cwd)
+      isFailed = true
+
+      return { exitCode: 1, stdout: '', stderr: 'no' }
+    }
+  }
+
+  return { mem, ...fakePorts(mem, { view: { record: stored(mem) } }) }
+}
+
+test('helperToRemind picks Tea-DD, then Commit Chai-n, and never the other two', () => {
+  const t = (on: HelperId[], ran: HelperId[] = []) => makeTask({ helpers: helpersOf(on, ran) })
+
+  expect(helperToRemind(t(['tea-dd']))).toBe('tea-dd')
+  expect(helperToRemind(t(['tea-dd', 'commit-chai-n'], ['tea-dd']))).toBe('commit-chai-n')
+  expect(helperToRemind(t(['mocha-mockup', 'chai-pter']))).toBeNull()
+  expect(helperToRemind(t(['tea-dd'], ['tea-dd']))).toBeNull()
+})
+
+test("task_looks_done reminds once, then asks Rohan with the didn't-run line", async () => {
+  const { mem, ports, view } = doneSetup(['tea-dd'])
+
+  expect(await taskLooksDone(ports)).toBe(REMIND('Tea-DD'))
+  expect(view.isAskingDone).not.toBe(true)
+  expect(stored(mem).tasks[0]?.helpers.reminded).toBe(true)
+
+  expect(await taskLooksDone(ports, 'ran it')).toBe(ASKED)
+  expect(view.isAskingDone).toBe(true)
+  expect(view.checked).toBe("ran it Tea-DD is on and didn't run.")
+})
+
+test("a long checked line still ends with the didn't-run line", async () => {
+  const { ports, view } = doneSetup(['tea-dd'])
+  await taskLooksDone(ports)
+
+  await taskLooksDone(ports, 'x'.repeat(400))
+
+  expect(view.checked?.endsWith(DIDNT_RUN('Tea-DD'))).toBe(true)
+})
+
+test('a failed reminder save asks Rohan instead', async () => {
+  const { ports, view, done } = doneSetup(['tea-dd'], true)
+
+  expect(await taskLooksDone(ports)).toBe(ASKED)
+  expect(view.isAskingDone).toBe(true)
+  expect(done.logs.length).toBe(1)
+})
+
+test('an unreadable record on the reminder save asks Rohan instead', async () => {
+  const { mem, ports, view } = doneSetup(['tea-dd'])
+  mem.files.set(CTX.file, '{bad')
+
+  expect(await taskLooksDone(ports)).toBe(ASKED)
+  expect(view.isAskingDone).toBe(true)
+  expect(view.checked).toBe(DIDNT_RUN('Tea-DD'))
+})
+
+test('noteHelperRun notes a helper once', async () => {
+  const { mem, ports } = doneSetup(['tea-dd'])
+
+  await noteHelperRun(ports, 'queue-tea:tea-dd')
+  await noteHelperRun(ports, 'queue-tea:tea-dd')
+
+  expect(stored(mem).tasks[0]?.helpers.ran).toEqual(['tea-dd'])
+})
+
+test('other agents and odd input are ignored', async () => {
+  const { mem, ports, done } = doneSetup(['tea-dd'])
+  const before = mem.files.get(CTX.file)
+
+  for (const agent of ['general-purpose', 'queue-tea:nobody', undefined, 42]) await noteHelperRun(ports, agent)
+
+  expect(stored(mem).tasks[0]?.helpers.ran).toEqual([])
+  expect(mem.files.get(CTX.file)).toBe(before)
+  expect(done.logs).toEqual([])
 })

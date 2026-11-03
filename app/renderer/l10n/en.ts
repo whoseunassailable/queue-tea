@@ -1,5 +1,5 @@
 import type { BadgeId, HoldKind, SessionState, SkyChoice, Stage, TerminalChoice, VictoryKind } from '../../shared/engine_api'
-import type { Difficulty, Priority } from '../../../types'
+import type { Difficulty, HelperId, Priority } from '../../../types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dayText = (day: string) => `${Number(day.slice(8, 10))} ${MONTHS[Number(day.slice(5, 7)) - 1] ?? ''}`
@@ -606,12 +606,14 @@ export const t = {
       weekOfFire: (have: number, need: number) => `A ${need}-day streak · best so far ${have}`,
     } satisfies Record<BadgeId, (have: number, need: number) => string>,
   },
+  helpers: { label: 'Helpers', use: (name: string) => `Use ${name} on this quest` },
   guild: {
     title: 'Guild Hall',
+    where: 'Turn helpers on for each quest in its panel, or when you add it.',
     line: 'Queue-tea keeps the quest board. These four travel with you in Claude Code: ask for one by name, or @-mention it in your message.',
     cup: 'The Queue-tea cup',
     skills: 'Skills',
-    roles: { 'commit-chai-n': 'Git', 'mocha-mockup': 'Design', 'chai-pter': 'Docs', 'tea-dd': 'Tests' } as Record<string, string>,
+    roles: { 'commit-chai-n': 'Git', 'mocha-mockup': 'Design', 'chai-pter': 'Docs', 'tea-dd': 'Tests' } satisfies Record<HelperId, string>,
     copy: (name: string) => `Copy the @-mention for ${name}`,
   },
   weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],

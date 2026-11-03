@@ -1,4 +1,4 @@
-import type { Allowance, AppRequest, Difficulty, ParentPick, Priority, Task } from '../../types'
+import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Priority, Task } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -47,6 +47,8 @@ export type QuestRow = {
   // What the checkpoint can fill the description and criteria with.
   goal: string | null
   acceptance: string[]
+  // The helpers Claude is asked to use on it.
+  helpers: HelperId[]
 }
 
 export type BoardEntry =
@@ -67,6 +69,7 @@ export type ActiveQuest = {
   filesChanged: number
   review: Task['review']
   criteria: string[]
+  helpers: HelperId[]
   // What an open session has been asked to do and hasn't yet.
   asking: AppRequest['kind'] | null
 }
@@ -203,7 +206,7 @@ export type Opened = { kind: 'folder'; pick: FolderPick } | { kind: 'judgement';
 export type QuestChoice = { id: string; title: string; detail: string | null }
 export type Choices = { features: QuestChoice[]; lone: QuestChoice[]; parents: QuestChoice[]; waitFor: QuestChoice[] }
 
-export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[] }
+export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[]; helpers: HelperId[] }
 export type Seal = { waitFor: string } | { reason: string }
 
 // What a quest carries, for its detail pane. active is only set for the quest
@@ -224,7 +227,7 @@ export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToB
 
 // What has moved under the quest in hand.
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }
-export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty }
+export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[] }
 
 // What keeps a quest from starting. The reason is the engine's own sentence,
 // and a command is only ever text to copy.

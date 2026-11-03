@@ -7,8 +7,9 @@ import { effortState, flush } from './shared/effort/presentation/state_managemen
 import { onViewChange, portsOf } from './core/ports/claude_ports'
 import type { Register } from 'claude-code'
 
+import { DONE_ASKED, DONE_NONE, ERRAND_RUNNING, MENU_OPENED, STEEP_PICK, STEEP_USAGE } from './features/tasks/presentation/constants/tasks_text'
 import { toggleMenu } from './app/menu/menu_controller'
-import { askDone, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
+import { askDone, noteHelperRun, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
 import { fileFromCommand } from './features/tasks/presentation/state_management/filing_controller'
 import { runFeature } from './features/tasks/presentation/state_management/queue_controller'
 import { MENU, menuClosed, openMenu } from './core/store/menu'
@@ -55,12 +56,18 @@ export const register: Register = (on, options) => {
 
   on('tool.call', { tool: 'mcp__queue-tea__task_looks_done' }, async ($, e) => {
     if (errandState.errand?.isRunning === true) {
-      return { result: 'This turn is a /brew or /tea errand, outside the task, so Rohan is not asked.' }
+      return { result: ERRAND_RUNNING }
     }
-    await taskLooksDone(portsOf($), e.checked)
 
     // A registered tool's result is what the model reads: a string, not a record.
-    return { result: 'Rohan is asked in the Queue-tea menu whether the task is done for now.' }
+    return { result: await taskLooksDone(portsOf($), e.checked) }
+  })
+
+  // Each helper Claude runs, noted on the task; a /brew or /tea errand is outside it.
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
+    if (errandState.errand?.isRunning !== true) await noteHelperRun(portsOf($), (e as { subagent_type?: unknown }).subagent_type)
+
+    return next(e)
   })
 
   on('tool.call', async ($, e, next) => {
@@ -150,37 +157,37 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'queue-tea' }, async $ => {
     await openMenu(portsOf($))
 
-    return { text: 'Queue-tea menu opened.' }
+    return { text: MENU_OPENED }
   })
 
   on('command.run', { command: 'done' }, async $ => {
     const isAsked = await askDone(portsOf($))
     await openMenu(portsOf($), 'current')
 
-    return { text: isAsked ? 'Asked in the Queue-tea menu.' : 'No Queue-tea task is in progress.' }
+    return { text: isAsked ? DONE_ASKED : DONE_NONE }
   })
 
   on('command.run', { command: 'queue-tea-done' }, async $ => {
     const isAsked = await askDone(portsOf($))
     await openMenu(portsOf($), 'current')
 
-    return { text: isAsked ? 'Asked in the Queue-tea menu.' : 'No Queue-tea task is in progress.' }
+    return { text: isAsked ? DONE_ASKED : DONE_NONE }
   })
 
   on('command.run', { command: 'steep' }, async ($, e) => {
     const text = (e.args ?? '').trim()
-    if (text === '') return { text: 'Write the task after the command: /steep <message>' }
+    if (text === '') return { text: STEEP_USAGE('steep') }
     await fileFromCommand(portsOf($), text)
 
-    return { text: 'Pick its priority in the band above the prompt.' }
+    return { text: STEEP_PICK }
   })
 
   on('command.run', { command: 'queue-tea-steep' }, async ($, e) => {
     const text = (e.args ?? '').trim()
-    if (text === '') return { text: 'Write the task after the command: /queue-tea-steep <message>' }
+    if (text === '') return { text: STEEP_USAGE('queue-tea-steep') }
     await fileFromCommand(portsOf($), text)
 
-    return { text: 'Pick its priority in the band above the prompt.' }
+    return { text: STEEP_PICK }
   })
 
   for (const command of ['feature', 'queue-tea-feature']) {

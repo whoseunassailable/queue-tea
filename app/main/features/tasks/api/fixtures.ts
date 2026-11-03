@@ -25,5 +25,6 @@ export const makeTask = (over: Partial<Task> & { id: string }): Task =>
     description: null,
     criteria: [],
     review: null,
+    helpers: { on: ['tea-dd'], ran: [], reminded: false },
     ...over,
   }) as Task

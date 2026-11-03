@@ -1,5 +1,6 @@
 import type { LoadError, OtherProject, ProjectRecord, Task } from '../../../../../types'
 import type { Host } from '../../../../core/host/host'
+import { readHelpers } from '../../domain/services/helpers'
 
 // FNV-1a, 32 bits: a short, stable code for a path.
 const fnv1a = (text: string): string => {
@@ -64,6 +65,7 @@ const withDefaults = (t: Partial<Task>): Task =>
     criteria: [],
     review: null,
     ...t,
+    helpers: readHelpers(t.helpers),
   }) as Task
 
 export const parseRecord = (text: string): ProjectRecord | 'unreadable' => {

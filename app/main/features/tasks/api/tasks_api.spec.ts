@@ -44,6 +44,7 @@ const task = (over: Partial<Task> & { id: string }): Task =>
     description: null,
     criteria: [],
     review: null,
+    helpers: { on: ['tea-dd'], ran: [], reminded: false },
     ...over,
   }) as Task
 
@@ -63,7 +64,7 @@ const viewOf = (reply: { ok: boolean; data?: ProjectView }) => {
   return reply.data
 }
 
-const quest = (over: Partial<NewQuest> = {}): NewQuest => ({ title: 'New one', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], ...over })
+const quest = (over: Partial<NewQuest> = {}): NewQuest => ({ title: 'New one', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], helpers: ['tea-dd'], ...over })
 
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'queue-tea-tasks-'))
@@ -135,6 +136,14 @@ describe('filing', () => {
     expect(await onDisk()).toMatchObject({ tasks: [{ title: 'Spaced', state: 'queued', description: 'Why', criteria: ['Passes'], messages: ['Spaced'] }] })
   })
 
+  it('files with the helpers chosen, once each, in list order', async () => {
+    await seed([])
+
+    await api.fileQuest(deps, KEY, quest({ helpers: ['tea-dd', 'commit-chai-n', 'tea-dd'] }))
+
+    expect((await onDisk()).tasks[0]?.helpers.on).toEqual(['commit-chai-n', 'tea-dd'])
+  })
+
   it('files a chapter under a saga', async () => {
     await seed([task({ id: 'saga' })])
 
@@ -164,10 +173,12 @@ describe('filing', () => {
     [{ title: '   ' }, 'Title is required.'],
     [{ title: 'x'.repeat(201) }, 'Title must be 200 characters or fewer.'],
     [{ parent: { kind: 'new' as const, title: ' ' } }, 'Title is required.'],
+    [{ helpers: ['general-purpose'] }, "That value isn't one Queue-tea can use. Pick another."],
+    [{ helpers: 'tea-dd' }, "That value isn't one Queue-tea can use. Pick another."],
   ])('refuses %j', async (over, message) => {
     await seed([])
 
-    expect(await api.fileQuest(deps, KEY, quest(over))).toEqual({ ok: false, error: { message } })
+    expect(await api.fileQuest(deps, KEY, quest(over as Partial<NewQuest>))).toEqual({ ok: false, error: { message } })
     expect((await onDisk()).tasks).toEqual([])
   })
 })
@@ -274,6 +285,22 @@ describe('the rest', () => {
     await api.editQuest(deps, KEY, 'a', { title: ' New ', difficulty: 'hard' })
 
     expect(await stored('a')).toMatchObject({ title: 'New', description: 'Kept', difficulty: { expected: 'hard' } })
+  })
+
+  it('edits the helpers', async () => {
+    await seed([task({ id: 'a' })])
+
+    const view = viewOf(await api.editQuest(deps, KEY, 'a', { helpers: ['chai-pter'] }))
+
+    expect((await stored('a')).helpers.on).toEqual(['chai-pter'])
+    expect(view.ready[0]?.quest.helpers).toEqual(['chai-pter'])
+  })
+
+  it('an edit with an unknown helper is refused and changes nothing', async () => {
+    await seed([task({ id: 'a' })])
+
+    expect(await api.editQuest(deps, KEY, 'a', { helpers: ['general-purpose'] } as never)).toEqual({ ok: false, error: { message: "That value isn't one Queue-tea can use. Pick another." } })
+    expect((await stored('a')).helpers.on).toEqual(['tea-dd'])
   })
 
   it('an empty description clears it, and a blank title is refused', async () => {

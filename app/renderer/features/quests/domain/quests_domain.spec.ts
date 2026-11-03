@@ -28,7 +28,7 @@ describe('the New quest form', () => {
   it('turns the form into a quest', () => {
     const form = { ...emptyQuestForm('t-1'), title: ' A ', description: ' Why ', criteria: 'One\n\n  Two  \n' }
 
-    expect(questOf(form)).toEqual({ title: 'A', priority: 'mid', difficulty: 'medium', parent: { kind: 'task', id: 't-1' }, description: 'Why', criteria: ['One', 'Two'] })
+    expect(questOf(form)).toEqual({ title: 'A', priority: 'mid', difficulty: 'medium', parent: { kind: 'task', id: 't-1' }, description: 'Why', criteria: ['One', 'Two'], helpers: ['tea-dd'] })
     expect(questOf({ ...emptyQuestForm('none'), title: 'A' }).parent).toEqual({ kind: 'none' })
     expect(questOf({ ...emptyQuestForm('new'), title: 'A', sagaTitle: ' S ' }).parent).toEqual({ kind: 'new', title: 'S' })
   })

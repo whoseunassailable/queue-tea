@@ -6,6 +6,7 @@ import { LINES_REFRESH_MS } from '../../../../core/constants/constants'
 import { dayAndTime, formatMinutes } from '../../../../core/domain/format'
 import { t } from '../../../../l10n/en'
 import type { QuestEdits } from '../state_management/quest_edits'
+import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
 
@@ -70,6 +71,8 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
         <PriorityControl title={active.title} priority={active.priority} isSaved={isSaved} onPick={priority => void edits.setPriority(realm, active, priority)} />
         <span class="d-est">{t.difficulty[active.difficulty]}</span>
       </div>
+      <h3>{t.helpers.label}</h3>
+      <HelperToggles on={active.helpers} onChange={helpers => edits.edit(realm, active, { helpers })} />
       <hr />
       {read.load.status === 'loading' && <p class="hint">{t.loading.stillReading}</p>}
       {read.load.status === 'failed' && <p class="hint">{read.load.message}</p>}

@@ -1,3 +1,4 @@
+import { defaultHelpers } from './helpers'
 import type { Difficulty, Priority, Task } from '../../../../../types'
 
 export const PRIORITY_ORDER: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
@@ -57,6 +58,7 @@ export const newTask = (input: {
   description: null,
   criteria: [],
   review: null,
+  helpers: defaultHelpers(),
 })
 
 export const setPriority = (tasks: Task[], id: string, priority: Priority): Task[] =>

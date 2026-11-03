@@ -34,6 +34,9 @@ export type Checkpoint = {
   seen: { at: string; files: string[]; commands: CommandRun[]; git: GitFacts | null } | null
 }
 
+export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
+export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
+
 export type Task = {
   id: string
   title: string
@@ -63,6 +66,8 @@ export type Task = {
   criteria: string[]
   // Set when Claude says the task looks done, cleared by Rohan's answer.
   review: { at: string; checked: string | null } | null
+  // Which helpers Claude works with on this task, which have run, and whether Claude has had its one reminder at done.
+  helpers: TaskHelpers
 }
 
 // What the app asks an open session to do. The session removes it under the

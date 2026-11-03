@@ -74,6 +74,7 @@ const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, s
   fits: row?.fits ?? null,
   goal: task.checkpoint?.goal || null,
   acceptance: task.checkpoint?.acceptance ?? [],
+  helpers: task.helpers.on,
 })
 
 const entryOf = (entry: Entry, tasks: Task[], nowMs: number, ranked: Ranked[], playNext: string | null): BoardEntry => {
@@ -110,6 +111,7 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   filesChanged: task.effort.filesChanged,
   review: task.review,
   criteria: task.criteria,
+  helpers: task.helpers.on,
   asking: requests.find(q => q.taskId === task.id)?.kind ?? null,
 })
 

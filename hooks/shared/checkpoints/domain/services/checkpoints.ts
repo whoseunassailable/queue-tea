@@ -1,4 +1,5 @@
 import type { Checkpoint, CommandRun, GitFacts, Task } from '../../../../../types'
+import { FIRST_MESSAGE_LABELS } from '../constants/checkpoints_text'
 import { firstObject } from './first_object'
 
 // A task's checkpoint: what Claude writes at a handoff, beside what
@@ -190,7 +191,12 @@ export const latestNote = (task: Task): 'checkpoint' | 'handoff' | null => {
 export const firstMessage = (task: Task, checked: string[] | null = null): string => {
   const c = task.checkpoint
   const hasNote = task.handoff !== null || (c !== null && (c.written !== null || c.seen !== null))
-  const parts = [`Task: ${task.title}`, ...task.messages]
+  const parts = [
+    `${FIRST_MESSAGE_LABELS.task} ${task.title}`,
+    ...(task.description === null ? [] : [`${FIRST_MESSAGE_LABELS.description} ${task.description}`]),
+    ...(task.criteria.length === 0 ? [] : [[FIRST_MESSAGE_LABELS.criteria, ...list(task.criteria)].join('\n')]),
+    ...task.messages,
+  ]
   if (!hasNote) return parts.join('\n\n')
 
   const note = latestNote(task)

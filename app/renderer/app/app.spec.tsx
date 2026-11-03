@@ -2,6 +2,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import type { HelperId } from '../../../types'
 import type { EngineApi, ProjectView } from '../../shared/engine_api'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
@@ -97,7 +98,7 @@ describe('the sidebar', () => {
 })
 
 describe('Home', () => {
-  const active = { id: 'x', title: 'The boss', priority: 'urgent', difficulty: 'hard', xp: 50, branch: 'task/x', minutes: 43, started: '2026-10-20T22:17:00+02:00', isBoss: true, improvingMessages: 4, filesChanged: 40, review: null, criteria: [] as string[], asking: null } as const
+  const active = { id: 'x', title: 'The boss', priority: 'urgent', difficulty: 'hard', xp: 50, branch: 'task/x', minutes: 43, started: '2026-10-20T22:17:00+02:00', isBoss: true, improvingMessages: 4, filesChanged: 40, review: null, criteria: [] as string[], helpers: [] as HelperId[], asking: null } as const
 
   it('shows the active quest with its reward and time', async () => {
     await open(withView(projectView('a-000001', { active, session: { state: 'working', allowance: null } })))
@@ -179,7 +180,7 @@ describe('the rules that hold everywhere', () => {
     for (const hash of ['#/home', '#/quests']) {
       window.location.hash = hash
       await open(withView(view))
-      const words = [...document.querySelectorAll('button, a')].map(el => (el.textContent ?? '').toLowerCase())
+      const words = [...document.querySelectorAll('button:not(.helper-chip), a')].map(el => (el.textContent ?? '').toLowerCase())
       expect(words.filter(word => /\b(commit|push|merge|pull)\b/.test(word))).toEqual([])
       cleanup()
     }

@@ -10,6 +10,7 @@ import { t } from '../../../../l10n/en'
 import type { Row } from '../../domain/board'
 import { titleError } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
+import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
 
@@ -234,6 +235,8 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
           {t.detail.useAcceptance(quest.acceptance.length)}
         </button>
       )}
+      <h3>{t.helpers.label}</h3>
+      <HelperToggles on={quest.helpers} onChange={helpers => edits.edit(realm, quest, { helpers })} />
       {sagaOf !== null && (
         <>
           <h3>{t.detail.chapters(sagaOf.chapters.length)}</h3>

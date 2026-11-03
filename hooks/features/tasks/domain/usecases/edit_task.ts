@@ -1,4 +1,5 @@
-import type { Difficulty, Task } from '../../../../../types'
+import type { Difficulty, HelperId, Task } from '../../../../../types'
+import { onlyHelpers } from '../../../../shared/records/domain/services/helpers'
 import type { Deps } from './deps'
 
 export type TaskEdit = {
@@ -6,6 +7,7 @@ export type TaskEdit = {
   description?: string | null
   criteria?: string[]
   difficulty?: Difficulty
+  helpers?: HelperId[]
 }
 
 const edited = (t: Task, edit: TaskEdit): Task => ({
@@ -14,6 +16,7 @@ const edited = (t: Task, edit: TaskEdit): Task => ({
   ...(edit.description === undefined ? {} : { description: edit.description }),
   ...(edit.criteria === undefined ? {} : { criteria: edit.criteria }),
   ...(edit.difficulty === undefined ? {} : { difficulty: { ...t.difficulty, expected: edit.difficulty } }),
+  ...(edit.helpers === undefined ? {} : { helpers: { ...t.helpers, on: onlyHelpers(edit.helpers) } }),
 })
 
 // Changes what a task says about itself. A finished task keeps what it said.

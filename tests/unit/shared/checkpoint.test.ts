@@ -103,6 +103,12 @@ test('the first message brings the checkpoint, what was seen, what was checked, 
   expect(firstMessage(makeTask({ title: 'New', messages: ['do it'] }))).toBe('Task: New\n\ndo it')
 })
 
+test('firstMessage carries the description and criteria', () => {
+  expect(firstMessage(makeTask({ title: 'New', messages: ['do it'], description: 'Why', criteria: ['One', 'Two'] }))).toBe(
+    'Task: New\n\nDescription: Why\n\nAcceptance criteria:\n- One\n- Two\n\ndo it',
+  )
+})
+
 test('a plain note written after the checkpoint is the one the first message carries', () => {
   const checkpoint = { ...parseCheckpoint(REPLY, AT)!, seen: null }
   const newer = makeTask({ checkpoint, handoff: { text: 'Plain note.', written: '2026-10-21T11:00:00+02:00' } })

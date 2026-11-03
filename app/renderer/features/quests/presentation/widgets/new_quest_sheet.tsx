@@ -11,6 +11,7 @@ import type { Load, ReadableView } from '../../../workspace/state_management/wor
 import { emptyQuestForm, questOf, validateQuest } from '../../domain/quest_form'
 import type { QuestErrors, QuestField, QuestForm } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
+import { HelperToggles } from './helper_toggles'
 
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
@@ -79,6 +80,9 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
             <Pick key={difficulty} name="difficulty" label={t.difficulty[difficulty]} isPicked={form.difficulty === difficulty} onPick={() => set({ difficulty })} />
           ))}
         </div>
+      </Group>
+      <Group label={t.helpers.label}>
+        <HelperToggles on={form.helpers} onChange={helpers => set({ helpers })} />
       </Group>
       <Group label={`${t.form.partOf}${view.activeSagaId === null ? '' : ' *'}`} error={shown.part}>
         {choices.status === 'loading' && <Loading line={t.form.loading} />}

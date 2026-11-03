@@ -4,7 +4,7 @@ import { HELPERS } from '../../domain/helpers'
 
 const skillsText = (skills: string[]): string => (skills.length > 1 ? `${skills[0]} +${skills.length - 1}` : (skills[0] ?? ''))
 
-// Read-only: it teaches the @-mentions that work today, and hands nothing out.
+// Read-only: it teaches the helpers and where they're turned on, and hands nothing out.
 export const GuildPage = ({ onCopy }: { onCopy: (text: string) => void }) => (
   <main class="page">
     <section class="guild-h panel panel-pad" aria-labelledby="guild-h">
@@ -12,6 +12,7 @@ export const GuildPage = ({ onCopy }: { onCopy: (text: string) => void }) => (
       <div>
         <h1 id="guild-h">{t.guild.title}</h1>
         <p>{t.guild.line}</p>
+        <p>{t.guild.where}</p>
       </div>
     </section>
     <div class="party">

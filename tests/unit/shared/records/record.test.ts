@@ -1,6 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
 import { backupPath, carryOverRecords, emptyRecord, parseRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
+import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../hooks/shared/records/domain/services/helpers'
+import { newTask } from '../../../../hooks/shared/records/domain/services/queue_rules'
 import type { ProjectRecord } from '../../../../types'
 import { makeTask, memoryHost } from '../../../helpers'
 
@@ -276,4 +278,46 @@ test('fields one side does not know survive a write by the other', async () => {
   const after = JSON.parse(mem.files.get(FILE)!)
   expect(after.fromTheApp).toBe(1)
   expect(after.tasks[0].fromTheApp).toBe(2)
+})
+
+const readFirst = (task: object) => {
+  const read = parseRecord(JSON.stringify({ version: 1, project: { name: 'p', path: '/p' }, tasks: [task] }))
+
+  return read === 'unreadable' ? null : read.tasks[0]
+}
+
+test('an older task without helpers reads with Tea-DD on', () => {
+  expect(readFirst({ title: 'Old', created: '2026-10-01' })?.helpers).toEqual({ on: ['tea-dd'], ran: [], reminded: false })
+})
+
+test('a partial helpers field is filled in', () => {
+  expect(readFirst({ title: 'Old', created: '2026-10-01', helpers: { on: ['chai-pter'] } })?.helpers).toEqual({
+    on: ['chai-pter'],
+    ran: [],
+    reminded: false,
+  })
+})
+
+test('a malformed helpers field is read as the default', () => {
+  const read = (helpers: object) => readFirst({ title: 'Old', created: '2026-10-01', helpers })?.helpers
+
+  expect(read({ on: null })).toEqual(defaultHelpers())
+  expect(read({ on: 'tea-dd' })?.on).toEqual(['tea-dd'])
+  expect(read({ on: ['nobody', 'chai-pter'], ran: 'x' })).toEqual({ on: ['chai-pter'], ran: [], reminded: false })
+  expect(read({ reminded: 'yes' })?.reminded).toBe(false)
+})
+
+test('a new task starts with Tea-DD on', () => {
+  const t = newTask({ title: 'T', priority: 'mid', difficulty: 'medium', messages: [], now: '2026-11-03', id: 't-1' })
+
+  expect(t.helpers).toEqual(defaultHelpers())
+})
+
+test('onlyHelpers drops repeats and keeps the list order', () => {
+  expect(onlyHelpers(['tea-dd', 'commit-chai-n', 'tea-dd'])).toEqual(['commit-chai-n', 'tea-dd'])
+})
+
+test('isHelperId knows only the four', () => {
+  expect(isHelperId('tea-dd')).toBe(true)
+  for (const v of ['general-purpose', '', 3, null]) expect(isHelperId(v)).toBe(false)
 })

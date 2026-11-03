@@ -14,10 +14,10 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 
 ## In this release
 
-- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (read-only), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
+- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (read-only; helpers are turned on per quest, not in the hall), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
 - **The look:** Jade Peaks. A sky behind every screen follows the clock: morning, day and evening on light panels, the lantern night on dark ones. Settings can fix the sky to one time of day and has Calm mode, which stops every animation.
 - **The game layer:** XP, levels, a lóng that grows from egg to elder, a day streak, gold and seven badges. All of it is worked out from the record.
-- **New record fields:** `description`, `criteria` and `review` on every task, and `requests` on the record.
+- **New record fields:** `description`, `criteria` and `review` on every task, and `requests` on the record. Each task also gets `helpers`, the helpers Claude uses on it, which Rohan turns on or off per quest (Tea-DD is on by default).
 - **In the mod:** session files, handling the app's requests, setting `review`, and an "Open in Queue-tea app" entry in the tea-cup menu.
 - **Opening the app on a project:** a `queue-tea` command line tool and a `queue-tea://` URL.
 
@@ -44,7 +44,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | Look | Jade Peaks, from 28 Oct; Tea House before that | Rohan wanted a fun, game-style app with dragons and living, colourful backgrounds. The day takes its feel from Liyue in Genshin Impact; the night is a lantern-and-aurora sky. The art is original |
 | Game layer | Full: XP, levels, a growing dragon, streak, gold, badges, quests | Rohan's pick on 28 Oct. Worked out from the record, so nothing new is stored and the engine doesn't change |
 | Sky | Follows the clock; Settings can fix it | Rohan's ask: a pink morning, a blue day and so on, with the night on dark panels |
-| Guild Hall (the Tea Room) | In, read-only | Cheap, carries the character, and teaches the @-mentions that work today |
+| Guild Hall (the Tea Room) | In, read-only; helpers are turned on per quest, not in the hall | Cheap, carries the character, and teaches the @-mentions that work today |
 | Single-letter keys | The terminal's letters, off inside text fields, a switch in Settings | Same muscle memory in both places |
 | Description and criteria | On every task, collapsed when empty | Any task becomes a feature once it has children |
 | VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |

@@ -652,6 +652,15 @@ This is the right pane in 4.2, shown for a feature.
 └───────────────────────────────────┘
 ```
 
+**Helpers row.** Queued and in-progress panels show it, below the other task details; a done task does not.
+
+```
+│ Helpers                           │
+│ [Commit Chai-n] [Mocha Mockup]    │
+│ [Chai-pter] [[Tea-DD]]            │
+```
+
+- **Helpers** are four toggle chips, each with its logo and name. A pressed chip (double brackets) means Claude uses that helper on this quest. A click saves, like the priority control; a change on the task in progress reaches Claude on its next reply. If saving fails, the chip goes back and a message says so, as for a failed description edit.
 - **The checkpoint card** uses `checkpointSections`: numbered, collapsible, Remaining and Next action shown as ☐, Changes made as ✓. A plain handoff note that is newer shows as 1 Overview … 5 Next steps (`cardNote`).
 - **Lines.** The app measures them itself: `diffSince(startCommit)` when the pane opens, then every 30 s while it is visible.
 - **"Branch when it starts"** comes from `slugBranch(title, listBranches())`. The name shown is real: the engine gives `task/fix-cut-off-text`.
@@ -687,6 +696,13 @@ ADD CHILD TASK (inline, in the list under its feature)
          Move homepage parts elsewhere; add priv…   {▮▮▮ High}
          [ Check every guide page for cut-off text   ] {▮▮▯ Mid ▾} {Medium ▾}
          ↩ add · esc cancel · part of Fix the documentation
+```
+
+A Helpers line sits between Difficulty and Part of, with Tea-DD pressed:
+
+```
+│ Helpers                                                    │
+│ [Commit Chai-n] [Mocha Mockup] [Chai-pter] [[Tea-DD]]      │
 ```
 
 **Sheet layout**
@@ -975,7 +991,9 @@ BLOCKED… (k), then the feature dialogs: Move (drag or Part of…) and Remove a
 - **The four /config values** are read-only. With no session they show the defaults, marked "default".
 - **The records are real:** on 26 Oct Gait-feedback had no `.bak` and queue-tie had one; since 27 Oct both records have one.
 
-### 4.13 Guild Hall, formerly the Tea Room (read-only)
+### 4.13 Guild Hall, formerly the Tea Room
+
+The hall itself only shows the four helpers. Which of them Claude uses is turned on per quest: in the new-task sheet and in the detail panel of a queued quest and of the task in progress.
 
 In the Jade Peaks mockups each helper is a party member: its logo in an 88 px gold ring, its role as a chip in its colour, then what it does, its skills and its @-mention to copy.
 

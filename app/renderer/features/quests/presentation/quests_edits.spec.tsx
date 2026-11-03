@@ -2,10 +2,10 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { BoardEntry, Choices, EngineApi, ProjectView } from '../../../../shared/engine_api'
+import type { BoardEntry, Choices, EngineApi, ProjectView, Reply } from '../../../../shared/engine_api'
 import { App } from '../../../app/app'
 import { t } from '../../../l10n/en'
-import { fakeEngine, projectView, quest } from '../../../test_support'
+import { activeQuest, fakeEngine, projectView, quest } from '../../../test_support'
 import { createWorkspace } from '../../workspace/state_management/workspace_store'
 
 const KEY = 'a-000001'
@@ -171,6 +171,17 @@ describe('New quest', () => {
   }
   const title = () => within(dialog()).getByLabelText(`${t.form.title} *`)
   const submit = () => fireEvent.click(within(dialog()).getByRole('button', { name: t.actions.add }))
+
+  it('files with Tea-DD on unless changed', async () => {
+    const { engine } = await openSheet()
+
+    fireEvent.input(title(), { target: { value: 'A new quest' } })
+    fireEvent.click(within(dialog()).getByRole('button', { name: t.helpers.use('Commit Chai-n') }))
+    fireEvent.click(within(dialog()).getByRole('button', { name: t.helpers.use('Tea-DD') }))
+    submit()
+
+    await waitFor(() => expect(engine.fileQuest).toHaveBeenCalledWith(KEY, expect.objectContaining({ helpers: ['commit-chai-n'] })))
+  })
 
   it('opens with ⌘N too', async () => {
     await open()
@@ -447,8 +458,83 @@ describe('the detail pane', () => {
     fireEvent.click(screen.getAllByRole('button', { name: t.actions.newQuest })[0]!)
     await waitFor(() => expect(dialog()).toBeTruthy())
 
-    const words = [...document.querySelectorAll('button, a')].map(el => (el.textContent ?? '').toLowerCase())
+    const words = [...document.querySelectorAll('button:not(.helper-chip), a')].map(el => (el.textContent ?? '').toLowerCase())
 
     expect(words.filter(word => /\b(commit|push|merge|pull)\b/.test(word))).toEqual([])
+  })
+})
+
+describe('helper chips', () => {
+  const chip = (name: string) => screen.getByRole('button', { name: t.helpers.use(name) })
+  const pressed = (name: string) => chip(name).getAttribute('aria-pressed')
+
+  it('show what the quest has on', async () => {
+    await open()
+
+    expect([pressed('Commit Chai-n'), pressed('Mocha Mockup'), pressed('Chai-pter'), pressed('Tea-DD')]).toEqual(['false', 'false', 'false', 'true'])
+  })
+
+  it("a click saves the quest's helpers", async () => {
+    const { engine } = await open()
+
+    fireEvent.click(chip('Commit Chai-n'))
+
+    await waitFor(() => expect(engine.editQuest).toHaveBeenCalledWith(KEY, 'first', { helpers: ['commit-chai-n', 'tea-dd'] }))
+  })
+
+  it('two quick clicks keep both', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>(resolve => (release = resolve))
+    const { engine } = await open()
+    engine.editQuest = vi.fn(async () => {
+      await gate
+
+      return { ok: true as const, data: BOARD }
+    })
+
+    fireEvent.click(chip('Commit Chai-n'))
+    fireEvent.click(chip('Chai-pter'))
+    release()
+
+    await waitFor(() => expect(engine.editQuest).toHaveBeenLastCalledWith(KEY, 'first', { helpers: ['commit-chai-n', 'chai-pter', 'tea-dd'] }))
+  })
+
+  it('a finished save keeps the choice of a save still running', async () => {
+    const releases: Array<() => void> = []
+    const { engine } = await open()
+    const withHelpers = (helpers: Array<'commit-chai-n' | 'chai-pter' | 'tea-dd'>) =>
+      projectView(KEY, { ready: [{ kind: 'quest', quest: quest({ ...FIRST, helpers }) }, { kind: 'quest', quest: SECOND }, SAGA], canStart: 4 })
+    const replies = [withHelpers(['commit-chai-n', 'tea-dd']), withHelpers(['commit-chai-n', 'chai-pter', 'tea-dd'])]
+    engine.editQuest = vi.fn(() => {
+      const reply = replies[releases.length]!
+
+      return new Promise<Reply<ProjectView>>(resolve => releases.push(() => resolve({ ok: true as const, data: reply })))
+    })
+
+    fireEvent.click(chip('Commit Chai-n'))
+    fireEvent.click(chip('Chai-pter'))
+    await act(async () => releases[0]!())
+
+    expect(pressed('Chai-pter')).toBe('true')
+    await act(async () => releases[1]!())
+    expect([pressed('Commit Chai-n'), pressed('Chai-pter')]).toEqual(['true', 'true'])
+  })
+
+  it('a failed save puts the chip back', async () => {
+    await open({ editQuest: vi.fn(async () => ({ ok: false as const, error: { message: 'Could not save.' } })) })
+
+    fireEvent.click(chip('Commit Chai-n'))
+
+    await waitFor(() => expect(screen.getByText('Could not save.')).toBeTruthy())
+    expect(pressed('Commit Chai-n')).toBe('false')
+  })
+
+  it('the quest in hand has them too', async () => {
+    const { engine } = await open({}, projectView(KEY, { active: activeQuest({ id: 'held', title: 'In hand', helpers: ['tea-dd'] }) }))
+    fireEvent.click(screen.getByRole('button', { name: t.detail.openActive('In hand') }))
+
+    fireEvent.click(chip('Mocha Mockup'))
+
+    await waitFor(() => expect(engine.editQuest).toHaveBeenCalledWith(KEY, 'held', { helpers: ['mocha-mockup', 'tea-dd'] }))
   })
 })

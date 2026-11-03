@@ -6,4 +6,5 @@ Every task finished in this project, newest first. Written by Queue-tea.
 
 | Task | Priority | Difficulty | Time | Branch |
 | --- | --- | --- | --- | --- |
+| Fix guild hall | Urgent | Hard | 13m | `task/fix-guild-hall` |
 | In the quests no filter option is there to see by priority or difficulty or something else | Mid | Medium | 8m | `task/quests-no-filter-option` |

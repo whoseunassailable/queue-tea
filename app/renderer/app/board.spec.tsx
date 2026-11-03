@@ -147,6 +147,32 @@ describe('filters', () => {
     expect(titles()).toContain('First quest')
   })
 
+  it('shows each filter that is on as a chip that turns it off', async () => {
+    await open('/quests')
+
+    await press(t.filters.title)
+    await act(() => void fireEvent.click(within(screen.getByRole('group', { name: t.filters.title })).getByRole('checkbox', { name: t.priority.low })))
+
+    expect(screen.getByRole('button', { name: t.filters.buttonLabel(1) }).classList.contains('on')).toBe(true)
+    await press(t.filters.remove(t.priority.low))
+
+    expect(titles()).toContain('First quest')
+    expect(screen.getByRole('button', { name: t.filters.title }).classList.contains('on')).toBe(false)
+    expect(screen.queryByRole('group', { name: t.filters.on })).toBeNull()
+  })
+
+  it('says when no quest passes the filters, and leaves the chips to clear them', async () => {
+    await open('/quests')
+
+    await press(t.filters.title)
+    await act(() => void fireEvent.click(within(screen.getByRole('group', { name: t.filters.title })).getByRole('checkbox', { name: t.priority.urgent })))
+
+    expect(screen.getByText(t.filters.noMatch(''))).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t.filters.clearSearch })).toBeNull()
+    await press(t.filters.clearAll)
+    expect(titles()).toContain('First quest')
+  })
+
   it('keeps to a section', async () => {
     await open('/quests')
 

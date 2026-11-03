@@ -214,9 +214,12 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
           {isNarrowed && rows.length === 0 && (
             <p class="hint">
               {t.filters.noMatch(search)}{' '}
-              <button type="button" class="link-btn" onClick={() => onBoard(EMPTY_BOARD)}>
-                {t.filters.clearSearch}
-              </button>
+              {/* With only filters on, the chips above are the way out. */}
+              {search !== '' && (
+                <button type="button" class="link-btn" onClick={() => onBoard({ ...shown, search: '' })}>
+                  {t.filters.clearSearch}
+                </button>
+              )}
             </p>
           )}
           {ready.length > 0 && <ul class="rows">{withAdds(ready)}</ul>}

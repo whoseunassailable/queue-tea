@@ -4,7 +4,6 @@ import type { RefObject } from 'preact'
 import type { Difficulty, Priority } from '../../../../../../types'
 import { budgetLabel } from '../../../../../../hooks/shared/backlog/domain/services/ranking'
 import { t } from '../../../../l10n/en'
-import { hasFilters } from '../../domain/search'
 import type { BoardSection, BoardView, Filters } from '../../domain/search'
 
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
@@ -54,11 +53,29 @@ const FiltersPopover = ({ filters, hasTime, onChange }: { filters: Filters; hasT
   </div>
 )
 
+type Chip = { key: string; label: string; drop: Partial<Filters> }
+
+// Each filter that's on, with what turning it off leaves.
+const chipsOf = (f: Filters): Chip[] => [
+  ...f.priorities.map(p => ({ key: `p-${p}`, label: t.priority[p], drop: { priorities: toggled(f.priorities, p) } })),
+  ...f.difficulties.map(d => ({ key: `d-${d}`, label: t.difficulty[d], drop: { difficulties: toggled(f.difficulties, d) } })),
+  ...f.sections.map(s => ({ key: `s-${s}`, label: t.filters.sections[s], drop: { sections: toggled(f.sections, s) } })),
+  ...(f.onlySaga ? [{ key: 'saga', label: t.filters.onlySaga, drop: { onlySaga: false } }] : []),
+  ...(f.fitsTime ? [{ key: 'time', label: t.filters.fitsTime, drop: { fitsTime: false } }] : []),
+]
+
+const Funnel = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M2 3h12l-4.5 5.5V13l-3 1.5v-6z" />
+  </svg>
+)
+
 type ToolsProps = { view: BoardView; hasTime: boolean; searchBox: RefObject<HTMLInputElement>; onChange: (patch: Partial<BoardView>) => void; onClear: () => void }
 
 export const SearchAndFilters = ({ view, hasTime, searchBox, onChange, onClear }: ToolsProps) => {
   const [isOpen, setOpen] = useState(false)
   const { filters } = view
+  const chips = chipsOf(filters)
 
   return (
     <div class="board-tools">
@@ -78,15 +95,24 @@ export const SearchAndFilters = ({ view, hasTime, searchBox, onChange, onClear }
             }
           }}
         />
-        <button type="button" class="chip-btn" aria-expanded={isOpen} onClick={() => setOpen(!isOpen)}>
-          {t.filters.title}
+        <button type="button" class={chips.length > 0 ? 'chip-btn on' : 'chip-btn'} aria-expanded={isOpen} aria-label={t.filters.buttonLabel(chips.length)} onClick={() => setOpen(!isOpen)}>
+          <Funnel />
+          {t.filters.button(chips.length)}
         </button>
-        {hasFilters(filters) && (
+      </div>
+      {chips.length > 0 && (
+        <div class="board-tools-row wrap" role="group" aria-label={t.filters.on}>
+          {chips.map(chip => (
+            <button key={chip.key} type="button" class="chip-btn" aria-label={t.filters.remove(chip.label)} onClick={() => onChange({ filters: { ...filters, ...chip.drop } })}>
+              {chip.label}
+              <span aria-hidden="true">✕</span>
+            </button>
+          ))}
           <button type="button" class="chip-btn" onClick={onClear}>
             {t.filters.clearAll}
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {isOpen && <FiltersPopover filters={filters} hasTime={hasTime} onChange={patch => onChange({ filters: { ...filters, ...patch } })} />}
     </div>
   )

@@ -74,7 +74,24 @@ export type ActiveQuest = {
   asking: AppRequest['kind'] | null
   // When it went to Codex; null while Claude Code has it.
   codexSince: string | null
+  worktreePath: string | null
+  baseBranch: string | null
+  parentId: string | null
+  session?: SessionInfo
 }
+
+export type BranchQuest = {
+  id: string
+  title: string
+  branch: string
+  baseBranch: string | null
+  path: string
+  state: 'queued' | 'current' | 'done'
+  platform: Platform | null
+  parent: { id: string; title: string } | null
+}
+
+export type MergeCheck = { kind: 'ready' | 'merged' | 'blocked' | 'conflicts'; message: string; command: string | null; cleanup: string | null }
 
 export type VictoryRow = { id: string; title: string; finished: string; minutes: number; xp: number }
 
@@ -86,6 +103,8 @@ export type ProjectView =
       path: string
       session: SessionInfo
       active: ActiveQuest | null
+      activeQuests: ActiveQuest[]
+      branches: BranchQuest[]
       ready: BoardEntry[]
       sealed: BoardEntry[]
       canStart: number
@@ -334,9 +353,10 @@ export type EngineApi = {
   readLive: (key: string) => Promise<Reply<LiveFacts>>
   readQuestFacts: (key: string, taskId: string) => Promise<Reply<QuestFacts>>
   switchBranch: (key: string) => Promise<Reply<null>>
+  readMerge: (key: string, taskId: string) => Promise<Reply<MergeCheck>>
   checkStart: (key: string, taskId: string) => Promise<Reply<StartCheck>>
   startQuest: (key: string, taskId: string, platform: Platform) => Promise<Reply<StartOutcome>>
-  openClaude: (key: string) => Promise<Reply<Handover>>
+  openClaude: (key: string, taskId?: string) => Promise<Reply<Handover>>
   continueIn: (key: string, taskId: string, platform: Platform) => Promise<Reply<ContinueOutcome>>
   notYet: (key: string, taskId: string) => Promise<Reply<ProjectView>>
   finishQuest: (key: string, taskId: string, actual: Difficulty, logPath: string | null) => Promise<Reply<FinishOutcome>>
@@ -393,6 +413,7 @@ export const CHANNELS = {
   readLive: 'engine:read-live',
   readQuestFacts: 'engine:read-quest-facts',
   switchBranch: 'engine:switch-branch',
+  readMerge: 'engine:read-merge',
   checkStart: 'engine:check-start',
   startQuest: 'engine:start-quest',
   openClaude: 'engine:open-claude',

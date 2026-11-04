@@ -31,7 +31,7 @@ import { clearHold } from './hold'
 const DOCS_LOG = 'docs/task_log.md'
 
 export const taskSection = (record: ProjectRecord | null) => {
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null) return null
 
   return {
@@ -97,7 +97,7 @@ const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' 
 // that is on and has not run is reminded once; after that Rohan is asked.
 export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<string> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   const helper = current === null ? null : helperToRemind(current)
   let line = typeof checked === 'string' ? checked.trim().slice(0, 300) : ''
   if (current !== null && helper !== null) {
@@ -132,7 +132,7 @@ export const noteHelperRun = async (p: Ports, agent: unknown): Promise<void> => 
   const ctx = live.ctx
   if (!isHelperId(id) || ctx === null) return
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null) return
   try {
     await applySaved(p, ctx, await noteHelperUseCase(tasksDepsOf(p, ctx), current.id, id))
@@ -146,7 +146,7 @@ export const noteHelperRun = async (p: Ports, agent: unknown): Promise<void> => 
 const saveReview = async (p: Ports, review: { at: 'now'; checked: string | null } | null): Promise<void> => {
   const ctx = live.ctx
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (ctx === null || current === null) return
   try {
     const stamped = review === null ? null : { at: isoLocal(await p.now(), ctx.offsetMinutes), checked: review.checked }
@@ -207,7 +207,7 @@ const docsOnce = async (p: Ports, ctx: Ctx, taskId: string, path: string): Promi
 
 export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null || isStartingFresh()) return
   // Continuing here takes the task back from Codex, with Codex's time so far.
   if (current.codexSince !== null) {
@@ -224,7 +224,7 @@ export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
 // Switches to the current task's branch, unless something is uncommitted.
 export const switchToTask = async (p: Ports, ctx: Ctx): Promise<'switched' | string> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current?.branch == null) return 'switched'
 
   const result = await switchToTaskUseCase(tasksDepsOf(p, ctx), current.branch)
@@ -241,7 +241,7 @@ export const putBack = (p: Ports, ctx: Ctx, block?: Block): Promise<'queued' | '
 
 const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promise<'queued' | 'none'> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null || isStartingFresh()) return 'none'
 
   await p.set('busy', SAVING_CHECKPOINT)
@@ -275,7 +275,7 @@ const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promis
 // What has moved under the current task, for the panel.
 export const refreshDrift = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null) {
     await p.set('drift', [])
 
@@ -292,7 +292,7 @@ export const refreshDrift = async (p: Ports, ctx: Ctx): Promise<void> => {
 // measure now. Marked with the task, so another task's count never shows.
 export const refreshLines = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null || current.startCommit === null) {
     await p.set('lines', null)
 
@@ -311,7 +311,7 @@ export const refreshLines = async (p: Ports, ctx: Ctx): Promise<void> => {
 export async function checkResume(p: Ports) {
   const ctx = live.ctx
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (ctx === null || current === null) return
 
   await p.set('canContinue', true)
@@ -326,7 +326,7 @@ export async function checkResume(p: Ports) {
 
 export async function askDone(p: Ports): Promise<boolean> {
   const record = await p.get('record')
-  if (record === null || currentTask(record.tasks) === null) return false
+  if (record === null || currentTask(record.tasks, live.ctx) === null) return false
   await p.set('isAskingDone', true)
 
   return true
@@ -380,7 +380,7 @@ export async function pressSwitch(p: Ports) {
 
 export async function pressDoneYes(p: Ports) {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   await p.set('isAskingDone', false)
   await p.set('checked', null)
   await saveReview(p, null)

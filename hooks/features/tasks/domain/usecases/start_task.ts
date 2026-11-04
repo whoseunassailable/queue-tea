@@ -23,7 +23,8 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, platfo
   const record = await d.records.read()
   if (record === 'unreadable') return { kind: 'unreadable' }
   const task = record.tasks.find(t => t.id === taskId)
-  if (task === undefined || task.state !== 'queued' || currentTask(record.tasks) !== null) return { kind: 'gone' }
+  if (task === undefined || task.state !== 'queued' || currentTask(record.tasks, ctx) !== null) return { kind: 'gone' }
+  if (task.worktreePath !== null && task.worktreePath !== ctx.cwd) return { kind: 'held', text: 'This task has its own folder. Open it from Queue-tea to continue there.' }
   if (isBlocked(task, record.tasks)) {
     return { kind: 'blocked', notice: `${task.title} is blocked: ${blockedText(task, record.tasks)}. Unblock it first.` }
   }
@@ -51,7 +52,7 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, platfo
   let before = task
   const saved = await d.records.update(r => {
     const fresh = r.tasks.find(t => t.id === taskId)
-    const other = currentTask(r.tasks)
+    const other = currentTask(r.tasks, ctx)
     refused =
       fresh === undefined || (fresh.state !== 'queued' && fresh.state !== 'current')
         ? `${task.title} is no longer in the backlog.`
@@ -74,6 +75,7 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, platfo
           : {
               ...t,
               state: 'current',
+              worktreePath: ctx.cwd === ctx.projectPath ? null : ctx.cwd,
               codexSince: platform === 'codex' ? started : null,
               started: t.started ?? started,
               branch,
@@ -109,6 +111,7 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, platfo
                 state: 'queued',
                 codexSince: null,
                 started: before.started,
+                worktreePath: before.worktreePath,
                 branch: before.branch,
                 baseBranch: before.baseBranch,
                 startCommit: before.startCommit,

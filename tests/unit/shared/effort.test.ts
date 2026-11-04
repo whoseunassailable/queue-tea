@@ -85,3 +85,21 @@ test("with Codex on the current task, the session's minutes go to the project an
   expect(after.unassignedMinutesByDay).toEqual({ '2026-10-21': 4 })
   expect(after.tasks[0]).toEqual(withCodex)
 })
+
+
+test('parallel sessions charge time and files only to their own quest', () => {
+  const tasks = [makeTask({ id: 'one', state: 'current', worktreePath: '/worktrees/one' }), makeTask({ id: 'two', state: 'current', worktreePath: '/worktrees/two' })]
+  let record = { ...emptyRecord('p', '/p'), tasks }
+  for (const [id, minutes] of [['two', 9], ['one', 4]] as const) {
+    const tracker = createTracker(15, 0)
+    tracker.activity(T0)
+    tracker.toolCall('Edit', { file_path: `/worktrees/${id}/file.ts` })
+    tracker.activity(T0 + minutes * MIN)
+    record = applyPending(record, tracker.take(), undefined, { projectPath: '/p', cwd: `/worktrees/${id}` })
+  }
+  expect(record.tasks[0]!.minutesByDay).toEqual({ '2026-10-21': 4 })
+  expect(record.tasks[1]!.minutesByDay).toEqual({ '2026-10-21': 9 })
+  expect(record.tasks[0]!.files.changed).toEqual(['/worktrees/one/file.ts'])
+  expect(record.tasks[1]!.files.changed).toEqual(['/worktrees/two/file.ts'])
+  expect(record.unassignedMinutesByDay).toEqual({})
+})

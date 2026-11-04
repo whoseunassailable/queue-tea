@@ -2,7 +2,10 @@ import type { ProjectRecord, Task } from '../../../../../types'
 import { addRequestUseCase } from '../../../../../hooks/features/tasks/domain/usecases/add_request'
 import { leaveCodexUseCase } from '../../../../../hooks/features/tasks/domain/usecases/leave_codex'
 import { sendToCodexUseCase } from '../../../../../hooks/features/tasks/domain/usecases/send_to_codex'
-import { startTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/start_task'
+import { startParallelTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/start_parallel_task'
+import { worktreesRepositoryImpl } from '../../../../../hooks/shared/git/data/repositories/worktrees_repository_impl'
+import { sessionsRepositoryImpl } from '../../../../../hooks/shared/sessions/data/repositories/sessions_repository_impl'
+import { isFresh } from '../../../../../hooks/shared/sessions/domain/services/session_rules'
 import { blockedText, isBlocked } from '../../../../../hooks/shared/backlog/domain/services/ranking'
 import { codexBrief } from '../../../../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { checkNowUseCase } from '../../../../../hooks/shared/checkpoints/domain/usecases/check_now'
@@ -22,7 +25,7 @@ import type { Scope, TasksDeps } from './scope'
 // A folder that has moved answers git like one that was never a repository,
 // and Start would claim the quest with no branch.
 const needFolder = async (d: TasksDeps, scope: Scope) => {
-  if (!(await d.host.exists(scope.ctx.projectPath))) throw new Refusal(MESSAGES.folderGone(scope.ctx.projectPath))
+  if (!(await d.host.exists(scope.ctx.cwd))) throw new Refusal(MESSAGES.folderGone(scope.ctx.cwd))
 }
 
 const holdOf = async (scope: Scope, git: GitState, reason: string): Promise<GitHold> => ({
@@ -35,12 +38,12 @@ const holdOf = async (scope: Scope, git: GitState, reason: string): Promise<GitH
   command: holdCommandOf(git),
 })
 
-const stepOf = async (scope: Scope, task: Task, git: GitState): Promise<StartStep> => {
+const stepOf = async (d: TasksDeps, scope: Scope, task: Task, git: GitState): Promise<StartStep> => {
   if (!git.isRepo) return { kind: 'noRepo' }
   const branches = await scope.deps.git.branches()
   if (task.branch !== null && branches.includes(task.branch)) return { kind: 'switch', branch: task.branch }
 
-  return { kind: 'make', branch: slugBranch(task.title, branches), from: git.branch }
+  return { kind: 'make', branch: slugBranch(task.title, branches), from: (await worktreesRepositoryImpl(d.host, scope.ctx.projectPath).base()).branch }
 }
 
 const goneSentence = (record: ProjectRecord, taskId: string): string => {
@@ -59,20 +62,20 @@ export const checkStart = (d: TasksDeps, key: unknown, taskId: unknown): Promise
     const id = questIdOf(taskId)
     const { tasks } = scope.record
     const task = tasks.find(t => t.id === id)
-    if (task === undefined || task.state !== 'queued' || currentTask(tasks) !== null) throw new Refusal(goneSentence(scope.record, id))
+    if (task === undefined || task.state !== 'queued') throw new Refusal(goneSentence(scope.record, id))
     if (isBlocked(task, tasks)) throw new Refusal(MESSAGES.sealedQuest(task.title, blockedText(task, tasks)))
 
     const git = await scope.deps.git.state()
-    const reason = holdReason(git)
+    const reason = git.isRepo ? null : holdReason(git)
 
-    return reason === null ? { kind: 'clear', step: await stepOf(scope, task, git) } : { kind: 'held', hold: await holdOf(scope, git, reason) }
+    return reason === null ? { kind: 'clear', step: await stepOf(d, scope, task, git) } : { kind: 'held', hold: await holdOf(scope, git, reason) }
   })
 
 // The session gets the quest through the record, and a session opened now finds
 // the request waiting there. The quest has started by this point, so a request
 // that fails to save only means Continue in the terminal.
 const handOver = async (d: TasksDeps, scope: Scope, taskId: string, started: ProjectRecord): Promise<{ record: ProjectRecord; handover: Handover }> => {
-  const isOpen = await isSessionOpen(d, scope.ctx.projectPath)
+  const isOpen = await isSessionOpen(d, scope.ctx.cwd)
   let record = started
   try {
     const asked = await addRequestUseCase(scope.deps, scope.ctx, 'begin', taskId)
@@ -81,14 +84,14 @@ const handOver = async (d: TasksDeps, scope: Scope, taskId: string, started: Pro
     d.log.error('asking a session to begin failed', err)
   }
 
-  return { record, handover: isOpen ? { kind: 'session' } : await openClaudeCode(d, scope.ctx.projectPath, false) }
+  return { record, handover: isOpen ? { kind: 'session' } : await openClaudeCode(d, scope.ctx.cwd, false) }
 }
 
 // Codex opens with the brief; no session is asked, since Claude Code isn't on it.
 const toCodex = async (d: TasksDeps, scope: Scope, task: Task): Promise<Handover> => {
   const checked = await checkNowUseCase(scope.deps.git, text => d.log.debug(text), task)
 
-  return openCodex(d, scope.ctx.projectPath, task.id, codexBrief(task, scope.ctx.projectPath, checked))
+  return openCodex(d, scope.ctx.cwd, task.id, codexBrief(task, scope.ctx.cwd, checked))
 }
 
 export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform: unknown): Promise<Reply<StartOutcome>> =>
@@ -97,7 +100,7 @@ export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform
     await needFolder(d, scope)
     const id = questIdOf(taskId)
     const on = platformOf(platform)
-    const result = await startTaskUseCase(scope.deps, scope.ctx, id, on)
+    const result = await startParallelTaskUseCase({ ...scope.deps, worktrees: worktreesRepositoryImpl(d.host, scope.ctx.projectPath) }, scope.ctx, id, on)
     if (result.kind === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
     if (result.kind === 'gone') throw new Refusal(goneSentence(scope.record, id))
     if (result.kind === 'blocked' || result.kind === 'refused') throw new Refusal(inGameWords(result.notice))
@@ -108,11 +111,14 @@ export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform
       return { kind: 'held', hold: { kind: 'branch', reason: result.text, branch: git.branch, head: git.head, files: [], fileCount: 0, command: null } }
     }
 
-    const { record, handover } = on === 'codex' ? { record: result.record, handover: await toCodex(d, scope, result.task) } : await handOver(d, scope, id, result.record)
+    const startedScope = await scopeOf(d, key, id)
+    const { record, handover } = on === 'codex' ? { record: result.record, handover: await toCodex(d, startedScope, result.task) } : await handOver(d, startedScope, id, result.record)
+
+    const latest = await scope.deps.records.read()
 
     return {
       kind: 'started',
-      view: await realmView(d, scope.key, record),
+      view: await realmView(d, scope.key, latest === 'unreadable' ? record : latest),
       branch: result.task.branch,
       notice: result.notice === null ? null : inGameWords(result.notice),
       handover,
@@ -121,19 +127,23 @@ export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform
 
 // A quest with Codex only brings its terminal forward: Codex can't be found
 // running from here, and a second one must not start.
-export const openClaude = (d: TasksDeps, key: unknown): Promise<Reply<Handover>> =>
+export const openClaude = (d: TasksDeps, key: unknown, taskId?: unknown): Promise<Reply<Handover>> =>
   reply(d.log, MESSAGES.openClaude, async () => {
-    const { ctx, record } = await scopeOf(d, key)
-    const task = currentTask(record.tasks)
-    if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.projectPath, codexBrief(task, ctx.projectPath, null))
+    const initial = await scopeOf(d, key)
+    const task = taskId === undefined ? currentTask(initial.record.tasks) : initial.record.tasks.find(t => t.id === questIdOf(taskId)) ?? null
+    if (taskId !== undefined && task?.state !== 'current') throw new Refusal(MESSAGES.notActiveMove)
+    const selected = await scopeOf(d, key, task?.id)
+    await needFolder(d, selected)
+    const { ctx } = selected
+    if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.cwd, codexBrief(task, ctx.cwd, null))
 
-    return openClaudeCode(d, ctx.projectPath, await isSessionOpen(d, ctx.projectPath))
+    return openClaudeCode(d, ctx.cwd, await isSessionOpen(d, ctx.cwd))
   })
 
 const isClaudeWorking = async (d: TasksDeps, scope: Scope): Promise<boolean> => {
-  const view = await realmView(d, scope.key, scope.record)
+  const sessions = await sessionsRepositoryImpl(d.host, d.home).list()
 
-  return view.kind === 'readable' && view.session.state === 'working'
+  return sessions.some(s => (s.workingPath ?? s.projectPath) === scope.ctx.cwd && isFresh(s, d.now()) && s.isTurnRunning)
 }
 
 // The quest in hand moves to Codex, refused while Claude Code's turn runs so
@@ -141,7 +151,7 @@ const isClaudeWorking = async (d: TasksDeps, scope: Scope): Promise<boolean> => 
 // Codex, handed over the way Start hands it.
 export const continueIn = (d: TasksDeps, key: unknown, taskId: unknown, platform: unknown): Promise<Reply<ContinueOutcome>> =>
   reply(d.log, MESSAGES.continueIn, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     await needFolder(d, scope)
     const id = questIdOf(taskId)
     const to = platformOf(platform)

@@ -28,7 +28,7 @@ export type DetailActions = {
   onActiveSaga: () => void
 }
 
-type DetailProps = DetailActions & { engine: EngineApi; realm: string; row: Row | null; hasActive: boolean; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
+type DetailProps = DetailActions & { engine: EngineApi; realm: string; row: Row | null; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
 
 // The title, read until clicked. A field being edited keeps its text when the
 // record changes underneath it.
@@ -156,7 +156,7 @@ const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: stri
   )
 }
 
-export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSaga, isSaved, note, edits, onStart, allowance, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
+export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved, note, edits, onStart, allowance, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
   if (row === null) {
     return (
       <aside class="detail panel" aria-label={t.detail.label}>
@@ -197,15 +197,15 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
         <XpReward xp={quest.xp} />
         <GoldReward gold={quest.xp} />
       </div>
-      {!isSealed && !hasActive && <ClaudeOut allowance={allowance} />}
+      {!isSealed && <ClaudeOut allowance={allowance} />}
       <div class="q-actions">
         {!isSealed && (
-          <button type="button" class="btn primary" disabled={hasActive || isBusy} onClick={() => onStart('claude')}>
+          <button type="button" class="btn primary" disabled={isBusy} onClick={() => onStart('claude')}>
             {quest.isStar ? t.actions.startMain : t.actions.start}
           </button>
         )}
         {!isSealed && (
-          <button type="button" class="btn" disabled={hasActive || isBusy} onClick={() => onStart('codex')}>
+          <button type="button" class="btn" disabled={isBusy} onClick={() => onStart('codex')}>
             {t.actions.startCodex}
           </button>
         )}
@@ -224,7 +224,6 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
           </button>
         )}
       </div>
-      {hasActive && <p class="hint">{t.board.startHint}</p>}
       {note !== undefined && <p class="card-note">⚠ {note}</p>}
       <hr />
       {quest.why !== null && <p class="d-star">{t.detail.main(quest.why)}</p>}

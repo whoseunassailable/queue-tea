@@ -87,3 +87,14 @@ test('newTask is queued with empty time and effort', () => {
   expect(task.effort.linesAdded).toBe(0)
   expect(task.files).toEqual({ read: [], changed: [] })
 })
+
+
+test('currentTask matches the session folder, with legacy tasks in the main checkout', () => {
+  const legacy = makeTask({ id: 'legacy', state: 'current' })
+  const one = makeTask({ id: 'one', state: 'current', worktreePath: '/worktrees/one' })
+  const two = makeTask({ id: 'two', state: 'current', worktreePath: '/worktrees/two' })
+  const tasks = [legacy, one, two]
+  expect(currentTask(tasks, { projectPath: '/p', cwd: '/p' })?.id).toBe('legacy')
+  expect(currentTask(tasks, { projectPath: '/p', cwd: '/worktrees/two' })?.id).toBe('two')
+  expect(currentTask(tasks, { projectPath: '/p', cwd: '/another' })).toBeNull()
+})

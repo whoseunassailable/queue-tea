@@ -119,7 +119,7 @@ describe('listing the realms', () => {
   })
 
   it('a record from a newer Queue-tea reads as unreadable and says so, untouched', async () => {
-    const newer = JSON.stringify({ version: 2, tasks: [] })
+    const newer = JSON.stringify({ version: 3, tasks: [] })
     await put('new-000003.json', newer)
 
     const reply = await readProject(deps, 'new-000003')

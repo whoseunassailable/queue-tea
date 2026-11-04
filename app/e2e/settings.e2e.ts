@@ -157,7 +157,7 @@ test('a broken record says why, and the last good copy puts it right', async () 
 })
 
 test('a record from a newer Queue-tea is left alone, with no copy offered', async () => {
-  const newer = JSON.stringify({ version: 2, future: 'work' })
+  const newer = JSON.stringify({ version: 3, future: 'work' })
   await writeFile(file, newer)
 
   await expect(page.getByText(/written by a newer Queue-tea/)).toBeVisible()

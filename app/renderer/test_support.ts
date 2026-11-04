@@ -42,6 +42,9 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   helpers: ['tea-dd'],
   asking: null,
   codexSince: null,
+  worktreePath: null,
+  baseBranch: null,
+  parentId: null,
   ...over,
 })
 
@@ -80,6 +83,8 @@ export const projectView = (key: string, over: Partial<Extract<ProjectView, { ki
   path: `/p/${key}`,
   session: { state: 'none', allowance: null },
   active: null,
+  activeQuests: over.activeQuests ?? (over.active ? [over.active] : []),
+  branches: [],
   ready: [],
   sealed: [],
   canStart: 0,
@@ -227,6 +232,7 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readQuestFacts: vi.fn(async () => ({ ok: true as const, data: QUEST_FACTS })),
     readLive: vi.fn(async () => ({ ok: true as const, data: { drift: [], mismatch: null, warning: null } })),
     switchBranch: vi.fn(async () => ({ ok: true as const, data: null })),
+    readMerge: vi.fn(async () => ({ ok: true as const, data: { kind: 'ready' as const, message: 'Ready to merge.', command: 'git merge task/first', cleanup: null } })),
     checkStart: vi.fn(async () => ({ ok: true as const, data: { kind: 'clear' as const, step: { kind: 'make' as const, branch: 'task/first', from: 'main' } } })),
     startQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { kind: 'started' as const, view: projectView(key), branch: 'task/first', notice: null, handover: { kind: 'session' as const } } })),
     openClaude: vi.fn(async () => ({ ok: true as const, data: { kind: 'opened' as const, terminal: 'terminal' as const } })),

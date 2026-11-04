@@ -71,6 +71,8 @@ export type Task = {
   // When the task went to the Codex CLI; null while Claude Code has it. Codex
   // runs without the mod, so its time is read from Codex's log when it leaves.
   codexSince: string | null
+  // The task's own checkout. Older tasks keep using the project's folder.
+  worktreePath: string | null
 }
 
 // Who works on a task in progress.
@@ -82,7 +84,7 @@ export type Platform = 'claude' | 'codex'
 export type AppRequest = { id: string; kind: 'begin' | 'putBack'; taskId: string; at: string; block?: { waitFor: string } | { reason: string } }
 
 export type ProjectRecord = {
-  version: 1
+  version: 1 | 2
   project: { name: string; path: string }
   docsLogPath: string | null
   playNext: string | null

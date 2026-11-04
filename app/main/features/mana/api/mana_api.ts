@@ -13,7 +13,8 @@ import { allowanceOf, manaOf } from '../domain/mana'
 
 export const readMana = (d: TasksDeps, key: unknown): Promise<Reply<ManaView>> =>
   reply(d.log, MESSAGES.readMana, async () => {
-    const scope = await scopeOf(d, key)
+    const initial = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, currentTask(initial.record.tasks)?.id)
     const now = d.now()
     const sessions = await sessionsRepositoryImpl(d.host, d.home).list()
     const here = sessionsIn(sessions, scope.ctx.projectPath, now)[0]

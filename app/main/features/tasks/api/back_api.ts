@@ -43,7 +43,7 @@ const goBack = async (d: TasksDeps, scope: Scope, task: Task, block: Block | und
 // isn't Claude's, so there is nothing to save.
 export const putBackQuest = (d: TasksDeps, key: unknown, taskId: unknown, seal: unknown): Promise<Reply<BackOutcome>> =>
   reply(d.log, MESSAGES.putBackQuest, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const block = seal === null || seal === undefined ? undefined : sealOf(seal)
     const task = activeTask(scope, id)
@@ -51,7 +51,7 @@ export const putBackQuest = (d: TasksDeps, key: unknown, taskId: unknown, seal: 
 
     const hasBegun = !scope.record.requests.some(q => q.kind === 'begin' && q.taskId === id)
     if (task.codexSince !== null) return goBack(d, scope, task, block, false)
-    if (!hasBegun || !(await isSessionOpen(d, scope.ctx.projectPath))) return goBack(d, scope, task, block, hasBegun)
+    if (!hasBegun || !(await isSessionOpen(d, scope.ctx.cwd))) return goBack(d, scope, task, block, hasBegun)
 
     const saved = await addRequestUseCase(scope.deps, scope.ctx, 'putBack', id, block)
     if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
@@ -62,7 +62,7 @@ export const putBackQuest = (d: TasksDeps, key: unknown, taskId: unknown, seal: 
 // Without waiting for the session. A seal it was going to apply still applies.
 export const putBackNow = (d: TasksDeps, key: unknown, taskId: unknown): Promise<Reply<BackOutcome>> =>
   reply(d.log, MESSAGES.putBackQuest, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const task = activeTask(scope, id)
     const asked = scope.record.requests.find(q => q.kind === 'putBack' && q.taskId === id)

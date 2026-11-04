@@ -14,7 +14,7 @@ export type QuestActions = {
   onBackNow: (quest: ActiveQuest) => void
   onSealActive: (quest: ActiveQuest) => void
   onNotYet: (quest: ActiveQuest) => void
-  onOpenClaude: () => void
+  onOpenClaude: (quest?: ActiveQuest) => void
   onCheckAgain: () => void
   onCancel: () => void
   onCopy: (text: string) => void
@@ -29,11 +29,11 @@ export const runFlowKey = (key: QuestKey, view: Readable, flow: QuestFlow | unde
   const { active } = view
   const isFree = active !== null && active.asking !== 'putBack'
   if (key.kind === 'checkAgain') {
-    if (flow?.kind === 'held' || flow?.kind === 'refused') actions.onCheckAgain()
+    if (flow?.kind === 'held' || flow?.kind === 'refused' || flow?.kind === 'openFailed') actions.onCheckAgain()
   } else if (key.kind === 'cancel') {
     if (flow !== undefined) actions.onCancel()
   } else if (key.kind === 'open') {
-    if (active !== null) actions.onOpenClaude()
+    if (active !== null) actions.onOpenClaude(active)
   } else if (key.kind === 'finish') {
     if (isFree) actions.onFinish(active)
   } else if (key.kind === 'back') {

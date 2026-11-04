@@ -27,7 +27,7 @@ test('inside a repository the project is its top folder, found from where the se
   expect(place.projectPath).toBe('/work/tea')
   expect(place.file).toMatch(/^\/Users\/r\/\.queue-tea\/projects\/tea-[0-9a-f]{6}\.json$/)
   expect(place.offsetMinutes).toBe(-330)
-  expect(folders).toEqual(['/work/tea/hooks/app', '/work/tea/hooks/app'])
+  expect(folders).toEqual(['/work/tea/hooks/app', '/work/tea/hooks/app', '/work/tea/hooks/app'])
 })
 
 test('outside a repository the project is the working directory', async () => {

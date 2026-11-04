@@ -7,7 +7,13 @@ import { carryOverRecords, projectKey, recordPath } from './record_source'
 // record file, and the local time offset.
 export const readProjectPlace = async (host: Host, cwd: string, home: string, log: (text: string) => void): Promise<ProjectPlace> => {
   const top = await host.run(['git', 'rev-parse', '--show-toplevel'], cwd)
-  const projectPath = top.exitCode === 0 && top.stdout.trim() !== '' ? top.stdout.trim() : cwd
+  const workingPath = top.exitCode === 0 && top.stdout.trim() !== '' ? top.stdout.trim() : cwd
+  let projectPath = workingPath
+  if (top.exitCode === 0) {
+    const common = await host.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'], cwd)
+    const dir = common.stdout.trim()
+    if (common.exitCode === 0 && dir.endsWith('/.git')) projectPath = dir.slice(0, -5)
+  }
   try {
     await carryOverRecords(host, home)
   } catch (err) {
@@ -16,5 +22,5 @@ export const readProjectPlace = async (host: Host, cwd: string, home: string, lo
   }
   const offsetMinutes = parseOffset((await host.run(['date', '+%z'], cwd)).stdout)
 
-  return { projectPath, file: recordPath(home, projectKey(projectPath)), offsetMinutes }
+  return { projectPath, workingPath, file: recordPath(home, projectKey(projectPath)), offsetMinutes }
 }

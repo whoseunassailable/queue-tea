@@ -68,15 +68,15 @@ const terminals = async () => {
     return ''
   }
 }
-const session = (over: { isTurnRunning?: boolean } = {}) =>
+const session = async (over: { isTurnRunning?: boolean } = {}) =>
   writeFile(
     join(home, '.queue-tea/sessions/s-1.json'),
-    JSON.stringify({ id: 's-1', projectPath: repo, recordFile: file, currentTaskId: null, isTurnRunning: false, cup: { mood: 'idle', line: '' }, allowance: null, options: {}, heartbeat: Date.now(), startedAt: Date.now(), ...over }),
+    JSON.stringify({ id: 's-1', projectPath: repo, workingPath: (await stored('two')).worktreePath, recordFile: file, currentTaskId: null, isTurnRunning: false, cup: { mood: 'idle', line: '' }, allowance: null, options: {}, heartbeat: Date.now(), startedAt: Date.now(), ...over }),
   )
 const noSession = () => rm(join(home, '.queue-tea/sessions/s-1.json'), { force: true })
 const button = (name: string | RegExp) => page.getByRole('button', { name })
 const heading = (name: string | RegExp) => page.getByRole('heading', { name })
-const toast = (text: string | RegExp) => page.locator('.toast-item').filter({ hasText: text })
+const toast = (text: string | RegExp) => page.locator('.toast-item').filter({ hasText: text }).last()
 const shot = async (name: string) => {
   if (SHOTS !== undefined) await page.screenshot({ path: join(SHOTS, `${name}.png`) })
 }
@@ -135,53 +135,18 @@ test.afterAll(async () => {
   await rm(home, { recursive: true, force: true })
 })
 
-test('Start stops at the git hold, and changes nothing', async () => {
+test('Start creates its own branch and terminal while the original checkout is dirty', async () => {
   await writeFile(join(repo, 'uncommitted.txt'), 'x\n')
-  const before = await readFile(file, 'utf8')
-
   await button('Start ★ First quest').click()
-
-  await expect(page.getByText("The gate is sealed: First quest can't start yet")).toBeVisible()
-  await expect(page.getByText('1 file not committed on main,')).toBeVisible()
-  await expect(page.locator('.files')).toContainText('uncommitted.txt')
-  await expect(page.locator('.copy-line code')).toHaveText('git status')
-  await shot('hold')
-  expect(await readFile(file, 'utf8')).toBe(before)
-  expect(await git('branch', '--format=%(refname:short)')).toBe('main')
-})
-
-test('no button anywhere offers to run git', async () => {
-  for (const control of await page.getByRole('button').all()) {
-    const words = `${(await control.textContent()) ?? ''} ${(await control.getAttribute('aria-label')) ?? ''}`
-    expect(words).not.toMatch(/\b(commit|push|merge|pull)\b/i)
-  }
-})
-
-test('copying a command puts it on the clipboard', async () => {
-  await button('Copy this command').click()
-
-  await expect(toast('Copied')).toBeVisible()
-  expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe('git status')
-})
-
-test('Check again still holds while git does', async () => {
-  await page.keyboard.press('r')
-
-  await expect(page.getByText("The gate is sealed: First quest can't start yet")).toBeVisible()
-  expect((await stored('one')).state).toBe('queued')
-})
-
-test('once git is clear, Check again makes the branch and opens the terminal', async () => {
-  await rm(join(repo, 'uncommitted.txt'))
-
-  await page.keyboard.press('r')
-
   await expect(heading('First quest')).toBeVisible()
   await expect(toast('Set out: First quest · task/first-quest')).toBeVisible()
-  expect(await git('branch', '--show-current')).toBe('task/first-quest')
-  expect(await stored('one')).toMatchObject({ state: 'current', branch: 'task/first-quest', baseBranch: 'main' })
+  expect(await git('branch', '--show-current')).toBe('main')
+  const first = await stored('one')
+  expect(first).toMatchObject({ state: 'current', branch: 'task/first-quest', baseBranch: 'main' })
+  expect(first.worktreePath).not.toBe(repo)
   expect((await onDisk()).requests.map(q => ({ kind: q.kind, taskId: q.taskId }))).toEqual([{ kind: 'begin', taskId: 'one' }])
-  expect(await terminals()).toContain(`cd '${repo}' && claude`)
+  expect(await terminals()).toContain(`cd '${first.worktreePath}' && claude`)
+  expect(await readFile(join(repo, 'uncommitted.txt'), 'utf8')).toBe('x\n')
   await expect(page.getByText('Claude Code takes it as soon as it opens here.')).toBeVisible()
   await shot('waiting-for-session')
 })
@@ -236,7 +201,7 @@ test('the first finish asks where the log goes, and the victory follows the win'
 
   expect(await stored('one')).toMatchObject({ state: 'done', review: null, difficulty: { expected: 'hard', actual: 'medium' } })
   expect((await onDisk()).docsLogPath).toBe('docs/task_log.md')
-  expect(await readFile(join(repo, 'docs/task_log.md'), 'utf8')).toContain('| First quest | Urgent | Hard → Medium | 14m | `task/first-quest` |')
+  expect(await readFile(join((await stored('one')).worktreePath!, 'docs/task_log.md'), 'utf8')).toContain('| First quest | Urgent | Hard → Medium | 14m | `task/first-quest` |')
 })
 
 test('Esc closes the victory, and the next quest is ready', async () => {
@@ -249,10 +214,7 @@ test('Esc closes the victory, and the next quest is ready', async () => {
 })
 
 test('with no session, Back to the board goes at once and keeps the branch', async () => {
-  // The task log is an uncommitted change until Rohan commits it.
-  await git('add', '.')
-  await git('commit', '-m', 'log')
-  await git('push', '-u', 'origin', 'task/first-quest')
+  // Starting another quest leaves the first quest's uncommitted log intact.
 
   await page.keyboard.press('s')
   await expect(heading('Second quest')).toBeVisible()
@@ -273,6 +235,8 @@ test('with no session, Back to the board goes at once and keeps the branch', asy
 
 test('Back right after Start, before Claude has begun, needs no checkpoint', async () => {
   await git('push', '-u', 'origin', 'task/second-quest').catch(() => {})
+  await page.getByRole('button', { name: /^Second quest/ }).click()
+  await expect(page.locator('.detail')).toContainText('Second quest')
   await page.getByRole('button', { name: 'Start ★', exact: true }).click()
   await expect(page.locator('.qlist .aq-title')).toHaveText('Second quest')
   expect((await onDisk()).requests).toHaveLength(1)
@@ -288,6 +252,8 @@ test('with a session open, Start asks it and opens nothing', async () => {
   await expect(page.locator('.detail')).toBeVisible()
   const before = await terminals()
 
+  await page.getByRole('button', { name: /^Second quest/ }).click()
+  await expect(page.locator('.detail')).toContainText('Second quest')
   await page.getByRole('button', { name: 'Start ★', exact: true }).click()
 
   await expect(page.locator('.qlist .aq-title')).toHaveText('Second quest')
@@ -311,10 +277,13 @@ test('with a session open, Back waits for its checkpoint, and says when it has g
   // The session writes its checkpoint and puts the quest back.
   await change(r => ({ ...r, requests: [], tasks: r.tasks.map(t => (t.id === 'two' ? { ...t, state: 'queued' } : t)) }))
 
+  await expect(page.locator('.qlist .aq-title')).toHaveCount(0)
   await expect(toast('Back on the board: Second quest')).toBeVisible()
 })
 
 test('when the session ends while a checkpoint is awaited, Put it back now still works', async () => {
+  await page.getByRole('button', { name: /^Second quest/ }).click()
+  await expect(page.locator('.detail')).toContainText('Second quest')
   await page.getByRole('button', { name: 'Start ★', exact: true }).click()
   await expect(page.locator('.qlist .aq-title')).toHaveText('Second quest')
   await noRequests()
@@ -333,6 +302,8 @@ test('when the session ends while a checkpoint is awaited, Put it back now still
 })
 
 test('sealing the active quest puts it back sealed', async () => {
+  await page.getByRole('button', { name: /^Second quest/ }).click()
+  await expect(page.locator('.detail')).toContainText('Second quest')
   await page.getByRole('button', { name: 'Start ★', exact: true }).click()
   await expect(page.locator('.qlist .aq-title')).toHaveText('Second quest')
   await noRequests()
@@ -358,4 +329,39 @@ test('c opens Claude Code from Home', async () => {
   await page.keyboard.press('c')
 
   await expect.poll(async () => (await terminals()).length).toBeGreaterThan(before.length)
+})
+
+
+test('starts another quest in Codex and shows both branches beside Quests', async () => {
+  await editTask('two', { blockedReason: null })
+  await page.getByRole('link', { name: 'Quests', exact: true }).click()
+  await page.getByRole('button', { name: /^Second quest/ }).click()
+  await expect(button('Start in Codex')).toBeEnabled()
+  await button('Start in Codex').click()
+  await expect.poll(async () => (await stored('two')).codexSince).not.toBeNull()
+  await expect(page.locator('.qlist .aq-title')).toHaveCount(2)
+  expect((await stored('three')).state).toBe('current')
+  expect((await stored('two')).worktreePath).not.toBe((await stored('three')).worktreePath)
+  expect(await git('branch', '--show-current')).toBe('main')
+
+  await page.getByRole('link', { name: 'Branches', exact: true }).click()
+  await expect(heading('Branch tree')).toBeVisible()
+  await expect(page.getByText('2 in progress', { exact: true })).toBeVisible()
+  const second = page.getByRole('article', { name: 'Second quest' })
+  await expect(second.getByText('task/second-quest', { exact: true })).toBeVisible()
+  await expect(second.getByText('Codex', { exact: true })).toBeVisible()
+  const before = await terminals()
+  await second.getByRole('button', { name: 'Show Codex' }).click()
+  await expect.poll(async () => (await terminals()).length).toBeGreaterThan(before.length)
+  const focused = (await terminals()).slice(before.length)
+  expect(focused).toContain((await stored('two')).worktreePath!)
+  expect(focused).not.toContain('do script')
+  await second.getByRole('button', { name: 'Copy folder path' }).click()
+  expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe((await stored('two')).worktreePath)
+  await second.getByRole('button', { name: 'Merge instructions' }).click()
+  await expect(page.getByRole('dialog')).toContainText('Commit or put aside')
+  await button('Close').click()
+  await shot('parallel-branches')
+  await second.getByRole('button', { name: /^Second quest/ }).click()
+  await expect(page.locator('.detail')).toContainText('Second quest')
 })

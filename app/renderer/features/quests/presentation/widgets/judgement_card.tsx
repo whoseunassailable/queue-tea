@@ -34,8 +34,8 @@ export const JudgementCard = ({ active, actions, kind }: { active: ActiveQuest; 
         <button type="button" class="btn" onClick={() => actions.onNotYet(active)}>
           {t.judgement.no}
         </button>
-        <button type="button" class="btn" onClick={actions.onOpenClaude}>
-          {t.actions.openClaude}
+        <button type="button" class="btn" onClick={() => actions.onOpenClaude(active)}>
+          {active.codexSince !== null ? t.actions.showCodex : t.actions.openClaude}
         </button>
       </div>
     </section>

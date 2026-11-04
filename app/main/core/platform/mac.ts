@@ -35,9 +35,9 @@ const openVsCode = (path: string): string[] => ['open', '-a', 'Visual Studio Cod
 // A new window running the line in the project.
 export const openLineArgv = (terminal: TerminalChoice, path: string, shellLine: string): string[] => {
   const line = appleScriptText(shellLine)
-  if (terminal === 'terminal') return script(`tell application "Terminal" to do script ${line}`, 'tell application "Terminal" to activate')
+  if (terminal === 'terminal') return script('tell application "Terminal"', `set queueTeaTab to do script ${line}`, `set custom title of queueTeaTab to ${appleScriptText(path)}`, 'activate', 'end tell')
   if (terminal === 'iterm') {
-    return script('tell application "iTerm"', 'activate', 'set queueTeaWindow to (create window with default profile)', `tell current session of queueTeaWindow to write text ${line}`, 'end tell')
+    return script('tell application "iTerm"', 'activate', 'set queueTeaWindow to (create window with default profile)', `set name of current session of queueTeaWindow to ${appleScriptText(path)}`, `tell current session of queueTeaWindow to write text ${line}`, 'end tell')
   }
 
   return openVsCode(path)
@@ -45,8 +45,8 @@ export const openLineArgv = (terminal: TerminalChoice, path: string, shellLine: 
 
 // A session is open already, so its terminal only comes forward.
 export const bringForwardArgv = (terminal: TerminalChoice, path: string): string[] => {
-  if (terminal === 'terminal') return script('tell application "Terminal" to activate')
-  if (terminal === 'iterm') return script('tell application "iTerm" to activate')
+  if (terminal === 'terminal') return script('tell application "Terminal"', 'activate', 'repeat with queueTeaWindow in windows', 'repeat with queueTeaTab in tabs of queueTeaWindow', `if custom title of queueTeaTab is ${appleScriptText(path)} then`, 'set selected of queueTeaTab to true', 'set frontmost of queueTeaWindow to true', 'return', 'end if', 'end repeat', 'end repeat', 'end tell')
+  if (terminal === 'iterm') return script('tell application "iTerm"', 'activate', 'repeat with queueTeaWindow in windows', 'repeat with queueTeaTab in tabs of queueTeaWindow', 'repeat with queueTeaSession in sessions of queueTeaTab', `if name of queueTeaSession is ${appleScriptText(path)} then`, 'select queueTeaSession', 'select queueTeaTab', 'select queueTeaWindow', 'return', 'end if', 'end repeat', 'end repeat', 'end repeat', 'end tell')
 
   return openVsCode(path)
 }

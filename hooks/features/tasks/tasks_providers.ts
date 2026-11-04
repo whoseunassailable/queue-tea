@@ -9,7 +9,7 @@ import type { Deps } from './domain/usecases/deps'
 export const tasksDepsOf = (p: Ports, ctx: Ctx): Deps => ({
   records: recordsRepositoryOf(p, ctx),
   git: gitRepositoryOf(p, ctx),
-  taskLog: taskLogRepositoryImpl(p.host, ctx.projectPath),
+  taskLog: taskLogRepositoryImpl(p.host, ctx.cwd),
   codex: codexRepositoryOf(p, ctx),
   env: p,
 })

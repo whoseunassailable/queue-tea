@@ -141,9 +141,9 @@ const Glory = ({ view, game }: { view: View; game: Load<GameView> }) => (
 const QuestCard = ({ view, flow, actions }: { view: View; flow: QuestFlow | undefined; actions: QuestActions }) => {
   if (flow !== undefined) return <FlowCard flow={flow} actions={actions} />
   if (view.active === null) return <NoActive view={view} actions={actions} />
-  if (view.active.review !== null) return <JudgementCard active={view.active} actions={actions} kind="full" />
-
-  return <ActiveCard active={view.active} session={view.session} actions={actions} kind="full" />
+  return <>{view.activeQuests.map(active => active.review !== null
+    ? <JudgementCard key={active.id} active={active} actions={actions} kind="full" />
+    : <ActiveCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="full" />)}</>
 }
 
 const LiveLines = ({ live, note, onSwitch }: { live: LiveFacts | null; note: string | null; onSwitch: () => void }) => (
@@ -182,7 +182,7 @@ export const HomePage = ({ engine, view, game, flow, actions, isSheetOpen, lette
   useQuestKeys(!isSheetOpen, letterKeys, key => {
     if (runFlowKey(key, view, flow, actions)) return true
     const next = mainQuest(view)
-    if (key.kind === 'start' && view.active === null && next !== undefined) actions.onStart(next)
+    if (key.kind === 'start' && next !== undefined) actions.onStart(next)
     else if (key.kind === 'seal' && view.active !== null) actions.onSealActive(view.active)
     else if (key.kind === 'switch') switchBranch()
     else if (key.kind === 'dismiss' && warning !== null) setDismissed(warning)

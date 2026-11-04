@@ -592,7 +592,7 @@ In plain terms:
 - Everything blocked: "Nothing can start: every task waiting is blocked."
 - Blocked rows drop to 72% opacity, with a ⊘ line from `blockedText()`.
 - A section with nothing in it shows its header only ("⊘ Blocked 0"); Done starts collapsed.
-- While a task is current, Start is disabled and says "Start opens when <current> is done or back in the queue." Play next and priority still work.
+- Start stays available for another queued, unsealed quest. Each new app start gets its own branch and worktree; Home and Quests show every current task. Branches sits next to Quests and connects saved base branches to quest cards. See [parallel quests](spec.md#parallel-quests-and-branches); older wireframes below predate this behavior.
 - After a Done, the ★ row takes focus.
 - Search with no match: 'No tasks match "diagram".' with [ Clear search ].
 

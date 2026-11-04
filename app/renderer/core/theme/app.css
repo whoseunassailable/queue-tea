@@ -1166,3 +1166,15 @@ body,
 .rm .book-done {
   font-weight: 800;
 }
+
+/* Quest branches remain legible with long branch names and narrow windows. */
+.rm .branch-page { padding: 24px; display: grid; gap: 22px; max-width: 1100px; margin: auto; }
+.rm .branch-heading, .rm .branch-card { padding: 20px; }
+.rm .branch-heading h1, .rm .branch-card h3 { margin: 0 0 10px; }
+.rm .branch-base { display: inline-block; padding: 12px 20px; margin: 0; }
+.rm .branch-tree { list-style: none; padding: 0 0 0 28px; margin: 0 0 0 24px; border-left: 2px solid currentColor; }
+.rm .branch-node { position: relative; padding-top: 18px; }
+.rm .branch-node::before { content: ''; position: absolute; left: -28px; top: 46px; width: 28px; border-top: 2px solid currentColor; }
+.rm .branch-path, .rm .branch-card .mono { overflow-wrap: anywhere; }
+.rm .copy-line code { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .rm .branch-page { padding: 12px; } .rm .branch-tree { margin-left: 12px; padding-left: 16px; } .rm .branch-node::before { left: -16px; width: 16px; } }

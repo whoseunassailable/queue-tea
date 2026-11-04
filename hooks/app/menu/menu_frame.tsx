@@ -74,7 +74,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
   const view = await getView($, 'menuView')
   const record = await getView($, 'record')
   const tasks = record?.tasks ?? []
-  const current = currentTask(tasks)
+  const current = currentTask(tasks, live.ctx)
   const budget = await getView($, 'budget')
   // The tasks that can start, in the order Start ★ takes them; the blocked
   // ones apart.

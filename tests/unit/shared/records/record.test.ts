@@ -70,8 +70,8 @@ test('an unreadable record is never overwritten', async () => {
   expect(mem.files.get(FILE)).toBe('{not json')
 })
 
-test('a record of version 2 is unreadable', async () => {
-  const { host } = memoryHost({ files: { [FILE]: JSON.stringify({ ...emptyRecord('p', '/p'), version: 2 }) } })
+test('a record of version 3 is unreadable', async () => {
+  const { host } = memoryHost({ files: { [FILE]: JSON.stringify({ ...emptyRecord('p', '/p'), version: 3 }) } })
 
   expect(await readRecord(host, FILE, 'p', '/p')).toBe('unreadable')
 })
@@ -109,8 +109,8 @@ test('a copy that fails says so', async () => {
 
 test('why a record cannot be read: bad JSON, a newer Queue-tea, or not a record', () => {
   expect(whyUnreadable('{bad').reason).toMatch(/^it isn't valid JSON \(.+\)$/)
-  expect(whyUnreadable(json({ ...emptyRecord('p', '/p'), version: 2 as 1 }))).toEqual({
-    reason: 'it was written by a newer Queue-tea (record version 2); update Queue-tea to read it',
+  expect(whyUnreadable(json({ ...emptyRecord('p', '/p'), version: 3 as 1 }))).toEqual({
+    reason: 'it was written by a newer Queue-tea (record version 3); update Queue-tea to read it',
     isNewer: true,
   })
   expect(whyUnreadable('[1, 2]')).toEqual({ reason: "it isn't a Queue-tea record", isNewer: false })
@@ -162,7 +162,7 @@ test('a broken record with a good copy can be restored; the broken file is kept'
 
 test('no restore over a newer Queue-tea’s record, without a copy, or from a broken copy', async () => {
   const good = json(emptyRecord('p', '/p'))
-  const newer = json({ ...emptyRecord('p', '/p'), version: 2 as 1 })
+  const newer = json({ ...emptyRecord('p', '/p'), version: 3 as 1 })
   const cases = [
     memoryHost({ files: { [FILE]: newer, [backupPath(FILE)]: good } }),
     memoryHost({ files: { [FILE]: '{bad' } }),
@@ -339,4 +339,15 @@ test('when a task went to Codex survives a write and a read', async () => {
   const read = await readRecord(mem.host, FILE, 'p', '/p')
 
   expect(read === 'unreadable' ? 'unreadable' : read.tasks[0]?.codexSince).toBe('2026-10-21T09:00:00+02:00')
+})
+
+
+test('version 1 migrates without moving its current task or losing unknown fields', () => {
+  const old = { ...emptyRecord('p', '/p'), version: 1, future: 'preserved', tasks: [makeTask({ state: 'current' })] }
+  const parsed = parseRecord(JSON.stringify(old))
+  expect(parsed).not.toBe('unreadable')
+  if (parsed === 'unreadable') return
+  expect(parsed.version).toBe(2)
+  expect(parsed.tasks[0]!.worktreePath).toBeNull()
+  expect((parsed as unknown as { future: string }).future).toBe('preserved')
 })

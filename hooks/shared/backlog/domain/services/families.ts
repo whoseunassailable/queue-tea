@@ -43,7 +43,7 @@ export const progressText = (p: Progress): string => {
 
   return [
     `${p.done}/${p.total} done ${'▰'.repeat(filled)}${'▱'.repeat(5 - filled)}`,
-    ...(p.current > 0 ? ['1 in progress'] : []),
+    ...(p.current > 0 ? [`${p.current} in progress`] : []),
     ...(p.blocked > 0 ? [`${p.blocked} blocked`] : []),
   ].join(' · ')
 }

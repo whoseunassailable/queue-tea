@@ -15,7 +15,7 @@ const OTHER = quest({ id: 'second', title: 'Second quest' })
 const SEALED = quest({ id: 'stuck', title: 'Stuck quest', sealedBecause: 'waiting for the clinic' })
 const BOARD = projectView(KEY, { ready: [{ kind: 'quest', quest: MAIN }, { kind: 'quest', quest: OTHER }], sealed: [{ kind: 'quest', quest: SEALED }], canStart: 2, sealedCount: 1 })
 
-const withActive = (over: Partial<ActiveQuest> = {}, session: SessionState = 'open', view = BOARD): ProjectView => ({ ...(view as Extract<ProjectView, { kind: 'readable' }>), active: activeQuest(over), session: { state: session, allowance: null } })
+const withActive = (over: Partial<ActiveQuest> = {}, session: SessionState = 'open', view = BOARD): ProjectView => ({ ...(view as Extract<ProjectView, { kind: 'readable' }>), active: activeQuest(over), activeQuests: [activeQuest(over)], session: { state: session, allowance: null } })
 
 const hold = (over: Partial<GitHold> = {}): GitHold => ({ kind: 'uncommitted', reason: '10 files not committed', branch: 'task/old', head: 'abc1234', files: Array.from({ length: 10 }, (_, i) => `file${i}.md`), fileCount: 10, command: 'git status', ...over })
 const held = (over: Partial<GitHold> = {}) => vi.fn(async (): Promise<Reply<StartCheck>> => ({ ok: true, data: { kind: 'held', hold: hold(over) } }))
@@ -117,13 +117,12 @@ describe('Start from Quests', () => {
     expect(engine.checkStart).not.toHaveBeenCalled()
   })
 
-  it('dims Start while a quest is active, and says why', async () => {
+  it('allows another Start while a quest is active', async () => {
     const { engine } = await open(withActive())
 
-    expect(button(t.actions.startMain).disabled).toBe(true)
-    expect(screen.getByText(t.board.startHint)).toBeTruthy()
+    expect(button(t.actions.startMain).disabled).toBe(false)
     await key('s')
-    expect(engine.checkStart).not.toHaveBeenCalled()
+    await waitFor(() => expect(engine.checkStart).toHaveBeenCalledWith(KEY, 'first'))
   })
 
   it('shows the hold where the active quest would be', async () => {
@@ -246,7 +245,7 @@ describe('a terminal that would not open', () => {
     expect(await screen.findByText(t.flow.couldntOpen('iTerm2'))).toBeTruthy()
     expect(screen.getByText("cd '/p' && claude")).toBeTruthy()
     await press(t.failed.tryAgain)
-    await waitFor(() => expect(engine.openClaude).toHaveBeenCalledWith(KEY))
+    await waitFor(() => expect(engine.continueIn).toHaveBeenCalledWith(KEY, 'first', 'claude'))
   })
 })
 
@@ -639,10 +638,10 @@ describe('Start in Codex', () => {
     await waitFor(() => expect(engine.startQuest).toHaveBeenCalledWith(KEY, 'second', 'codex'))
   })
 
-  it('is dimmed while a quest is active, and missing on a sealed quest', async () => {
+  it('is enabled while a quest is active, and missing on a sealed quest', async () => {
     window.location.hash = '#/quests'
     const { workspace } = await open(withActive())
-    expect(button(t.actions.startCodex).disabled).toBe(true)
+    expect(button(t.actions.startCodex).disabled).toBe(false)
 
     await act(async () => workspace.openQuest(KEY, 'stuck'))
     expect(screen.queryByRole('button', { name: t.actions.startCodex })).toBeNull()
@@ -670,7 +669,7 @@ describe('the active quest and Codex', () => {
     expect(screen.queryByRole('button', { name: t.actions.openClaude })).toBeNull()
     await press(t.actions.showCodex)
 
-    await waitFor(() => expect(engine.openClaude).toHaveBeenCalledWith(KEY))
+    await waitFor(() => expect(engine.openClaude).toHaveBeenCalledWith(KEY, 'active'))
   })
 
   it('with Codex, Continue in Claude Code brings it back, and Open Codex again opens Codex on it', async () => {

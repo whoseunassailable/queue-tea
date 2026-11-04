@@ -1,6 +1,6 @@
 # Repository Rules
 
-Queue-tea keeps one task in progress per project and the rest in a priority queue. The repository holds every part of it, one folder per part:
+Queue-tea keeps one task per working folder, with parallel tasks in separate Git worktrees and the rest in a priority queue. The repository holds every part of it, one folder per part:
 
 | Folder                      | What it is                                                                                                                                                         |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -22,8 +22,9 @@ const mismatchOf = async ({ deps }: Scope, branch: string): Promise<LiveFacts['m
 // commit warning.
 export const readLive = (d: TasksDeps, key: unknown): Promise<Reply<LiveFacts>> =>
   reply(d.log, MESSAGES.readLive, async () => {
-    const scope = await scopeOf(d, key)
-    const sessions = sessionsIn(await sessionsRepositoryImpl(d.host, d.home).list(), scope.ctx.projectPath, d.now())
+    const initial = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, currentTask(initial.record.tasks)?.id)
+    const sessions = sessionsIn(await sessionsRepositoryImpl(d.host, d.home).list(), scope.ctx.cwd, d.now())
     const warning = sessions.find(s => s.warning != null)?.warning ?? null
     const current = currentTask(scope.record.tasks)
     if (current === null) return { drift: [], mismatch: null, warning }
@@ -33,7 +34,8 @@ export const readLive = (d: TasksDeps, key: unknown): Promise<Reply<LiveFacts>> 
 
 export const switchBranch = (d: TasksDeps, key: unknown): Promise<Reply<null>> =>
   reply(d.log, MESSAGES.switchBranch, async () => {
-    const scope = await scopeOf(d, key)
+    const initial = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, currentTask(initial.record.tasks)?.id)
     const branch = currentTask(scope.record.tasks)?.branch ?? null
     if (branch === null) throw new Refusal(MESSAGES.noBranch)
     const result = await switchToTaskUseCase(scope.deps, branch)

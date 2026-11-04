@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 is [plan-parallel-quests.md](plan-parallel-quests.md).
+- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)).
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -155,20 +155,28 @@ Open in Claude Code never starts a second session: with one open it only brings 
 
 Two engine API calls carry it. What Codex is told, its guard and how its time is counted are in the spec ([Codex in place of Claude Code](spec.md#codex-in-place-of-claude-code), [the git guard](spec.md#the-git-guard), [Time](spec.md#time)).
 
-- **`startQuest(key, taskId, platform)`.** `platform` is `'claude'` (the main Start button) or `'codex'` (**Start in Codex**); anything else is refused with "Pick Claude Code or Codex." For `'codex'`, the git check and the branch are the same as for Claude. Then main adds no `begin` request: it writes the brief to `~/.queue-tea/briefs/<task id>.md` and opens the chosen terminal on `cd '<project>' && codex --sandbox workspace-write --ask-for-approval on-request "$(cat '<brief file>')"`. The brief comes from a file because text typed through AppleScript would break its quotes and lines. VS Code opens the folder and gets that whole line copied, with the toast "The Codex line is copied: paste it in VS Code's terminal".
+- **`startQuest(key, taskId, platform)`.** `platform` is `'claude'` (the main Start button) or `'codex'` (**Start in Codex**); anything else is refused with "Pick Claude Code or Codex." For `'codex'`, the git check and the branch are the same as for Claude. Then main adds no `begin` request: it writes the brief to `~/.queue-tea/briefs/<task id>.md` and opens the chosen terminal on `cd '<quest folder>' && codex --sandbox workspace-write --ask-for-approval on-request "$(cat '<brief file>')"`. The brief comes from a file because text typed through AppleScript would break its quotes and lines. VS Code opens the folder and gets that whole line copied, with the toast "The Codex line is copied: paste it in VS Code's terminal".
 - **`continueIn(key, taskId, platform)`** moves the active quest and returns `{ view, handover, isCodexTimeLost }`. A quest that is no longer active is refused: "That quest is no longer the active one, so nothing moved."
-  - **To `'codex'`** (**Continue in Codex**): refused while the realm's session is working, with "Claude Code is still working on <title>. Wait for its turn to end, or stop it with Esc in its terminal, then try again. Nothing has changed." Otherwise the quest's waiting requests are dropped, `codexSince` is set, and Codex opens with a fresh brief. **Open Codex again** is the same call on a quest already with Codex: `codexSince` keeps its first time, and a new Codex opens, for when its window was closed.
+  - **To `'codex'`** (**Continue in Codex**): refused while that quest's session is working, with "Claude Code is still working on <title>. Wait for its turn to end, or stop it with Esc in its terminal, then try again. Nothing has changed." Otherwise the quest's waiting requests are dropped, `codexSince` is set, and Codex opens with a fresh brief. **Open Codex again** is the same call on a quest already with Codex: `codexSince` keeps its first time, and a new Codex opens, for when its window was closed.
   - **To `'claude'`** (**Continue in Claude Code**): Codex's time is added, `codexSince` goes back to null, and the quest is handed over as Start hands it: a `begin` request, and a terminal running `claude` when no session is open.
 
 **Show Codex** is `openClaude` on a quest with Codex. It only brings the chosen terminal forward: the app can't see whether Codex is still running, and a second Codex must not start. If bringing the terminal forward fails, the recovery command opens Codex with the quest's brief. Bringing VS Code forward copies nothing and shows no paste hint.
 
 Finish, Back to the board and Seal on a quest with Codex read Codex's log before they save. Back to the board asks no session for a checkpoint and puts the quest back at once. `FinishOutcome`, `BackOutcome` and `ContinueOutcome` carry `isCodexTimeLost`; when it is true, the toast says "Couldn't read Codex's log, so this quest's time on Codex wasn't added."
 
+### Parallel quests and the Branches tab
+
+Quests and Home show all current quests. Start and Start in Codex stay available for queued, unsealed quests, even with others active. Each new start creates its own worktree from main, keeping the original folder untouched. Existing current quests keep their original folder. The Branches tab sits immediately after Quests: base branch → quest cards, with platform, status, worktree folder, saga and terminal controls. The keyboard tabs are Home ⌘1, Quests ⌘2, Branches ⌘3, Chronicle ⌘4 and Mana ⌘5.
+
+`ProjectView.activeQuests` holds every active card and its folder's session; `active` remains the primary quest for Home shortcuts. `branches` includes queued, active and finished quests with saved branches. `openClaude(key, taskId)` addresses the selected quest. `readMerge(key, taskId)` checks local merge readiness and returns commands as text. Merge instructions shows loading, errors with retry, conflicts, readiness or already merged status. No Git commit, push or merge runs from the app.
+
+The full behavior and safe folder retention are in [Parallel quests and branches](spec.md#parallel-quests-and-branches). The implementation decisions are recorded in [plan-parallel-quests.md](plan-parallel-quests.md).
+
 ## Data
 
 Section 6 of the design lists every field: what each screen reads, the new fields with their defaults, the session file and the app's own settings. The rules:
 
-- The record stays at version 1.
+- The record writes version 2. Version 1 loads with null worktree paths; newer unsupported versions remain unreadable.
 - New fields get their defaults in `withDefaults` and `parseRecord`.
 - Fields one side doesn't know survive the other side's read-modify-write. `parseRecord` already keeps unknown top-level fields; tasks must keep theirs too, with a test for both.
 - Not saved anywhere: the git hold, Time I have, the selection and the search.

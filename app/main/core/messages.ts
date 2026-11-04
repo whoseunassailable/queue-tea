@@ -1,5 +1,14 @@
 // Every failure main hands the window, in plain words.
 export const MESSAGES = {
+  readMerge: 'The merge check could not be read. Try again.',
+  mergeMissing: 'The quest branch or its base no longer exists locally.',
+  mergeDirty: 'Commit or put aside the changes in the quest and base folders, then check again.',
+  mergeBusy: 'The base folder belongs to another active quest. Finish or put it back before merging.',
+  mergeReady: 'The committed changes merge cleanly. Run the command yourself when you are ready.',
+  mergeDone: 'These committed changes are already in the base branch.',
+  mergeConflicts: 'Git found conflicts. Resolve them in a terminal before completing the merge.',
+  mergeNoBase: 'This quest has no saved base branch. Choose its destination in Git.',
+
   listProjects: "Couldn't read your realms. Check that ~/.queue-tea can be read, then try again.",
   readProject: "Couldn't read this realm's quests. Try again.",
   unknownProject: "That realm isn't one Queue-tea knows. Pick one from the list.",

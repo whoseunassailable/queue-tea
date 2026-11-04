@@ -58,29 +58,37 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     const { view, handover } = started.data
     workspace.adopt(key, view)
     workspace.noteFor(quest.id, null)
-    workspace.setFlow(key, handover.kind === 'failed' ? { kind: 'openFailed', terminal: handover.terminal, command: handover.command } : null)
+    workspace.setFlow(key, handover.kind === 'failed' ? { kind: 'openFailed', questId: quest.id, title: quest.title, platform, terminal: handover.terminal, command: handover.command } : null)
     sayStarted(quest, started.data, platform)
   }
 
   const checkAgain = async (key: string): Promise<void> => {
     const flow = flowOf(key)
     if (flow?.kind === 'held' || flow?.kind === 'refused') await start(key, { id: flow.questId, title: flow.title }, flow.platform)
+    else if (flow?.kind === 'openFailed') {
+      const quest = { id: flow.questId, title: flow.title }
+      if (flow.platform === null) await openClaude(key, quest)
+      else await continueIn(key, quest, flow.platform)
+    }
   }
 
   const cancel = (key: string) => {
     if (!isBusy(key)) workspace.setFlow(key, null)
   }
 
-  const needsClaudeCommand = () => {
+  const needsClaudeCommand = (id: string) => {
     const { project } = workspace.getState()
 
-    return project.status === 'ready' && project.data.kind === 'readable' && project.data.session.state === 'none' && (project.data.active?.codexSince ?? null) === null
+    if (project.status !== 'ready' || project.data.kind !== 'readable') return false
+    const quest = project.data.activeQuests.find(q => q.id === id)
+
+    return quest !== undefined && (quest.session ?? project.data.session).state === 'none' && quest.codexSince === null
   }
 
   const openClaude = async (key: string, quest: Named): Promise<void> => {
     if (isBusy(key)) return
     work(key, quest, t.flow.opening)
-    const answer = await ask(engine, () => engine.openClaude(key))
+    const answer = await ask(engine, () => engine.openClaude(key, quest.id))
     workspace.setFlow(key, null)
     if (!answer.ok) {
       workspace.say({ tone: 'error', text: answer.message, action: { label: t.failed.tryAgain, run: () => void openClaude(key, quest) } })
@@ -88,8 +96,8 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
       return
     }
     const { data } = answer
-    if (data.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', terminal: data.terminal, command: data.command })
-    else if (data.kind === 'opened' && data.terminal === 'vscode' && needsClaudeCommand()) workspace.say({ tone: 'info', text: t.flow.pasteVsCode })
+    if (data.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', questId: quest.id, title: quest.title, platform: null, terminal: data.terminal, command: data.command })
+    else if (data.kind === 'opened' && data.terminal === 'vscode' && needsClaudeCommand(quest.id)) workspace.say({ tone: 'info', text: t.flow.pasteVsCode })
   }
 
   // Claude Code and Codex never work on the quest at once: a refusal changes
@@ -106,7 +114,7 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     }
     const { view, handover, isCodexTimeLost } = answer.data
     workspace.adopt(key, view)
-    if (handover.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', terminal: handover.terminal, command: handover.command })
+    if (handover.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', questId: quest.id, title: quest.title, platform, terminal: handover.terminal, command: handover.command })
     workspace.say({ tone: 'success', text: platform === 'codex' ? t.flow.nowCodex(quest.title) : t.flow.nowClaude(quest.title) })
     sayHandover(handover, platform)
     sayTimeLost(isCodexTimeLost)
@@ -146,7 +154,7 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     return answer
   }
 
-  const notYet = (key: string, quest: Named) => workspace.run({ key, preview: withoutReview, call: () => engine.notYet(key, quest.id) })
+  const notYet = (key: string, quest: Named) => workspace.run({ key, preview: view => withoutReview(view, quest.id), call: () => engine.notYet(key, quest.id) })
 
   const settled = (key: string, quest: Named, outcome: BackOutcome, said: string) => {
     workspace.adopt(key, outcome.view)

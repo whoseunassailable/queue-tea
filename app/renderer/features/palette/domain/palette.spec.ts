@@ -117,10 +117,10 @@ describe('the order of what\'s found', () => {
 describe('what can\'t run', () => {
   const held = { ...BOARD, active: activeQuest({ title: 'The active one' }) } as PaletteInput['view']
 
-  it('dims Start on a quest with a quest active, and says why', () => {
+  it('allows Start while another quest is active', () => {
     const entry = filterPalette(paletteEntries(input({ view: held })), 'docs').find(e => e.section === 'quests')
 
-    expect(entry?.reason).toBe('Start waits until The active one is won or back on the board.')
+    expect(entry?.reason).toBeNull()
   })
 
   it('still opens the quest, since opening isn\'t starting', () => {
@@ -131,10 +131,10 @@ describe('what can\'t run', () => {
     expect(onOpenQuest).toHaveBeenCalledWith('first')
   })
 
-  it('has no start for a dimmed quest', () => {
+  it('offers Start for another unsealed quest', () => {
     const entry = filterPalette(paletteEntries(input({ view: held })), 'docs').find(e => e.section === 'quests')
 
-    expect(entry?.start).toBeNull()
+    expect(entry?.start).toBeTypeOf('function')
   })
 
   it('has no start for a sealed quest', () => {
@@ -146,7 +146,7 @@ describe('what can\'t run', () => {
   it('dims Start ★ with nothing to run, when asked for by name', () => {
     const entry = filterPalette(paletteEntries(input({ view: held })), 'start').find(e => e.section === 'actions')
 
-    expect(entry?.reason).toBe('Start waits until The active one is won or back on the board.')
+    expect(entry?.reason).toBeNull()
   })
 
   it('dims Back to the board with no active quest', () => {

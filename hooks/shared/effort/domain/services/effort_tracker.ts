@@ -1,4 +1,5 @@
 import type { CommandRun, GitFacts, Intent, ProjectRecord, Task } from '../../../../../types'
+import type { Ctx } from '../../../../core/env/env'
 import { noteSeen } from '../../../checkpoints/domain/services/checkpoints'
 import { currentTask } from '../../../records/domain/services/queue_rules'
 import { accrue, addMinutes, dayKey, mergeMinutes as merge } from '../../../time/domain/services/time'
@@ -88,8 +89,9 @@ export const applyPending = (
   record: ProjectRecord,
   pending: Pending,
   seen?: { at: string; git: GitFacts | null },
+  place?: Pick<Ctx, 'cwd' | 'projectPath'>,
 ): ProjectRecord => {
-  const current = currentTask(record.tasks)
+  const current = currentTask(record.tasks, place)
   const unassigned = merge(record.unassignedMinutesByDay, pending.projectMinutes)
   if (current === null || current.codexSince !== null) {
     return { ...record, unassignedMinutesByDay: merge(unassigned, pending.minutes) }

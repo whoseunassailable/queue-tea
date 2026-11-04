@@ -16,7 +16,7 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
   const isWithCodex = active.codexSince !== null
 
   return (
-    <section class={kind === 'full' ? 'quest panel' : 'active-q panel'} aria-labelledby="active-title">
+    <section class={kind === 'full' ? 'quest panel' : 'active-q panel'} aria-labelledby={`active-title-${active.id}`}>
       {kind === 'compact' && (
         <div class="sec-row">
           <h2>{t.quest.active}</h2>
@@ -27,11 +27,11 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
         <span class="q-meta">{t.quest.inProgress(formatMinutes(active.minutes), started)}</span>
       </div>
       {kind === 'full' ? (
-        <h1 class="q-title" id="active-title">
+        <h1 class="q-title" id={`active-title-${active.id}`}>
           {active.title}
         </h1>
       ) : (
-        <p class="aq-title" id="active-title">
+        <p class="aq-title" id={`active-title-${active.id}`}>
           <button type="button" class="title-btn" aria-label={t.detail.openActive(active.title)} onClick={onDetail}>
             {active.title}
           </button>
@@ -71,7 +71,7 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
         </div>
       ) : (
         <div class="q-actions">
-          <button type="button" class="btn primary" onClick={actions.onOpenClaude}>
+          <button type="button" class="btn primary" onClick={() => actions.onOpenClaude(active)}>
             {isWithCodex ? t.actions.showCodex : t.actions.openClaude}
           </button>
           <button type="button" class="btn go" onClick={() => actions.onFinish(active)}>

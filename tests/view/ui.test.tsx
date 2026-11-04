@@ -210,11 +210,11 @@ test('a broken record says why, and the last good copy brings the queue back', a
 })
 
 test('a newer Queue-tea’s record says to update, with no copy to go back to', async ($, on) => {
-  const newer = JSON.stringify({ ...emptyRecord('p', '/p'), version: 2 })
+  const newer = JSON.stringify({ ...emptyRecord('p', '/p'), version: 3 })
   await startSession($, on, { file: newer, others: { [`${FILE}.bak`]: record() } })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
 
-  expect(await ui.find({ type: 'Text', text: /newer Queue-tea \(record version 2\); update Queue-tea to read it\.$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /newer Queue-tea \(record version 3\); update Queue-tea to read it\.$/ })).toBeDefined()
   expect(await ui.find({ key: 'restore' })).toBeUndefined()
   expect(await ui.find({ key: 'retry' })).toBeDefined()
   await ui.unmount()

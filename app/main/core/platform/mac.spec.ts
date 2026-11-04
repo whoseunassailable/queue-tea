@@ -95,7 +95,7 @@ describe('opening Claude Code', () => {
     const argv = openLineArgv('terminal', '/p/my realm', claudeLine('/p/my realm'))
 
     expect(argv[0]).toBe('osascript')
-    expect(argv.join(' ')).toContain(`tell application "Terminal" to do script "cd '/p/my realm' && claude"`)
+    expect(argv.join(' ')).toContain(`set queueTeaTab to do script "cd '/p/my realm' && claude"`)
     expect(argv.join(' ')).toContain('activate')
   })
 

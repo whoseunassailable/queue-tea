@@ -2,7 +2,7 @@
 
 # Queue-tea
 
-A Claude Code mod that keeps one task in progress per project and the rest in a priority queue. It gives each task its own git branch, starts every task in a fresh conversation, and records the time and effort that went into each one.
+A Claude Code mod that keeps one task per working folder, with parallel tasks in separate Git worktrees and the rest in a priority queue. It gives each task its own git branch, starts every task in a fresh conversation, and records the time and effort that went into each one.
 
 ## What it does
 

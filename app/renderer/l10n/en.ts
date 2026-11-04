@@ -8,7 +8,24 @@ const weekRange = (first: string, last: string) => (first.slice(5, 7) === last.s
 // Every string the user reads. On screen the app uses the game's words; the
 // engine and the record keep their own.
 export const t = {
-  nav: { realms: 'Realms', sections: 'Sections', home: 'Home', quests: 'Quests', chronicle: 'Chronicle', mana: 'Mana & time', hoard: 'Hoard', guild: 'Guild Hall', library: 'Library', settings: 'Settings', elsewhere: 'Elsewhere in the app' },
+  branches: {
+    title: 'Branch tree',
+    line: 'Run quests side by side. Each new quest starts from the base branch in its own folder and terminal.',
+    active: (n: number) => `${n} in progress`,
+    empty: 'No quest branches yet. Start a quest from Quests to grow this tree.',
+    unknown: 'Base not recorded',
+    folder: 'Copy folder path',
+    merge: 'Merge instructions',
+    checking: 'Checking the branch and its base…',
+    close: 'Close',
+    checkAgain: 'Check again',
+    manual: 'These commands are for you to run. Queue-tea keeps your branch and folder until you remove them.',
+    cleanup: 'After merging, this removes the clean quest folder and keeps its branch:',
+    state: { current: 'In progress', queued: 'On the board', done: 'Finished' },
+    platform: { claude: 'Claude Code', codex: 'Codex' },
+    saga: (name: string) => `Saga: ${name}`,
+  },
+  nav: { realms: 'Realms', sections: 'Sections', home: 'Home', quests: 'Quests', branches: 'Branches', chronicle: 'Chronicle', mana: 'Mana & time', hoard: 'Hoard', guild: 'Guild Hall', library: 'Library', settings: 'Settings', elsewhere: 'Elsewhere in the app' },
   loading: {
     realms: 'Reading your realms…',
     quests: 'Reading the quest board…',
@@ -244,7 +261,7 @@ export const t = {
   board: {
     title: 'Quest board',
     counts: (canStart: number, sealed: number) => `${canStart} can start · ${sealed} sealed`,
-    startHint: 'Start opens when the active quest is won or back on the board.',
+    startHint: 'Start another quest from Quests. Each opens in its own branch and folder.',
     all: (count: number) => `All ${count} on the quest board ›`,
     activeSaga: (title: string) => `Active saga: ${title}`,
     mainQuest: 'Main quest',

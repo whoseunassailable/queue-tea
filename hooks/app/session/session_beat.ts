@@ -29,8 +29,9 @@ const writeBeat = async (p: Ports, ctx: Ctx): Promise<void> => {
   await sessions.write({
     id,
     projectPath: ctx.projectPath,
+    workingPath: ctx.cwd,
     recordFile: ctx.file,
-    currentTaskId: record === null ? null : (currentTask(record.tasks)?.id ?? null),
+    currentTaskId: record === null ? null : (currentTask(record.tasks, ctx)?.id ?? null),
     isTurnRunning: live.isTurnRunning,
     cup: { mood: cup.mood, line: cup.line },
     allowance: await p.get('allowance'),

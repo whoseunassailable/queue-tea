@@ -5,7 +5,7 @@ import { live } from '../../../../core/session/live'
 import { once } from '../../../../core/session/once'
 import { isStartingFresh, scheduleFresh } from '../../../../shared/assistant/presentation/state_management/conversation_controller'
 import { flush } from '../../../../shared/effort/presentation/state_management/effort_controller'
-import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
+import { currentTask, taskFolder } from '../../../../shared/records/domain/services/queue_rules'
 import { markUnreadable, reloadIfChanged } from '../../../../shared/records/presentation/state_management/records_controller'
 import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
@@ -21,7 +21,11 @@ const isSafePoint = async (p: Ports): Promise<boolean> =>
 // first message is never submitted from within a turn the hook is holding.
 export const handleRequests = async (p: Ports, ctx: Ctx): Promise<Handled> => {
   const record = await p.get('record')
-  const request = record?.requests[0]
+  const request = record?.requests.find(q => {
+    const task = record.tasks.find(t => t.id === q.taskId)
+
+    return task === undefined ? ctx.cwd === ctx.projectPath : taskFolder(task, ctx.projectPath) === ctx.cwd
+  })
   if (record === null || request === undefined) return 'none'
 
   const task = record.tasks.find(t => t.id === request.taskId)
@@ -32,7 +36,7 @@ export const handleRequests = async (p: Ports, ctx: Ctx): Promise<Handled> => {
     return 'waiting'
   }
 
-  const taken = await takeRequestUseCase(tasksDepsOf(p, ctx), request.id)
+  const taken = await takeRequestUseCase(tasksDepsOf(p, ctx), request.id, ctx)
   if (taken.kind === 'unreadable') {
     await markUnreadable(p, ctx)
 
@@ -58,8 +62,8 @@ export const handleRequests = async (p: Ports, ctx: Ctx): Promise<Handled> => {
 }
 
 // The app answered the done question, so the terminal stops asking it.
-const closeAnswered = async (p: Ports, before: ProjectRecord | null, after: ProjectRecord): Promise<void> => {
-  const was = before === null ? null : currentTask(before.tasks)
+const closeAnswered = async (p: Ports, ctx: Ctx, before: ProjectRecord | null, after: ProjectRecord): Promise<void> => {
+  const was = before === null ? null : currentTask(before.tasks, ctx)
   if (was?.review == null) return
   const now = after.tasks.find(t => t.id === was.id)
   if (now?.review == null) {
@@ -75,7 +79,7 @@ export const followRecord = (p: Ports, ctx: Ctx): Promise<void> =>
     async () => {
       const before = await p.get('record')
       const fresh = await reloadIfChanged(p, ctx)
-      if (fresh !== null) await closeAnswered(p, before, fresh)
+      if (fresh !== null) await closeAnswered(p, ctx, before, fresh)
       await handleRequests(p, ctx)
     },
     undefined,

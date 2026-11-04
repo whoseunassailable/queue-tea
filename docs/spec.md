@@ -1,6 +1,6 @@
 # Queue-tea: design
 
-A Claude Code mod that keeps one task in progress per project and the rest in a priority queue, makes each task's git branch, starts every task in a fresh conversation, and records the time and effort that went into each one.
+A Claude Code mod that keeps one task per working folder, with parallel tasks in separate Git worktrees and the rest in a priority queue, makes each task's git branch, starts every task in a fresh conversation, and records the time and effort that went into each one.
 
 - **Date:** 2026-10-20
 - **State:** built; installed at the user scope from this folder on 2026-10-20. The panel redesign and the features from ChatGPT's review (Back to queue, the fuller handoff note, the "Claude checked" line, the commit warning) were added the same day
@@ -29,7 +29,7 @@ Rohan works on several projects with Claude Code and wants to:
 | --- | --- |
 | Project | One git repository, taken at its top folder. A repository with an app, a server and a website in separate folders is one project. A folder that is not a git repository is a project too, without branches |
 | Task | One piece of work: a feature, a fix, a clean-up |
-| Current task | The one task being worked on in a project. There is at most one |
+| Current task | The task being worked on in a folder. A project can have several, one per worktree |
 | Codex | OpenAI's Codex CLI, which the workspace app can put on the current task in place of Claude Code. See [Codex in place of Claude Code](#codex-in-place-of-claude-code) |
 | Feature | A task with other tasks filed under it, one level deep. It is a task like any other: it waits in the queue, starts and finishes the same way |
 | Active feature | The feature Rohan says he is working within; new work is offered under it, never filed under it without his say |
@@ -106,9 +106,19 @@ A task can be filed under another, its feature (`parentId` in the record). One l
 
 A session that opens in a project with a current task shows that task in the menu with **Continue**, above it a card of the note it carries on from: the checkpoint Claude wrote, or a plain handoff note when that is newer or the only one. Continue sends the first message from that note and the task's messages. When the checked-out branch is not the task's branch, the menu says so and offers **Switch**. Switch works only when nothing is uncommitted; otherwise the menu says what is uncommitted and leaves it to Rohan.
 
+### Parallel quests and branches
+
+The app's **Quests** page can start another quest while others are in progress. Each new app start creates a branch from `main` (or `master`, then the current branch when neither exists) and a separate folder at `~/.queue-tea/worktrees/<project key>/<branch name without task/>`. The original checkout, including uncommitted changes, stays as it was. A task put back keeps its branch and folder and resumes there. Existing tasks with no saved worktree stay in the original checkout. Non-Git projects still allow one current task in their folder.
+
+**Branches**, beside Quests, shows quest branches attached to their saved base, their status, Claude Code or Codex, their folder and their saga. Open a quest title for its details, a saga for its board entry, or the terminal button to return to that quest. Home and Quests show every current task separately. Buttons always address the selected task. Terminal and iTerm2 windows opened by the app carry their folder as a title so the app can find them again. VS Code opens the selected folder and copies the launch command when needed.
+
+**Merge instructions** checks the local branch, both working folders, ancestry and merge conflicts. It supplies commands for Rohan to run; the app never commits, pushes or merges. After a finished branch is already merged and its folder is clean, it offers a normal `git worktree remove` command. Folders are retained until Rohan removes them; removal is never forced, and branches are kept. A dirty task log is work to commit too.
+
+Version 1 records load as version 2, with each older task's `worktreePath` defaulting to null. Writes save version 2 so old clients refuse them instead of losing parallel state. Claude Code resolves the project's record through Git's common directory but uses its own checkout for task selection, requests, effort, checkpoints, Git and task logs. Codex time is read from the selected task's folder. The mod's menu still starts one task in its own folder; additional parallel work starts in the app.
+
 ### Codex in place of Claude Code
 
-In the workspace app ([workspace-app.md](workspace-app.md)), a task can run on OpenAI's Codex CLI instead of Claude Code. Claude Code stays the default; Codex is there for when the 5-hour allowance runs out partway through a task. The mod's menu has no Codex buttons, so every move below is made in the app. There is still at most one current task.
+In the workspace app ([workspace-app.md](workspace-app.md)), a task can run on OpenAI's Codex CLI instead of Claude Code. Claude Code stays the default; Codex is there for when the 5-hour allowance runs out partway through a task. The mod's menu has no Codex buttons, so every move below is made in the app. Each working folder has at most one current task; the app can start several in separate worktrees.
 
 - **Starting on Codex.** **Start in Codex** runs the git check and makes or switches the branch as [Starting a task](#starting-a-task) does. Then, in place of the fresh conversation, the app writes a brief to `~/.queue-tea/briefs/<task id>.md` and opens the terminal chosen in its Settings, in the project's folder, running `codex --sandbox workspace-write --ask-for-approval on-request "<brief>"`. The brief is read from that file, so its quotes and line breaks reach Codex intact. With VS Code as the terminal, the folder opens and the line is copied to paste. No Claude Code session is asked to do anything.
 - **The brief.** Queue-tea's rules come first: stay in the project's folder and on the task's branch; never commit, push, merge, rebase, cherry-pick, revert, reset or tag, and never run `gh pr merge`; ask before deleting files outside the task's own changes, installing software or reaching the network; name the command and what it printed when saying a check passed; say when the task looks done and what's left. After them comes the same first message Claude Code gets: the title, the description and criteria, the messages filed with the task, its latest checkpoint or handoff note, and what git says now.

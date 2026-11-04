@@ -37,7 +37,7 @@ export type QuestFlow =
   | { kind: 'working'; questId: string; title: string; line: string }
   | { kind: 'held'; questId: string; title: string; hold: GitHold; isChecking: boolean; platform: Platform }
   | { kind: 'refused'; questId: string; title: string; message: string; platform: Platform }
-  | { kind: 'openFailed'; terminal: TerminalChoice; command: string }
+  | { kind: 'openFailed'; questId: string; title: string; platform: Platform | null; terminal: TerminalChoice; command: string }
 
 export type Won = { victory: Victory; logPath: string | null }
 
@@ -98,7 +98,9 @@ const nextLoad = <T>(was: Load<T> | { status: 'none' }, answer: Answer<T>): { lo
 const wentBack = (was: WorkspaceState['project'], now: WorkspaceState['project']): ActiveQuest | null => {
   if (was.status !== 'ready' || now.status !== 'ready' || was.data.kind !== 'readable' || now.data.kind !== 'readable' || was.data.key !== now.data.key) return null
 
-  return was.data.active?.asking === 'putBack' && now.data.active === null ? was.data.active : null
+  const activeNow = now.data.activeQuests
+
+  return was.data.activeQuests.find(q => q.asking === 'putBack' && !activeNow.some(active => active.id === q.id)) ?? null
 }
 
 export const createWorkspace = (engine: EngineApi) => {

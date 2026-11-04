@@ -32,6 +32,7 @@ import * as back from './features/tasks/api/back_api'
 import { readQuestFacts } from './features/tasks/api/detail_api'
 import * as finish from './features/tasks/api/finish_api'
 import * as live from './features/tasks/api/live_api'
+import { readMerge } from './features/tasks/api/merge_api'
 import * as setOut from './features/tasks/api/start_api'
 import * as tasks from './features/tasks/api/tasks_api'
 import { relaunchArgv, restoredOf, versionOfPlist } from './features/update/data/bundle'
@@ -159,9 +160,10 @@ const serveEngine = () => {
   handle(CHANNELS.readLive, (_, key: unknown) => live.readLive(quests, key))
   handle(CHANNELS.readQuestFacts, (_, key: unknown, taskId: unknown) => readQuestFacts(quests, key, taskId))
   handle(CHANNELS.switchBranch, (_, key: unknown) => live.switchBranch(quests, key))
+  handle(CHANNELS.readMerge, (_, key: unknown, taskId: unknown) => readMerge(quests, key, taskId))
   handle(CHANNELS.checkStart, (_, key: unknown, taskId: unknown) => setOut.checkStart(quests, key, taskId))
   handle(CHANNELS.startQuest, (_, key: unknown, taskId: unknown, platform: unknown) => setOut.startQuest(quests, key, taskId, platform))
-  handle(CHANNELS.openClaude, (_, key: unknown) => setOut.openClaude(quests, key))
+  handle(CHANNELS.openClaude, (_, key: unknown, taskId?: unknown) => setOut.openClaude(quests, key, taskId))
   handle(CHANNELS.continueIn, (_, key: unknown, taskId: unknown, platform: unknown) => setOut.continueIn(quests, key, taskId, platform))
   handle(CHANNELS.notYet, (_, key: unknown, taskId: unknown) => finish.notYet(quests, key, taskId))
   handle(CHANNELS.finishQuest, (_, key: unknown, taskId: unknown, actual: unknown, logPath: unknown) => finish.finishQuest(quests, key, taskId, actual, logPath))

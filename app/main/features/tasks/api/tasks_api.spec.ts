@@ -46,6 +46,7 @@ const task = (over: Partial<Task> & { id: string }): Task =>
     review: null,
     helpers: { on: ['tea-dd'], ran: [], reminded: false },
     codexSince: null,
+    worktreePath: null,
     ...over,
   }) as Task
 
@@ -115,7 +116,7 @@ describe('a record that stops reading', () => {
   })
 
   it('a newer record is left alone too', async () => {
-    const newer = JSON.stringify({ version: 2, tasks: [] })
+    const newer = JSON.stringify({ version: 3, tasks: [] })
     await writeFile(file, newer)
 
     expect(await api.removeQuest(deps, KEY, 'a')).toMatchObject({ ok: false })

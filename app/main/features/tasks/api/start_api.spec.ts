@@ -12,6 +12,10 @@ import type { Host } from '../../../../../hooks/core/host/host'
 import type { GitHold, Reply, StartCheck, StartOutcome, TerminalChoice } from '../../../../shared/engine_api'
 import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
+import { readProjectPlace } from '../../../../../hooks/shared/records/data/datasources/project_source'
+import { takeRequestUseCase } from '../../../../../hooks/features/tasks/domain/usecases/take_request'
+import { readMerge } from './merge_api'
+import { scopeOf } from './scope'
 import { makeTask } from './fixtures'
 import type { TasksDeps } from './scope'
 import { checkStart, continueIn, copyText, openClaude, startQuest } from './start_api'
@@ -57,7 +61,7 @@ const started = (outcome: StartOutcome) => {
 
   return outcome
 }
-const session = async (over: { heartbeat?: number; isTurnRunning?: boolean } = {}) => {
+const session = async (over: { heartbeat?: number; isTurnRunning?: boolean; workingPath?: string } = {}) => {
   await mkdir(join(home, '.queue-tea/sessions'), { recursive: true })
   await writeFile(join(home, '.queue-tea/sessions/s-1.json'), JSON.stringify({ id: 's-1', projectPath: repo, recordFile: file, currentTaskId: null, isTurnRunning: false, cup: { mood: 'idle', line: '' }, allowance: null, options: {}, heartbeat: NOW, startedAt: NOW, ...over }))
 }
@@ -115,52 +119,20 @@ beforeEach(async () => {
 afterEach(() => rm(home, { recursive: true, force: true }))
 
 describe('the check before Start', () => {
-  it('holds on files not committed, in the engine\'s own words, and changes nothing', async () => {
+  it.each(['dirty', 'unpushed', 'side', 'detached'])('can create a worktree while the main checkout is %s, changing nothing', async state => {
     await seed({ tasks: [makeTask({ id: 'one', title: 'Fix the docs' })] })
-    await writeFile(join(repo, 'b.txt'), 'b\n')
-    await writeFile(join(repo, 'a.txt'), 'changed\n')
+    if (state === 'dirty') await writeFile(join(repo, 'a.txt'), 'changed\n')
+    if (state === 'side') await git('switch', '-c', 'side')
+    if (state === 'unpushed') { await writeFile(join(repo, 'a.txt'), 'two\n'); await git('commit', '-am', 'second') }
+    if (state === 'detached') await git('switch', '--detach')
     const before = await readFile(file, 'utf8')
+    const status = await git('status', '--porcelain')
+    const head = await git('rev-parse', 'HEAD')
 
-    const hold = held(data(await checkStart(deps, KEY, 'one')))
-
-    expect(hold).toMatchObject({ kind: 'uncommitted', reason: '2 files not committed', branch: 'main', fileCount: 2, command: 'git status' })
-    expect(hold.files.sort()).toEqual(['a.txt', 'b.txt'])
+    expect(data(await checkStart(deps, KEY, 'one'))).toMatchObject({ kind: 'clear', step: { kind: 'make', from: 'main' } })
     expect(await readFile(file, 'utf8')).toBe(before)
-    expect(await git('branch', '--format=%(refname:short)')).toBe('main')
-  })
-
-  it('counts every file, though it lists at most 20', async () => {
-    await seed({ tasks: [makeTask({ id: 'one' })] })
-    for (let i = 0; i < 25; i += 1) await writeFile(join(repo, `f${i}.txt`), 'x\n')
-
-    const hold = held(data(await checkStart(deps, KEY, 'one')))
-
-    expect(hold.files).toHaveLength(20)
-    expect(hold.fileCount).toBe(25)
-  })
-
-  it('holds on commits not pushed', async () => {
-    await seed({ tasks: [makeTask({ id: 'one' })] })
-    await writeFile(join(repo, 'a.txt'), 'two\n')
-    await git('commit', '-am', 'second')
-
-    expect(held(data(await checkStart(deps, KEY, 'one')))).toMatchObject({ kind: 'unpushed', reason: '1 commit not pushed', command: 'git push', files: [] })
-  })
-
-  it('holds on a branch never pushed, with the command for that branch', async () => {
-    await seed({ tasks: [makeTask({ id: 'one' })] })
-    await git('switch', '-c', 'side')
-    await writeFile(join(repo, 'a.txt'), 'two\n')
-    await git('commit', '-am', 'second')
-
-    expect(held(data(await checkStart(deps, KEY, 'one')))).toMatchObject({ kind: 'neverPushed', reason: 'This branch has never been pushed', command: 'git push -u origin side' })
-  })
-
-  it('holds on a detached HEAD', async () => {
-    await seed({ tasks: [makeTask({ id: 'one' })] })
-    await git('switch', '--detach')
-
-    expect(held(data(await checkStart(deps, KEY, 'one')))).toMatchObject({ kind: 'detached', reason: 'Detached HEAD: check out a branch first', command: 'git switch <branch>' })
+    expect(await git('status', '--porcelain')).toBe(status)
+    expect(await git('rev-parse', 'HEAD')).toBe(head)
   })
 
   it('says the branch a first start will make, and where from', async () => {
@@ -196,10 +168,10 @@ describe('the check before Start', () => {
     expect(refused(await checkStart(deps, KEY, 'one'))).toBe('Stuck is sealed: waiting. Unseal it first.')
   })
 
-  it('names the quest that got there first', async () => {
+  it('allows a second quest alongside the current one', async () => {
     await seed({ tasks: [makeTask({ id: 'mine', state: 'current', title: 'The other one' }), makeTask({ id: 'one', title: 'This one' })] })
 
-    expect(refused(await checkStart(deps, KEY, 'one'))).toBe('The other one was started first, maybe in another session, so This one waits on the board.')
+    expect(data(await checkStart(deps, KEY, 'one'))).toMatchObject({ kind: 'clear' })
   })
 
   it('refuses when the realm\'s folder has moved, rather than starting with no branch', async () => {
@@ -213,12 +185,12 @@ describe('the check before Start', () => {
 })
 
 describe('Start', () => {
-  it('makes the branch from where it stood, claims the quest and opens a terminal with nothing open', async () => {
+  it('makes a worktree from main, claims the quest and opens its own terminal', async () => {
     await seed({ tasks: [makeTask({ id: 'one', title: 'Fix the documentation' })] })
 
     const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
-    expect(await git('branch', '--show-current')).toBe('task/fix-documentation')
+    expect(await git('branch', '--show-current')).toBe('main')
     const task = (await onDisk()).tasks[0]!
     expect(task).toMatchObject({ state: 'current', branch: 'task/fix-documentation', baseBranch: 'main', started: '2026-10-27T18:50:00+01:00' })
     expect(task.startCommit).toBe(await git('rev-parse', 'HEAD'))
@@ -230,14 +202,15 @@ describe('Start', () => {
     expect(outcome.view.active).toMatchObject({ id: 'one', asking: 'begin' })
   })
 
-  it('with a session open adds the request and opens nothing', async () => {
+  it('with a session in the original folder opens a new terminal in the worktree', async () => {
     await session()
     await seed({ tasks: [makeTask({ id: 'one' })] })
 
     const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
-    expect(outcome.handover).toEqual({ kind: 'session' })
-    expect(terminalRuns).toEqual([])
+    expect(outcome.handover).toMatchObject({ kind: 'opened' })
+    expect(terminalRuns).toHaveLength(1)
+    expect(terminalRuns[0]!.join(' ')).toContain((await onDisk()).tasks[0]!.worktreePath!)
     expect((await onDisk()).requests).toHaveLength(1)
   })
 
@@ -254,7 +227,9 @@ describe('Start', () => {
 
     started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
-    expect(await git('branch', '--show-current')).toBe('task/mine')
+    expect(await git('branch', '--show-current')).toBe('main')
+    const folder = (await onDisk()).tasks[0]!.worktreePath!
+    expect((await run('git', ['branch', '--show-current'], { cwd: folder })).stdout.trim()).toBe('task/mine')
     expect((await onDisk()).tasks[0]).toMatchObject({ startCommit: 'abc', branch: 'task/mine' })
   })
 
@@ -277,24 +252,25 @@ describe('Start', () => {
     expect(outcome.branch).toBeNull()
   })
 
-  it('holds when git changed after the check, and writes nothing', async () => {
+  it('starts with dirty files in the original folder, leaving them there', async () => {
     await seed({ tasks: [makeTask({ id: 'one' })] })
     await writeFile(join(repo, 'b.txt'), 'b\n')
-
-    expect(held(data(await startQuest(deps, KEY, 'one', 'claude')))).toMatchObject({ kind: 'uncommitted', reason: '1 file not committed' })
-    expect((await onDisk()).tasks[0]!.state).toBe('queued')
-    expect((await onDisk()).requests).toEqual([])
+    started(data(await startQuest(deps, KEY, 'one', 'claude')))
+    const task = (await onDisk()).tasks[0]!
+    expect(task.state).toBe('current')
+    expect(await readFile(join(repo, 'b.txt'), 'utf8')).toBe('b\n')
+    await expect(readFile(join(task.worktreePath!, 'b.txt'))).rejects.toThrow()
     expect(await git('branch', '--show-current')).toBe('main')
   })
 
   it('takes the claim back when the branch can\'t be made, and offers Check again', async () => {
     await seed({ tasks: [makeTask({ id: 'one', title: 'Fix it' })] })
     const real = deps.host.run
-    deps = { ...deps, host: { ...deps.host, run: (argv, cwd) => (argv.includes('switch') ? Promise.resolve({ exitCode: 1, stdout: '', stderr: 'locked' }) : real(argv, cwd)) } }
+    deps = { ...deps, host: { ...deps.host, run: (argv, cwd) => (argv.includes('worktree') && argv.includes('add') ? Promise.resolve({ exitCode: 1, stdout: '', stderr: 'locked' }) : real(argv, cwd)) } }
 
     const hold = held(data(await startQuest(deps, KEY, 'one', 'claude')))
 
-    expect(hold).toMatchObject({ kind: 'branch', reason: "Couldn't make the branch task/fix. Check again to retry.", command: null })
+    expect(hold).toMatchObject({ kind: 'branch', reason: 'The quest folder could not be created. Check its branch and folder, then try again.', command: null })
     expect((await onDisk()).tasks[0]).toMatchObject({ state: 'queued', branch: null, started: null })
     expect((await onDisk()).requests).toEqual([])
   })
@@ -305,15 +281,16 @@ describe('Start', () => {
 
     const outcome = started(data(await startQuest(deps, KEY, 'one', 'claude')))
 
-    expect(outcome.handover).toEqual({ kind: 'failed', terminal: 'terminal', command: `cd '${repo}' && claude` })
+    expect(outcome.handover).toEqual({ kind: 'failed', terminal: 'terminal', command: `cd '${(await onDisk()).tasks[0]!.worktreePath}' && claude` })
     expect((await onDisk()).tasks[0]!.state).toBe('current')
     expect((await onDisk()).requests).toHaveLength(1)
   })
 
-  it('names the quest that got there first when two start at once', async () => {
+  it('starts a separate quest alongside a legacy current task', async () => {
     await seed({ tasks: [makeTask({ id: 'mine', state: 'current', title: 'The other one' }), makeTask({ id: 'one', title: 'This one' })] })
 
-    expect(refused(await startQuest(deps, KEY, 'one', 'claude'))).toBe('The other one was started first, maybe in another session, so This one waits on the board.')
+    started(data(await startQuest(deps, KEY, 'one', 'claude')))
+    expect((await onDisk()).tasks.filter(t => t.state === 'current')).toHaveLength(2)
   })
 
   it('never runs a commit, a push, a merge or a pull', async () => {
@@ -321,7 +298,7 @@ describe('Start', () => {
     await startQuest(deps, KEY, 'one', 'claude')
 
     const words = allRuns.filter(argv => argv[0] === 'git').map(argv => argv[1])
-    expect(words).toContain('switch')
+    expect(words).toContain('worktree')
     for (const word of ['commit', 'push', 'merge', 'pull']) expect(words).not.toContain(word)
   })
 })
@@ -378,7 +355,7 @@ describe('Start in Codex', () => {
     expect((await onDisk()).requests).toEqual([])
     expect(terminalRuns).toHaveLength(1)
     expect(terminalRuns[0]!.join(' ')).toContain('codex --sandbox workspace-write --ask-for-approval on-request')
-    expect((await brief('one')).startsWith(`From Queue-tea, before you start:\n- You're working on one task, in ${repo}, on the branch task/fix-documentation.`)).toBe(true)
+    expect((await brief('one')).startsWith(`From Queue-tea, before you start:\n- You're working on one task, in ${(await onDisk()).tasks[0]!.worktreePath}, on the branch task/fix-documentation.`)).toBe(true)
     expect(await brief('one')).toContain('Task: Fix the documentation')
     if (outcome.view.kind !== 'readable') throw new Error('should read')
     expect(outcome.view.active).toMatchObject({ id: 'one', codexSince: '2026-10-27T18:50:00+01:00', asking: null })
@@ -473,5 +450,105 @@ describe('Open for a quest with Codex', () => {
     expect(terminalRuns).toHaveLength(1)
     expect(terminalRuns[0]!.join(' ')).not.toContain('claude')
     expect(terminalRuns[0]!.join(' ')).not.toContain('codex')
+  })
+})
+
+
+describe('parallel quests in real worktrees', () => {
+  it('starts two quests concurrently from main, in distinct branches and terminals, sharing the project', async () => {
+    await seed({ tasks: [makeTask({ id: 'one', title: 'Same title' }), makeTask({ id: 'two', title: 'Same title' })] })
+    await git('switch', '-c', 'unrelated')
+    await writeFile(join(repo, 'a.txt'), 'uncommitted local work\n')
+    const results = await Promise.all([startQuest(deps, KEY, 'one', 'claude'), startQuest(deps, KEY, 'two', 'codex')])
+    results.forEach(r => started(data(r)))
+    const record = await onDisk()
+    expect(record.version).toBe(2)
+    expect(record.tasks.map(t => t.state)).toEqual(['current', 'current'])
+    expect(new Set(record.tasks.map(t => t.branch)).size).toBe(2)
+    expect(new Set(record.tasks.map(t => t.worktreePath)).size).toBe(2)
+    expect(terminalRuns).toHaveLength(2)
+    for (const task of record.tasks) {
+      expect(task.baseBranch).toBe('main')
+      expect(task.startCommit).toBe(await git('rev-parse', 'main'))
+      expect(await readFile(join(task.worktreePath!, 'a.txt'), 'utf8')).toBe('a\n')
+      expect((await run('git', ['branch', '--show-current'], { cwd: task.worktreePath! })).stdout.trim()).toBe(task.branch)
+      const place = await readProjectPlace(deps.host, task.worktreePath!, home, () => {})
+      expect(place.projectPath).toBe(repo)
+      expect(place.workingPath).toBe(task.worktreePath)
+      expect(terminalRuns.some(argv => argv.join(' ').includes(task.worktreePath!))).toBe(true)
+    }
+    expect(await git('branch', '--show-current')).toBe('unrelated')
+    expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('uncommitted local work\n')
+    expect(record.requests.map(q => q.taskId)).toEqual(['one'])
+    expect(await brief('two')).toContain(record.tasks[1]!.worktreePath!)
+  })
+
+  it('allows only one concurrent claim of the same quest', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' })] })
+    const results = await Promise.all([startQuest(deps, KEY, 'one', 'claude'), startQuest(deps, KEY, 'one', 'codex')])
+    expect(results.filter(r => r.ok && r.data.kind === 'started')).toHaveLength(1)
+    expect(terminalRuns).toHaveLength(1)
+  })
+
+  it('routes session requests only to their quest folder and focuses the selected quest', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' }), makeTask({ id: 'two' })] })
+    started(data(await startQuest(deps, KEY, 'one', 'claude')))
+    started(data(await startQuest(deps, KEY, 'two', 'claude')))
+    const first = await scopeOf(deps, KEY, 'one')
+    const second = await scopeOf(deps, KEY, 'two')
+    const request = second.record.requests.find(q => q.taskId === 'two')!
+    expect((await takeRequestUseCase(first.deps, request.id, first.ctx)).kind).toBe('gone')
+    expect((await takeRequestUseCase(second.deps, request.id, second.ctx)).kind).toBe('taken')
+    expect((await onDisk()).requests.map(q => q.taskId)).toEqual(['one'])
+    await session({ workingPath: second.ctx.cwd })
+    terminalRuns.length = 0
+    data(await openClaude(deps, KEY, 'two'))
+    expect(terminalRuns).toHaveLength(1)
+    expect(terminalRuns[0]!.join(' ')).toContain(second.ctx.cwd)
+    expect(terminalRuns[0]!.join(' ')).not.toContain('do script')
+  })
+
+  it('does not let another worktree session block a Codex handoff', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' }), makeTask({ id: 'two' })] })
+    started(data(await startQuest(deps, KEY, 'one', 'claude')))
+    started(data(await startQuest(deps, KEY, 'two', 'claude')))
+    const record = await onDisk()
+    await session({ workingPath: record.tasks[0]!.worktreePath!, isTurnRunning: true })
+    data(await continueIn(deps, KEY, 'two', 'codex'))
+    expect((await onDisk()).tasks[0]!.codexSince).toBeNull()
+    expect((await onDisk()).tasks[1]!.codexSince).not.toBeNull()
+  })
+
+  it('checks a merge without changing branches or commits, and holds dirty work', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' })] })
+    started(data(await startQuest(deps, KEY, 'one', 'codex')))
+    const task = (await onDisk()).tasks[0]!
+    const cwd = task.worktreePath!
+    await writeFile(join(cwd, 'new.txt'), 'new\n')
+    expect(data(await readMerge(deps, KEY, 'one')).kind).toBe('blocked')
+    await run('git', ['add', '.'], { cwd })
+    await run('git', ['-c', 'core.hooksPath=/dev/null', 'commit', '-m', 'quest work'], { cwd })
+    const before = await git('rev-parse', 'HEAD')
+    const check = data(await readMerge(deps, KEY, 'one'))
+    expect(check.kind).toBe('ready')
+    expect(check.command).toContain(`refs/heads/${task.branch}`)
+    expect(check.cleanup).toBeNull()
+    expect(await git('rev-parse', 'HEAD')).toBe(before)
+    expect(await git('branch', '--show-current')).toBe('main')
+    expect(await git('status', '--porcelain')).toBe('')
+  })
+
+  it('reports merge conflicts and never touches either checkout', async () => {
+    await seed({ tasks: [makeTask({ id: 'one' })] })
+    started(data(await startQuest(deps, KEY, 'one', 'codex')))
+    const task = (await onDisk()).tasks[0]!
+    const cwd = task.worktreePath!
+    await writeFile(join(cwd, 'a.txt'), 'quest version\n')
+    await run('git', ['-c', 'core.hooksPath=/dev/null', 'commit', '-am', 'quest'], { cwd })
+    await writeFile(join(repo, 'a.txt'), 'main version\n')
+    await git('commit', '-am', 'main')
+    expect(data(await readMerge(deps, KEY, 'one')).kind).toBe('conflicts')
+    expect(await readFile(join(cwd, 'a.txt'), 'utf8')).toBe('quest version\n')
+    expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('main version\n')
   })
 })

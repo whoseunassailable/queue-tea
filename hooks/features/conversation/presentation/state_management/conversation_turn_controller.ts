@@ -18,7 +18,7 @@ export const afterTurn = async (
   handedOffFor: string | null,
 ): Promise<string | null> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, ctx)
   if (current === null || isStartingFresh()) return handedOffFor
 
   const action = turnEnd(reading, ctx, handedOffFor)

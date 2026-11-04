@@ -212,3 +212,10 @@ The restructure changed where code lives and who calls whom, not what Queue-tea 
 ## 9. Not part of the restructure
 
 These rules from `CLAUDE.md` apply to code as it's next changed, not in this move: one `AppError` type for user-facing failures, constants and localisation files for the mod's text, and the app's dev, stage and prod flavors (the app isn't built yet).
+
+
+## Parallel worktrees (2026-11-03)
+
+A project has one canonical record and many working folders. `ProjectPlace.projectPath` comes from Git's common directory, while `workingPath` becomes `Ctx.cwd`. `currentTask(tasks, ctx)` selects the task for that checkout; omitting the context is reserved for project summaries and legacy primary shortcuts. A session file carries both paths. Requests and effort are scoped to the checkout, and Git and task-log repositories are built with that path.
+
+The app's parallel-start use case atomically reserves the quest, branch name and folder in the shared record, then creates a worktree through a repository interface. A failed creation rolls back that quest's claim. Starting two different quests works concurrently; duplicate starts of the same quest do not. The app sends the resulting folder to its terminal adapter. Record version 2 protects these fields from older clients. Merge checks stay in the app's main process and return commands; the renderer never runs Git. Linked-worktree commits skip the app installation hook.

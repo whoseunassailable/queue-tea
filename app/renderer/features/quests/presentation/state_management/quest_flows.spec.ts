@@ -117,7 +117,7 @@ describe('Start', () => {
 
     await flows.start(KEY, QUEST)
 
-    expect(flow()).toEqual({ kind: 'openFailed', terminal: 'iterm', command: "cd '/p' && claude" })
+    expect(flow()).toEqual({ kind: 'openFailed', questId: QUEST.id, title: QUEST.title, platform: 'claude', terminal: 'iterm', command: "cd '/p' && claude" })
   })
 
   it('shows a hold and changes nothing', async () => {
@@ -621,7 +621,7 @@ describe('Continue in', () => {
 
     await flows.continueIn(KEY, ACTIVE, 'codex')
 
-    expect(flow()).toEqual({ kind: 'openFailed', terminal: 'iterm', command: "cd '/p' && codex 'brief'" })
+    expect(flow()).toEqual({ kind: 'openFailed', questId: ACTIVE.id, title: ACTIVE.title, platform: 'codex', terminal: 'iterm', command: "cd '/p' && codex 'brief'" })
   })
 
   it('a second press while it moves asks nothing more', async () => {

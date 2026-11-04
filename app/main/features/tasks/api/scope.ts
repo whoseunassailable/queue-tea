@@ -24,7 +24,7 @@ export type TasksDeps = ProjectsDeps & ClaudeDeps & { offsetMinutes: () => numbe
 export type Scope = { key: string; deps: Deps; ctx: Ctx; record: ProjectRecord }
 
 // The mod's own repositories over the app's host, for one realm's record.
-export const scopeOf = async (d: TasksDeps, key: unknown): Promise<Scope> => {
+export const scopeOf = async (d: TasksDeps, key: unknown, taskId?: unknown): Promise<Scope> => {
   if (!isProjectKey(key)) throw new Refusal(MESSAGES.unknownProject)
   const folder = projectsFolder(d.home)
   const name = `${key}.json`
@@ -33,11 +33,12 @@ export const scopeOf = async (d: TasksDeps, key: unknown): Promise<Scope> => {
   if (scanned.kind === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
 
   const { path, name: projectName } = scanned.record.project
-  const ctx: Ctx = { cwd: path, home: d.home, projectPath: path, projectName, file: scanned.file, offsetMinutes: d.offsetMinutes(), options: readOptions({}) }
+  const workingPath = scanned.record.tasks.find(t => t.id === taskId)?.worktreePath ?? path
+  const ctx: Ctx = { cwd: workingPath, home: d.home, projectPath: path, projectName, file: scanned.file, offsetMinutes: d.offsetMinutes(), options: readOptions({}) }
   const deps: Deps = {
     records: recordsRepositoryImpl(d.host, ctx),
-    git: gitRepositoryImpl(d.host, path),
-    taskLog: taskLogRepositoryImpl(d.host, path),
+    git: gitRepositoryImpl(d.host, workingPath),
+    taskLog: taskLogRepositoryImpl(d.host, workingPath),
     codex: codexRepositoryImpl(d.host, d.home),
     env: { now: async () => d.now(), newId: d.newId, log: text => d.log.debug(text) },
   }
@@ -49,7 +50,7 @@ export const realmView = async (d: TasksDeps, key: string, record: ProjectRecord
   viewOf(key, record, await sessionsRepositoryImpl(d.host, d.home).list(), d.now(), budgetOf(key))
 
 export const isSessionOpen = async (d: TasksDeps, path: string): Promise<boolean> =>
-  sessionsIn(await sessionsRepositoryImpl(d.host, d.home).list(), path, d.now()).length > 0
+  sessionsIn(await sessionsRepositoryImpl(d.host, d.home).list(), path, d.now()).some(s => (s.workingPath ?? s.projectPath) === path)
 
 // One edit: the record changes under its lock, and the window gets the realm
 // as it is now.

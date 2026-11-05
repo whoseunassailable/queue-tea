@@ -1,4 +1,5 @@
 out/
 test-results/
+test-results-*/
 playwright-report/
 dist/

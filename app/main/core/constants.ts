@@ -9,7 +9,8 @@ export const WATCH_SETTLE_MS = 120
 
 export const WINDOW = { width: 1280, height: 800, minWidth: 720, minHeight: 560 } as const
 
-// The app never runs these. Git commands appear only as text to copy.
+// The general agent Host refuses these. The branch workflow has a separate
+// typed capability for actions explicitly approved by the user.
 export const FORBIDDEN_GIT = ['commit', 'push', 'merge', 'pull'] as const
 
 // Longer than any command or path the window has reason to copy.

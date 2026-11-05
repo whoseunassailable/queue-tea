@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [preact()],
+  esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
   // The Guild Hall bundles the helpers from the repository's root.
   server: { fs: { allow: [resolve(__dirname, '..')] } },
   test: {

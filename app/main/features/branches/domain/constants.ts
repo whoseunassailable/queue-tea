@@ -1,4 +1,6 @@
-export const BRANCH_LIMITS = { graph: 160, diff: 120_000, conflict: 120_000, output: 8_000, message: 2_000, recentMs: 90_000, codexDays: 14 } as const
+export const CHECK_BIN_DIRS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'] as const
+export const checkPath = (home: string, inherited: string | undefined) => [inherited ?? '', `${home}/.local/bin`, `${home}/.volta/bin`, `${home}/.asdf/shims`, ...CHECK_BIN_DIRS].filter(Boolean).join(':')
+export const BRANCH_LIMITS = { graph: 160, diff: 120_000, conflict: 120_000, output: 8_000, message: 2_000, recentMs: 90_000, codexDays: 14, streamMs: 120, checksMs: 900_000, checkChoices: 64 } as const
 export const operationsFolder = (home: string, key: string) => `${home}/.queue-tea/integrations/${key}`
 export const BRANCH_TEXT = {
   read: 'The branch history could not be read. Check that the project folder is available, then try again.',
@@ -19,5 +21,8 @@ export const BRANCH_TEXT = {
   receipt: 'A previous commit attempt is retained. Refresh to inspect its result before starting another commit.',
   push: 'The push did not complete. The local merge is retained. Check your connection, authentication, and remote branch rules, then review the push again.',
   multiplePush: 'This remote has several push destinations. Configure one destination before publishing from this review.',
+  checkSelection: 'Choose at least one check from this prepared result.',
+  checksRequired: 'Run checks on the current prepared result before merging. Failed or cancelled checks must pass when retried.',
+  checkChanged: 'The check changed prepared files. Review those files and prepare the result again before approving it.',
   noMerge: 'There are no new commits to merge into this destination.',
 } as const

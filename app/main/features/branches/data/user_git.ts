@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process'
+import { streamProcess } from '../../../core/stream_process'
+import type { OutputSink } from '../../../core/stream_process'
 import type { RunResult } from '../../../../../hooks/core/host/host'
 import type { Logger } from '../../../core/logger'
 
@@ -11,7 +12,7 @@ export type UserGitAction =
   | { kind: 'apply'; commit: string }
   | { kind: 'abort' }
   | { kind: 'push'; remote: string; head: string; branch: string }
-export type UserGit = (cwd: string, action: UserGitAction) => Promise<RunResult>
+export type UserGit = (cwd: string, action: UserGitAction, output?: OutputSink) => Promise<RunResult>
 export const argvOf = (action: UserGitAction): string[] => {
   switch (action.kind) {
     case 'prepare': return ['merge', '--no-ff', '--no-commit', '--', action.source]
@@ -22,11 +23,8 @@ export const argvOf = (action: UserGitAction): string[] => {
     case 'push': return ['push', '--porcelain', '--', action.remote, `${action.head}:refs/heads/${action.branch}`]
   }
 }
-export const nodeUserGit = (log: Logger): UserGit => (cwd, action) => new Promise(done => {
+export const nodeUserGit = (log: Logger): UserGit => (cwd, action, output) => {
   const args = argvOf(action)
   log.debug(`user branch action: git ${args.join(' ')}`)
-  execFile('git', args, { cwd, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
-    if (err) log.error(`user branch action failed: ${action.kind}`, err)
-    done({ exitCode: err === null ? 0 : typeof err.code === 'number' ? err.code : 1, stdout, stderr: err && !stderr ? err.message : stderr })
-  })
-})
+  return streamProcess(log, { argv: ['git', ...args], cwd, env: { GIT_TERMINAL_PROMPT: '0' } }, output)
+}

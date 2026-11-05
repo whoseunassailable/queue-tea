@@ -6,6 +6,7 @@ import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { ReadView } from '../../../../core/widgets/read_view'
 import { Loading } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
+import { MergeChecks } from './merge_checks'
 import { MERGE_POLL_MS, MESSAGE_LIMIT } from '../../domain/constants'
 
 const ConflictEditor = ({ file, source, target, busy, onResolve }: { file: ConflictFile; source: string; target: string; busy: boolean; onResolve: (choice: 'base' | 'source' | 'target' | 'edited', text?: string) => void }) => {
@@ -46,7 +47,8 @@ export const MergeReview = ({ engine, realm, id, remotes, onChanged }: { engine:
   const [push, setPush] = useState<PushPreview | null>(null)
   const approval = read.load.status === 'ready' ? read.load.data.approval : null
   const idle = approval !== null && idleFor === approval
-  useEffect(() => { if (!busy) return; const timer = window.setInterval(read.refresh, MERGE_POLL_MS); return () => window.clearInterval(timer) }, [busy, read.refresh])
+  const hasRunningChecks = read.load.status === 'ready' && read.load.data.checks?.some(run => run.status === 'running')
+  useEffect(() => { if (!busy && !hasRunningChecks) return; const timer = window.setInterval(read.refresh, MERGE_POLL_MS); return () => window.clearInterval(timer) }, [busy, hasRunningChecks, read.refresh])
   const run = async (line: string, call: () => Promise<Reply<MergeWorkspace>>) => {
     if (busy) return
     setBusy(line); setError(null)
@@ -77,12 +79,15 @@ export const MergeReview = ({ engine, realm, id, remotes, onChanged }: { engine:
         {op.stage === 'ready' || op.stage === 'applying' ? <>
           <details open><summary>{t.branches.diff}</summary><pre class="branch-diff">{workspace.diff}</pre></details>
           {workspace.truncated && <p role="status">{t.branches.truncated}</p>}
-          <p class="hint">{t.branches.checkHint}</p>
+          <MergeChecks workspace={workspace} busy={!!busy} onRun={ids => void run(t.branches.runningChecks, () => engine.runMergeChecks(realm, { operationId: op.id, approval: workspace.approval!, checkIds: ids }))} onCancel={async () => {
+            const result = await ask(engine, () => engine.cancelMergeChecks(realm, op.id))
+            if (!result.ok) setError(result.message)
+          }} />
           {!workspace.approval && <p role="status">{t.branches.unstaged}</p>}
           <label>{t.branches.commitMessage}<textarea value={commitMessage} disabled={!!busy || op.stage === 'applying'} onInput={e => setMessage(e.currentTarget.value)} onBlur={validateMessage} aria-invalid={!!messageError} /></label>
           {messageError && <p role="alert">{messageError}</p>}
           <label class="branch-confirm"><input type="checkbox" checked={idle} disabled={!!busy} onChange={e => setIdleFor(e.currentTarget.checked ? approval : null)} />{t.branches.idle}</label>
-          <button type="button" class="btn primary" disabled={!!busy || !idle || !workspace.approval} onClick={() => {
+          <button type="button" class="btn primary" disabled={!!busy || !idle || !workspace.approval || workspace.checksCurrent === false} onClick={() => {
             if (validateMessage()) void run(t.branches.completing, () => engine.completeMerge(realm, { operationId: op.id, approval: workspace.approval!, message: commitMessage, idleConfirmed: idle }))
           }}>{t.branches.approve(op.source, op.target)}</button>
         </> : null}
@@ -109,14 +114,14 @@ export const MergeReview = ({ engine, realm, id, remotes, onChanged }: { engine:
         {op.stage === 'failed' && <p role="status">{t.branches.retained}</p>}
         <details class="merge-log" open><summary>{t.branches.operationLog}</summary><ol>{op.events.map((event, i) => <li key={i}>
           <time>{new Date(event.at).toLocaleTimeString()}</time> <strong>{t.activity.status[event.status]}</strong><code>{event.command}</code>
-          {event.output && <pre>{event.output}</pre>}
+          {event.output && <pre class="live-terminal" role="log" aria-label={t.branches.operationOutput}>{event.output}</pre>}
         </li>)}</ol></details>
         <div class="q-actions">
           <button type="button" class="btn" disabled={!!busy} onClick={read.refresh}>{t.branches.refresh}</button>
-          {!['merged', 'abandoned', 'applying', 'committing'].includes(op.stage) && <button type="button" class="btn" disabled={!!busy} onClick={() => setAbandon(true)}>{t.branches.abandon}</button>}
+          {!['merged', 'abandoned', 'committing'].includes(op.stage) && <button type="button" class="btn" disabled={!!busy} onClick={() => setAbandon(true)}>{t.branches.abandon}</button>}
         </div>
         {abandon && <div class="branch-abandon" role="group" aria-label={t.branches.abandon}>
-          <p>{t.branches.abandonHint}</p>
+          <p>{op.commit ? t.branches.abandonRetained : t.branches.abandonHint}</p>
           <button type="button" class="btn" disabled={!!busy} onClick={() => setAbandon(false)}>{t.branches.cancel}</button>
           <button type="button" class="btn danger" disabled={!!busy} onClick={() => { setAbandon(false); void run(t.branches.abandoning, () => engine.abandonMerge(realm, op.id)) }}>{t.branches.confirmAbandon}</button>
         </div>}

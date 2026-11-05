@@ -1,9 +1,11 @@
-import { lstat, realpath } from 'node:fs/promises'
+import { copyFile, lstat, realpath } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { dirname, join, relative, resolve } from 'node:path'
 import type { ConflictFile, MergeOperation, MergeWorkspace } from '../../../../shared/branches'
 import { Refusal } from '../../../core/reply'
 import type { TasksDeps } from '../../tasks/api/scope'
 import { BRANCH_LIMITS, BRANCH_TEXT } from '../domain/constants'
+import { checksPassed, discoverChecks, readChecks } from './checks_source'
 import { isFile } from '../domain/git_rules'
 import { ancestor, digest, gitIn, headOf } from './branch_source'
 import { operationPath } from './operation_store'
@@ -38,6 +40,7 @@ export const workspaceOf = async (d: TasksDeps, root: string, saved: MergeOperat
     const parents = (await git(['show', '-s', '--format=%P', head])).trim().split(' ')
     if (parents[0] !== op.targetHead || parents[1] !== op.sourceHead || parents.length !== 2) throw new Refusal(BRANCH_TEXT.stale)
     op.commit = head
+    op.message = (await git(['show', '-s', '--format=%B', head])).trimEnd()
     op.stage = await ancestor(d, root, head, await headOf(d, root, op.target)) ? 'merged' : 'applying'
   }
   const entries = conflictEntries(await git(['ls-files', '-u', '-z']))
@@ -70,10 +73,38 @@ export const workspaceOf = async (d: TasksDeps, root: string, saved: MergeOperat
   }
   const diff = await git(['diff', '--no-ext-diff', '--no-textconv', op.targetHead, '--'])
   const unstaged = await git(['diff', '--no-ext-diff', '--no-textconv', '--'])
-  const untracked = await git(['ls-files', '--others', '--exclude-standard', '-z'])
-  const tree = conflicts.length ? null : (await git(['write-tree'])).trim()
+  let untracked = (await git(['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter(Boolean)
+  const metadata = `${operationPath(d, op.key, op.id)}/dependencies.json`
+  if (await d.host.exists(metadata)) {
+    const links = JSON.parse(await d.host.read(metadata)) as { path: string; target: string }[]
+    for (const link of links) {
+      if (!isFile(link.path) || link.path.split('/').at(-1) !== 'node_modules' || !untracked.includes(link.path)) continue
+      const file = resolve(path, link.path)
+      if ((await lstat(file)).isSymbolicLink() && await realpath(file) === link.target) untracked = untracked.filter(p => p !== link.path)
+    }
+  }
+  let tree: string | null = null
+  if (!conflicts.length) {
+    // write-tree refreshes the index cache. Use a private copy so simultaneous
+    // UI reads cannot take the real index lock from a commit or another read.
+    const original = (await git(['rev-parse', '--path-format=absolute', '--git-path', 'index'])).trim()
+    const temporary = `${operationPath(d, op.key, op.id)}/index-${randomUUID()}`
+    try {
+      await copyFile(original, temporary)
+      const result = await d.host.run(['env', `GIT_INDEX_FILE=${temporary}`, 'git', 'write-tree'], path)
+      if (result.exitCode) throw new Error(`Reading prepared tree failed: ${result.stderr}`)
+      tree = result.stdout.trim()
+    } finally {
+      for (const file of [temporary, temporary + '.lock']) {
+        if ((await d.host.remove(file)).exitCode) d.log.warn('Could not remove a temporary review index')
+      }
+    }
+  }
   const committedTree = op.commit ? (await git(['rev-parse', `${op.commit}^{tree}`])).trim() : null
   op.tree = tree
-  return { operation: op, conflicts, diff: diff.slice(0, BRANCH_LIMITS.diff), truncated: diff.length > BRANCH_LIMITS.diff,
-    approval: (op.stage === 'ready' || op.stage === 'applying') && tree && !unstaged && !untracked && (!committedTree || committedTree === tree) ? digest(op.id + op.sourceHead + op.targetHead + tree + (op.commit ?? '')) : null }
+  const availableChecks = tree ? await discoverChecks(d, path, tree) : []
+  const checks = await readChecks(d, op)
+  const checksCurrent = tree !== null && checksPassed(checks, tree, availableChecks)
+  return { availableChecks, checks, checksCurrent, operation: op, conflicts, diff: diff.slice(0, BRANCH_LIMITS.diff), truncated: diff.length > BRANCH_LIMITS.diff,
+    approval: (op.stage === 'ready' || op.stage === 'applying') && tree && !unstaged && !untracked.length && (!committedTree || committedTree === tree) ? digest(op.id + op.sourceHead + op.targetHead + tree + (op.commit ?? '')) : null }
 }

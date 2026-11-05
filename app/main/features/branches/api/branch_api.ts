@@ -12,6 +12,8 @@ import { ancestor, gitIn, graphOf, headOf, reviewOf } from '../data/branch_sourc
 import { conflictEntries, safeResolutionPath, workspaceOf, workspacePath } from '../data/merge_workspace'
 import { loadOperation, operationsOf, saveOperation, withBranchLock } from '../data/operation_store'
 import { argvOf } from '../data/user_git'
+import { readCommitProgress } from '../data/commit_progress'
+import { liveOutput } from '../data/live_output'
 import type { UserGit, UserGitAction } from '../data/user_git'
 
 export type BranchDeps = TasksDeps & { userGit: UserGit; reveal?: (path: string) => void }
@@ -40,8 +42,17 @@ export const runStep = async (d: BranchDeps, op: MergeOperation, cwd: string, ac
   const event = { at: d.now(), command: `git ${argvOf(action).map(a => /\s/.test(a) ? JSON.stringify(a) : a).join(' ')}`, status: 'running' as const, output: '' }
   op.events.push(event)
   await saveOperation(d, op)
-  const result = await d.userGit(cwd, action)
-  op.events[op.events.length - 1] = { ...event, status: result.exitCode === 0 ? 'succeeded' : 'failed', output: (result.stdout + result.stderr).slice(0, BRANCH_LIMITS.output) }
+  const index = op.events.length - 1
+  const stream = liveOutput(async (output, truncated) => {
+    op.events[index] = { ...event, output, truncated }
+    await saveOperation(d, op)
+  })
+  let result
+  try { result = await d.userGit(cwd, action, stream.append) } catch (err) {
+    await stream.flush(); op.events[index] = { ...op.events[index]!, status: 'failed', finished: d.now() }; await saveOperation(d, op); throw err
+  } finally { await stream.flush() }
+  const streamed = op.events[index]!
+  op.events[index] = { ...streamed, finished: d.now(), exitCode: result.exitCode, status: result.exitCode === 0 ? 'succeeded' : 'failed', output: streamed.output || (result.stdout + result.stderr).slice(-BRANCH_LIMITS.output) }
   await saveOperation(d, op)
   return result
 }
@@ -51,6 +62,7 @@ export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unkn
   const selected = target === null || target === undefined ? task.baseBranch ?? 'main' : target
   if (!isBranch(selected)) throw new Refusal(BRANCH_TEXT.invalid)
   const review = await reviewOf(d, scope, task, selected)
+  review.commitProgress = await readCommitProgress(d, scope.key, task.id)
   const ops = await operationsOf(d, scope.key)
   review.operation = ops.find(o => o.taskId === task.id && o.target === selected && o.stage !== 'abandoned') ?? null
   return review
@@ -129,6 +141,7 @@ export const completeMerge = (d: BranchDeps, key: unknown, input: unknown): Prom
     if (op.stage === 'merged') return workspace // Retry after a lost response is harmless.
     if (!workspace.approval || workspace.approval !== r.approval) throw new Refusal(BRANCH_TEXT.stale)
     if (!r.idleConfirmed) throw new Refusal(BRANCH_TEXT.idle)
+    if (!workspace.checksCurrent) throw new Refusal(BRANCH_TEXT.checksRequired)
     const check = async () => {
       const fresh = await scopeOf(d, key)
       const review = await reviewOf(d, fresh, taskOf(fresh, op.taskId), op.target)
@@ -173,9 +186,9 @@ export const abandonMerge = (d: BranchDeps, key: unknown, id: unknown): Promise<
   const scope = await scopeOf(d, key)
   return withBranchLock(d, scope.key, async () => {
     const workspace = await workspaceOf(d, scope.ctx.projectPath, await loadOperation(d, scope.key, id)); const op = workspace.operation
-    if (op.stage === 'merged' || op.commit) throw new Refusal(BRANCH_TEXT.invalid)
+    if (op.stage === 'merged') throw new Refusal(BRANCH_TEXT.invalid)
     const folder = workspacePath(d, op)
-    if (await d.host.exists(folder)) {
+    if (!op.commit && await d.host.exists(folder)) {
       const pending = await d.host.run(['git', 'rev-parse', '-q', '--verify', 'MERGE_HEAD'], folder)
       if (pending.exitCode === 0 && (await runStep(d, op, folder, { kind: 'abort' })).exitCode !== 0) throw new Refusal(BRANCH_TEXT.action)
     }

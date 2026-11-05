@@ -1,4 +1,4 @@
-import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest } from './branches'
+import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
@@ -364,6 +364,8 @@ export type EngineApi = {
   resolveMergeFile: (key: string, request: ResolveRequest) => Promise<Reply<MergeWorkspace>>
   completeMerge: (key: string, request: CompleteRequest) => Promise<Reply<MergeWorkspace>>
   abandonMerge: (key: string, operationId: string) => Promise<Reply<MergeWorkspace>>
+  runMergeChecks: (key: string, request: RunChecksRequest) => Promise<Reply<MergeWorkspace>>
+  cancelMergeChecks: (key: string, operationId: string) => Promise<Reply<null>>
   openMergeFolder: (key: string, operationId: string) => Promise<Reply<null>>
   commitBranchFiles: (key: string, request: CommitRequest) => Promise<Reply<BranchReview>>
   readPush: (key: string, operationId: string, remote: string) => Promise<Reply<PushPreview>>
@@ -434,6 +436,8 @@ export const CHANNELS = {
   resolveMergeFile: 'engine:resolve-merge-file',
   completeMerge: 'engine:complete-merge',
   abandonMerge: 'engine:abandon-merge',
+  runMergeChecks: 'engine:run-merge-checks',
+  cancelMergeChecks: 'engine:cancel-merge-checks',
   openMergeFolder: 'engine:open-merge-folder',
   commitBranchFiles: 'engine:commit-branch-files',
   readPush: 'engine:read-push',

@@ -240,6 +240,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     resolveMergeFile: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     completeMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     abandonMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    runMergeChecks: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    cancelMergeChecks: vi.fn(async () => ({ ok: true as const, data: null })),
     openMergeFolder: vi.fn(async () => ({ ok: true as const, data: null })),
     commitBranchFiles: vi.fn(async () => ({ ok: true as const, data: branchReview() })),
     readPush: vi.fn(async () => ({ ok: false as const, error: { message: 'Remote unavailable.' } })),

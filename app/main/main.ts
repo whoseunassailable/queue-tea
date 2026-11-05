@@ -14,6 +14,7 @@ import { appIdOf, flavorOf } from './core/flavor'
 import { createLogger, fileSink } from './core/logger'
 import { MESSAGES, UPDATE_TEXT } from './core/messages'
 import { nodeHost } from './core/node_host'
+import { stopProcesses } from './core/stream_process'
 import { windowChrome } from './core/platform/mac'
 import { reply } from './core/reply'
 import { watchFolders } from './core/watcher'
@@ -34,6 +35,7 @@ import { readQuestFacts } from './features/tasks/api/detail_api'
 import * as finish from './features/tasks/api/finish_api'
 import * as live from './features/tasks/api/live_api'
 import * as branches from './features/branches/api/branch_api'
+import { runMergeChecks, cancelMergeChecks } from './features/branches/api/checks_api'
 import { commitBranchFiles } from './features/branches/api/commit_api'
 import { readPush, pushMerge } from './features/branches/api/push_api'
 import { nodeUserGit } from './features/branches/data/user_git'
@@ -53,6 +55,7 @@ const STALE_CHECK_MS = 30_000
 declare const QUEUE_TEA_BUILT_FLAVOR: string
 
 const flavor = flavorOf(process.env.QUEUE_TEA_FLAVOR ?? (QUEUE_TEA_BUILT_FLAVOR || undefined), app.isPackaged)
+app.on('before-quit', stopProcesses)
 app.setAppUserModelId(appIdOf(flavor))
 app.setName(flavor === 'prod' ? 'Queue-tea' : `Queue-tea ${flavor}`)
 const userData = process.env.QUEUE_TEA_USER_DATA ?? join(app.getPath('appData'), app.getName())
@@ -178,6 +181,8 @@ const serveEngine = () => {
   handle(CHANNELS.resolveMergeFile, (_, key, request) => branches.resolveMergeFile(branchActions, key, request))
   handle(CHANNELS.completeMerge, (_, key, request) => branches.completeMerge(branchActions, key, request))
   handle(CHANNELS.abandonMerge, (_, key, id) => branches.abandonMerge(branchActions, key, id))
+  handle(CHANNELS.runMergeChecks, (_, key, request) => runMergeChecks(branchActions, key, request))
+  handle(CHANNELS.cancelMergeChecks, (_, key, id) => cancelMergeChecks(branchActions, key, id))
   handle(CHANNELS.openMergeFolder, (_, key, id) => branches.openMergeFolder(branchActions, key, id))
   handle(CHANNELS.commitBranchFiles, (_, key, request) => commitBranchFiles(branchActions, key, request))
   handle(CHANNELS.readPush, (_, key, id, remote) => readPush(quests, key, id, remote))

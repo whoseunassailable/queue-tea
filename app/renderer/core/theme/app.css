@@ -1244,3 +1244,7 @@ body,
 .rm .branch-heading { padding: 16px 20px; }
 .rm .branch-heading p { margin: 8px 0; }
 @media (max-width: 700px) { .rm .branch-page { padding: 12px; } }
+
+.rm .live-terminal { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 300px; padding: 14px; background: #071a20; color: #d1f0dc; border: 1px solid var(--line-soft); border-radius: 8px; font: 12px/1.6 ui-monospace, monospace; }
+.rm .check-runs { padding-left: 20px; }
+.rm .check-runs > li { margin: 16px 0; }

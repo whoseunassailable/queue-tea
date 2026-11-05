@@ -2,7 +2,7 @@ import { useEffect } from 'preact/hooks'
 
 import type { ActiveFacts, ActiveQuest, EngineApi } from '../../../../../shared/engine_api'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
-import { LINES_REFRESH_MS } from '../../../../core/constants/constants'
+import { ACTIVITY_REFRESH_MS, LINES_REFRESH_MS } from '../../../../core/constants/constants'
 import { dayAndTime, formatMinutes } from '../../../../core/domain/format'
 import { t } from '../../../../l10n/en'
 import { Spinner } from '../../../../core/widgets/states'
@@ -56,12 +56,12 @@ type Props = { engine: EngineApi; realm: string; active: ActiveQuest; isSaved: b
 // The quest in hand, in full. Its actions stay on the card beside it.
 export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) => {
   const read = useEngineRead(engine, () => engine.readQuestFacts(realm, active.id), [realm, active.id])
-  // The lines change as Claude works, and no record change says so.
+  // Codex events arrive outside the record watcher; keep that feed live.
   useEffect(() => {
-    const timer = setInterval(read.refresh, LINES_REFRESH_MS)
+    const timer = setInterval(read.refresh, active.codexSince ? ACTIVITY_REFRESH_MS : LINES_REFRESH_MS)
 
     return () => clearInterval(timer)
-  }, [read.refresh])
+  }, [read.refresh, active.codexSince])
   const facts = read.load.status === 'ready' ? read.load.data : null
 
   return (

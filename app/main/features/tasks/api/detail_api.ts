@@ -9,6 +9,7 @@ import { questIdOf } from '../domain/task_input'
 import { scopeOf } from './scope'
 import type { Scope, TasksDeps } from './scope'
 import { readActivity } from '../data/activity_source'
+import { observeTask } from '../../branches/data/observation'
 
 const SHORT_COMMIT = 7
 
@@ -88,11 +89,15 @@ export const readQuestFacts = (d: TasksDeps, key: unknown, taskId: unknown): Pro
     const task = scope.record.tasks.find(t => t.id === id)
     if (task === undefined) throw new Refusal(MESSAGES.badQuest)
 
+    const activity = await readActivity(d.host, d.log, scope.ctx.projectPath, task)
+    const observed = await observeTask(d, scope.ctx.projectPath, task)
+    activity.steps = [...new Map([...activity.steps, ...observed.steps].map(step => [step.id, step])).values()].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).slice(-200)
+
     return {
       note: cardNote(task),
       messages: task.messages,
       branchToBe: await branchToBe(d, scope, task),
       active: task.state === 'current' ? await activeOf(d, scope, task) : null,
-      activity: await readActivity(d.host, d.log, scope.ctx.projectPath, task),
+      activity,
     }
   })

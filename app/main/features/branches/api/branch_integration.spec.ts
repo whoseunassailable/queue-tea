@@ -14,6 +14,7 @@ import { workspacePath } from '../data/merge_workspace'
 import { completeMerge, prepareMerge, readBranch, readBranches, readMergeWorkspace, resolveMergeFile, abandonMerge } from './branch_api'
 import type { BranchDeps } from './branch_api'
 import { commitBranchFiles } from './commit_api'
+import { runMergeChecks, cancelMergeChecks } from './checks_api'
 import { pushMerge, readPush } from './push_api'
 
 // Opt-in because these tests execute real commits/merges and a local-only
@@ -191,6 +192,75 @@ integration('user-approved branch workflow in disposable repositories', () => {
     d.userGit = original
     data(await commitBranchFiles(d, KEY, request))
     expect(await git(taskPath, 'log', '-1', '--format=%s')).toBe(request.message)
+  })
+
+  it('streams checks, blocks a failed result, and permits merge only after a passing retry on the same tree', async () => {
+    await taskCommit('.gitignore', '.check-fail\n')
+    await taskCommit('package.json', JSON.stringify({ scripts: { test: 'node check.cjs' } }))
+    await taskCommit('check.cjs', "const fs=require('node:fs');console.log('CHECK START');setTimeout(()=>{if(fs.existsSync('.check-fail')){console.error('CHECK FAILED');process.exit(1)}console.log('CHECK PASSED')},700)")
+    const prepared = await prepare(); const id = prepared.operation.id
+    expect(prepared.availableChecks).toHaveLength(1)
+    expect(await finish(id, prepared.approval!)).toMatchObject({ ok: false, error: { message: expect.stringContaining('Run checks') } })
+    const path = workspacePath(d, prepared.operation)
+    await writeFile(join(path, '.check-fail'), 'fail')
+    const request = { operationId: id, approval: prepared.approval!, checkIds: [prepared.availableChecks![0]!.id] }
+    const running = runMergeChecks(d, KEY, request)
+    await expect.poll(async () => data(await readMergeWorkspace(d, KEY, id)).checks?.at(-1)?.output ?? '', { timeout: 8000 }).toContain('CHECK START')
+    const failed = data(await running)
+    expect(failed.checks?.at(-1)).toMatchObject({ status: 'failed', exitCode: 1 })
+    expect(await finish(id, failed.approval!)).toMatchObject({ ok: false })
+    await rm(join(path, '.check-fail'))
+    const passed = data(await runMergeChecks(d, KEY, request))
+    expect(passed.checksCurrent).toBe(true)
+    expect(passed.checks?.at(-1)).toMatchObject({ status: 'succeeded', exitCode: 0 })
+    expect(data(await finish(id, passed.approval!)).operation.stage).toBe('merged')
+  })
+  it('cancels a check process and blocks merging the cancelled result', async () => {
+    await taskCommit('package.json', JSON.stringify({ scripts: { test: 'node check.cjs' } }))
+    await taskCommit('check.cjs', "console.log('CHECK START');setInterval(()=>{},1000)")
+    const prepared = await prepare(); const id = prepared.operation.id
+    const running = runMergeChecks(d, KEY, { operationId: id, approval: prepared.approval!, checkIds: [prepared.availableChecks![0]!.id] })
+    await expect.poll(async () => data(await readMergeWorkspace(d, KEY, id)).checks?.at(-1)?.output ?? '', { timeout: 8000 }).toContain('CHECK START')
+    data(await cancelMergeChecks(d, KEY, id))
+    expect(data(await running).checks?.at(-1)?.status).toBe('cancelled')
+    expect(await finish(id, prepared.approval!)).toMatchObject({ ok: false })
+  })
+  it('invalidates checks that change tracked files and refuses an obsolete check definition', async () => {
+    await taskCommit('package.json', JSON.stringify({ scripts: { test: 'node check.cjs' } }))
+    await taskCommit('check.cjs', "require('node:fs').writeFileSync('a.txt','modified by check')")
+    const prepared = await prepare(); const id = prepared.operation.id
+    expect(await runMergeChecks(d, KEY, { operationId: id, approval: prepared.approval!, checkIds: ['not-in-this-result'] })).toMatchObject({ ok: false })
+    const result = data(await runMergeChecks(d, KEY, { operationId: id, approval: prepared.approval!, checkIds: [prepared.availableChecks![0]!.id] }))
+    expect(result.approval).toBeNull()
+    expect(result.checks?.at(-1)?.status).toBe('failed')
+    expect(await finish(id, prepared.approval!)).toMatchObject({ ok: false })
+  })
+  it('reuses matching installed dependencies only in the isolated worktree', async () => {
+    await taskCommit('.gitignore', 'node_modules/\n')
+    await taskCommit('package.json', JSON.stringify({ scripts: { test: "node -e \"require('fixture-dependency')\"" } }))
+    await mkdir(join(taskPath, 'node_modules/fixture-dependency'), { recursive: true })
+    await writeFile(join(taskPath, 'node_modules/fixture-dependency/index.js'), "console.log('LOCAL DEPENDENCY')")
+    const prepared = await prepare()
+    const result = data(await runMergeChecks(d, KEY, { operationId: prepared.operation.id, approval: prepared.approval!, checkIds: [prepared.availableChecks![0]!.id] }))
+    expect(result.checksCurrent).toBe(true)
+    expect(result.checks?.at(-1)?.output).toContain('LOCAL DEPENDENCY')
+    expect(result.approval).toBe(prepared.approval)
+    expect(await git(taskPath, 'status', '--porcelain')).toBe('')
+  })
+
+  it('releases a stale committed preparation without changing the destination or discarding its commit', async () => {
+    const prepared = await prepare(); const before = await git(repo, 'rev-parse', 'HEAD'); const original = d.userGit
+    d.userGit = async (cwd, action, output) => {
+      const result = await original(cwd, action, output)
+      if (action.kind === 'commit') await taskCommit('newer.txt', 'source moved\n')
+      return result
+    }
+    expect(await finish(prepared.operation.id, prepared.approval!)).toMatchObject({ ok: false })
+    const retained = data(await readMergeWorkspace(d, KEY, prepared.operation.id))
+    expect(retained.operation.commit).toBeTruthy()
+    expect(data(await abandonMerge(d, KEY, prepared.operation.id)).operation.stage).toBe('abandoned')
+    expect(await git(repo, 'rev-parse', 'HEAD')).toBe(before)
+    expect(await git(workspacePath(d, retained.operation), 'rev-parse', 'HEAD')).toBe(retained.operation.commit)
   })
 
 })

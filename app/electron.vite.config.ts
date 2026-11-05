@@ -7,6 +7,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
 export default defineConfig({
   main: {
+    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
     plugins: [externalizeDepsPlugin(), {
       name: 'build-provenance',
       writeBundle() {
@@ -23,10 +24,12 @@ export default defineConfig({
     build: { lib: { entry: resolve(__dirname, 'main/main.ts') } },
   },
   preload: {
+    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
     plugins: [externalizeDepsPlugin()],
     build: { lib: { entry: resolve(__dirname, 'preload/preload.ts') } },
   },
   renderer: {
+    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
     root: resolve(__dirname, 'renderer'),
     plugins: [preact()],
     server: { fs: { allow: [resolve(__dirname, '..')] } },

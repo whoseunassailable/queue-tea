@@ -1,3 +1,7 @@
+import { liveOutput } from '../data/live_output'
+import { writeReceipt } from '../data/commit_progress'
+import { argvOf } from '../data/user_git'
+import type { CommitProgress } from '../../../../shared/branches'
 import { worktreesRepositoryImpl } from '../../../../../hooks/shared/git/data/repositories/worktrees_repository_impl'
 import type { BranchReview, CommitRequest } from '../../../../shared/branches'
 import type { Reply } from '../../../../shared/engine_api'
@@ -41,14 +45,25 @@ export const commitBranchFiles = (d: BranchDeps, key: unknown, input: unknown): 
     await git(['--literal-pathspecs', 'add', '--', ...files])
     // A new tracked file needs staging before commit --only can include it.
     // All staging is limited to the user's selection.
-    await d.host.write(receipt, JSON.stringify({ before: review.sourceHead, taskId: task.id, files: [...files], message }))
-    const result = await d.userGit(source, { kind: 'commitFiles', message, files: [...files] })
+    const action = { kind: 'commitFiles' as const, message, files: [...files] }
+    const progress: CommitProgress & { owner: number } = { owner: process.pid, command: `git ${argvOf(action).join(' ')}`, message, at: d.now(), finished: null, status: 'running', output: '', truncated: false, exitCode: null }
+    const receiptData = { before: review.sourceHead, taskId: task.id, files: [...files], message, failed: false, progress }
+    const save = () => writeReceipt(d, receipt, receiptData)
+    await save()
+    const stream = liveOutput(async (output, truncated) => { progress.output = output; progress.truncated = truncated; await save() })
+    let result
+    try { result = await d.userGit(source, action, stream.append) } catch (err) {
+      await stream.flush(); progress.status = 'interrupted'; progress.finished = d.now(); await save(); throw err
+    } finally { await stream.flush() }
+    progress.finished = d.now(); progress.exitCode = result.exitCode
+    progress.status = result.exitCode === 0 ? 'succeeded' : 'failed'
+    progress.output ||= (result.stdout + result.stderr).slice(-BRANCH_LIMITS.output)
+    receiptData.failed = result.exitCode !== 0
+    await save()
     if (result.exitCode !== 0) {
-      await d.host.write(receipt, JSON.stringify({ before: review.sourceHead, taskId: task.id, files: [...files], message, failed: true, output: (result.stdout + result.stderr).slice(0, BRANCH_LIMITS.output) }))
       d.log.error(`source commit failed: ${result.stderr}`)
       throw new Refusal(BRANCH_TEXT.action)
     }
-    await d.host.write(receipt, JSON.stringify({ before: review.sourceHead, taskId: task.id, message, commit: await headOf(d, scope.ctx.projectPath, task.branch!), output: (result.stdout + result.stderr).slice(0, BRANCH_LIMITS.output) }))
     return reviewOf(d, await scopeOf(d, key), task, request.target)
   })
 })

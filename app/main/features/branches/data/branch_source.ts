@@ -12,7 +12,7 @@ import { observeTask } from './observation'
 
 export const digest = (text: string) => createHash('sha256').update(text).digest('hex')
 export const gitIn = (d: TasksDeps, cwd: string) => async (args: string[]) => {
-  const r = await d.host.run(['git', ...args], cwd)
+  const r = await d.host.run(['git', '--no-optional-locks', ...args], cwd)
   if (r.exitCode !== 0) throw new Error(`git ${args[0]} failed (${r.exitCode}): ${r.stderr}`)
   return r.stdout
 }

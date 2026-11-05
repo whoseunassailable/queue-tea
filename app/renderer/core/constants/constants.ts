@@ -37,3 +37,6 @@ export const DETAIL_IS_PAGE_BELOW = 900
 
 // How often the active quest's pane measures its lines again.
 export const LINES_REFRESH_MS = 30_000
+
+// Codex appends session events independently of Queue-tea record changes.
+export const ACTIVITY_REFRESH_MS = 1_000

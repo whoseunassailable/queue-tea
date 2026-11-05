@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -25,7 +27,10 @@ test('branch graph and review show actual local history through IPC', async ({},
     await page.getByRole('link', { name: 'Branches', exact: true }).click()
     await expect(page.getByRole('img', { name: /actual commit parents/ })).toBeVisible()
     const card = page.getByRole('article', { name: task.title })
-    await expect(card.getByText('Paused', { exact: true })).toBeVisible()
+    let merged = false
+    try { await promisify(execFile)('git', ['merge-base', '--is-ancestor', 'refs/heads/task/task-description', 'refs/heads/main'], { cwd: repo }); merged = true }
+    catch (err) { if ((err as { code?: number }).code !== 1) throw err }
+    await expect(card.getByText(merged ? 'Merged locally' : 'Paused', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('branch-graph.png'), fullPage: true })
     await card.getByRole('button', { name: 'Review work' }).click()
     const review = page.getByRole('dialog', { name: 'Review work' })

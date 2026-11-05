@@ -7,6 +7,7 @@ import { dayOf, formatSpan } from '../../../../core/domain/format'
 import { Field } from '../../../../core/widgets/field'
 import { GoldReward, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
+import { Spinner } from '../../../../core/widgets/states'
 import type { Row } from '../../domain/board'
 import { titleError } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
@@ -142,7 +143,11 @@ const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: stri
   return (
     <>
       {facts !== null && <QuestNotes facts={facts} />}
-      {failure !== null && <p class="hint">{failure}</p>}
+      {read.load.status === 'loading' && <p class="hint" role="status"><Spinner />{t.loading.stillReading}</p>}
+      {failure !== null && <p class="hint" role="alert">{failure}</p>}
+      <button type="button" class="link-btn" disabled={read.isRefreshing || read.load.status === 'loading'} onClick={read.load.status === 'failed' ? read.retry : read.refresh}>
+        {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.activity.refreshing : t.activity.refresh}
+      </button>
       <dl class="facts">
         <dt>{t.detail.branch}</dt>
         <dd class="mono">{quest.branch ?? facts?.branchToBe ?? t.detail.noBranch}</dd>
@@ -245,7 +250,7 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
         </>
       )}
       <hr />
-      <Facts engine={engine} realm={realm} row={row} filedOn={dayOf(quest.created)} />
+      <Facts key={quest.id} engine={engine} realm={realm} row={row} filedOn={dayOf(quest.created)} />
       <div class="d-foot">
         {!row.isChapter && (
           <button type="button" class="link-btn" onClick={onActiveSaga}>

@@ -8,6 +8,7 @@ import { Refusal, reply } from '../../../core/reply'
 import { questIdOf } from '../domain/task_input'
 import { scopeOf } from './scope'
 import type { Scope, TasksDeps } from './scope'
+import { readActivity } from '../data/activity_source'
 
 const SHORT_COMMIT = 7
 
@@ -92,5 +93,6 @@ export const readQuestFacts = (d: TasksDeps, key: unknown, taskId: unknown): Pro
       messages: task.messages,
       branchToBe: await branchToBe(d, scope, task),
       active: task.state === 'current' ? await activeOf(d, scope, task) : null,
+      activity: await readActivity(d.host, d.log, scope.ctx.projectPath, task),
     }
   })

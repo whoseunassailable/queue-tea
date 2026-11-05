@@ -16,6 +16,19 @@ export type Effort = {
 // One shell command Claude ran during a task, as Queue-tea saw it.
 export type CommandRun = { command: string; isOk: boolean; isTest: boolean; at: string; summary: string }
 
+// Observed steps, saved as they start and finish. Older records have none.
+export type TaskActivity = {
+  id: string
+  at: string
+  finished: string | null
+  kind: 'branchCreated' | 'branchSwitched' | 'read' | 'edit' | 'write' | 'command' | 'test'
+  status: 'running' | 'succeeded' | 'failed' | 'blocked'
+  subject: string
+  output: string
+  truncated: boolean
+  backgroundId?: string
+}
+
 // What git said when Queue-tea last looked.
 export type GitFacts = { branch: string | null; head: string | null; uncommitted: string[] }
 
@@ -63,6 +76,7 @@ export type Task = {
   criteria: string[]
   // Set when Claude says the task looks done, cleared by Rohan's answer.
   review: { at: string; checked: string | null } | null
+  activity?: TaskActivity[]
 }
 
 // What the app asks an open session to do. The session removes it under the

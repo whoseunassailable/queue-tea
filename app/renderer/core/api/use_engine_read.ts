@@ -4,7 +4,7 @@ import type { EngineApi, Reply } from '../../../shared/engine_api'
 import type { Load } from '../../features/workspace/state_management/workspace_store'
 import { ask } from './engine_client'
 
-export type EngineRead<T> = { load: Load<T>; note: string | null; retry: () => void; refresh: () => void; adopt: (data: T) => void }
+export type EngineRead<T> = { load: Load<T>; note: string | null; isRefreshing: boolean; retry: () => void; refresh: () => void; adopt: (data: T) => void }
 
 // One page's read: it runs when `deps` change and again whenever a record does.
 // What's on screen stays through a refresh, and a refresh that fails says so
@@ -12,6 +12,7 @@ export type EngineRead<T> = { load: Load<T>; note: string | null; retry: () => v
 export const useEngineRead = <T>(engine: EngineApi, read: () => Promise<Reply<T>>, deps: readonly unknown[]): EngineRead<T> => {
   const [load, setLoad] = useState<Load<T>>({ status: 'loading' })
   const [note, setNote] = useState<string | null>(null)
+  const [isRefreshing, setRefreshing] = useState(false)
   const number = useRef(0)
   const latest = useRef(read)
   latest.current = read
@@ -19,8 +20,10 @@ export const useEngineRead = <T>(engine: EngineApi, read: () => Promise<Reply<T>
   const run = useCallback(async () => {
     number.current += 1
     const mine = number.current
+    setRefreshing(true)
     const answer = await ask(engine, () => latest.current())
     if (mine !== number.current) return
+    setRefreshing(false)
     setNote(answer.ok ? null : answer.message)
     setLoad(was => {
       if (answer.ok) return { status: 'ready', data: answer.data }
@@ -48,6 +51,7 @@ export const useEngineRead = <T>(engine: EngineApi, read: () => Promise<Reply<T>
   const adopt = useCallback((data: T) => {
     number.current += 1
     setNote(null)
+    setRefreshing(false)
     setLoad({ status: 'ready', data })
   }, [])
 
@@ -56,5 +60,5 @@ export const useEngineRead = <T>(engine: EngineApi, read: () => Promise<Reply<T>
     void run()
   }
 
-  return { load, note, retry, refresh, adopt }
+  return { load, note, isRefreshing, retry, refresh, adopt }
 }

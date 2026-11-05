@@ -6,6 +6,10 @@ Today the window has every screen: Home, Quests, Chronicle, Mana & time, the Hoa
 
 It also runs a quest from end to end: Start through the git check, onto the quest's branch, and over to Claude Code; Judgement; Finish quest with the task log row and the victory; Back to the board; and sealing the active quest. Start and Finish change your git branches and your task log for real. The app never commits, pushes, merges or pulls: a git command only ever appears as text to copy.
 
+Open a quest's details for **Task activity**: timestamped branch creation and switching, file reads and edits, commands, and check results. A connected Claude Code session records each supported tool call when it starts and when it returns; command output expands beneath it. Activity follows record changes automatically, and the active pane also refreshes Git every 30 seconds. **Refresh activity** retries a failed read while keeping the last result visible.
+
+The feed keeps the latest 200 steps, with up to 8,000 characters of command output per step, and 20 commits since the task's starting commit. Older records can show their saved command summaries. Commit messages and containing remote branches come from local Git history; a branch such as `origin/main` is labelled as local tracking data, not live verification of a push. Other terminals and agents without the Queue-tea hook do not stream their commands here. A step with no completion result stays marked **Awaiting result**, including when its session has stopped.
+
 A realm can name its GitHub account, from the HUD, Settings, or when it's added. The accounts are the ones `gh` knows, and adding one runs `gh`'s own sign-in: the app holds no tokens, and it needs `brew install gh`. Connecting names the account for you to see; it doesn't change how git pushes. The Library keeps your books in `~/.queue-tea/library.json`, apart from every project.
 
 With a session open, the app asks it through the record. With none, it opens a terminal running `claude`. Until the mod's half is merged and running, a session won't act on what the app asks, so the app shows it waiting.

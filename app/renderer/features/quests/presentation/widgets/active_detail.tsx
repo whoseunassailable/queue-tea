@@ -5,6 +5,7 @@ import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { LINES_REFRESH_MS } from '../../../../core/constants/constants'
 import { dayAndTime, formatMinutes } from '../../../../core/domain/format'
 import { t } from '../../../../l10n/en'
+import { Spinner } from '../../../../core/widgets/states'
 import type { QuestEdits } from '../state_management/quest_edits'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
@@ -71,9 +72,12 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
         <span class="d-est">{t.difficulty[active.difficulty]}</span>
       </div>
       <hr />
-      {read.load.status === 'loading' && <p class="hint">{t.loading.stillReading}</p>}
-      {read.load.status === 'failed' && <p class="hint">{read.load.message}</p>}
-      {read.note !== null && <p class="hint">{read.note}</p>}
+      {read.load.status === 'loading' && <p class="hint" role="status"><Spinner />{t.loading.stillReading}</p>}
+      {read.load.status === 'failed' && <p class="hint" role="alert">{read.load.message}</p>}
+      {read.load.status === 'ready' && read.note !== null && <p class="hint" role="alert">{read.note}</p>}
+      <button type="button" class="link-btn" disabled={read.isRefreshing || read.load.status === 'loading'} onClick={read.load.status === 'failed' ? read.retry : read.refresh}>
+        {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.activity.refreshing : t.activity.refresh}
+      </button>
       {facts?.active != null && <Facts facts={facts.active} />}
       {facts?.active?.git != null && <NotCommitted git={facts.active.git} />}
       {facts !== null && <QuestNotes facts={facts} />}

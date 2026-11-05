@@ -5,6 +5,7 @@ import { holdReason, slugBranch } from '../../../../shared/git/domain/services/b
 import type { Saved } from '../../../../shared/records/domain/repositories/records_repository'
 import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
 import { isoLocal } from '../../../../shared/time/domain/services/time'
+import { keepActivity } from '../../../../shared/activity/domain/services/activity'
 import type { Deps } from './deps'
 
 const NOT_A_REPO = 'Not a git repository, so no branches are made'
@@ -125,5 +126,27 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string): Promi
     return { kind: 'branch_failed', text: `Couldn't ${verb} the branch ${branch}. Check again to retry.`, notice, record: undone }
   }
 
-  return { kind: 'started', task: saved.tasks.find(t => t.id === taskId)!, notice, record: saved }
+  // Branch steps are recorded only after git succeeds. A recording failure
+  // cannot undo a successful start or make the app retry the branch creation.
+  let withActivity = saved
+  try {
+    const at = isoLocal(await d.env.now(), ctx.offsetMinutes)
+    const steps = [
+      ...(!isResumed ? [{ id: d.env.newId(), kind: 'branchCreated' as const }] : []),
+      ...(!isResumed || git.branch !== branch ? [{ id: d.env.newId(), kind: 'branchSwitched' as const }] : []),
+    ]
+    if (steps.length > 0) {
+      const recorded = await d.records.update(r => ({
+        ...r,
+        tasks: r.tasks.map(t => t.id !== taskId ? t : steps.reduce((task, step) => keepActivity(task, {
+          ...step, at, finished: at, status: 'succeeded', subject: branch!, output: '', truncated: false,
+        }), t)),
+      }))
+      if (recorded !== 'unreadable') withActivity = recorded
+    }
+  } catch (err) {
+    d.env.log(`recording the branch steps failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
+  }
+
+  return { kind: 'started', task: withActivity.tasks.find(t => t.id === taskId)!, notice, record: withActivity }
 }

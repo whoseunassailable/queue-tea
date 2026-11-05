@@ -1,4 +1,5 @@
 import { beat, endBeat } from './app/session/session_beat'
+import { beginActivity } from './shared/activity/presentation/state_management/activity_controller'
 import { afterClear, afterEachTurn, checkTyped, runErrand, saveBeforeClear, startSession } from './app/session/session_rhythm'
 import { errandState } from './features/errands/presentation/state_management/errands_controller'
 import { commitGuardState } from './features/commit_guard/presentation/state_management/commit_guard_controller'
@@ -67,17 +68,29 @@ export const register: Register = (on, options) => {
     effortState.tracker?.activity(await $.clock.now())
     effortState.tracker?.toolCall(String(e.tool), e as unknown as Record<string, unknown>)
 
-    return next(e)
+    const finish = errandState.errand?.isRunning === true && e.tool !== 'GetTask' ? null : await beginActivity(portsOf($), String(e.tool), e as unknown as Record<string, unknown>)
+    try {
+      const result = await next(e)
+      await finish?.(result)
+
+      return result
+    } catch (err) {
+      await finish?.({ isError: true })
+      throw err
+    }
   })
 
   // Each shell command Claude ran, and whether it passed, for the checkpoint.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
     if (result.deny === undefined && effortState.tracker !== null && live.ctx !== null) {
-      const out = result.result as { stdout?: string; stderr?: string; interrupted?: boolean } | string | undefined
+      const out = result.result as { stdout?: string; stderr?: string; interrupted?: boolean; backgroundTaskId?: string; exitCode?: number; exit_code?: number } | string | undefined
       const text = typeof out === 'string' ? out : `${out?.stdout ?? ''}\n${out?.stderr ?? ''}`
-      const isOk = result.isError !== true && !(typeof out === 'object' && out?.interrupted === true)
-      effortState.tracker.command(commandRun(e.command, isOk, text, isoLocal(await $.clock.now(), live.ctx.offsetMinutes)))
+      const isOk = result.isError !== true && !(typeof out === 'object' && (out?.interrupted === true || (out?.exitCode ?? out?.exit_code ?? 0) !== 0))
+      // A background launch is not a completed check.
+      if (!(typeof out === 'object' && out?.backgroundTaskId !== undefined)) {
+        effortState.tracker.command(commandRun(e.command, isOk, text, isoLocal(await $.clock.now(), live.ctx.offsetMinutes)))
+      }
     }
 
     return result

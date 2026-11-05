@@ -1,4 +1,4 @@
-import type { Allowance, AppRequest, Difficulty, ParentPick, Priority, Task } from '../../types'
+import type { Allowance, AppRequest, Difficulty, ParentPick, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -220,7 +220,12 @@ export type ActiveFacts = {
   lines: ManaLines | null
   git: { branch: string | null; head: string | null; uncommitted: string[]; uncommittedCount: number } | null
 }
-export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToBe: string | null; active: ActiveFacts | null }
+export type QuestActivity = {
+  steps: TaskActivity[]
+  commits: { id: string; at: string; message: string; remotes: string[] | null }[]
+  gitUnavailable: boolean
+}
+export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToBe: string | null; active: ActiveFacts | null; activity: QuestActivity }
 
 // What has moved under the quest in hand.
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }

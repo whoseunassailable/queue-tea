@@ -121,6 +121,40 @@ describe('the active quest\'s details', () => {
   const held = (over: Partial<EngineApi> = {}) => open(HELD, { readQuestFacts: vi.fn(facts({ active: ACTIVE })), ...over })
   const showIt = () => press(t.detail.openActive('The quest in hand'))
 
+  it('updates the activity when the record changes and retains it through a failed refresh', async () => {
+    const readQuestFacts = vi.fn(facts({ active: ACTIVE }))
+    const { pane, fire } = await held({ readQuestFacts })
+    await showIt()
+    await within(pane()).findByText(t.activity.empty)
+    readQuestFacts.mockImplementation(facts({ active: ACTIVE, activity: {
+      steps: [{ id: 'run', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', subject: 'npm test', status: 'running', output: '', truncated: false }],
+      commits: [], gitUnavailable: false,
+    } }))
+    await act(async () => fire())
+    expect(await within(pane()).findByText('npm test')).toBeTruthy()
+    readQuestFacts.mockResolvedValue({ ok: false, error: { message: 'Could not read activity.' } })
+    await act(async () => fire())
+    expect(await within(pane()).findByText('Could not read activity.')).toBeTruthy()
+    expect(within(pane()).getByText('npm test')).toBeTruthy()
+    readQuestFacts.mockImplementation(facts({ active: ACTIVE }))
+    await act(() => void fireEvent.click(within(pane()).getByRole('button', { name: t.activity.refresh })))
+    expect(await within(pane()).findByText(t.activity.empty)).toBeTruthy()
+  })
+
+  it('shows a busy refresh without removing the activity already read', async () => {
+    const readQuestFacts = vi.fn(facts({ active: ACTIVE }))
+    const { pane } = await held({ readQuestFacts })
+    await showIt()
+    await within(pane()).findByText(t.activity.empty)
+    let finish!: (reply: Reply<QuestFacts>) => void
+    readQuestFacts.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    await act(() => void fireEvent.click(within(pane()).getByRole('button', { name: t.activity.refresh })))
+    expect((within(pane()).getByRole('button', { name: t.activity.refreshing }) as HTMLButtonElement).disabled).toBe(true)
+    expect(within(pane()).getByText(t.activity.empty)).toBeTruthy()
+    await act(async () => finish({ ok: true, data: QUEST_FACTS }))
+    expect(await within(pane()).findByRole('button', { name: t.activity.refresh })).toBeTruthy()
+  })
+
   it('opens from the card', async () => {
     const { pane, engine } = await held()
 

@@ -150,7 +150,7 @@ export const CHRONICLE: ChronicleView = {
   unreadable: 0,
 }
 
-export const QUEST_FACTS: QuestFacts = { note: null, messages: [], branchToBe: null, active: null }
+export const QUEST_FACTS: QuestFacts = { note: null, messages: [], branchToBe: null, active: null, activity: { steps: [], commits: [], gitUnavailable: false } }
 
 export const SETTINGS_PAGE: SettingsPage = {
   options: { idleGapMinutes: 15, freshAtTokens: 100_000, handoffAtPercent: 90, checkTimeoutSeconds: 10 },

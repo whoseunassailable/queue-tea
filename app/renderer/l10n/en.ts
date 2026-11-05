@@ -8,6 +8,25 @@ const weekRange = (first: string, last: string) => (first.slice(5, 7) === last.s
 // Every string the user reads. On screen the app uses the game's words; the
 // engine and the record keep their own.
 export const t = {
+  activity: {
+    title: 'Task activity',
+    empty: 'No steps recorded yet. Start this quest in a connected Claude Code session to see its activity here.',
+    coverage: 'Steps update from the connected Claude Code session. Commands run in other terminals are not captured.',
+    retained: 'Showing up to 200 recent steps and 20 commits. Command output is an excerpt when marked.',
+    gitUnavailable: 'Could not read commit history. Check that the task branch still exists, then refresh.',
+    refresh: 'Refresh activity',
+    refreshing: 'Refreshing activity…',
+    output: 'Command output',
+    excerpt: 'Saved excerpt; some text may be omitted.',
+    waiting: 'Result not received. Check the session if it has stopped.',
+    committed: 'Commit recorded',
+    remote: (refs: string[]) => `Present on ${refs.join(', ')} · local tracking data`,
+    noRemote: 'No remote tracking branch contains this commit locally.',
+    unknownRemote: 'Remote tracking data could not be read.',
+    remoteHint: 'Tracking data reflects the last local push or fetch; it does not verify the remote now.',
+    kind: { branchCreated: 'Created branch', branchSwitched: 'Switched to branch', read: 'Reading file', edit: 'Modifying file', write: 'Writing file', command: 'Running command', test: 'Running checks' },
+    status: { running: 'Awaiting result', succeeded: 'Succeeded', failed: 'Failed', blocked: 'Blocked' },
+  },
   nav: { realms: 'Realms', sections: 'Sections', home: 'Home', quests: 'Quests', chronicle: 'Chronicle', mana: 'Mana & time', hoard: 'Hoard', guild: 'Guild Hall', library: 'Library', settings: 'Settings', elsewhere: 'Elsewhere in the app' },
   loading: {
     realms: 'Reading your realms…',

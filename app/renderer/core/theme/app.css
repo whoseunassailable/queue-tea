@@ -834,6 +834,17 @@ body,
 }
 
 /* What a quest carries, on its detail pane. */
+.rm .task-activity { margin-block: 16px; }
+.rm .activity-list { padding-left: 24px; margin: 12px 0; max-height: 440px; overflow: auto; }
+.rm .activity-list li { padding: 0 8px 16px 4px; overflow-wrap: anywhere; }
+.rm .activity-list time { display: block; font-size: 11px; color: var(--ink2); margin-bottom: 4px; }
+.rm .activity-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.rm .activity-status { font-size: 11px; font-weight: 800; }
+.rm .activity-status.failed, .rm .activity-status.blocked { color: var(--red, #9b302a); }
+.rm .activity-subject { display: block; white-space: pre-wrap; font-size: 12px; margin: 4px 0; overflow-wrap: anywhere; }
+.rm .activity-output summary { cursor: pointer; font-size: 12px; font-weight: 800; }
+.rm .activity-output pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px; border-radius: 6px; background: var(--paper, #f7f1e5); font-size: 11px; }
+
 .rm .notes summary {
   font-weight: 800;
   cursor: pointer;

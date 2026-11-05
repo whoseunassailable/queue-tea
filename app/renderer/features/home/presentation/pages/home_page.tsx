@@ -13,6 +13,7 @@ import { runFlowKey } from '../../../quests/presentation/state_management/flow_k
 import type { QuestActions } from '../../../quests/presentation/state_management/flow_keys'
 import { useQuestKeys } from '../../../quests/presentation/state_management/quest_keys'
 import { ActiveCard } from '../../../quests/presentation/widgets/active_card'
+import { ClaudeOut } from '../../../quests/presentation/widgets/claude_out'
 import { TimeControl } from '../../../quests/presentation/widgets/board_tools'
 import { EmptyBoard } from '../../../quests/presentation/widgets/empty_board'
 import { FlowCard } from '../../../quests/presentation/widgets/flow_card'
@@ -49,10 +50,14 @@ const NoActive = ({ view, actions }: { view: View; actions: QuestActions }) => {
       <p class="q-line">{next === undefined ? t.quest.noneEmpty : t.quest.noneLine(next.title)}</p>
       {next?.why != null && <p class="hint">★ {next.why}</p>}
       <p class="q-status">{t.session[view.session.state]}</p>
+      {next !== undefined && <ClaudeOut allowance={view.session.allowance} />}
       {next !== undefined && (
         <div class="q-actions">
           <button type="button" class="btn primary" onClick={() => actions.onStart(next)}>
             {t.actions.startNamed(next.title)}
+          </button>
+          <button type="button" class="btn" onClick={() => actions.onStart(next, 'codex')}>
+            {t.actions.startCodex}
           </button>
         </div>
       )}
@@ -136,9 +141,9 @@ const Glory = ({ view, game }: { view: View; game: Load<GameView> }) => (
 const QuestCard = ({ view, flow, actions }: { view: View; flow: QuestFlow | undefined; actions: QuestActions }) => {
   if (flow !== undefined) return <FlowCard flow={flow} actions={actions} />
   if (view.active === null) return <NoActive view={view} actions={actions} />
-  if (view.active.review !== null) return <JudgementCard active={view.active} actions={actions} kind="full" />
-
-  return <ActiveCard active={view.active} session={view.session} actions={actions} kind="full" />
+  return <>{view.activeQuests.map(active => active.review !== null
+    ? <JudgementCard key={active.id} active={active} actions={actions} kind="full" />
+    : <ActiveCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="full" />)}</>
 }
 
 const LiveLines = ({ live, note, onSwitch }: { live: LiveFacts | null; note: string | null; onSwitch: () => void }) => (
@@ -177,7 +182,7 @@ export const HomePage = ({ engine, view, game, flow, actions, isSheetOpen, lette
   useQuestKeys(!isSheetOpen, letterKeys, key => {
     if (runFlowKey(key, view, flow, actions)) return true
     const next = mainQuest(view)
-    if (key.kind === 'start' && view.active === null && next !== undefined) actions.onStart(next)
+    if (key.kind === 'start' && next !== undefined) actions.onStart(next)
     else if (key.kind === 'seal' && view.active !== null) actions.onSealActive(view.active)
     else if (key.kind === 'switch') switchBranch()
     else if (key.kind === 'dismiss' && warning !== null) setDismissed(warning)

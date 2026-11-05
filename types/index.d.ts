@@ -47,6 +47,9 @@ export type Checkpoint = {
   seen: { at: string; files: string[]; commands: CommandRun[]; git: GitFacts | null } | null
 }
 
+export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
+export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
+
 export type Task = {
   id: string
   title: string
@@ -77,7 +80,17 @@ export type Task = {
   // Set when Claude says the task looks done, cleared by Rohan's answer.
   review: { at: string; checked: string | null } | null
   activity?: TaskActivity[]
+  // Which helpers Claude works with on this task, which have run, and whether Claude has had its one reminder at done.
+  helpers: TaskHelpers
+  // When the task went to the Codex CLI; null while Claude Code has it. Codex
+  // runs without the mod, so its time is read from Codex's log when it leaves.
+  codexSince: string | null
+  // The task's own checkout. Older tasks keep using the project's folder.
+  worktreePath: string | null
 }
+
+// Who works on a task in progress.
+export type Platform = 'claude' | 'codex'
 
 // What the app asks an open session to do. The session removes it under the
 // lock as it takes it, so with two sessions only one acts. A putBack can carry
@@ -85,7 +98,7 @@ export type Task = {
 export type AppRequest = { id: string; kind: 'begin' | 'putBack'; taskId: string; at: string; block?: { waitFor: string } | { reason: string } }
 
 export type ProjectRecord = {
-  version: 1
+  version: 1 | 2
   project: { name: string; path: string }
   docsLogPath: string | null
   playNext: string | null

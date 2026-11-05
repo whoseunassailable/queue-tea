@@ -111,7 +111,7 @@ export const FlowCard = ({ flow, actions }: { flow: QuestFlow; actions: QuestAct
         <button type="button" class="btn" onClick={actions.onCancel}>
           {t.actions.ok}
         </button>
-        <button type="button" class="btn primary" onClick={actions.onOpenClaude}>
+        <button type="button" class="btn primary" onClick={actions.onCheckAgain}>
           {t.failed.tryAgain}
         </button>
       </div>

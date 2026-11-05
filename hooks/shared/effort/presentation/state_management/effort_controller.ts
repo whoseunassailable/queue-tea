@@ -21,12 +21,12 @@ export async function flush(p: Ports) {
   const taken = tracker.take()
   const record = await p.get('record')
   let seen: { at: string; git: GitFacts | null } | undefined
-  if (record !== null && currentTask(record.tasks) !== null) {
+  if (record !== null && currentTask(record.tasks, ctx) !== null) {
     try {
       seen = { at: isoLocal(await p.now(), ctx.offsetMinutes), git: await gitRepositoryOf(p, ctx).facts() }
     } catch (err) {
       debug(p, 'reading git for the checkpoint failed', err)
     }
   }
-  await changeRecord(p, r => applyPending(r, taken, seen))
+  await changeRecord(p, r => applyPending(r, taken, seen, ctx))
 }

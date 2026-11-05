@@ -1,9 +1,13 @@
 #!/bin/sh
-# Builds this folder's app and puts it in /Applications, so the installed app is
-# always the latest commit. tools/hooks/post-commit starts it in the background.
+# Builds clean integrated source into /Applications. Task commits stay previews.
+# tools/hooks/post-commit starts it in the background.
 # A commit while it runs asks it to go round again.
 set -u
 cd "$(dirname "$0")/.." || exit 1
+
+# A task commit must never replace the daily app, even if another updater is
+# waiting. Do this before the shared lock and before any package/network work.
+node tools/release_guard.mjs refresh || exit 0
 
 logs=$HOME/Library/Logs/Queue-tea
 lock=$logs/refresh.lock
@@ -33,13 +37,7 @@ refresh() {
   [ ! -e "$lock/again" ] || return 0
 
   version=$(node -p "require('./package.json').version")
-  if pgrep -x Queue-tea >/dev/null; then
-    say "Version $version is ready. Quit Queue-tea and it installs itself."
-    while pgrep -x Queue-tea >/dev/null; do
-      [ ! -e "$lock/again" ] || return 0
-      sleep 5
-    done
-  fi
+  # An open app moves over by itself; see install_app.sh.
   sh tools/install_app.sh || return 1
   rm -rf dist
   say "Version $version is installed."

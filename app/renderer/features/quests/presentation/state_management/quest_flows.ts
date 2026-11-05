@@ -1,6 +1,6 @@
-import type { Difficulty } from '../../../../../../types'
+import type { Difficulty, Platform } from '../../../../../../types'
 import { nextBudget } from '../../../../../../hooks/shared/backlog/domain/services/ranking'
-import type { ActiveQuest, BackOutcome, EngineApi, FinishOutcome, GitHold, Reply, Seal, StartOutcome } from '../../../../../shared/engine_api'
+import type { ActiveQuest, BackOutcome, EngineApi, FinishOutcome, GitHold, Handover, Reply, Seal, StartOutcome } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
 import type { Answer } from '../../../../core/api/engine_client'
 import { dayAndTime, formatMinutes } from '../../../../core/domain/format'
@@ -21,16 +21,25 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     return flow?.kind === 'working' || (flow?.kind === 'held' && flow.isChecking)
   }
   const work = (key: string, quest: Named, line: string) => workspace.setFlow(key, { kind: 'working', questId: quest.id, title: quest.title, line })
-  const hold = (key: string, quest: Named, gitHold: GitHold) => workspace.setFlow(key, { kind: 'held', questId: quest.id, title: quest.title, hold: gitHold, isChecking: false })
-  const refuse = (key: string, quest: Named, message: string) => workspace.setFlow(key, { kind: 'refused', questId: quest.id, title: quest.title, message })
+  const hold = (key: string, quest: Named, gitHold: GitHold, platform: Platform) =>
+    workspace.setFlow(key, { kind: 'held', questId: quest.id, title: quest.title, hold: gitHold, isChecking: false, platform })
+  const refuse = (key: string, quest: Named, message: string, platform: Platform) => workspace.setFlow(key, { kind: 'refused', questId: quest.id, title: quest.title, message, platform })
 
-  const sayStarted = (quest: Named, outcome: Extract<StartOutcome, { kind: 'started' }>) => {
-    workspace.say({ tone: 'success', text: t.flow.setOut(quest.title, outcome.branch) })
-    if (outcome.notice !== null) workspace.say({ tone: 'info', text: outcome.notice })
-    if (outcome.handover.kind === 'opened' && outcome.handover.terminal === 'vscode') workspace.say({ tone: 'info', text: t.flow.pasteVsCode })
+  const sayHandover = (handover: Handover, platform: Platform) => {
+    if (handover.kind === 'opened' && handover.terminal === 'vscode') workspace.say({ tone: 'info', text: platform === 'codex' ? t.flow.pasteCodex : t.flow.pasteVsCode })
   }
 
-  const start = async (key: string, quest: Named): Promise<void> => {
+  const sayStarted = (quest: Named, outcome: Extract<StartOutcome, { kind: 'started' }>, platform: Platform) => {
+    workspace.say({ tone: 'success', text: platform === 'codex' ? t.flow.setOutCodex(quest.title, outcome.branch) : t.flow.setOut(quest.title, outcome.branch) })
+    if (outcome.notice !== null) workspace.say({ tone: 'info', text: outcome.notice })
+    sayHandover(outcome.handover, platform)
+  }
+
+  const sayTimeLost = (isLost: boolean) => {
+    if (isLost) workspace.say({ tone: 'error', text: t.flow.codexTimeLost, isLong: true })
+  }
+
+  const start = async (key: string, quest: Named, platform: Platform = 'claude'): Promise<void> => {
     if (isBusy(key)) return
     workspace.showWon(null)
     const was = flowOf(key)
@@ -38,40 +47,48 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     else work(key, quest, t.flow.checking)
 
     const check = await ask(engine, () => engine.checkStart(key, quest.id))
-    if (!check.ok) return refuse(key, quest, check.message)
-    if (check.data.kind === 'held') return hold(key, quest, check.data.hold)
+    if (!check.ok) return refuse(key, quest, check.message, platform)
+    if (check.data.kind === 'held') return hold(key, quest, check.data.hold, platform)
 
     work(key, quest, stepLine(check.data.step))
-    const started = await ask(engine, () => engine.startQuest(key, quest.id))
-    if (!started.ok) return refuse(key, quest, started.message)
-    if (started.data.kind === 'held') return hold(key, quest, started.data.hold)
+    const started = await ask(engine, () => engine.startQuest(key, quest.id, platform))
+    if (!started.ok) return refuse(key, quest, started.message, platform)
+    if (started.data.kind === 'held') return hold(key, quest, started.data.hold, platform)
 
     const { view, handover } = started.data
     workspace.adopt(key, view)
     workspace.noteFor(quest.id, null)
-    workspace.setFlow(key, handover.kind === 'failed' ? { kind: 'openFailed', terminal: handover.terminal, command: handover.command } : null)
-    sayStarted(quest, started.data)
+    workspace.setFlow(key, handover.kind === 'failed' ? { kind: 'openFailed', questId: quest.id, title: quest.title, platform, terminal: handover.terminal, command: handover.command } : null)
+    sayStarted(quest, started.data, platform)
   }
 
   const checkAgain = async (key: string): Promise<void> => {
     const flow = flowOf(key)
-    if (flow?.kind === 'held' || flow?.kind === 'refused') await start(key, { id: flow.questId, title: flow.title })
+    if (flow?.kind === 'held' || flow?.kind === 'refused') await start(key, { id: flow.questId, title: flow.title }, flow.platform)
+    else if (flow?.kind === 'openFailed') {
+      const quest = { id: flow.questId, title: flow.title }
+      if (flow.platform === null) await openClaude(key, quest)
+      else await continueIn(key, quest, flow.platform)
+    }
   }
 
   const cancel = (key: string) => {
     if (!isBusy(key)) workspace.setFlow(key, null)
   }
 
-  const noSession = () => {
+  const needsClaudeCommand = (id: string) => {
     const { project } = workspace.getState()
 
-    return project.status === 'ready' && project.data.kind === 'readable' && project.data.session.state === 'none'
+    if (project.status !== 'ready' || project.data.kind !== 'readable') return false
+    const quest = project.data.activeQuests.find(q => q.id === id)
+
+    return quest !== undefined && (quest.session ?? project.data.session).state === 'none' && quest.codexSince === null
   }
 
   const openClaude = async (key: string, quest: Named): Promise<void> => {
     if (isBusy(key)) return
     work(key, quest, t.flow.opening)
-    const answer = await ask(engine, () => engine.openClaude(key))
+    const answer = await ask(engine, () => engine.openClaude(key, quest.id))
     workspace.setFlow(key, null)
     if (!answer.ok) {
       workspace.say({ tone: 'error', text: answer.message, action: { label: t.failed.tryAgain, run: () => void openClaude(key, quest) } })
@@ -79,8 +96,28 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
       return
     }
     const { data } = answer
-    if (data.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', terminal: data.terminal, command: data.command })
-    else if (data.kind === 'opened' && data.terminal === 'vscode' && noSession()) workspace.say({ tone: 'info', text: t.flow.pasteVsCode })
+    if (data.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', questId: quest.id, title: quest.title, platform: null, terminal: data.terminal, command: data.command })
+    else if (data.kind === 'opened' && data.terminal === 'vscode' && needsClaudeCommand(quest.id)) workspace.say({ tone: 'info', text: t.flow.pasteVsCode })
+  }
+
+  // Claude Code and Codex never work on the quest at once: a refusal changes
+  // nothing and says why.
+  const continueIn = async (key: string, quest: Named, platform: Platform): Promise<void> => {
+    if (isBusy(key)) return
+    work(key, quest, platform === 'codex' ? t.flow.toCodex : t.flow.toClaude)
+    const answer = await ask(engine, () => engine.continueIn(key, quest.id, platform))
+    workspace.setFlow(key, null)
+    if (!answer.ok) {
+      workspace.say({ tone: 'error', text: answer.message, isLong: true, action: { label: t.failed.tryAgain, run: () => void continueIn(key, quest, platform) } })
+
+      return
+    }
+    const { view, handover, isCodexTimeLost } = answer.data
+    workspace.adopt(key, view)
+    if (handover.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', questId: quest.id, title: quest.title, platform, terminal: handover.terminal, command: handover.command })
+    workspace.say({ tone: 'success', text: platform === 'codex' ? t.flow.nowCodex(quest.title) : t.flow.nowClaude(quest.title) })
+    sayHandover(handover, platform)
+    sayTimeLost(isCodexTimeLost)
   }
 
   const sayLogFailed = (key: string, questId: string, path: string) =>
@@ -110,17 +147,19 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
       for (const badge of victory.newBadges) workspace.say({ tone: 'success', text: t.win.badgeToast(t.badges[badge]), isLong: true })
     }
     if (logFailedAt !== null) sayLogFailed(key, quest.id, logFailedAt)
+    sayTimeLost(answer.data.isCodexTimeLost)
     // The HUD fills up now rather than when the watcher hears of it.
     void workspace.refresh()
 
     return answer
   }
 
-  const notYet = (key: string, quest: Named) => workspace.run({ key, preview: withoutReview, call: () => engine.notYet(key, quest.id) })
+  const notYet = (key: string, quest: Named) => workspace.run({ key, preview: view => withoutReview(view, quest.id), call: () => engine.notYet(key, quest.id) })
 
   const settled = (key: string, quest: Named, outcome: BackOutcome, said: string) => {
     workspace.adopt(key, outcome.view)
     if (outcome.went === 'back') workspace.say({ tone: 'success', text: said })
+    sayTimeLost(outcome.isCodexTimeLost)
     const missed = outcome.missedCheckpoint
     if (missed !== null) workspace.noteFor(quest.id, missed.lastAt === null ? t.flow.noCheckpointYet : t.flow.noCheckpoint(dayAndTime(missed.lastAt)))
   }
@@ -175,7 +214,7 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     workspace.say(answer.ok ? { tone: 'info', text: t.flow.copied } : { tone: 'error', text: answer.message })
   }
 
-  return { start, checkAgain, cancel, openClaude, finish, notYet, back, backNow, sealActive, copy, stepBudget, switchBranch }
+  return { start, checkAgain, cancel, openClaude, continueIn, finish, notYet, back, backNow, sealActive, copy, stepBudget, switchBranch }
 }
 
 export type QuestFlows = ReturnType<typeof questFlows>

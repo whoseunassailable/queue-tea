@@ -132,6 +132,7 @@ test('filters combine, and clear', async () => {
   await page.getByRole('checkbox', { name: 'Light' }).check()
 
   await expect(titles()).toHaveText(['A short light quest'])
+  await shot('filters')
   await page.getByRole('button', { name: 'Clear all' }).click()
   await page.getByRole('button', { name: 'Filters' }).click()
   await expect(titles().first()).toHaveText('A long hard quest')

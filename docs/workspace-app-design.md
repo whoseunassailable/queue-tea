@@ -381,7 +381,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
 
 ## 4. Screens
 
-The wireframes below were drawn before the game layer. Their layout and content still hold; on screen their words change as in 2.2's table, and the look is Jade Peaks (2.1). The mockups' "Dragon realm" page draws each screen in the new look, and 4.18 adds the Hoard.
+The wireframes below were drawn before the game layer. Their layout and content still hold; on screen their words change as in 2.2's table, and the look is Jade Peaks (2.1). The mockups' "Dragon realm" page draws each screen in the new look, 4.18 adds the Hoard, and 4.19 the Codex buttons.
 
 **Scale.** 117 columns ≈ 1280 px (about 11 px per column); 40 rows ≈ 800 px (20 px per row; the toolbar row is really 52 px).
 
@@ -517,7 +517,7 @@ In plain terms:
 - Other projects: 44 px rows with [ Open ].
 
 **States**
-- **No task in progress:** "No task in progress." with [[ Start ★ Fix the documentation ]] and "★ urgent".
+- **No task in progress:** "No task in progress." with [[ Start ★ Fix the documentation ]] and "★ urgent". [ Start in Codex ] sits beside Start (4.19).
 - **Start:** the hold card replaces the Now card (4.6), and the working lines show inside it.
 - **Review:** the Review card replaces the Now card (4.7).
 - **Drift**, in amber under the meta line ("! The branch task/now is gone."). This comes from `readDrift`/`checkLines`.
@@ -592,7 +592,7 @@ In plain terms:
 - Everything blocked: "Nothing can start: every task waiting is blocked."
 - Blocked rows drop to 72% opacity, with a ⊘ line from `blockedText()`.
 - A section with nothing in it shows its header only ("⊘ Blocked 0"); Done starts collapsed.
-- While a task is current, Start is disabled and says "Start opens when <current> is done or back in the queue." Play next and priority still work.
+- Start stays available for another queued, unsealed quest. Each new app start gets its own branch and worktree; Home and Quests show every current task. Branches sits next to Quests and connects saved base branches to quest cards. See [parallel quests](spec.md#parallel-quests-and-branches); older wireframes below predate this behavior.
 - After a Done, the ★ row takes focus.
 - Search with no match: 'No tasks match "diagram".' with [ Clear search ].
 
@@ -652,6 +652,15 @@ This is the right pane in 4.2, shown for a feature.
 └───────────────────────────────────┘
 ```
 
+**Helpers row.** Queued and in-progress panels show it, below the other task details; a done task does not.
+
+```
+│ Helpers                           │
+│ [Commit Chai-n] [Mocha Mockup]    │
+│ [Chai-pter] [[Tea-DD]]            │
+```
+
+- **Helpers** are four toggle chips, each with its logo and name. A pressed chip (double brackets) means Claude uses that helper on this quest. A click saves, like the priority control; a change on the task in progress reaches Claude on its next reply. If saving fails, the chip goes back and a message says so, as for a failed description edit.
 - **The checkpoint card** uses `checkpointSections`: numbered, collapsible, Remaining and Next action shown as ☐, Changes made as ✓. A plain handoff note that is newer shows as 1 Overview … 5 Next steps (`cardNote`).
 - **Lines.** The app measures them itself: `diffSince(startCommit)` when the pane opens, then every 30 s while it is visible.
 - **"Branch when it starts"** comes from `slugBranch(title, listBranches())`. The name shown is real: the engine gives `task/fix-cut-off-text`.
@@ -687,6 +696,13 @@ ADD CHILD TASK (inline, in the list under its feature)
          Move homepage parts elsewhere; add priv…   {▮▮▮ High}
          [ Check every guide page for cut-off text   ] {▮▮▯ Mid ▾} {Medium ▾}
          ↩ add · esc cancel · part of Fix the documentation
+```
+
+A Helpers line sits between Difficulty and Part of, with Tea-DD pressed:
+
+```
+│ Helpers                                                    │
+│ [Commit Chai-n] [Mocha Mockup] [Chai-pter] [[Tea-DD]]      │
 ```
 
 **Sheet layout**
@@ -975,7 +991,9 @@ BLOCKED… (k), then the feature dialogs: Move (drag or Part of…) and Remove a
 - **The four /config values** are read-only. With no session they show the defaults, marked "default".
 - **The records are real:** on 26 Oct Gait-feedback had no `.bak` and queue-tie had one; since 27 Oct both records have one.
 
-### 4.13 Guild Hall, formerly the Tea Room (read-only)
+### 4.13 Guild Hall, formerly the Tea Room
+
+The hall itself only shows the four helpers. Which of them Claude uses is turned on per quest: in the new-task sheet and in the detail panel of a queued quest and of the task in progress.
 
 In the Jade Peaks mockups each helper is a party member: its logo in an 88 px gold ring, its role as a chip in its colour, then what it does, its skills and its @-mention to copy.
 
@@ -1206,6 +1224,48 @@ HOARD & BADGES (an app-wide page, from the sidebar)
 - **Badges:** earned ones glow gold with the date; locked ones are outlined, with a progress bar where there's something to count.
 - **Before the first victory:** "No gold yet. Your first victory starts the hoard." The egg is marked "you are here".
 
+### 4.19 Codex in place of Claude Code
+
+Added 2026-11-03, phase 1 of Multiple tasks. Claude Code keeps the primary button everywhere, and Codex gets a secondary one beside it. These wireframes use the game's words, as the screens do.
+
+```
+NO ACTIVE QUEST (Home), with Claude's allowance used up
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ No active quest                                                              │
+│ Next up: Fix the documentation                                               │
+│ ★ urgent                                                                     │
+│ Claude Code is open · waiting for you                                        │
+│ ! Claude's 5-hour allowance is used up until 16:40°. Codex can carry on.     │
+│ [[ Start ★ Fix the documentation ]]  [ Start in Codex ]                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+ACTIVE QUEST WITH CODEX (Home's Now card; the Active quest card in Quests)
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ {Active quest}  In progress · 1h 12m° so far · started 3 Nov 09:14°          │
+│ Fix the documentation                                                        │
+│ task/fix-documentation · Hard                                                │
+│ {+50 XP} {+50 gold} · 4° improving messages · 12° files changed              │
+│ With Codex since 3 Nov 14:05°. Queue-tea can't watch Codex at work: finish   │
+│ the quest here when it's done.                                               │
+│ [[ Show Codex ]] [ Finish quest… ] [ Back to the board ] [ Seal… ]           │
+│ [ Continue in Claude Code ] [ Open Codex again ]                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+ACTIVE QUEST WITH CLAUDE CODE: the same card, its last lines
+│ Claude Code is working on it · a turn is running                             │
+│ ! Claude's 5-hour allowance is used up until 16:40°. Codex can carry on.     │
+│ [[ Open in Claude Code ]] [ Finish quest… ] [ Back to the board ] [ Seal… ]  │
+│ [ Continue in Codex ]                                                        │
+```
+
+- **Start in Codex** sits beside Start on Home's card when no quest is active, and in a quest's detail pane. It is disabled whenever Start is, and absent on a sealed quest. It runs the Start flow of 4.6 (the same git hold and ◌ lines), then toasts "Set out with Codex: <title> · <branch>". It has no letter key: s starts on Claude Code.
+- **The hint** shows while Claude's allowance is at 100% and its reset is still ahead; with no reset time it reads "Claude's 5-hour allowance is used up. Codex can carry on." It sits above Start on Home, in the detail pane while no quest is active, and on the active quest's card while Claude Code has it. It never moves Codex to the first button or starts anything.
+- **With Codex,** the "With Codex since…" line takes the session line's place, because Queue-tea can't watch Codex at work. Show Codex only brings the terminal forward. Open Codex again opens a new Codex with the brief, for when its window was closed.
+- **Continue in Codex** shows "◌ Moving it to Codex… it opens with the quest and its last note", then the toast "Codex has <title> now". While Claude Code's turn runs it is refused: an error toast says why, with [ Try again ], and nothing changes.
+- **Continue in Claude Code** shows "◌ Bringing it back to Claude Code…", then the toast "Claude Code has <title> again. Close Codex's window so only one works on it."
+- **VS Code** as the terminal: the folder opens, the Codex line is copied, and the toast says "The Codex line is copied: paste it in VS Code's terminal".
+- **Codex's time not read:** after Finish, Back to the board, Seal or Continue in Claude Code, an error toast says "Couldn't read Codex's log, so this quest's time on Codex wasn't added." The action itself has gone through.
+
 ---
 
 ## 5. Components
@@ -1289,6 +1349,7 @@ The record stays at version 1. New fields get defaults in `withDefaults` / `pars
 | `Task.criteria: string[]` | `[]` | completion criteria, shown in the detail pane and in Review |
 | `Task.review: { at: string; checked: string \| null } \| null` | `null` | set by `task_looks_done`, cleared by Yes / Not yet, so the app shows Review without the session's `$.state` |
 | `ProjectRecord.requests: { id; kind: 'begin' \| 'putBack'; taskId; at }[]` | `[]` | what the app asks an open session to do; the mod removes one when it's handled (from the plan) |
+| `Task.codexSince: string \| null` | `null` | when the quest went to Codex; null while Claude Code has it (added 2026-11-03, 4.19) |
 
 The game layer adds no fields: XP, levels, the stage, the streak, gold and badges are worked out from the fields above each time.
 
@@ -1384,3 +1445,8 @@ Added on 2026-10-28, with the look:
 19. **What's the night?** A lantern night: dark blue-green, a jade aurora and rising lanterns, on the dark panel tokens.
 20. **Does the sky follow the clock?** Yes, by default, and Settings or the sky dial can fix it.
 21. **When do Early Bird and Night Owl count?** 05:00–08:59 and 22:00–03:59, so a finish at 03:30 counts as Night Owl.
+
+Added on 2026-11-03, with Codex (4.19):
+
+22. **Which button leads when Claude's allowance is used up?** Claude Code, still. The hint says Codex can carry on, and Rohan picks.
+23. **Can Claude Code and Codex work on one quest at once?** No. Continue in Codex is refused while Claude's turn runs, and Show Codex never opens a second Codex.

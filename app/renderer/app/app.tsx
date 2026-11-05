@@ -20,6 +20,7 @@ import { LibraryPage } from '../features/library/presentation/pages/library_page
 import { ManaPage } from '../features/mana/presentation/pages/mana_page'
 import { paletteEntries } from '../features/palette/domain/palette'
 import { PaletteDialog } from '../features/palette/presentation/widgets/palette_dialog'
+import { BranchesPage } from '../features/branches/presentation/pages/branches_page'
 import { QuestsPage } from '../features/quests/presentation/pages/quests_page'
 import type { Sheet } from '../features/quests/presentation/pages/quests_page'
 import type { QuestActions } from '../features/quests/presentation/state_management/flow_keys'
@@ -50,6 +51,7 @@ import { t } from '../l10n/en'
 const TABS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.home, label: t.nav.home },
   { route: ROUTES.quests, label: t.nav.quests },
+  { route: ROUTES.branches, label: t.nav.branches },
   { route: ROUTES.chronicle, label: t.nav.chronicle },
   { route: ROUTES.mana, label: t.nav.mana },
 ]
@@ -82,6 +84,10 @@ const useHour = (): number => {
 type ContentProps = { state: WorkspaceState; workspace: Workspace; engine: EngineApi; route: Route; edits: QuestEdits; flows: QuestFlows; actionsFor: (view: ReadableView) => QuestActions; sheet: Sheet | null; isPaletteOpen: boolean; onSheet: (sheet: Sheet) => void; onCopy: (text: string) => void; onPet: () => void; realms: RealmFlows; onOpenFolder: () => void; onConnect: (realm: Pick<RealmLine, 'key' | 'name'>) => void }
 
 const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sheet, isPaletteOpen, onSheet, onCopy, onPet, realms, onOpenFolder, onConnect }: ContentProps) => {
+  const branchSelection = useRef<string | null>(null)
+  useEffect(() => {
+    if (route !== ROUTES.branches && route !== ROUTES.quests) branchSelection.current = null
+  }, [route])
   const isCovered = sheet !== null || isPaletteOpen
   const { projects, project, game, selected } = state
   // These don't belong to a realm, so they don't wait for one to be picked.
@@ -126,12 +132,14 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
   }
   const flow = state.flows[view.key]
   const actions = actionsFor(view)
+  if (route === ROUTES.branches) return <BranchesPage view={view} actions={actions} engine={engine} flow={flow} onOpen={id => { branchSelection.current = id; workspace.openQuest(view.key, id); window.location.hash = hrefOf(ROUTES.quests) }} />
   if (route === ROUTES.quests) {
     return (
       <QuestsPage
         engine={engine}
         view={view}
         picked={state.openQuests[view.key]}
+        initialDetailOpen={branchSelection.current !== null && branchSelection.current === state.openQuests[view.key]}
         folded={state.settings.folds[view.key] ?? []}
         savedQuest={state.savedQuest}
         isRefreshing={game.status === 'loading'}
@@ -198,14 +206,15 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   const isTab = TABS.some(tab => tab.route === route)
 
   const actionsFor = (view: ReadableView): QuestActions => ({
-    onStart: quest => void flows.start(view.key, quest),
+    onStart: (quest, platform) => void flows.start(view.key, quest, platform),
+    onContinueIn: (quest, platform) => void flows.continueIn(view.key, quest, platform),
     onFinish: quest => setSheet({ kind: 'finish', quest }),
     onBack: quest => void flows.back(view.key, quest),
     onBackNow: quest => void flows.backNow(view.key, quest),
     onSealActive: quest => setSheet({ kind: 'sealActive', quest }),
     onNotYet: quest => void flows.notYet(view.key, quest),
-    onOpenClaude: () => {
-      if (view.active !== null) void flows.openClaude(view.key, view.active)
+    onOpenClaude: (quest = view.active ?? undefined) => {
+      if (quest !== undefined) void flows.openClaude(view.key, quest)
     },
     onCheckAgain: () => void flows.checkAgain(view.key),
     onCancel: () => flows.cancel(view.key),

@@ -1,7 +1,8 @@
 import type { CommandRun, GitFacts, Intent, ProjectRecord, Task } from '../../../../../types'
+import type { Ctx } from '../../../../core/env/env'
 import { noteSeen } from '../../../checkpoints/domain/services/checkpoints'
 import { currentTask } from '../../../records/domain/services/queue_rules'
-import { accrue, addMinutes, dayKey } from '../../../time/domain/services/time'
+import { accrue, addMinutes, dayKey, mergeMinutes as merge } from '../../../time/domain/services/time'
 
 const READS: Record<string, string> = { Read: 'file_path', Grep: 'path', Glob: 'path' }
 const CHANGES: Record<string, string> = { Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' }
@@ -81,20 +82,18 @@ export const createTracker = (gapMinutes: number, offsetMinutes: number) => {
 
 export type Tracker = ReturnType<typeof createTracker>
 
-const merge = (byDay: Record<string, number>, more: Record<string, number>) =>
-  Object.entries(more).reduce((sum, [day, minutes]) => addMinutes(sum, day, minutes), byDay)
-
 // Adds what the tracker took to the current task, or its minutes to the
-// project when no task is current. With `seen`, the task's checkpoint also
+// project when no task is current or Codex has it. With `seen`, the task's checkpoint also
 // gets the commands, the files changed and what git says now.
 export const applyPending = (
   record: ProjectRecord,
   pending: Pending,
   seen?: { at: string; git: GitFacts | null },
+  place?: Pick<Ctx, 'cwd' | 'projectPath'>,
 ): ProjectRecord => {
-  const current = currentTask(record.tasks)
+  const current = currentTask(record.tasks, place)
   const unassigned = merge(record.unassignedMinutesByDay, pending.projectMinutes)
-  if (current === null) {
+  if (current === null || current.codexSince !== null) {
     return { ...record, unassignedMinutesByDay: merge(unassigned, pending.minutes) }
   }
 

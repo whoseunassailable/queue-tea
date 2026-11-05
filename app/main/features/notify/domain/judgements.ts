@@ -1,4 +1,3 @@
-import { currentTask } from '../../../../../hooks/shared/records/domain/services/queue_rules'
 import type { Scanned } from '../../projects/data/projects_source'
 
 export type Asked = { key: string; taskId: string; title: string; at: string }
@@ -17,9 +16,7 @@ const idOf = (asked: Asked): string => `${asked.key}:${asked.taskId}:${asked.at}
 export const askedOf = (scanned: Scanned[]): Asked[] =>
   scanned.flatMap(s => {
     if (s.kind !== 'readable') return []
-    const current = currentTask(s.record.tasks)
-
-    return current?.review == null ? [] : [{ key: s.key, taskId: current.id, title: current.title, at: current.review.at }]
+    return s.record.tasks.flatMap(task => task.state === 'current' && task.review !== null ? [{ key: s.key, taskId: task.id, title: task.title, at: task.review.at }] : [])
   })
 
 // Says once when Claude newly asks and the app isn't in front. What was already

@@ -6,6 +6,7 @@ import type { Options } from '../../../../core/env/env'
 export type SessionFile = {
   id: string
   projectPath: string
+  workingPath?: string
   recordFile: string
   currentTaskId: string | null
   isTurnRunning: boolean

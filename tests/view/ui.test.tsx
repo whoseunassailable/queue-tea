@@ -210,11 +210,11 @@ test('a broken record says why, and the last good copy brings the queue back', a
 })
 
 test('a newer Queue-tea’s record says to update, with no copy to go back to', async ($, on) => {
-  const newer = JSON.stringify({ ...emptyRecord('p', '/p'), version: 2 })
+  const newer = JSON.stringify({ ...emptyRecord('p', '/p'), version: 3 })
   await startSession($, on, { file: newer, others: { [`${FILE}.bak`]: record() } })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
 
-  expect(await ui.find({ type: 'Text', text: /newer Queue-tea \(record version 2\); update Queue-tea to read it\.$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /newer Queue-tea \(record version 3\); update Queue-tea to read it\.$/ })).toBeDefined()
   expect(await ui.find({ key: 'restore' })).toBeUndefined()
   expect(await ui.find({ key: 'retry' })).toBeDefined()
   await ui.unmount()
@@ -1531,4 +1531,33 @@ test('the status line follows the record', async ($, on) => {
   await clock.settle()
 
   expect(seen.statuses.at(-1)).toBeUndefined()
+})
+
+test('a Tea-DD run through the Agent tool counts at done', async ($, on) => {
+  on('tool.call', () => ({ result: 'ok' }) as never)
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login', helpers: { on: ['tea-dd'], ran: [], reminded: false } })
+  await startSession($, on, { file: record({ tasks: [task] }) })
+
+  await $.tool.call({ tool: 'Agent', subagent_type: 'queue-tea:tea-dd' } as never)
+
+  expect(JSON.stringify(await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' }))).toContain('Rohan is asked')
+})
+
+test('a helper run during /brew does not count', async ($, on) => {
+  on('tool.call', () => ({ result: 'ok' }) as never)
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login', helpers: { on: ['tea-dd'], ran: [], reminded: false } })
+  mock.session(on)
+  const { clock } = await startSession($, on, { file: record({ tasks: [task] }) })
+  await $.command.run({ command: 'queue-tea', args: '', ...COMMAND })
+  const ui = await mountView($, 'terminal', 'brew')
+  await ui.input({ key: 'brew', text: 'run the tests' })
+  await clock.settle()
+
+  await $.turn.start({ text: 'run the tests', turnId: 't1' })
+  await $.tool.call({ tool: 'Agent', subagent_type: 'queue-tea:tea-dd' } as never)
+  await $.turn.complete({ turnId: 't1' } as never)
+  await clock.settle()
+
+  expect(JSON.stringify(await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' }))).toContain("hasn't run yet")
+  await ui.unmount()
 })

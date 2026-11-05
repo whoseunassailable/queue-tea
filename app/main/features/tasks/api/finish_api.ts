@@ -46,7 +46,7 @@ const victoryFor = async (d: TasksDeps, scope: Scope, id: string): Promise<Victo
 
 export const finishQuest = (d: TasksDeps, key: unknown, taskId: unknown, actual: unknown, logPath: unknown): Promise<Reply<FinishOutcome>> =>
   reply(d.log, MESSAGES.finishQuest, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const chosen = difficultyOf(actual)
     const path = logPathIn(logPath, scope.ctx.projectPath)
@@ -69,12 +69,13 @@ export const finishQuest = (d: TasksDeps, key: unknown, taskId: unknown, actual:
       logFailedAt: logged.logFailedAt,
       minutes: minutesOf(logged.record, id),
       victory: await victoryFor(d, scope, id),
+      isCodexTimeLost: finished.isCodexTimeLost,
     }
   })
 
 export const retryTaskLog = (d: TasksDeps, key: unknown, taskId: unknown, path: unknown): Promise<Reply<LogOutcome>> =>
   reply(d.log, MESSAGES.retryTaskLog, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const checked = logPathIn(path, scope.ctx.projectPath)
     if (checked === null) throw new Refusal(MESSAGES.logPathRequired)

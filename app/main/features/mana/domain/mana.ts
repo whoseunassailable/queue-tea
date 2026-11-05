@@ -30,7 +30,7 @@ export const manaOf = (record: ProjectRecord, today: string): ManaWeek => {
     weekMinutes: totalOf(days),
     lastWeekMinutes: totalOf(lastWeek.map(day => dayTimeOf([record], day))),
     victories: doneThisWeek(record.tasks, today).length,
-    inProgress: current === null ? 0 : 1,
+    inProgress: record.tasks.filter(t => t.state === 'current').length,
     active: current === null ? null : activeOf(current),
     byQuest: record.tasks
       .map(task => ({ title: task.title, minutes: minutesIn(task, week) }))

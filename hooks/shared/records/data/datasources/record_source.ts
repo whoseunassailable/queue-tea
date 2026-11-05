@@ -1,5 +1,6 @@
 import type { LoadError, OtherProject, ProjectRecord, Task } from '../../../../../types'
 import type { Host } from '../../../../core/host/host'
+import { readHelpers } from '../../domain/services/helpers'
 
 // FNV-1a, 32 bits: a short, stable code for a path.
 const fnv1a = (text: string): string => {
@@ -39,7 +40,7 @@ export const carryOverRecords = async (host: Host, home: string): Promise<'copie
 }
 
 export const emptyRecord = (name: string, path: string): ProjectRecord => ({
-  version: 1,
+  version: 2,
   project: { name, path },
   docsLogPath: null,
   playNext: null,
@@ -63,16 +64,20 @@ const withDefaults = (t: Partial<Task>): Task =>
     description: null,
     criteria: [],
     review: null,
+    codexSince: null,
+    worktreePath: null,
     ...t,
+    helpers: readHelpers(t.helpers),
   }) as Task
 
 export const parseRecord = (text: string): ProjectRecord | 'unreadable' => {
   try {
     const parsed = JSON.parse(text) as Partial<ProjectRecord>
 
-    return parsed?.version === 1 && Array.isArray(parsed.tasks)
+    return (parsed?.version === 1 || parsed?.version === 2) && Array.isArray(parsed.tasks)
       ? ({
           ...parsed,
+          version: 2,
           playNext: parsed.playNext ?? null,
           feature: parsed.feature ?? null,
           tasks: parsed.tasks.map(withDefaults),
@@ -98,7 +103,7 @@ export const whyUnreadable = (text: string): { reason: string; isNewer: boolean 
     return { reason: `it isn't valid JSON (${err instanceof Error ? err.message : String(err)})`, isNewer: false }
   }
   const version = (parsed as { version?: unknown } | null)?.version
-  if (typeof version === 'number' && version > 1) {
+  if (typeof version === 'number' && version > 2) {
     return { reason: `it was written by a newer Queue-tea (record version ${version}); update Queue-tea to read it`, isNewer: true }
   }
 

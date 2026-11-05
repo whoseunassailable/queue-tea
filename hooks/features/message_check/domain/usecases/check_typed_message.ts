@@ -14,7 +14,7 @@ export type TypedVerdict =
 // band. The intent is for the effort count.
 export const checkTypedMessage = async (check: CheckRepository, ctx: Ctx, record: ProjectRecord, text: string): Promise<TypedVerdict> => {
   const prompt = checkPrompt(
-    currentTask(record.tasks),
+    currentTask(record.tasks, ctx),
     orderQueue(record.tasks),
     text,
     filingCandidates(record),

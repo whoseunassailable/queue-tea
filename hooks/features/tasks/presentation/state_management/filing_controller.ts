@@ -50,7 +50,7 @@ export const fileTask = async (p: Ports, ctx: Ctx, input: FileInput): Promise<vo
     await closeBand(p)
     const { task, parent } = result
     p.toast(`Queued: ${task.title} (${task.priority})${parent === null ? '' : ` · part of ${parent.title}`}`)
-    if (currentTask(result.record.tasks) === null) await startTask(p, ctx, task.id)
+    if (currentTask(result.record.tasks, ctx) === null) await startTask(p, ctx, task.id)
   } finally {
     filing.delete(input.text)
   }

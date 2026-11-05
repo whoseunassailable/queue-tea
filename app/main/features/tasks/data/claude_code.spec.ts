@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Host } from '../../../../../hooks/core/host/host'
 import type { TerminalChoice } from '../../../../shared/engine_api'
 import { createLogger } from '../../../core/logger'
-import { openClaudeCode } from './claude_code'
+import { codexLine, codexPasteLine } from '../../../core/platform/mac'
+import { openClaudeCode, openCodex } from './claude_code'
 import type { ClaudeDeps } from './claude_code'
 
 let ran: string[][]
@@ -76,5 +77,84 @@ describe('opening Claude Code', () => {
 
     expect(handover.kind).toBe('failed')
     expect(logged.join('\n')).toContain('clipboard is locked')
+  })
+})
+
+// A host that also makes folders and writes files, or fails to.
+const briefHost = (over: { madeExit?: number; write?: () => Promise<void> } = {}) => {
+  const written: Record<string, string> = {}
+  const host = {
+    run: async (argv: string[]) => {
+      ran.push(argv)
+
+      return { exitCode, stdout: '', stderr: exitCode === 0 ? '' : 'no such application' }
+    },
+    makeDirs: async () => ({ exitCode: over.madeExit ?? 0, stdout: '', stderr: over.madeExit ? 'Permission denied' : '' }),
+    write:
+      over.write ??
+      (async (path: string, text: string) => {
+        written[path] = text
+      }),
+  } as unknown as Host
+
+  return { host, written }
+}
+
+const BRIEF_FILE = '/home/.queue-tea/briefs/t-1.md'
+
+describe('opening Codex', () => {
+  it('writes the brief under ~/.queue-tea/briefs and opens the terminal on Codex reading it', async () => {
+    const { host, written } = briefHost()
+
+    const handover = await openCodex(deps('terminal', { host }), '/p/demo', 't-1', 'From Queue-tea: the rules.\n\nTask: A')
+
+    expect(handover).toEqual({ kind: 'opened', terminal: 'terminal' })
+    expect(written).toEqual({ [BRIEF_FILE]: 'From Queue-tea: the rules.\n\nTask: A' })
+    expect(ran).toHaveLength(1)
+    expect(ran[0]!.join(' ')).toContain(`codex --sandbox workspace-write --ask-for-approval on-request \\"$(cat '${BRIEF_FILE}')\\"`)
+  })
+
+  it('copies the whole Codex line for VS Code, which has to be pasted', async () => {
+    const { host } = briefHost()
+
+    await openCodex(deps('vscode', { host }), '/p/demo', 't-1', 'Task: A')
+
+    expect(copied).toEqual([codexLine('/p/demo', BRIEF_FILE)])
+  })
+
+  it('a briefs folder that cannot be made opens nothing, and gives a line to paste that carries the brief', async () => {
+    const { host } = briefHost({ madeExit: 1 })
+
+    const handover = await openCodex(deps('iterm', { host }), '/p/demo', 't-1', 'Task: A')
+
+    expect(handover).toEqual({ kind: 'failed', terminal: 'iterm', command: codexPasteLine('/p/demo', 'Task: A') })
+    if (handover.kind !== 'failed') return
+    expect(handover.command).not.toContain('$(cat')
+    expect(handover.command).toContain(`'Task: A'`)
+    expect(ran).toEqual([])
+    expect(logged.join('\n')).toContain('writing the Codex brief failed')
+  })
+
+  it('a brief that cannot be written fails the same way, with a single quote in it escaped', async () => {
+    const { host } = briefHost({
+      write: async () => {
+        throw new Error('ENOSPC: no space left')
+      },
+    })
+
+    const handover = await openCodex(deps('terminal', { host }), '/p/demo', 't-1', "Don't push.")
+
+    expect(handover).toEqual({ kind: 'failed', terminal: 'terminal', command: `cd '/p/demo' && codex --sandbox workspace-write --ask-for-approval on-request 'Don'\\''t push.'` })
+    expect(ran).toEqual([])
+    expect(logged.join('\n')).toContain('ENOSPC')
+  })
+
+  it('a terminal that will not open, once the brief is written, gives the line that reads it', async () => {
+    exitCode = 1
+    const { host } = briefHost()
+
+    const handover = await openCodex(deps('iterm', { host }), '/p/demo', 't-1', 'Task: A')
+
+    expect(handover).toEqual({ kind: 'failed', terminal: 'iterm', command: codexLine('/p/demo', BRIEF_FILE) })
   })
 })

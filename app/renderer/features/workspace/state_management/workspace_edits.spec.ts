@@ -114,7 +114,7 @@ describe('an edit', () => {
   it('a form that shows its own error gets no toast', async () => {
     const { workspace, edits } = await open({ fileQuest: async () => fail })
 
-    const answer = await edits.file(KEY, { title: 'x', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [] }, null)
+    const answer = await edits.file(KEY, { title: 'x', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], helpers: ['tea-dd'] }, null)
 
     expect(answer).toEqual({ ok: false, message: 'Could not save.' })
     expect(workspace.getState().toasts).toEqual([])

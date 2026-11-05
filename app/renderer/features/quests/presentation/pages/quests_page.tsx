@@ -41,6 +41,7 @@ type PageProps = {
   engine: EngineApi
   view: ReadableView
   picked: string | undefined
+  initialDetailOpen: boolean
   folded: readonly string[]
   savedQuest: string | null
   isRefreshing: boolean
@@ -57,7 +58,7 @@ type PageProps = {
   onSheet: (sheet: Sheet) => void
 }
 
-export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefreshing, isSheetOpen, letterKeys, edits, flow, actions, questNotes, board, onBoard, onOpen, onFold, onSheet }: PageProps) => {
+export const QuestsPage = ({ engine, view, picked, initialDetailOpen, folded, savedQuest, isRefreshing, isSheetOpen, letterKeys, edits, flow, actions, questNotes, board, onBoard, onOpen, onFold, onSheet }: PageProps) => {
   const shown = board ?? EMPTY_BOARD
   const { filters } = shown
   const isNarrowed = isFiltering(shown)
@@ -70,14 +71,18 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
   const open = openRow(rows, picked)
   const isEmpty = view.ready.length === 0 && view.sealed.length === 0
   // The pane shows the quest in hand once it's picked, and while it stays so.
-  const activeOpen = view.active !== null && picked === view.active.id ? view.active : null
+  const activeOpen = view.activeQuests.find(quest => quest.id === picked) ?? null
   const search = shown.search.trim()
   const searchBox = useRef<HTMLInputElement>(null)
   const width = useWindowWidth()
   const isFloating = width < DETAIL_FLOATS_BELOW
   const isPaged = width < DETAIL_IS_PAGE_BELOW
-  const [isDetailOpen, setDetailOpen] = useState(false)
-  useEffect(() => setDetailOpen(false), [isFloating])
+  const [isDetailOpen, setDetailOpen] = useState(initialDetailOpen)
+  const wasFloating = useRef(isFloating)
+  useEffect(() => {
+    if (wasFloating.current !== isFloating) setDetailOpen(false)
+    wasFloating.current = isFloating
+  }, [isFloating])
   const showDetail = !isFloating || isDetailOpen
   const openDetail = (id: string) => {
     onOpen(id)
@@ -117,7 +122,7 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
   }
   const toggleActiveSaga = (row: Row) => void edits.setActiveSaga(view.key, view.activeSagaId === row.quest.id ? null : row.quest)
 
-  const canStart = (row: Row | null): row is Row => row !== null && view.active === null && row.quest.sealedBecause === null
+  const canStart = (row: Row | null): row is Row => row !== null && row.quest.sealedBecause === null && flow?.kind !== 'working'
 
   useQuestKeys(!isSheetOpen, letterKeys, (key: QuestKey) => {
     if (key.kind === 'cancel' && isFloating && isDetailOpen) {
@@ -130,7 +135,7 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
 
       return
     }
-    if (runFlowKey(key, view, flow, actions)) return
+    if (runFlowKey(key, activeOpen === null ? view : { ...view, active: activeOpen }, flow, actions)) return
     if (key.kind === 'start') {
       if (canStart(open)) actions.onStart(open.quest)
 
@@ -187,8 +192,9 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
     <main class={isFloating ? 'quests floating' : 'quests'}>
       {!(isPaged && isDetailOpen) && <div class="qlist">
         {flow !== undefined && <FlowCard flow={flow} actions={actions} />}
-        {flow === undefined && view.active !== null && view.active.review !== null && showsSection(filters, 'judgement') && <JudgementCard active={view.active} actions={actions} kind="compact" />}
-        {flow === undefined && view.active !== null && view.active.review === null && showsSection(filters, 'active') && <ActiveCard active={view.active} session={view.session} actions={actions} kind="compact" onDetail={() => view.active !== null && openDetail(view.active.id)} />}
+        {flow === undefined && view.activeQuests.map(active => active.review !== null
+          ? showsSection(filters, 'judgement') && <JudgementCard key={active.id} active={active} actions={actions} kind="compact" />
+          : showsSection(filters, 'active') && <ActiveCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="compact" onDetail={() => openDetail(active.id)} />)}
         <SearchAndFilters
           view={shown}
           hasTime={view.budget !== null}
@@ -214,9 +220,12 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
           {isNarrowed && rows.length === 0 && (
             <p class="hint">
               {t.filters.noMatch(search)}{' '}
-              <button type="button" class="link-btn" onClick={() => onBoard(EMPTY_BOARD)}>
-                {t.filters.clearSearch}
-              </button>
+              {/* With only filters on, the chips above are the way out. */}
+              {search !== '' && (
+                <button type="button" class="link-btn" onClick={() => onBoard({ ...shown, search: '' })}>
+                  {t.filters.clearSearch}
+                </button>
+              )}
             </p>
           )}
           {ready.length > 0 && <ul class="rows">{withAdds(ready)}</ul>}
@@ -248,10 +257,10 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
         engine={engine}
         realm={view.key}
         row={open}
-        hasActive={view.active !== null}
         isBusy={flow?.kind === 'working'}
         note={open === null ? undefined : questNotes[open.quest.id]}
-        onStart={() => canStart(open) && actions.onStart(open.quest)}
+        onStart={platform => canStart(open) && actions.onStart(open.quest, platform)}
+        allowance={view.session.allowance}
         isActiveSaga={open !== null && view.activeSagaId === open.quest.id}
         isSaved={open !== null && open.quest.id === savedQuest}
         edits={edits}

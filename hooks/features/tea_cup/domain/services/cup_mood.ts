@@ -1,4 +1,5 @@
 import type { Band, MenuView, ProjectRecord, Task } from '../../../../../types'
+import type { Ctx } from '../../../../core/env/env'
 import { suggest } from '../../../../shared/backlog/domain/services/ranking'
 import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
 import { formatMinutes } from '../../../../shared/time/domain/services/time'
@@ -31,6 +32,7 @@ export type CupFacts = {
   isTurnRunning: boolean
   budget: number | null
   now: number
+  place?: Pick<Ctx, 'cwd' | 'projectPath'> | null
 }
 
 // The cup's mood, a line saying why, and the menu view that answers it.
@@ -53,7 +55,7 @@ const lastFinished = (tasks: Task[]): Task | null =>
 // finished; idle otherwise.
 export const cupOf = (f: CupFacts): Cup => {
   const tasks = f.record?.tasks ?? []
-  const current = currentTask(tasks)
+  const current = currentTask(tasks, f.place)
 
   if (f.load === 'failed') return { mood: 'attention', line: "Couldn't read your task record", view: 'menu' }
   if (f.band.kind !== 'none') return { mood: 'attention', line: 'Waiting for your answer', view: 'menu' }

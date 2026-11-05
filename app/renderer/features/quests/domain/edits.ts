@@ -33,4 +33,4 @@ export const withoutQuest = (id: string) => (view: ReadableView): ReadableView =
   sealed: dropQuest(view.sealed, id),
 })
 
-export const withoutReview = (view: ReadableView): ReadableView => (view.active === null ? view : { ...view, active: { ...view.active, review: null } })
+export const withoutReview = (view: ReadableView, id = view.active?.id): ReadableView => ({ ...view, active: view.active !== null && view.active.id === id ? { ...view.active, review: null } : view.active, activeQuests: view.activeQuests.map(q => q.id === id ? { ...q, review: null } : q) })

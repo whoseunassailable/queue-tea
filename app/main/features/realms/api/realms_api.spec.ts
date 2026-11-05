@@ -245,9 +245,9 @@ describe('the failed record', () => {
   const GOOD = JSON.stringify(emptyRecord('a', '/p/a'))
 
   it('says why it can\'t be read', async () => {
-    await writeFile(fileOf('a-000001'), '{ "version": 2 }')
+    await writeFile(fileOf('a-000001'), '{ "version": 3 }')
 
-    expect(data(await readProject(deps, 'a-000001'))).toMatchObject({ kind: 'unreadable', isNewer: true, reason: 'it was written by a newer Queue-tea (record version 2); update Queue-tea to read it', file: fileOf('a-000001') })
+    expect(data(await readProject(deps, 'a-000001'))).toMatchObject({ kind: 'unreadable', isNewer: true, reason: 'it was written by a newer Queue-tea (record version 3); update Queue-tea to read it', file: fileOf('a-000001') })
   })
 
   it('puts the last good copy back, and keeps the broken one beside it', async () => {
@@ -262,7 +262,7 @@ describe('the failed record', () => {
   })
 
   it('refuses a record written by a newer Queue-tea, even with a copy there', async () => {
-    const newer = JSON.stringify({ version: 2, future: 'work' })
+    const newer = JSON.stringify({ version: 3, future: 'work' })
     await writeFile(fileOf('a-000001'), newer)
     await writeFile(`${fileOf('a-000001')}.bak`, GOOD)
 

@@ -1,12 +1,14 @@
-import type { Difficulty, ParentPick, Priority } from '../../../../../types'
+import type { Difficulty, HelperId, ParentPick, Platform, Priority } from '../../../../../types'
 import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/task_rules'
 import type { NewQuest, QuestEdit, Seal } from '../../../../shared/engine_api'
+import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../../hooks/shared/records/domain/services/helpers'
 import { MESSAGES } from '../../../core/messages'
 import { Refusal } from '../../../core/reply'
 
 const TITLE_LIMIT = 200
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
+const PLATFORMS: readonly Platform[] = ['claude', 'codex']
 
 // Everything from the window is checked again here: a screen's checks are for
 // the person using it, and these are for the record.
@@ -21,6 +23,12 @@ export const priorityOf = (value: unknown): Priority => {
   if (!PRIORITIES.includes(value as Priority)) throw new Refusal(MESSAGES.badValue)
 
   return value as Priority
+}
+
+export const platformOf = (value: unknown): Platform => {
+  if (!PLATFORMS.includes(value as Platform)) throw new Refusal(MESSAGES.badPlatform)
+
+  return value as Platform
 }
 
 export const difficultyOf = (value: unknown): Difficulty => {
@@ -51,6 +59,12 @@ const criteriaOf = (value: unknown): string[] => {
   return (value as string[]).map(line => line.trim()).filter(line => line !== '')
 }
 
+const helpersOf = (value: unknown): HelperId[] => {
+  if (!Array.isArray(value) || !value.every(isHelperId)) throw new Refusal(MESSAGES.badValue)
+
+  return onlyHelpers(value)
+}
+
 const parentOf = (value: unknown): ParentPick => {
   const pick = value as { kind?: unknown; id?: unknown; title?: unknown } | null
   if (pick?.kind === 'none') return { kind: 'none' }
@@ -69,6 +83,7 @@ export const newQuestOf = (value: unknown): NewQuest => {
     parent: parentOf(v.parent),
     description: descriptionOf(v.description),
     criteria: criteriaOf(v.criteria),
+    helpers: v.helpers === undefined ? defaultHelpers().on : helpersOf(v.helpers),
   }
 }
 
@@ -80,6 +95,7 @@ export const questEditOf = (value: unknown): QuestEdit => {
     ...(v.description === undefined ? {} : { description: descriptionOf(v.description) }),
     ...(v.criteria === undefined ? {} : { criteria: criteriaOf(v.criteria) }),
     ...(v.difficulty === undefined ? {} : { difficulty: difficultyOf(v.difficulty) }),
+    ...(v.helpers === undefined ? {} : { helpers: helpersOf(v.helpers) }),
   }
 }
 

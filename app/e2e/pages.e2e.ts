@@ -100,7 +100,7 @@ test.afterAll(async () => {
 })
 
 test('Chronicle shows the week, and goes back to the last', async () => {
-  await page.keyboard.press('Meta+3')
+  await page.keyboard.press('Meta+4')
 
   await expect(page.getByRole('heading', { name: 'Chronicle' })).toBeVisible()
   await expect(page.locator('.summary')).toContainText('1 victory')
@@ -130,7 +130,7 @@ test('a row opens with what it took', async () => {
 })
 
 test('Mana & time shows the orb, the week and the boss', async () => {
-  await page.keyboard.press('Meta+4')
+  await page.keyboard.press('Meta+5')
 
   await expect(page.getByRole('img', { name: '38% of the 5-hour allowance left' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'The boss quest so far' })).toBeVisible()

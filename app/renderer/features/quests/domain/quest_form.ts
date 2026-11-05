@@ -1,5 +1,6 @@
+import { defaultHelpers } from '../../../../../hooks/shared/records/domain/services/helpers'
 import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/task_rules'
-import type { Difficulty, ParentPick, Priority } from '../../../../../types'
+import type { Difficulty, HelperId, ParentPick, Priority } from '../../../../../types'
 import type { NewQuest, Seal } from '../../../../shared/engine_api'
 import { t } from '../../../l10n/en'
 
@@ -15,12 +16,13 @@ export type QuestForm = {
   sagaTitle: string
   description: string
   criteria: string
+  helpers: HelperId[]
 }
 
 export type QuestField = 'title' | 'part' | 'sagaTitle'
 export type QuestErrors = Partial<Record<QuestField, string>>
 
-export const emptyQuestForm = (part: string): QuestForm => ({ title: '', priority: 'mid', difficulty: 'medium', part, sagaTitle: '', description: '', criteria: '' })
+export const emptyQuestForm = (part: string): QuestForm => ({ title: '', priority: 'mid', difficulty: 'medium', part, sagaTitle: '', description: '', criteria: '', helpers: defaultHelpers().on })
 
 export const titleError = (title: string): string | undefined => {
   const trimmed = title.trim()
@@ -52,6 +54,7 @@ export const questOf = (form: QuestForm): NewQuest => ({
     .split('\n')
     .map(line => line.trim())
     .filter(line => line !== ''),
+  helpers: form.helpers,
 })
 
 export type SealForm = { waitFor: string | null; reason: string }

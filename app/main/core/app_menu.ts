@@ -14,8 +14,9 @@ const command = (label: string, key: string, send: Send): MenuItemConstructorOpt
 const TABS: readonly (readonly [string, string])[] = [
   ['Home', '1'],
   ['Quests', '2'],
-  ['Chronicle', '3'],
-  ['Mana & time', '4'],
+  ['Branches', '3'],
+  ['Chronicle', '4'],
+  ['Mana & time', '5'],
 ]
 
 export const appMenu = (appName: string, isDev: boolean, send: Send): MenuItemConstructorOptions[] => [

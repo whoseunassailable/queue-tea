@@ -1,5 +1,6 @@
 // Every failure main hands the window, in plain words.
 export const MESSAGES = {
+
   listProjects: "Couldn't read your realms. Check that ~/.queue-tea can be read, then try again.",
   readProject: "Couldn't read this realm's quests. Try again.",
   unknownProject: "That realm isn't one Queue-tea knows. Pick one from the list.",
@@ -66,6 +67,10 @@ export const MESSAGES = {
   checkStart: "Couldn't check git for this realm. Try again.",
   startQuest: "Couldn't start the quest. Try again.",
   openClaude: "Couldn't open Claude Code. Try again.",
+  continueIn: "Couldn't move the quest. Try again.",
+  badPlatform: 'Pick Claude Code or Codex.',
+  claudeWorking: (title: string) => `Claude Code is still working on ${title}. Wait for its turn to end, or stop it with Esc in its terminal, then try again. Nothing has changed.`,
+  notActiveMove: 'That quest is no longer the active one, so nothing moved.',
   copyText: "Couldn't copy that. Try again.",
   notYet: "Couldn't save your answer. Try again.",
   finishQuest: "Couldn't finish the quest. Try again.",
@@ -80,6 +85,14 @@ export const MESSAGES = {
   folderGone: (path: string) => `This realm's folder isn't at ${path} any more, so nothing was started. Put it back, then try again.`,
   sealedQuest: (title: string, why: string) => `${title} is sealed: ${why}. Unseal it first.`,
   startedFirst: (other: string, title: string) => `${other} was started first, maybe in another session, so ${title} waits on the board.`,
+} as const
+
+// The one question an update asks, for a new major version.
+export const UPDATE_TEXT = {
+  ready: (version: string) => `Queue-tea ${version} is installed`,
+  detail: "It's a big update, so Queue-tea restarts to use it. Your quests are saved, and sessions in Terminal keep running. Choose Later and it restarts on its own the next time you step away.",
+  restartNow: 'Restart now',
+  later: 'Later',
 } as const
 
 // The engine's refusals, in the screens' words. Whole phrases only, so a quest

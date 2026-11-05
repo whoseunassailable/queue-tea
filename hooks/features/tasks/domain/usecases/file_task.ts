@@ -1,6 +1,7 @@
-import type { Difficulty, Intent, ParentPick, Priority, ProjectRecord, Task } from '../../../../../types'
+import type { Difficulty, HelperId, Intent, ParentPick, Priority, ProjectRecord, Task } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import { parentOf, parentRefusal } from '../../../../shared/backlog/domain/services/families'
+import { defaultHelpers, onlyHelpers } from '../../../../shared/records/domain/services/helpers'
 import { newTask } from '../../../../shared/records/domain/services/queue_rules'
 import { isoLocal } from '../../../../shared/time/domain/services/time'
 import type { Deps } from './deps'
@@ -14,6 +15,7 @@ export type FileInput = {
   parent?: ParentPick | null
   description?: string | null
   criteria?: string[]
+  helpers?: HelperId[]
 }
 
 export type FileResult =
@@ -42,6 +44,7 @@ export const fileTaskUseCase = async (d: Deps, ctx: Ctx, input: FileInput): Prom
     }),
     description: input.description ?? null,
     criteria: input.criteria ?? [],
+    ...(input.helpers === undefined ? {} : { helpers: { ...defaultHelpers(), on: onlyHelpers(input.helpers) } }),
   }
   // The feature may have gone since the band went up: checked against the
   // record as it is now.

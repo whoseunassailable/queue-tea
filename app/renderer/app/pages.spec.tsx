@@ -43,12 +43,12 @@ describe('finding the pages', () => {
     expect(screen.getByRole('link', { name: t.nav.hoard }).getAttribute('href')).toBe('#/hoard')
   })
 
-  it('⌘3 and ⌘4 go to the tabs', async () => {
+  it('⌘4 and ⌘5 go to Chronicle and Mana', async () => {
     await open('/home')
 
-    await act(() => void fireEvent.keyDown(document.body, { key: '3', metaKey: true }))
-    await waitFor(() => expect(window.location.hash).toBe('#/chronicle'))
     await act(() => void fireEvent.keyDown(document.body, { key: '4', metaKey: true }))
+    await waitFor(() => expect(window.location.hash).toBe('#/chronicle'))
+    await act(() => void fireEvent.keyDown(document.body, { key: '5', metaKey: true }))
     await waitFor(() => expect(window.location.hash).toBe('#/mana'))
   })
 
@@ -320,6 +320,12 @@ describe('Guild Hall', () => {
     await press(t.guild.copy('Tea-DD'))
 
     await waitFor(() => expect(engine.copyText).toHaveBeenCalledWith('@queue-tea:tea-dd'))
+  })
+
+  it('the Guild Hall says where helpers are turned on', async () => {
+    await open('/guild')
+
+    expect(screen.getByText(t.guild.where)).toBeTruthy()
   })
 
   it('offers nothing that hands work to a helper', async () => {

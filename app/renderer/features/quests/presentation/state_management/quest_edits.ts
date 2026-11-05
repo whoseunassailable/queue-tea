@@ -67,7 +67,7 @@ export const questEdits = (engine: EngineApi, workspace: Workspace) => ({
       isQuiet,
     }),
 
-  edit: (key: string, quest: QuestRow, edit: QuestEdit) =>
+  edit: (key: string, quest: Pick<QuestRow, 'id'>, edit: QuestEdit) =>
     workspace.run({ key, questId: quest.id, call: () => engine.editQuest(key, quest.id, edit) }),
 
   setActiveSaga: (key: string, quest: QuestRow | null) =>

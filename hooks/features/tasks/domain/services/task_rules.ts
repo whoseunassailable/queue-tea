@@ -1,4 +1,4 @@
-import type { Difficulty, Task } from '../../../../../types'
+import type { Difficulty, HelperId, Task } from '../../../../../types'
 
 export const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
@@ -24,3 +24,7 @@ export const logFileIn = (projectPath: string, logPath: string): string | null =
 
   return file.startsWith(`${root}/`) ? file : null
 }
+
+// The helper Claude must run before asking Rohan: Tea-DD first, then Commit Chai-n.
+export const helperToRemind = (t: Task): HelperId | null =>
+  (['tea-dd', 'commit-chai-n'] as const).find(id => t.helpers.on.includes(id) && !t.helpers.ran.includes(id)) ?? null

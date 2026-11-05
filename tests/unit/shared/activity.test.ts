@@ -79,3 +79,17 @@ test('a background check keeps waiting until its own task result is retrieved', 
     live.ctx = null
   }
 })
+
+test('records each concurrent session only on the task in its own worktree', async () => {
+  const { ports, view, mem, saved } = setup()
+  const record = { ...saved(), version: 2 as const, tasks: [makeTask({ id: 'first', state: 'current', worktreePath: '/worktrees/first' }), makeTask({ id: 'second', state: 'current', worktreePath: '/worktrees/second' })] }
+  mem.files.set(CTX.file, JSON.stringify(record))
+  view.record = record
+  live.ctx = { ...CTX, cwd: '/worktrees/second' }
+  try {
+    const finish = await beginActivity(ports, 'Bash', { command: 'npm test' })
+    await finish?.({ result: { stdout: 'passed', exitCode: 0 } })
+    expect(saved().tasks[0]?.activity).toBeUndefined()
+    expect(saved().tasks[1]?.activity?.[0]).toMatchObject({ status: 'succeeded', subject: 'npm test' })
+  } finally { live.ctx = null }
+})

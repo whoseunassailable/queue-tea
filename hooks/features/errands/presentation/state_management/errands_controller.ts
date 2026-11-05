@@ -1,3 +1,4 @@
+import { live } from '../../../../core/session/live'
 import { debug } from '../../../../core/logger/logger'
 import type { Ports } from '../../../../core/ports/ports'
 import { closeMenu } from '../../../../core/store/menu'
@@ -16,7 +17,7 @@ export async function errandFor(p: Ports, kind: ErrandKind, text: string): Promi
   errandState.errand = { kind, text, isRunning: false }
   effortState.tracker?.route('project')
 
-  return errandNote(kind, record === null ? null : currentTask(record.tasks))
+  return errandNote(kind, record === null ? null : currentTask(record.tasks, live.ctx))
 }
 
 // An errand's words that did not reach Claude go back in the prompt box as

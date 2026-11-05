@@ -1,7 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 
 import { backupPath, carryOverRecords, emptyRecord, parseRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
-import type { ProjectRecord } from '../../../../types'
+import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../hooks/shared/records/domain/services/helpers'
+import { newTask } from '../../../../hooks/shared/records/domain/services/queue_rules'
+import type { ProjectRecord, Task } from '../../../../types'
 import { makeTask, memoryHost } from '../../../helpers'
 
 const FILE = recordPath('/Users/example', 'example-app-abc123')
@@ -68,8 +70,8 @@ test('an unreadable record is never overwritten', async () => {
   expect(mem.files.get(FILE)).toBe('{not json')
 })
 
-test('a record of version 2 is unreadable', async () => {
-  const { host } = memoryHost({ files: { [FILE]: JSON.stringify({ ...emptyRecord('p', '/p'), version: 2 }) } })
+test('a record of version 3 is unreadable', async () => {
+  const { host } = memoryHost({ files: { [FILE]: JSON.stringify({ ...emptyRecord('p', '/p'), version: 3 }) } })
 
   expect(await readRecord(host, FILE, 'p', '/p')).toBe('unreadable')
 })
@@ -107,8 +109,8 @@ test('a copy that fails says so', async () => {
 
 test('why a record cannot be read: bad JSON, a newer Queue-tea, or not a record', () => {
   expect(whyUnreadable('{bad').reason).toMatch(/^it isn't valid JSON \(.+\)$/)
-  expect(whyUnreadable(json({ ...emptyRecord('p', '/p'), version: 2 as 1 }))).toEqual({
-    reason: 'it was written by a newer Queue-tea (record version 2); update Queue-tea to read it',
+  expect(whyUnreadable(json({ ...emptyRecord('p', '/p'), version: 3 as 1 }))).toEqual({
+    reason: 'it was written by a newer Queue-tea (record version 3); update Queue-tea to read it',
     isNewer: true,
   })
   expect(whyUnreadable('[1, 2]')).toEqual({ reason: "it isn't a Queue-tea record", isNewer: false })
@@ -160,7 +162,7 @@ test('a broken record with a good copy can be restored; the broken file is kept'
 
 test('no restore over a newer Queue-tea’s record, without a copy, or from a broken copy', async () => {
   const good = json(emptyRecord('p', '/p'))
-  const newer = json({ ...emptyRecord('p', '/p'), version: 2 as 1 })
+  const newer = json({ ...emptyRecord('p', '/p'), version: 3 as 1 })
   const cases = [
     memoryHost({ files: { [FILE]: newer, [backupPath(FILE)]: good } }),
     memoryHost({ files: { [FILE]: '{bad' } }),
@@ -276,4 +278,76 @@ test('fields one side does not know survive a write by the other', async () => {
   const after = JSON.parse(mem.files.get(FILE)!)
   expect(after.fromTheApp).toBe(1)
   expect(after.tasks[0].fromTheApp).toBe(2)
+})
+
+const readFirst = (task: object) => {
+  const read = parseRecord(JSON.stringify({ version: 1, project: { name: 'p', path: '/p' }, tasks: [task] }))
+
+  return read === 'unreadable' ? null : read.tasks[0]
+}
+
+test('an older task without helpers reads with Tea-DD on', () => {
+  expect(readFirst({ title: 'Old', created: '2026-10-01' })?.helpers).toEqual({ on: ['tea-dd'], ran: [], reminded: false })
+})
+
+test('a partial helpers field is filled in', () => {
+  expect(readFirst({ title: 'Old', created: '2026-10-01', helpers: { on: ['chai-pter'] } })?.helpers).toEqual({
+    on: ['chai-pter'],
+    ran: [],
+    reminded: false,
+  })
+})
+
+test('a malformed helpers field is read as the default', () => {
+  const read = (helpers: object) => readFirst({ title: 'Old', created: '2026-10-01', helpers })?.helpers
+
+  expect(read({ on: null })).toEqual(defaultHelpers())
+  expect(read({ on: 'tea-dd' })?.on).toEqual(['tea-dd'])
+  expect(read({ on: ['nobody', 'chai-pter'], ran: 'x' })).toEqual({ on: ['chai-pter'], ran: [], reminded: false })
+  expect(read({ reminded: 'yes' })?.reminded).toBe(false)
+})
+
+test('a new task starts with Tea-DD on', () => {
+  const t = newTask({ title: 'T', priority: 'mid', difficulty: 'medium', messages: [], now: '2026-11-03', id: 't-1' })
+
+  expect(t.helpers).toEqual(defaultHelpers())
+})
+
+test('onlyHelpers drops repeats and keeps the list order', () => {
+  expect(onlyHelpers(['tea-dd', 'commit-chai-n', 'tea-dd'])).toEqual(['commit-chai-n', 'tea-dd'])
+})
+
+test('isHelperId knows only the four', () => {
+  expect(isHelperId('tea-dd')).toBe(true)
+  for (const v of ['general-purpose', '', 3, null]) expect(isHelperId(v)).toBe(false)
+})
+
+test("a task saved before Codex reads as Claude Code's, and a new task starts with Claude Code", () => {
+  const old = makeTask({ state: 'current' }) as Partial<Task>
+  delete old.codexSince
+  const read = parseRecord(json({ ...emptyRecord('p', '/p'), tasks: [old as Task] }))
+
+  expect(read === 'unreadable' ? 'unreadable' : read.tasks[0]?.codexSince).toBeNull()
+  expect(newTask({ title: 'X', priority: 'mid', difficulty: 'light', messages: [], now: '2026-10-21T09:00:00+02:00', id: 't-1' }).codexSince).toBeNull()
+})
+
+test('when a task went to Codex survives a write and a read', async () => {
+  const mem = memoryHost()
+  const task = makeTask({ state: 'current', codexSince: '2026-10-21T09:00:00+02:00' })
+
+  await updateRecord(mem.host, FILE, r => ({ ...r, tasks: [task] }), 'p', '/p')
+  const read = await readRecord(mem.host, FILE, 'p', '/p')
+
+  expect(read === 'unreadable' ? 'unreadable' : read.tasks[0]?.codexSince).toBe('2026-10-21T09:00:00+02:00')
+})
+
+
+test('version 1 migrates without moving its current task or losing unknown fields', () => {
+  const old = { ...emptyRecord('p', '/p'), version: 1, future: 'preserved', tasks: [makeTask({ state: 'current' })] }
+  const parsed = parseRecord(JSON.stringify(old))
+  expect(parsed).not.toBe('unreadable')
+  if (parsed === 'unreadable') return
+  expect(parsed.version).toBe(2)
+  expect(parsed.tasks[0]!.worktreePath).toBeNull()
+  expect((parsed as unknown as { future: string }).future).toBe('preserved')
 })

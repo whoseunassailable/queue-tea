@@ -17,7 +17,7 @@ export const beginActivity = async (p: Ports, tool: string, input: Record<string
     const background = tool === 'GetTask' && typeof input.taskId === 'string'
     const task = record === null ? null : background
       ? record.tasks.find(t => activityEntries(t.activity).some(step => step.backgroundId === input.taskId && step.status === 'running')) ?? null
-      : currentTask(record.tasks)
+      : currentTask(record.tasks, ctx)
     if (task === null) return null
     const entry = background ? activityEntries(task.activity).find(step => step.backgroundId === input.taskId && step.status === 'running')!
       : toolActivity(tool, input, p.newId(), isoLocal(await p.now(), ctx.offsetMinutes))

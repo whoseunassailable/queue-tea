@@ -1,3 +1,4 @@
+import { branchGraph, branchReview, mergeWorkspace } from './features/branches/test_fixtures'
 import { vi } from 'vitest'
 
 import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
@@ -21,6 +22,7 @@ export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   fits: null,
   goal: null,
   acceptance: [],
+  helpers: ['tea-dd'],
   ...over,
 })
 
@@ -38,7 +40,12 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   filesChanged: 2,
   review: null,
   criteria: [],
+  helpers: ['tea-dd'],
   asking: null,
+  codexSince: null,
+  worktreePath: null,
+  baseBranch: null,
+  parentId: null,
   ...over,
 })
 
@@ -77,6 +84,8 @@ export const projectView = (key: string, over: Partial<Extract<ProjectView, { ki
   path: `/p/${key}`,
   session: { state: 'none', allowance: null },
   active: null,
+  activeQuests: over.activeQuests ?? (over.active ? [over.active] : []),
+  branches: [],
   ready: [],
   sealed: [],
   canStart: 0,
@@ -224,14 +233,26 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readQuestFacts: vi.fn(async () => ({ ok: true as const, data: QUEST_FACTS })),
     readLive: vi.fn(async () => ({ ok: true as const, data: { drift: [], mismatch: null, warning: null } })),
     switchBranch: vi.fn(async () => ({ ok: true as const, data: null })),
+    readBranches: vi.fn(async () => ({ ok: true as const, data: { ...branchGraph(), tasks: [] } })),
+    readBranch: vi.fn(async () => ({ ok: true as const, data: branchReview() })),
+    readMergeWorkspace: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    prepareMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    resolveMergeFile: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    completeMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    abandonMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    openMergeFolder: vi.fn(async () => ({ ok: true as const, data: null })),
+    commitBranchFiles: vi.fn(async () => ({ ok: true as const, data: branchReview() })),
+    readPush: vi.fn(async () => ({ ok: false as const, error: { message: 'Remote unavailable.' } })),
+    pushMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     checkStart: vi.fn(async () => ({ ok: true as const, data: { kind: 'clear' as const, step: { kind: 'make' as const, branch: 'task/first', from: 'main' } } })),
     startQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { kind: 'started' as const, view: projectView(key), branch: 'task/first', notice: null, handover: { kind: 'session' as const } } })),
     openClaude: vi.fn(async () => ({ ok: true as const, data: { kind: 'opened' as const, terminal: 'terminal' as const } })),
+    continueIn: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), handover: { kind: 'opened' as const, terminal: 'terminal' as const }, isCodexTimeLost: false } })),
     notYet: vi.fn(reply),
-    finishQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: VICTORY } })),
+    finishQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null, minutes: 14, victory: VICTORY, isCodexTimeLost: false } })),
     retryTaskLog: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), logPath: 'docs/task_log.md', logFailedAt: null } })),
-    putBackQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: null } })),
-    putBackNow: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: { lastAt: null } } })),
+    putBackQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: null, isCodexTimeLost: false } })),
+    putBackNow: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: { lastAt: null }, isCodexTimeLost: false } })),
     copyText: vi.fn(async () => ({ ok: true as const, data: null })),
     onChange: listener => {
       listeners.add(listener)

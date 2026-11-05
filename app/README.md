@@ -30,9 +30,9 @@ npm run dev
 npm run install-app   # builds, then copies Queue-tea.app to /Applications
 ```
 
-Quit the app first. The build is signed ad hoc, so the first time macOS may ask you to confirm opening it. `npm run package` only builds, into `dist/`, and `npm run package:stage` builds a stage app that installs beside it. Install command line tool… in the app's menu then gives you `queue-tea open [path]`.
+The app can stay open. The build is signed ad hoc, so the first time macOS may ask you to confirm opening it. `npm run package` only builds, into `dist/`, and `npm run package:stage` builds a stage app that installs beside it. Install command line tool… in the app's menu then gives you `queue-tea open [path]`.
 
-You rarely need to run this by hand: after every commit `tools/refresh_app.sh` does it in the background. It tells you with a notification when the new version is in, or asks you to quit the app first if it's open, and what it did is in `~/Library/Logs/Queue-tea/refresh.log`. About Queue-tea in the app's menu shows which version you have.
+You rarely need to run this by hand: after every commit `tools/refresh_app.sh` does it in the background. It tells you with a notification when the new version is in, and what it did is in `~/Library/Logs/Queue-tea/refresh.log`. An open app moves to the new version by itself: it waits until you're in another app with no dialog open, no text field in use and nothing being saved, then restarts behind what you're using, on the same screen and in the same place. A new major version (2.0.0, 3.0.0) asks first if you're using the window, with Restart now and Later. Sessions in Terminal keep running through a restart. About Queue-tea in the app's menu shows which version you have.
 
 ## Check it
 
@@ -50,3 +50,12 @@ To look at the skies, set `QUEUE_TEA_SHOTS` to a folder before `npm run e2e`. Se
 ## Flavors
 
 `QUEUE_TEA_FLAVOR` is `dev`, `stage` or `prod`. An unpackaged app is `dev` and a packaged one `prod`. Each has its own app id, settings and log folder, and only `dev` logs anything below a warning.
+
+
+### Branch review and merge
+
+Branches shows actual local commit ancestry and observed task activity. Open **Review work** to inspect changes, commit selected files, prepare an isolated merge, resolve text conflicts, and explicitly approve applying the result. Publishing has its own remote check and Push button. No remote access happens while browsing or merging locally. Completed operations and command output are retained in `~/.queue-tea/integrations/` for restart recovery.
+
+The branch workflow integration tests are opt-in because they create disposable commits, merges, and a local-only push: `QUEUE_TEA_GIT_TESTS=1 npm test -- main/features/branches/api/branch_integration.spec.ts`. Ordinary test runs skip that suite. The branch UI e2e test reads this checkout's local history without changing Git.
+
+Production updates require a clean integration-branch build with source provenance containing the installed app's history. Feature commits no longer replace `/Applications/Queue-tea.app`. Installations retain the prior bundle for recovery. See [the workflow design](../docs/branch-workflow.md) for legacy-app adoption and limitations.

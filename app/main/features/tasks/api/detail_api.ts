@@ -83,7 +83,7 @@ const branchToBe = (d: TasksDeps, { deps }: Scope, task: Task): Promise<string |
 
 export const readQuestFacts = (d: TasksDeps, key: unknown, taskId: unknown): Promise<Reply<QuestFacts>> =>
   reply(d.log, MESSAGES.readQuestFacts, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const task = scope.record.tasks.find(t => t.id === id)
     if (task === undefined) throw new Refusal(MESSAGES.badQuest)

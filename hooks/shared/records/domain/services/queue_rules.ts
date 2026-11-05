@@ -1,4 +1,6 @@
+import { defaultHelpers } from './helpers'
 import type { Difficulty, Priority, Task } from '../../../../../types'
+import type { Ctx } from '../../../../core/env/env'
 
 export const PRIORITY_ORDER: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 
@@ -14,8 +16,12 @@ export const orderQueue = (tasks: Task[]): Task[] =>
 
 export const suggestion = (tasks: Task[]): Task | null => orderQueue(tasks)[0] ?? null
 
-export const currentTask = (tasks: Task[]): Task | null =>
-  tasks.find(t => t.state === 'current') ?? null
+export const taskFolder = (task: Task, projectPath: string): string => task.worktreePath ?? projectPath
+
+// A terminal only owns the task in its checkout. The app may ask for the
+// first active task when no terminal context is supplied.
+export const currentTask = (tasks: Task[], place?: Pick<Ctx, 'cwd' | 'projectPath'> | null): Task | null =>
+  tasks.find(t => t.state === 'current' && (place == null || taskFolder(t, place.projectPath) === place.cwd)) ?? null
 
 export const newTask = (input: {
   title: string
@@ -57,6 +63,9 @@ export const newTask = (input: {
   description: null,
   criteria: [],
   review: null,
+  helpers: defaultHelpers(),
+  codexSince: null,
+  worktreePath: null,
 })
 
 export const setPriority = (tasks: Task[], id: string, priority: Priority): Task[] =>

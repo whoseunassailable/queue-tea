@@ -11,13 +11,14 @@ import type { ActiveQuest, BoardEntry, ProjectRow, ProjectStatus, ProjectView, Q
 import { xpOf } from '../../game/domain/services/game'
 
 const RECENT_VICTORIES = 3
+const BRANCH_ORDER = { current: 0, queued: 1, done: 2, removed: 3 } as const
 
 const minutesOf = (task: Task): number => Object.values(task.minutesByDay).reduce((sum, m) => sum + m, 0)
 const difficultyOf = (task: Task) => task.difficulty.actual ?? task.difficulty.expected
 
 // The sessions in this project that are still alive, newest first.
 export const sessionsIn = (sessions: SessionFile[], projectPath: string, nowMs: number): SessionFile[] =>
-  sessions.filter(s => s.projectPath === projectPath && isFresh(s, nowMs)).sort((a, b) => b.heartbeat - a.heartbeat)
+  sessions.filter(s => (s.projectPath === projectPath || s.workingPath === projectPath) && isFresh(s, nowMs)).sort((a, b) => b.heartbeat - a.heartbeat)
 
 export const sessionInfoOf = (sessions: SessionFile[], projectPath: string, nowMs: number): SessionInfo => {
   const alive = sessionsIn(sessions, projectPath, nowMs)
@@ -31,7 +32,7 @@ export const sessionInfoOf = (sessions: SessionFile[], projectPath: string, nowM
 // First match wins: needs you, working, the current task, what waits, nothing.
 export const statusOf = (record: ProjectRecord, session: SessionState): ProjectStatus => {
   const current = currentTask(record.tasks)
-  if (current?.review != null) return { kind: 'judgement' }
+  if (record.tasks.some(t => t.state === 'current' && t.review !== null)) return { kind: 'judgement' }
   if (session === 'needsYou') return { kind: 'needsYou' }
   if (session === 'working') return { kind: 'working' }
   if (current !== null) return { kind: 'current', title: current.title }
@@ -74,6 +75,7 @@ const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, s
   fits: row?.fits ?? null,
   goal: task.checkpoint?.goal || null,
   acceptance: task.checkpoint?.acceptance ?? [],
+  helpers: task.helpers.on,
 })
 
 const entryOf = (entry: Entry, tasks: Task[], nowMs: number, ranked: Ranked[], playNext: string | null): BoardEntry => {
@@ -110,7 +112,12 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   filesChanged: task.effort.filesChanged,
   review: task.review,
   criteria: task.criteria,
+  helpers: task.helpers.on,
   asking: requests.find(q => q.taskId === task.id)?.kind ?? null,
+  codexSince: task.codexSince,
+  worktreePath: task.worktreePath,
+  baseBranch: task.baseBranch,
+  parentId: task.parentId,
 })
 
 const victoryOf = (task: Task): VictoryRow => ({
@@ -137,6 +144,13 @@ export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile
     path: record.project.path,
     session: sessionInfoOf(sessions, record.project.path, nowMs),
     active: current === null ? null : activeOf(current, record.requests),
+    activeQuests: tasks.filter(t => t.state === 'current').map(t => ({ ...activeOf(t, record.requests), session: sessionInfoOf(sessions.filter(s => (s.workingPath ?? s.projectPath) === (t.worktreePath ?? record.project.path)), record.project.path, nowMs) })),
+    branches: [...tasks].sort((a, b) => BRANCH_ORDER[a.state] - BRANCH_ORDER[b.state]).flatMap(task => task.branch === null || task.state === 'removed' ? [] : [{
+      id: task.id, title: task.title, branch: task.branch, baseBranch: task.baseBranch,
+      path: task.worktreePath ?? record.project.path, state: task.state,
+      platform: task.state === 'current' ? (task.codexSince === null ? 'claude' as const : 'codex' as const) : null,
+      parent: task.parentId === null ? null : (() => { const parent = tasks.find(t => t.id === task.parentId); return parent ? { id: parent.id, title: parent.title } : null })(),
+    }]),
     ready: ready.map(entry),
     sealed: stuck.map(entry),
     canStart: ranked.length,

@@ -189,3 +189,18 @@ test('it works from a second working folder of the same repository', () => {
   assert.equal(JSON.parse(readFileSync(join(other, 'app/package.json'), 'utf8')).version, '0.2.0')
   assert.equal(git('status', '--porcelain'), '')
 })
+
+test('a commit in a linked worktree never rebuilds the installed app', () => {
+  const r = repo()
+  const linked = join(r.root, 'linked')
+  r.git('worktree', 'add', '-b', 'task/parallel', linked)
+  writeFileSync(join(linked, 'work.txt'), 'worktree work\n')
+  const env = envFor()
+  delete env.QUEUE_TEA_NO_APP_REFRESH
+  const result = spawnSync('git', ['commit', '-am', 'fixed the worktree'], { cwd: linked, encoding: 'utf8', env })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.doesNotMatch(result.stdout + result.stderr, /updating the installed app/)
+  assert.equal(JSON.parse(readFileSync(join(linked, '.claude-plugin/plugin.json'), 'utf8')).version, '0.1.1')
+  assert.equal(versionOf(r), '0.1.0')
+})

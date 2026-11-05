@@ -44,8 +44,9 @@ const entry = (over: Pick<PaletteEntry, 'id' | 'section' | 'label' | 'run'> & Pa
 const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
   { route: ROUTES.home, label: t.nav.home, keys: '⌘1' },
   { route: ROUTES.quests, label: t.nav.quests, keys: '⌘2' },
-  { route: ROUTES.chronicle, label: t.nav.chronicle, keys: '⌘3' },
-  { route: ROUTES.mana, label: t.nav.mana, keys: '⌘4' },
+  { route: ROUTES.branches, label: t.nav.branches, keys: '⌘3' },
+  { route: ROUTES.chronicle, label: t.nav.chronicle, keys: '⌘4' },
+  { route: ROUTES.mana, label: t.nav.mana, keys: '⌘5' },
   { route: ROUTES.guild, label: t.nav.guild, keys: null },
   { route: ROUTES.hoard, label: t.nav.hoard, keys: null },
   { route: ROUTES.library, label: t.nav.library, keys: null },
@@ -55,7 +56,7 @@ const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
 const allQuests = (view: Readable): QuestRow[] => [...rowsOf(view.ready), ...rowsOf(view.sealed)].map(row => row.quest)
 
 const questEntries = (view: Readable, input: PaletteInput): PaletteEntry[] => {
-  const waiting = view.active === null ? null : t.palette.startWaits(view.active.title)
+  const waiting = null
 
   return allQuests(view).map(quest =>
     entry({
@@ -96,7 +97,7 @@ const actions = (view: Readable, input: PaletteInput): PaletteEntry[] => {
       section: 'actions',
       label: main === undefined ? t.actions.start : t.actions.startNamed(main.title),
       keys: 's',
-      reason: view.active !== null ? t.palette.startWaits(view.active.title) : main === undefined ? t.palette.nothingToStart : null,
+      reason: main === undefined ? t.palette.nothingToStart : null,
       run: () => main !== undefined && input.onStart(main),
     }),
     entry({ id: 'action:open', section: 'actions', label: t.actions.openClaude, keys: '⌘↩', reason: noActive, run: input.onOpenClaude }),

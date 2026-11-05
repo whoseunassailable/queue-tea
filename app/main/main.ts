@@ -1,16 +1,18 @@
 import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, shell } from 'electron'
+import type { IpcMainInvokeEvent } from 'electron'
 
 import { CHANNELS } from '../shared/engine_api'
 import type { MenuItem, Opened } from '../shared/engine_api'
 import { appMenu } from './core/app_menu'
-import { GH_CODE_WAIT_MS, GH_LOGIN_WAIT_MS, GH_PATHS, LOG_FILE, projectsFolder, SETTINGS_FILE, WATCH_SETTLE_MS, WINDOW } from './core/constants'
+import { BUSY_PROBE, GH_CODE_WAIT_MS, GH_LOGIN_WAIT_MS, GH_PATHS, LOG_FILE, projectsFolder, RESTART_FILE, SETTINGS_FILE, UPDATE_CHECK_MS, WATCH_SETTLE_MS, WINDOW } from './core/constants'
 import { appIdOf, flavorOf } from './core/flavor'
 import { createLogger, fileSink } from './core/logger'
-import { MESSAGES } from './core/messages'
+import { MESSAGES, UPDATE_TEXT } from './core/messages'
 import { nodeHost } from './core/node_host'
 import { windowChrome } from './core/platform/mac'
 import { reply } from './core/reply'
@@ -31,8 +33,15 @@ import * as back from './features/tasks/api/back_api'
 import { readQuestFacts } from './features/tasks/api/detail_api'
 import * as finish from './features/tasks/api/finish_api'
 import * as live from './features/tasks/api/live_api'
+import * as branches from './features/branches/api/branch_api'
+import { commitBranchFiles } from './features/branches/api/commit_api'
+import { readPush, pushMerge } from './features/branches/api/push_api'
+import { nodeUserGit } from './features/branches/data/user_git'
 import * as setOut from './features/tasks/api/start_api'
 import * as tasks from './features/tasks/api/tasks_api'
+import { relaunchArgv, restoredOf, versionOfPlist } from './features/update/data/bundle'
+import type { Restored } from './features/update/data/bundle'
+import { updateWatch } from './features/update/domain/update_watch'
 import { sessionsFolder } from '../../hooks/shared/sessions/domain/services/session_rules'
 
 // How often the window hears from main with no file event, so a session that
@@ -80,6 +89,8 @@ const quests = {
   copy: (text: string) => clipboard.writeText(text),
 }
 
+const branchActions = { ...quests, userGit: nodeUserGit(log), reveal: (path: string) => shell.showItemInFolder(path) }
+
 const places = {
   ...game,
   commandDirs: ['/usr/local/bin', '/opt/homebrew/bin', `${home}/.local/bin`],
@@ -96,57 +107,91 @@ const places = {
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
 
+// Engine calls still changing something. A restart in the middle of one could
+// lose a save; one that only reads is read again by the new copy, and the
+// window reads every 30 s, so counting reads would hold an update off for good.
+let callsRunning = 0
+const READS = /^engine:(list|read|check)-/
+
+const handle = (channel: string, work: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) =>
+  ipcMain.handle(channel, async (event, ...args) => {
+    const allowed = process.env.ELECTRON_RENDERER_URL ?? pathToFileURL(join(__dirname, '../renderer/index.html')).href
+    if (event.senderFrame !== event.sender.mainFrame || event.senderFrame?.url.split('#')[0] !== new URL(allowed).href.split('#')[0]) {
+      log.warn(`Refused engine request from an unexpected frame: ${channel}`)
+      return { ok: false, error: { message: MESSAGES.badValue } }
+    }
+    if (READS.test(channel)) return work(event, ...args)
+    callsRunning += 1
+    try {
+      return await work(event, ...args)
+    } finally {
+      callsRunning -= 1
+    }
+  })
+
 const serveEngine = () => {
-  ipcMain.handle(CHANNELS.listProjects, () => listProjects(projects))
-  ipcMain.handle(CHANNELS.readProject, (_, key: unknown) => readProject(projects, key))
-  ipcMain.handle(CHANNELS.readGame, () => readGame(game))
-  ipcMain.handle(CHANNELS.readHoard, () => readHoard(game))
-  ipcMain.handle(CHANNELS.readChronicle, (_, scope: unknown, day: unknown) => readChronicle(game, scope, day))
-  ipcMain.handle(CHANNELS.readMana, (_, key: unknown) => readMana(quests, key))
-  ipcMain.handle(CHANNELS.readSettings, () => readSettings(settings))
-  ipcMain.handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))
-  ipcMain.handle(CHANNELS.readSettingsPage, (_, key: unknown) => realms.readSettingsPage(places, key))
-  ipcMain.handle(CHANNELS.setTaskLog, (_, key: unknown, path: unknown) => realms.setTaskLog(places, key, path))
-  ipcMain.handle(CHANNELS.showRecord, (_, key: unknown) => realms.showRecord(places, key))
-  ipcMain.handle(CHANNELS.openFolder, () => realms.openFolder(places))
-  ipcMain.handle(CHANNELS.addProject, (_, path: unknown) => realms.addProject(places, path))
-  ipcMain.handle(CHANNELS.restoreRealm, (_, key: unknown) => realms.restoreRealm(places, key))
-  ipcMain.handle(CHANNELS.installCommand, () => installCommand(places))
-  ipcMain.handle(CHANNELS.readGithub, () => github.readGithub())
-  ipcMain.handle(CHANNELS.startGithubLogin, () => github.startGithubLogin())
-  ipcMain.handle(CHANNELS.openGithubLogin, () => github.openGithubLogin())
-  ipcMain.handle(CHANNELS.awaitGithubLogin, () => github.awaitGithubLogin())
-  ipcMain.handle(CHANNELS.cancelGithubLogin, () => github.cancelGithubLogin())
-  ipcMain.handle(CHANNELS.readLibrary, () => library.readLibrary())
-  ipcMain.handle(CHANNELS.addBook, (_, book: unknown) => library.addBook(book))
-  ipcMain.handle(CHANNELS.setBookPage, (_, id: unknown, page: unknown) => library.setBookPage(id, page))
-  ipcMain.handle(CHANNELS.finishBook, (_, id: unknown) => library.finishBook(id))
-  ipcMain.handle(CHANNELS.removeBook, (_, id: unknown) => library.removeBook(id))
-  ipcMain.handle(CHANNELS.takeOpened, () => reply(log, MESSAGES.openFolder, async () => takeOpened()))
-  ipcMain.handle(CHANNELS.readChoices, (_, key: unknown, taskId: unknown) => tasks.readChoices(quests, key, taskId))
-  ipcMain.handle(CHANNELS.setPriority, (_, key: unknown, taskId: unknown, priority: unknown) => tasks.setPriority(quests, key, taskId, priority))
-  ipcMain.handle(CHANNELS.togglePlayNext, (_, key: unknown, taskId: unknown) => tasks.togglePlayNext(quests, key, taskId))
-  ipcMain.handle(CHANNELS.fileQuest, (_, key: unknown, quest: unknown) => tasks.fileQuest(quests, key, quest))
-  ipcMain.handle(CHANNELS.moveQuest, (_, key: unknown, taskId: unknown, parentId: unknown) => tasks.moveQuest(quests, key, taskId, parentId))
-  ipcMain.handle(CHANNELS.sealQuest, (_, key: unknown, taskId: unknown, seal: unknown) => tasks.sealQuest(quests, key, taskId, seal))
-  ipcMain.handle(CHANNELS.unsealQuest, (_, key: unknown, taskId: unknown) => tasks.unsealQuest(quests, key, taskId))
-  ipcMain.handle(CHANNELS.removeQuest, (_, key: unknown, taskId: unknown) => tasks.removeQuest(quests, key, taskId))
-  ipcMain.handle(CHANNELS.restoreQuest, (_, key: unknown, taskId: unknown) => tasks.restoreQuest(quests, key, taskId))
-  ipcMain.handle(CHANNELS.editQuest, (_, key: unknown, taskId: unknown, edit: unknown) => tasks.editQuest(quests, key, taskId, edit))
-  ipcMain.handle(CHANNELS.setActiveSaga, (_, key: unknown, taskId: unknown) => tasks.setActiveSaga(quests, key, taskId))
-  ipcMain.handle(CHANNELS.setTimeBudget, (_, key: unknown, budget: unknown) => live.setTimeBudget(quests, key, budget))
-  ipcMain.handle(CHANNELS.readLive, (_, key: unknown) => live.readLive(quests, key))
-  ipcMain.handle(CHANNELS.readQuestFacts, (_, key: unknown, taskId: unknown) => readQuestFacts(quests, key, taskId))
-  ipcMain.handle(CHANNELS.switchBranch, (_, key: unknown) => live.switchBranch(quests, key))
-  ipcMain.handle(CHANNELS.checkStart, (_, key: unknown, taskId: unknown) => setOut.checkStart(quests, key, taskId))
-  ipcMain.handle(CHANNELS.startQuest, (_, key: unknown, taskId: unknown) => setOut.startQuest(quests, key, taskId))
-  ipcMain.handle(CHANNELS.openClaude, (_, key: unknown) => setOut.openClaude(quests, key))
-  ipcMain.handle(CHANNELS.notYet, (_, key: unknown, taskId: unknown) => finish.notYet(quests, key, taskId))
-  ipcMain.handle(CHANNELS.finishQuest, (_, key: unknown, taskId: unknown, actual: unknown, logPath: unknown) => finish.finishQuest(quests, key, taskId, actual, logPath))
-  ipcMain.handle(CHANNELS.retryTaskLog, (_, key: unknown, taskId: unknown, path: unknown) => finish.retryTaskLog(quests, key, taskId, path))
-  ipcMain.handle(CHANNELS.putBackQuest, (_, key: unknown, taskId: unknown, seal: unknown) => back.putBackQuest(quests, key, taskId, seal))
-  ipcMain.handle(CHANNELS.putBackNow, (_, key: unknown, taskId: unknown) => back.putBackNow(quests, key, taskId))
-  ipcMain.handle(CHANNELS.copyText, (_, text: unknown) => setOut.copyText(quests, text))
+  handle(CHANNELS.listProjects, () => listProjects(projects))
+  handle(CHANNELS.readProject, (_, key: unknown) => readProject(projects, key))
+  handle(CHANNELS.readGame, () => readGame(game))
+  handle(CHANNELS.readHoard, () => readHoard(game))
+  handle(CHANNELS.readChronicle, (_, scope: unknown, day: unknown) => readChronicle(game, scope, day))
+  handle(CHANNELS.readMana, (_, key: unknown) => readMana(quests, key))
+  handle(CHANNELS.readSettings, () => readSettings(settings))
+  handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))
+  handle(CHANNELS.readSettingsPage, (_, key: unknown) => realms.readSettingsPage(places, key))
+  handle(CHANNELS.setTaskLog, (_, key: unknown, path: unknown) => realms.setTaskLog(places, key, path))
+  handle(CHANNELS.showRecord, (_, key: unknown) => realms.showRecord(places, key))
+  handle(CHANNELS.openFolder, () => realms.openFolder(places))
+  handle(CHANNELS.addProject, (_, path: unknown) => realms.addProject(places, path))
+  handle(CHANNELS.restoreRealm, (_, key: unknown) => realms.restoreRealm(places, key))
+  handle(CHANNELS.installCommand, () => installCommand(places))
+  handle(CHANNELS.readGithub, () => github.readGithub())
+  handle(CHANNELS.startGithubLogin, () => github.startGithubLogin())
+  handle(CHANNELS.openGithubLogin, () => github.openGithubLogin())
+  handle(CHANNELS.awaitGithubLogin, () => github.awaitGithubLogin())
+  handle(CHANNELS.cancelGithubLogin, () => github.cancelGithubLogin())
+  handle(CHANNELS.readLibrary, () => library.readLibrary())
+  handle(CHANNELS.addBook, (_, book: unknown) => library.addBook(book))
+  handle(CHANNELS.setBookPage, (_, id: unknown, page: unknown) => library.setBookPage(id, page))
+  handle(CHANNELS.finishBook, (_, id: unknown) => library.finishBook(id))
+  handle(CHANNELS.removeBook, (_, id: unknown) => library.removeBook(id))
+  handle(CHANNELS.takeOpened, () => reply(log, MESSAGES.openFolder, async () => takeOpened()))
+  handle(CHANNELS.readChoices, (_, key: unknown, taskId: unknown) => tasks.readChoices(quests, key, taskId))
+  handle(CHANNELS.setPriority, (_, key: unknown, taskId: unknown, priority: unknown) => tasks.setPriority(quests, key, taskId, priority))
+  handle(CHANNELS.togglePlayNext, (_, key: unknown, taskId: unknown) => tasks.togglePlayNext(quests, key, taskId))
+  handle(CHANNELS.fileQuest, (_, key: unknown, quest: unknown) => tasks.fileQuest(quests, key, quest))
+  handle(CHANNELS.moveQuest, (_, key: unknown, taskId: unknown, parentId: unknown) => tasks.moveQuest(quests, key, taskId, parentId))
+  handle(CHANNELS.sealQuest, (_, key: unknown, taskId: unknown, seal: unknown) => tasks.sealQuest(quests, key, taskId, seal))
+  handle(CHANNELS.unsealQuest, (_, key: unknown, taskId: unknown) => tasks.unsealQuest(quests, key, taskId))
+  handle(CHANNELS.removeQuest, (_, key: unknown, taskId: unknown) => tasks.removeQuest(quests, key, taskId))
+  handle(CHANNELS.restoreQuest, (_, key: unknown, taskId: unknown) => tasks.restoreQuest(quests, key, taskId))
+  handle(CHANNELS.editQuest, (_, key: unknown, taskId: unknown, edit: unknown) => tasks.editQuest(quests, key, taskId, edit))
+  handle(CHANNELS.setActiveSaga, (_, key: unknown, taskId: unknown) => tasks.setActiveSaga(quests, key, taskId))
+  handle(CHANNELS.setTimeBudget, (_, key: unknown, budget: unknown) => live.setTimeBudget(quests, key, budget))
+  handle(CHANNELS.readLive, (_, key: unknown) => live.readLive(quests, key))
+  handle(CHANNELS.readQuestFacts, (_, key: unknown, taskId: unknown) => readQuestFacts(quests, key, taskId))
+  handle(CHANNELS.switchBranch, (_, key: unknown) => live.switchBranch(quests, key))
+  handle(CHANNELS.readBranches, (_, key) => branches.readBranches(quests, key))
+  handle(CHANNELS.readBranch, (_, key, id, target) => branches.readBranch(quests, key, id, target))
+  handle(CHANNELS.readMergeWorkspace, (_, key, id) => branches.readMergeWorkspace(quests, key, id))
+  handle(CHANNELS.prepareMerge, (_, key, request) => branches.prepareMerge(branchActions, key, request))
+  handle(CHANNELS.resolveMergeFile, (_, key, request) => branches.resolveMergeFile(branchActions, key, request))
+  handle(CHANNELS.completeMerge, (_, key, request) => branches.completeMerge(branchActions, key, request))
+  handle(CHANNELS.abandonMerge, (_, key, id) => branches.abandonMerge(branchActions, key, id))
+  handle(CHANNELS.openMergeFolder, (_, key, id) => branches.openMergeFolder(branchActions, key, id))
+  handle(CHANNELS.commitBranchFiles, (_, key, request) => commitBranchFiles(branchActions, key, request))
+  handle(CHANNELS.readPush, (_, key, id, remote) => readPush(quests, key, id, remote))
+  handle(CHANNELS.pushMerge, (_, key, request) => pushMerge(branchActions, key, request))
+  handle(CHANNELS.checkStart, (_, key: unknown, taskId: unknown) => setOut.checkStart(quests, key, taskId))
+  handle(CHANNELS.startQuest, (_, key: unknown, taskId: unknown, platform: unknown) => setOut.startQuest(quests, key, taskId, platform))
+  handle(CHANNELS.openClaude, (_, key: unknown, taskId?: unknown) => setOut.openClaude(quests, key, taskId))
+  handle(CHANNELS.continueIn, (_, key: unknown, taskId: unknown, platform: unknown) => setOut.continueIn(quests, key, taskId, platform))
+  handle(CHANNELS.notYet, (_, key: unknown, taskId: unknown) => finish.notYet(quests, key, taskId))
+  handle(CHANNELS.finishQuest, (_, key: unknown, taskId: unknown, actual: unknown, logPath: unknown) => finish.finishQuest(quests, key, taskId, actual, logPath))
+  handle(CHANNELS.retryTaskLog, (_, key: unknown, taskId: unknown, path: unknown) => finish.retryTaskLog(quests, key, taskId, path))
+  handle(CHANNELS.putBackQuest, (_, key: unknown, taskId: unknown, seal: unknown) => back.putBackQuest(quests, key, taskId, seal))
+  handle(CHANNELS.putBackNow, (_, key: unknown, taskId: unknown) => back.putBackNow(quests, key, taskId))
+  handle(CHANNELS.copyText, (_, text: unknown) => setOut.copyText(quests, text))
   ipcMain.on(CHANNELS.log, (_, level: unknown, text: unknown) => {
     const line = `window: ${String(text)}`
     if (level === 'warn') log.warn(line)
@@ -154,25 +199,29 @@ const serveEngine = () => {
   })
 }
 
-const openWindow = async (): Promise<BrowserWindow> => {
+// Given after an update restart, so the window comes back where it was, and
+// stays behind what you're using when you weren't using it.
+const openWindow = async (restored?: Restored): Promise<BrowserWindow> => {
   const window = new BrowserWindow({
     ...WINDOW,
+    ...restored?.bounds,
     ...windowChrome,
     show: false,
     title: 'Queue-tea',
     webPreferences: { preload: join(__dirname, '../preload/preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false },
   })
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', () => (restored?.isInFront === false ? window.showInactive() : window.show()))
   window.once('closed', () => {
     isWindowListening = false
   })
   // Nothing inside the app navigates away from it.
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.on('will-navigate', event => event.preventDefault())
   window.webContents.on('render-process-gone', (_, details) => log.error(`the window's process ended: ${details.reason}`))
 
   const devServer = process.env.ELECTRON_RENDERER_URL
   if (devServer !== undefined) await window.loadURL(devServer)
-  else await window.loadFile(join(__dirname, '../renderer/index.html'))
+  else await window.loadFile(join(__dirname, '../renderer/index.html'), { hash: restored?.hash })
 
   return window
 }
@@ -237,10 +286,62 @@ const tellWindows = () => {
 
 const sendMenu = (item: MenuItem) => (BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0])?.webContents.send(CHANNELS.menu, item)
 
+// The bundle this app runs from: an install swaps a new one in under it.
+const bundle = resolve(app.getPath('exe'), '../../..')
+const restartFile = join(app.getPath('userData'), RESTART_FILE)
+
+const restart = async (isInFront: boolean) => {
+  const [window] = BrowserWindow.getAllWindows()
+  const restored: Restored = window === undefined ? null : { hash: new URL(window.webContents.getURL()).hash, bounds: window.getBounds(), isInFront }
+  await host.write(restartFile, JSON.stringify(restored))
+  const relaunched = await host.run(relaunchArgv(process.pid, bundle, isInFront))
+  if (relaunched.exitCode !== 0) throw new Error(relaunched.stderr)
+  app.exit(0)
+}
+
+const askRestart = async (version: string): Promise<boolean> => {
+  const options = { type: 'info' as const, message: UPDATE_TEXT.ready(version), detail: UPDATE_TEXT.detail, buttons: [UPDATE_TEXT.restartNow, UPDATE_TEXT.later], defaultId: 0, cancelId: 1 }
+  const [window] = BrowserWindow.getAllWindows()
+  const { response } = window === undefined ? await dialog.showMessageBox(options) : await dialog.showMessageBox(window, options)
+
+  return response === 0
+}
+
+const checkUpdate = updateWatch({
+  running: app.getVersion(),
+  installed: async () => versionOfPlist(await host.read(join(bundle, 'Contents/Info.plist'))),
+  isAway: () => BrowserWindow.getFocusedWindow() === null,
+  isBusy: async () => {
+    if (callsRunning > 0) return true
+    const [window] = BrowserWindow.getAllWindows()
+
+    return window !== undefined && (await window.webContents.executeJavaScript(BUSY_PROBE)) === true
+  },
+  ask: askRestart,
+  restart,
+  log,
+})
+
+// Read once, after an update restart; any other launch has no file.
+const takeRestored = async (): Promise<Restored | undefined> => {
+  if (!(await host.exists(restartFile))) return undefined
+  try {
+    return restoredOf(await host.read(restartFile))
+  } catch (err) {
+    log.error('reading where the window was before the update failed', err)
+
+    return undefined
+  } finally {
+    await host.remove(restartFile)
+  }
+}
+
 const start = async () => {
   serveEngine()
   Menu.setApplicationMenu(Menu.buildFromTemplate(appMenu(app.getName(), flavor === 'dev', sendMenu)))
-  await openWindow()
+  const restored = await takeRestored()
+  // Closed before the restart: it stays closed until the Dock icon opens it.
+  if (restored !== null) await openWindow(restored)
   await checkJudgements()
   try {
     await watchFolders([projectsFolder(home), sessionsFolder(home)], tellWindows, { settleMs: WATCH_SETTLE_MS, sweepMs: SWEEP_MS, log })
@@ -248,6 +349,8 @@ const start = async () => {
     log.error("watching ~/.queue-tea failed, so changes show when the app is reopened", err)
   }
   setInterval(tellWindows, STALE_CHECK_MS)
+  // Only a packaged app has a bundle that an install replaces.
+  if (app.isPackaged) setInterval(() => void checkUpdate(), UPDATE_CHECK_MS)
 }
 
 app

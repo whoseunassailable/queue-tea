@@ -203,7 +203,7 @@ export async function afterClear(p: Ports) {
 export async function saveBeforeClear(p: Ports) {
   const ctx = live.ctx
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, ctx)
   if (ctx === null || current === null || isStartingFresh()) return
   const tokens = (await p.session.usage()).context.tokens
   if (tokens === undefined || tokens < CLEAR_CHECKPOINT_TOKENS) return

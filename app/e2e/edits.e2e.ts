@@ -223,9 +223,9 @@ test('the detail pane keeps a description and criteria', async () => {
 test('every edit left a record the mod can read, with a good copy beside it', async () => {
   const record = await onDisk()
 
-  expect(record.version).toBe(1)
+  expect(record.version).toBe(2)
   expect(Array.isArray(record.requests)).toBe(true)
-  expect(JSON.parse(await readFile(`${file}.bak`, 'utf8')).version).toBe(1)
+  expect(JSON.parse(await readFile(`${file}.bak`, 'utf8')).version).toBe(2)
 })
 
 test('the sheet, for looking at', async () => {

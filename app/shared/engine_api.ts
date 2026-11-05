@@ -1,4 +1,5 @@
-import type { Allowance, AppRequest, Difficulty, ParentPick, Priority, Task, TaskActivity } from '../../types'
+import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest } from './branches'
+import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -47,6 +48,8 @@ export type QuestRow = {
   // What the checkpoint can fill the description and criteria with.
   goal: string | null
   acceptance: string[]
+  // The helpers Claude is asked to use on it.
+  helpers: HelperId[]
 }
 
 export type BoardEntry =
@@ -67,8 +70,26 @@ export type ActiveQuest = {
   filesChanged: number
   review: Task['review']
   criteria: string[]
+  helpers: HelperId[]
   // What an open session has been asked to do and hasn't yet.
   asking: AppRequest['kind'] | null
+  // When it went to Codex; null while Claude Code has it.
+  codexSince: string | null
+  worktreePath: string | null
+  baseBranch: string | null
+  parentId: string | null
+  session?: SessionInfo
+}
+
+export type BranchQuest = {
+  id: string
+  title: string
+  branch: string
+  baseBranch: string | null
+  path: string
+  state: 'queued' | 'current' | 'done'
+  platform: Platform | null
+  parent: { id: string; title: string } | null
 }
 
 export type VictoryRow = { id: string; title: string; finished: string; minutes: number; xp: number }
@@ -81,6 +102,8 @@ export type ProjectView =
       path: string
       session: SessionInfo
       active: ActiveQuest | null
+      activeQuests: ActiveQuest[]
+      branches: BranchQuest[]
       ready: BoardEntry[]
       sealed: BoardEntry[]
       canStart: number
@@ -203,7 +226,7 @@ export type Opened = { kind: 'folder'; pick: FolderPick } | { kind: 'judgement';
 export type QuestChoice = { id: string; title: string; detail: string | null }
 export type Choices = { features: QuestChoice[]; lone: QuestChoice[]; parents: QuestChoice[]; waitFor: QuestChoice[] }
 
-export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[] }
+export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[]; helpers: HelperId[] }
 export type Seal = { waitFor: string } | { reason: string }
 
 // What a quest carries, for its detail pane. active is only set for the quest
@@ -229,7 +252,7 @@ export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToB
 
 // What has moved under the quest in hand.
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }
-export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty }
+export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[] }
 
 // What keeps a quest from starting. The reason is the engine's own sentence,
 // and a command is only ever text to copy.
@@ -243,6 +266,7 @@ export type StartCheck = { kind: 'held'; hold: GitHold } | { kind: 'clear'; step
 // How the quest reached Claude Code. Failed keeps the line to copy.
 export type Handover = { kind: 'session' } | { kind: 'opened'; terminal: TerminalChoice } | { kind: 'failed'; terminal: TerminalChoice; command: string }
 export type StartOutcome = { kind: 'held'; hold: GitHold } | { kind: 'started'; view: ProjectView; branch: string | null; notice: string | null; handover: Handover }
+export type ContinueOutcome = { view: ProjectView; handover: Handover; isCodexTimeLost: boolean }
 
 // What a win earned. Worked out after the win is saved.
 export type VictoryKind = 'quest' | 'boss' | 'saga'
@@ -265,12 +289,13 @@ export type Victory = {
 
 // logFailedAt is the path when the row couldn't be written; the win stands.
 export type LogOutcome = { view: ProjectView; logPath: string | null; logFailedAt: string | null }
-export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | null }
+// isCodexTimeLost: Codex's log couldn't be read, so its time wasn't added.
+export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | null; isCodexTimeLost: boolean }
 
 // Asked: an open session writes the checkpoint, then the quest goes back. Back:
 // it has gone. missedCheckpoint is set when Claude's checkpoint wasn't written,
 // with when the last one was.
-export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null }
+export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null; isCodexTimeLost: boolean }
 
 // The accounts gh knows. isWorking is false when a sign-in has lapsed. The app
 // never holds a token: they stay in gh.
@@ -332,9 +357,21 @@ export type EngineApi = {
   readLive: (key: string) => Promise<Reply<LiveFacts>>
   readQuestFacts: (key: string, taskId: string) => Promise<Reply<QuestFacts>>
   switchBranch: (key: string) => Promise<Reply<null>>
+  readBranches: (key: string) => Promise<Reply<BranchGraph>>
+  readBranch: (key: string, taskId: string, target: string | null) => Promise<Reply<BranchReview>>
+  readMergeWorkspace: (key: string, operationId: string) => Promise<Reply<MergeWorkspace>>
+  prepareMerge: (key: string, request: MergeRequest) => Promise<Reply<MergeWorkspace>>
+  resolveMergeFile: (key: string, request: ResolveRequest) => Promise<Reply<MergeWorkspace>>
+  completeMerge: (key: string, request: CompleteRequest) => Promise<Reply<MergeWorkspace>>
+  abandonMerge: (key: string, operationId: string) => Promise<Reply<MergeWorkspace>>
+  openMergeFolder: (key: string, operationId: string) => Promise<Reply<null>>
+  commitBranchFiles: (key: string, request: CommitRequest) => Promise<Reply<BranchReview>>
+  readPush: (key: string, operationId: string, remote: string) => Promise<Reply<PushPreview>>
+  pushMerge: (key: string, preview: PushPreview) => Promise<Reply<MergeWorkspace>>
   checkStart: (key: string, taskId: string) => Promise<Reply<StartCheck>>
-  startQuest: (key: string, taskId: string) => Promise<Reply<StartOutcome>>
-  openClaude: (key: string) => Promise<Reply<Handover>>
+  startQuest: (key: string, taskId: string, platform: Platform) => Promise<Reply<StartOutcome>>
+  openClaude: (key: string, taskId?: string) => Promise<Reply<Handover>>
+  continueIn: (key: string, taskId: string, platform: Platform) => Promise<Reply<ContinueOutcome>>
   notYet: (key: string, taskId: string) => Promise<Reply<ProjectView>>
   finishQuest: (key: string, taskId: string, actual: Difficulty, logPath: string | null) => Promise<Reply<FinishOutcome>>
   retryTaskLog: (key: string, taskId: string, path: string) => Promise<Reply<LogOutcome>>
@@ -390,9 +427,21 @@ export const CHANNELS = {
   readLive: 'engine:read-live',
   readQuestFacts: 'engine:read-quest-facts',
   switchBranch: 'engine:switch-branch',
+  readBranches: 'engine:read-branches',
+  readBranch: 'engine:read-branch',
+  readMergeWorkspace: 'engine:read-merge-workspace',
+  prepareMerge: 'engine:prepare-merge',
+  resolveMergeFile: 'engine:resolve-merge-file',
+  completeMerge: 'engine:complete-merge',
+  abandonMerge: 'engine:abandon-merge',
+  openMergeFolder: 'engine:open-merge-folder',
+  commitBranchFiles: 'engine:commit-branch-files',
+  readPush: 'engine:read-push',
+  pushMerge: 'engine:push-merge',
   checkStart: 'engine:check-start',
   startQuest: 'engine:start-quest',
   openClaude: 'engine:open-claude',
+  continueIn: 'engine:continue-in',
   notYet: 'engine:not-yet',
   finishQuest: 'engine:finish-quest',
   retryTaskLog: 'engine:retry-task-log',

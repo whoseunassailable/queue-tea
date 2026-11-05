@@ -26,6 +26,7 @@ const setup = (over: Partial<Task> = {}) => {
       diffSince: async () => ({ linesAdded: 0, linesRemoved: 0, filesTouched: 0 }), drift: async () => [], commitsBetween: async () => [],
     },
     taskLog: {} as Deps['taskLog'],
+    codex: { activitySince: async () => [] },
     env: { now: async () => Date.parse('2026-11-04T12:00:00Z'), newId: () => `activity-${++id}`, log: vi.fn() },
   }
 

@@ -4,6 +4,9 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: out/provenance.json
+    to: provenance.json
 # Everything is bundled, so nothing is needed from node_modules.
 electronDist: node_modules/electron/dist
 npmRebuild: false

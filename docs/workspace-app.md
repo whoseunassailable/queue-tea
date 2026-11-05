@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac.
+- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)).
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -14,20 +14,21 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 
 ## In this release
 
-- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (read-only), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
+- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (read-only; helpers are turned on per quest, not in the hall), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
 - **The look:** Jade Peaks. A sky behind every screen follows the clock: morning, day and evening on light panels, the lantern night on dark ones. Settings can fix the sky to one time of day and has Calm mode, which stops every animation.
 - **The game layer:** XP, levels, a lóng that grows from egg to elder, a day streak, gold and seven badges. All of it is worked out from the record.
-- **New record fields:** `description`, `criteria` and `review` on every task, and `requests` on the record.
+- **New record fields:** `description`, `criteria` and `review` on every task, and `requests` on the record. Each task also gets `helpers`, the helpers Claude uses on it, which Rohan turns on or off per quest (Tea-DD is on by default), and `codexSince`, when the quest went to Codex.
+- **Codex in place of Claude Code:** **Start in Codex** beside Start, and **Continue in Codex** and **Continue in Claude Code** on the active quest, for when Claude's 5-hour allowance runs out. Claude Code stays the default.
 - **In the mod:** session files, handling the app's requests, setting `review`, and an "Open in Queue-tea app" entry in the tea-cup menu.
 - **Opening the app on a project:** a `queue-tea` command line tool and a `queue-tea://` URL.
 
 ## Not in this release
 
 - **The Board tab.** It comes with tasks side by side (sub-project 4), when In progress and Review can hold several cards.
-- **The other 2.0 sub-projects:** helpers handed work from the Guild Hall (2), Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4) and lifecycle hardening (5). No placeholders for any of them.
+- **The other 2.0 sub-projects:** helpers handed work from the Guild Hall (2), Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4, planned in [plan-parallel-quests.md](plan-parallel-quests.md)) and lifecycle hardening (5). No placeholders for any of them.
 - **Windows.** It comes after the Mac (see Decisions).
 - **A phone or web app.** The window talks to the engine through one typed API, so HTTP can sit behind it later.
-- **Also left out:** a menu-bar cup, notarisation and auto-update.
+- **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own commits.
 - **From the game:** a shop to spend gold, naming the dragon, and quests or rewards from the helpers.
 - **Commit, Push, Merge and Pull buttons, ever.** Git commands appear only as text to copy (criterion 3 of the design).
 
@@ -44,12 +45,14 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | Look | Jade Peaks, from 28 Oct; Tea House before that | Rohan wanted a fun, game-style app with dragons and living, colourful backgrounds. The day takes its feel from Liyue in Genshin Impact; the night is a lantern-and-aurora sky. The art is original |
 | Game layer | Full: XP, levels, a growing dragon, streak, gold, badges, quests | Rohan's pick on 28 Oct. Worked out from the record, so nothing new is stored and the engine doesn't change |
 | Sky | Follows the clock; Settings can fix it | Rohan's ask: a pink morning, a blue day and so on, with the night on dark panels |
-| Guild Hall (the Tea Room) | In, read-only | Cheap, carries the character, and teaches the @-mentions that work today |
+| Guild Hall (the Tea Room) | In, read-only; helpers are turned on per quest, not in the hall | Cheap, carries the character, and teaches the @-mentions that work today |
 | Single-letter keys | The terminal's letters, off inside text fields, a switch in Settings | Same muscle memory in both places |
 | Description and criteria | On every task, collapsed when empty | Any task becomes a feature once it has children |
 | VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
 | The rest | The suggested answers in section 8 of the design | Rohan took them all on 2026-10-27 |
-| Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and auto-update would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
+| Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and downloaded updates would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
+| Updating an open app | Added 2026-11-03. Each commit's build is swapped in under the open app, which restarts itself when you're away from it with nothing half done, back on the same screen and in the same place. A new major version asks first if you're using the window | Rohan asked that an update never stop his work unless it's a big one. Restarting is the only way to run new code: the open app can't reload its own files |
+| Codex | Added 2026-11-03. Any quest can start on Codex, or move to it and back. Claude Code keeps the first button; a hint names Codex when Claude's allowance is used up | Rohan's 5-hour allowance runs out partway through quests. Codex has no Queue-tea mod, so its own sandbox stands in for the git guard |
 
 ## Architecture
 
@@ -99,6 +102,20 @@ Edits are optimistic. The window changes in the same frame, main writes within 3
 
 Main watches the folders `~/.queue-tea/projects` and `~/.queue-tea/sessions`, not single files: the atomic replace swaps the file, so a watch on the file goes stale. Because `fs.watch` on macOS can drop or repeat events, every event is checked against the file's `mtimeMs`. A changed record is reloaded and sent to the window, its changed rows flash, and a field being edited keeps its text (section 4.16 of the design).
 
+### Updating while open
+
+`tools/install_app.sh` copies the new build in beside the open app and swaps it in by renaming, never by writing over files: macOS kills an app whose open files change under it, and a renamed bundle keeps everything the open app has already read.
+
+Every 30 seconds a packaged app compares the version in its bundle's `Info.plist` with its own. When they differ, the rules in `main/features/update/domain/update_watch.ts` decide:
+
+| Situation | What the app does |
+| --- | --- |
+| No window of ours has the keyboard, and nothing is half done | Restarts behind what you're using (`open -g`, then `showInactive`) |
+| You're using the window, minor or patch version | Waits |
+| You're using the window, new major version | Asks once: Restart now, or Later. Later waits like a minor one |
+
+Half done means a dialog is open, a text field holds the keyboard, or an engine call that changes something is still running. Calls that only read (`list-`, `read-`, `check-`) don't count: the window rereads every 30 seconds, so they would hold an update off for good. Before it exits, the app writes the window's screen and bounds to `restart.json` in its settings folder. The new copy reads it once, deletes it and opens the window there. With no window open, the new copy opens none until the Dock icon is clicked.
+
 ### Sessions: the mod tells the app where Claude Code is
 
 The mod writes `~/.queue-tea/sessions/<session id>.json` at session start, as each turn starts and ends, and every 30 s, and removes it at session end. Its shape is in section 6 of the design. A file whose heartbeat is older than 90 s counts as no session, which covers a session that crashed; the next session to start removes such files. With several fresh files for one project, the pill shows "several sessions".
@@ -134,11 +151,32 @@ Settings offers Terminal (the default), iTerm2 and VS Code.
 
 Open in Claude Code never starts a second session: with one open it only brings the chosen terminal forward. The choice is kept in the app's settings, with Terminal as the default.
 
+### Codex: a quest without Claude Code
+
+Two engine API calls carry it. What Codex is told, its guard and how its time is counted are in the spec ([Codex in place of Claude Code](spec.md#codex-in-place-of-claude-code), [the git guard](spec.md#the-git-guard), [Time](spec.md#time)).
+
+- **`startQuest(key, taskId, platform)`.** `platform` is `'claude'` (the main Start button) or `'codex'` (**Start in Codex**); anything else is refused with "Pick Claude Code or Codex." For `'codex'`, the git check and the branch are the same as for Claude. Then main adds no `begin` request: it writes the brief to `~/.queue-tea/briefs/<task id>.md` and opens the chosen terminal on `cd '<quest folder>' && codex --sandbox workspace-write --ask-for-approval on-request "$(cat '<brief file>')"`. The brief comes from a file because text typed through AppleScript would break its quotes and lines. VS Code opens the folder and gets that whole line copied, with the toast "The Codex line is copied: paste it in VS Code's terminal".
+- **`continueIn(key, taskId, platform)`** moves the active quest and returns `{ view, handover, isCodexTimeLost }`. A quest that is no longer active is refused: "That quest is no longer the active one, so nothing moved."
+  - **To `'codex'`** (**Continue in Codex**): refused while that quest's session is working, with "Claude Code is still working on <title>. Wait for its turn to end, or stop it with Esc in its terminal, then try again. Nothing has changed." Otherwise the quest's waiting requests are dropped, `codexSince` is set, and Codex opens with a fresh brief. **Open Codex again** is the same call on a quest already with Codex: `codexSince` keeps its first time, and a new Codex opens, for when its window was closed.
+  - **To `'claude'`** (**Continue in Claude Code**): Codex's time is added, `codexSince` goes back to null, and the quest is handed over as Start hands it: a `begin` request, and a terminal running `claude` when no session is open.
+
+**Show Codex** is `openClaude` on a quest with Codex. It only brings the chosen terminal forward: the app can't see whether Codex is still running, and a second Codex must not start. If bringing the terminal forward fails, the recovery command opens Codex with the quest's brief. Bringing VS Code forward copies nothing and shows no paste hint.
+
+Finish, Back to the board and Seal on a quest with Codex read Codex's log before they save. Back to the board asks no session for a checkpoint and puts the quest back at once. `FinishOutcome`, `BackOutcome` and `ContinueOutcome` carry `isCodexTimeLost`; when it is true, the toast says "Couldn't read Codex's log, so this quest's time on Codex wasn't added."
+
+### Parallel quests and the Branches tab
+
+Quests and Home show all current quests. Start and Start in Codex stay available for queued, unsealed quests, even with others active. Each new start creates its own worktree from main, keeping the original folder untouched. Existing current quests keep their original folder. The Branches tab sits immediately after Quests: base branch → quest cards, with platform, status, worktree folder, saga and terminal controls. The keyboard tabs are Home ⌘1, Quests ⌘2, Branches ⌘3, Chronicle ⌘4 and Mana ⌘5.
+
+`ProjectView.activeQuests` holds every active card and its folder's session; `active` remains the primary quest for Home shortcuts. `branches` includes queued, active and finished quests with saved branches. `openClaude(key, taskId)` addresses the selected quest. `readMerge(key, taskId)` checks local merge readiness and returns commands as text. Merge instructions shows loading, errors with retry, conflicts, readiness or already merged status. No Git commit, push or merge runs from the app.
+
+The full behavior and safe folder retention are in [Parallel quests and branches](spec.md#parallel-quests-and-branches). The implementation decisions are recorded in [plan-parallel-quests.md](plan-parallel-quests.md).
+
 ## Data
 
 Section 6 of the design lists every field: what each screen reads, the new fields with their defaults, the session file and the app's own settings. The rules:
 
-- The record stays at version 1.
+- The record writes version 2. Version 1 loads with null worktree paths; newer unsupported versions remain unreadable.
 - New fields get their defaults in `withDefaults` and `parseRecord`.
 - Fields one side doesn't know survive the other side's read-modify-write. `parseRecord` already keeps unknown top-level fields; tasks must keep theirs too, with a test for both.
 - Not saved anywhere: the git hold, Time I have, the selection and the search.
@@ -158,6 +196,9 @@ Section 6 of the design lists every field: what each screen reads, the new field
 | The app quits mid-operation | Each operation is one locked write, so the record is either before or after it |
 | Uncommitted work, unpushed commits, a deleted branch, not a git repository | Section 4.6 of the design |
 | The record changes while a sheet is open | The sheet stays and keeps its text; the list behind it reloads |
+| Continue in Codex while Claude Code's turn runs | Refused with nothing changed; the toast says why and offers Try again |
+| Codex's log can't be read | The quest still finishes, goes back or moves; the toast says its time on Codex wasn't added |
+| The Codex brief can't be written | The open-failed card, as when a terminal won't open. Its line to copy carries the brief itself, so it works without the file |
 
 ## Testing
 

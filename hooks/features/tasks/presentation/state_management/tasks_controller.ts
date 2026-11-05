@@ -12,8 +12,12 @@ import { gitRepositoryOf } from '../../../../shared/git/git_providers'
 import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
 import { isoLocal } from '../../../../shared/time/domain/services/time'
 import { applySaved, markUnreadable } from '../../../../shared/records/presentation/state_management/records_controller'
+import { isHelperId } from '../../../../shared/records/domain/services/helpers'
+import { helperToRemind } from '../../domain/services/task_rules'
 import type { Block } from '../../domain/services/task_rules'
+import { markRemindedUseCase, noteHelperUseCase } from '../../domain/usecases/helpers_run'
 import { finishTaskUseCase } from '../../domain/usecases/finish_task'
+import { leaveCodexUseCase } from '../../domain/usecases/leave_codex'
 import { putBackUseCase } from '../../domain/usecases/put_back'
 import { saveDocsPathUseCase } from '../../domain/usecases/save_docs_path'
 import { setReviewUseCase } from '../../domain/usecases/set_review'
@@ -21,18 +25,19 @@ import { startTaskUseCase } from '../../domain/usecases/start_task'
 import { switchToTaskUseCase } from '../../domain/usecases/switch_to_task'
 import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
+import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
 import { clearHold } from './hold'
 
 const DOCS_LOG = 'docs/task_log.md'
 
 export const taskSection = (record: ProjectRecord | null) => {
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null) return null
 
   return {
     id: 'queue-tea:task',
     scope: 'session' as const,
-    text: `The current Queue-tea task is "${current.title}". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`,
+    text: [TASK_LINE(current.title), ...HELPER_LINES.filter(([id]) => current.helpers.on.includes(id)).map(([, line]) => line)].join('\n'),
   }
 }
 
@@ -88,12 +93,52 @@ const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' 
   return 'started'
 }
 
-// The done question, with what Claude says it checked when it says.
-export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<void> => {
-  const line = typeof checked === 'string' ? checked.trim().slice(0, 300) : ''
+// The done question, with what Claude says it checked when it says. A helper
+// that is on and has not run is reminded once; after that Rohan is asked.
+export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<string> => {
+  const record = await p.get('record')
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
+  const helper = current === null ? null : helperToRemind(current)
+  let line = typeof checked === 'string' ? checked.trim().slice(0, 300) : ''
+  if (current !== null && helper !== null) {
+    const name = HELPER_NAMES[helper]
+    if (!current.helpers.reminded && (await markReminded(p, current.id))) return REMIND(name)
+    line = `${line} ${DIDNT_RUN(name)}`.trim()
+  }
   await p.set('checked', line === '' ? null : line)
   await p.set('isAskingDone', true)
   await saveReview(p, { at: 'now', checked: line === '' ? null : line })
+
+  return ASKED
+}
+
+// True when the mark is saved; a failed write is logged and Rohan is asked instead.
+const markReminded = async (p: Ports, taskId: string): Promise<boolean> => {
+  const ctx = live.ctx
+  if (ctx === null) return false
+  try {
+    // An unreadable record comes back as null: nothing was saved.
+    return (await applySaved(p, ctx, await markRemindedUseCase(tasksDepsOf(p, ctx), taskId))) !== null
+  } catch (err) {
+    debug(p, 'saving the helper reminder mark failed', err)
+
+    return false
+  }
+}
+
+// Notes a helper the Agent tool ran, for the current task.
+export const noteHelperRun = async (p: Ports, agent: unknown): Promise<void> => {
+  const id = typeof agent === 'string' && agent.startsWith('queue-tea:') ? agent.slice('queue-tea:'.length) : null
+  const ctx = live.ctx
+  if (!isHelperId(id) || ctx === null) return
+  const record = await p.get('record')
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
+  if (current === null) return
+  try {
+    await applySaved(p, ctx, await noteHelperUseCase(tasksDepsOf(p, ctx), current.id, id))
+  } catch (err) {
+    debug(p, 'noting the helper run failed', err)
+  }
 }
 
 // What the app reads to show Review. The terminal's question stands either
@@ -101,7 +146,7 @@ export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<void> 
 const saveReview = async (p: Ports, review: { at: 'now'; checked: string | null } | null): Promise<void> => {
   const ctx = live.ctx
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (ctx === null || current === null) return
   try {
     const stamped = review === null ? null : { at: isoLocal(await p.now(), ctx.offsetMinutes), checked: review.checked }
@@ -131,6 +176,7 @@ const finishOnce = async (p: Ports, ctx: Ctx, taskId: string, actual: Difficulty
   await p.set('record', result.record)
   await p.set('isAskingDone', false)
   await p.set('checked', null)
+  if (result.isCodexTimeLost) await p.set('notice', CODEX_TIME_LOST)
   if (result.askPath) {
     await showBand(p, { kind: 'docsPath', taskId, suggested: DOCS_LOG })
 
@@ -161,8 +207,14 @@ const docsOnce = async (p: Ports, ctx: Ctx, taskId: string, path: string): Promi
 
 export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null || isStartingFresh()) return
+  // Continuing here takes the task back from Codex, with Codex's time so far.
+  if (current.codexSince !== null) {
+    const deps = tasksDepsOf(p, ctx)
+    if (await leaveCodexUseCase(deps, ctx, current.id)) await p.set('notice', CODEX_TIME_LOST)
+    if ((await applySaved(p, ctx, await deps.records.read())) === null) return
+  }
   // Continue answers the app's begin too, so the task isn't started twice.
   const pending = record?.requests.find(q => q.kind === 'begin' && q.taskId === current.id)
   if (pending !== undefined) await takeRequestUseCase(tasksDepsOf(p, ctx), pending.id)
@@ -172,7 +224,7 @@ export const continueTask = async (p: Ports, ctx: Ctx): Promise<void> => {
 // Switches to the current task's branch, unless something is uncommitted.
 export const switchToTask = async (p: Ports, ctx: Ctx): Promise<'switched' | string> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current?.branch == null) return 'switched'
 
   const result = await switchToTaskUseCase(tasksDepsOf(p, ctx), current.branch)
@@ -189,20 +241,22 @@ export const putBack = (p: Ports, ctx: Ctx, block?: Block): Promise<'queued' | '
 
 const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promise<'queued' | 'none'> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null || isStartingFresh()) return 'none'
 
-  await p.set('busy', 'Saving a checkpoint…')
+  await p.set('busy', SAVING_CHECKPOINT)
   let isNoted: boolean
   try {
-    isNoted = (await writeHandoff(p, ctx, current.id)) !== null
+    // Claude Code has nothing to note for a task Codex was working on.
+    isNoted = current.codexSince !== null || (await writeHandoff(p, ctx, current.id)) !== null
   } catch (err) {
     p.log(`the handoff note failed: ${err instanceof Error ? err.message : String(err)}`)
     isNoted = false
   } finally {
     await p.set('busy', null)
   }
-  const saved = await applySaved(p, ctx, await putBackUseCase(tasksDepsOf(p, ctx), current.id, block))
+  const back = await putBackUseCase(tasksDepsOf(p, ctx), ctx, current.id, block)
+  const saved = await applySaved(p, ctx, back.saved)
   if (saved === null) return 'none'
 
   await p.set('isAskingDone', false)
@@ -211,8 +265,9 @@ const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promis
   await p.set('mismatch', null)
   await p.set('isChoosingNext', true)
   await p.set('drift', [])
-  if (!isNoted) await p.set('notice', "Couldn't save a checkpoint, so Start will begin from what was saved before.")
-  p.toast(block === undefined ? `Back in the backlog: ${current.title}` : `Blocked: ${current.title}`)
+  if (!isNoted) await p.set('notice', CHECKPOINT_FAILED)
+  if (back.isCodexTimeLost) await p.set('notice', CODEX_TIME_LOST)
+  p.toast(block === undefined ? BACK_IN_BACKLOG(current.title) : BLOCKED(current.title))
 
   return 'queued'
 }
@@ -220,7 +275,7 @@ const putBackOnce = async (p: Ports, ctx: Ctx, block: Block | undefined): Promis
 // What has moved under the current task, for the panel.
 export const refreshDrift = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null) {
     await p.set('drift', [])
 
@@ -237,7 +292,7 @@ export const refreshDrift = async (p: Ports, ctx: Ctx): Promise<void> => {
 // measure now. Marked with the task, so another task's count never shows.
 export const refreshLines = async (p: Ports, ctx: Ctx): Promise<void> => {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (current === null || current.startCommit === null) {
     await p.set('lines', null)
 
@@ -256,14 +311,14 @@ export const refreshLines = async (p: Ports, ctx: Ctx): Promise<void> => {
 export async function checkResume(p: Ports) {
   const ctx = live.ctx
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (ctx === null || current === null) return
 
   await p.set('canContinue', true)
   if (current.branch === null) return
   const git = await gitRepositoryOf(p, ctx).state()
   if (git.isRepo && git.branch !== current.branch) {
-    await p.set('mismatch', `You're on ${git.branch ?? 'a detached HEAD'}; this task is on ${current.branch}.`)
+    await p.set('mismatch', WRONG_BRANCH(git.branch, current.branch))
   }
   await refreshDrift(p, ctx)
   await refreshLines(p, ctx)
@@ -271,7 +326,7 @@ export async function checkResume(p: Ports) {
 
 export async function askDone(p: Ports): Promise<boolean> {
   const record = await p.get('record')
-  if (record === null || currentTask(record.tasks) === null) return false
+  if (record === null || currentTask(record.tasks, live.ctx) === null) return false
   await p.set('isAskingDone', true)
 
   return true
@@ -325,7 +380,7 @@ export async function pressSwitch(p: Ports) {
 
 export async function pressDoneYes(p: Ports) {
   const record = await p.get('record')
-  const current = record === null ? null : currentTask(record.tasks)
+  const current = record === null ? null : currentTask(record.tasks, live.ctx)
   await p.set('isAskingDone', false)
   await p.set('checked', null)
   await saveReview(p, null)

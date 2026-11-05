@@ -1,6 +1,6 @@
 # Repository Rules
 
-Queue-tea keeps one task in progress per project and the rest in a priority queue. The repository holds every part of it, one folder per part:
+Queue-tea keeps one task per working folder, with parallel tasks in separate Git worktrees and the rest in a priority queue. The repository holds every part of it, one folder per part:
 
 | Folder                      | What it is                                                                                                                                                         |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -35,7 +35,7 @@ Queue-tea keeps one task in progress per project and the rest in a priority queu
 - **Every route is declared in one file in the app.** A path is lowercase words naming the screen, nested under the screen it opens from (`/quests/saga`), never an id or an abbreviation.
 - **A feature is done when its validation and tests are.** Once a feature is built, write the checks on its input and its tests (unit tests for the rules, component tests for what the user sees) before calling it finished, and run them: `claude plugin test .`, `npx -y -p typescript@5.9 tsc -p .`, `claude plugin validate .`, `node tools/check_layers.mjs` and `node --test 'tools/*.test.mjs'` for the mod; `npm test`, `npm run typecheck` and `npm run e2e` in `app/` for the app.
 - **A replacement removes what it replaces.** Once the new implementation is confirmed working, delete the old one, its tests and any dependency nothing uses any more. Two ways of doing one thing never stay side by side.
-- **Every commit moves the version.** Queue-tea has one version, `MAJOR.MINOR.PATCH`, and a commit's subject sets the step: `large: added …` for a large feature moves MAJOR, `added …` for a small feature moves MINOR, and anything else, such as `fixed …`, moves PATCH. After each commit `tools/hooks/post-commit` writes the number into `.claude-plugin/plugin.json`, `app/package.json` and `app/package-lock.json`, adds them to that same commit, tags it `vX.Y.Z`, and rebuilds the installed app in the background, so `/Applications/Queue-tea.app` is always the latest commit. Leave the number to the hook. A new clone needs `git config core.hooksPath tools/hooks` once.
+- **Every commit moves the version.** Queue-tea has one version, `MAJOR.MINOR.PATCH`, and a commit's subject sets the step: `large: added …` for a large feature moves MAJOR, `added …` for a small feature moves MINOR, and anything else, such as `fixed …`, moves PATCH. After each commit `tools/hooks/post-commit` writes the number into `.claude-plugin/plugin.json`, `app/package.json` and `app/package-lock.json`, adds them to that same commit, tags it `vX.Y.Z`, and requests an app refresh in the background. Only clean commits on the configured integration branch (`main` by default) may replace the installed app; task and detached builds stay previews. Installation verifies source ancestry and retains the previous app for recovery. Leave the number to the hook. A new clone needs `git config core.hooksPath tools/hooks` once.
 
 ## Forms
 

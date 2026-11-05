@@ -8,10 +8,10 @@ import { projectRepositoryOf } from '../../shared/records/records_providers'
 export async function loadContext($: EngineInterface, options: Options): Promise<Ctx> {
   const cwd = await $.session.cwd()
   const home = (await $.env.get('HOME')) ?? ''
-  const { projectPath, file, offsetMinutes } = await projectRepositoryOf(portsOf($)).locate(cwd, home)
+  const { projectPath, workingPath, file, offsetMinutes } = await projectRepositoryOf(portsOf($)).locate(cwd, home)
 
   return {
-    cwd,
+    cwd: workingPath ?? cwd,
     home,
     projectPath,
     projectName: projectPath.split('/').pop() || projectPath,

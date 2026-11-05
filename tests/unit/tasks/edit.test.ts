@@ -84,3 +84,37 @@ test('a task filed without them has neither', async () => {
 
   expect(onDisk(mem).tasks[0]).toMatchObject({ description: null, criteria: [] })
 })
+
+test('filing without helpers gives Tea-DD on', async () => {
+  const { mem, deps } = setup([])
+
+  await fileTaskUseCase(deps, CTX, { text: 'x', title: 'X', priority: 'mid', difficulty: 'medium', intent: 'improving' })
+
+  expect(onDisk(mem).tasks[0]?.helpers).toEqual({ on: ['tea-dd'], ran: [], reminded: false })
+})
+
+test('filing with helpers saves them as the on list', async () => {
+  const { mem, deps } = setup([])
+
+  await fileTaskUseCase(deps, CTX, { text: 'x', title: 'X', priority: 'mid', difficulty: 'medium', intent: 'improving', helpers: ['commit-chai-n'] })
+
+  expect(onDisk(mem).tasks[0]?.helpers.on).toEqual(['commit-chai-n'])
+})
+
+test('editing helpers keeps what ran and the reminder', async () => {
+  const task = makeTask({ helpers: { on: ['tea-dd'], ran: ['tea-dd'], reminded: true } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { helpers: [] })
+
+  expect(onDisk(mem).tasks[0]?.helpers).toEqual({ on: [], ran: ['tea-dd'], reminded: true })
+})
+
+test('a finished task keeps its helpers', async () => {
+  const task = makeTask({ state: 'done', helpers: { on: ['tea-dd'], ran: [], reminded: false } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { helpers: [] })
+
+  expect(onDisk(mem).tasks[0]?.helpers.on).toEqual(['tea-dd'])
+})

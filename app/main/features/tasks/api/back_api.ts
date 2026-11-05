@@ -32,35 +32,37 @@ const lastNoteAt = (task: Task): string | null => {
 // it can't act on a quest that has gone.
 const goBack = async (d: TasksDeps, scope: Scope, task: Task, block: Block | undefined, missedCheckpoint: boolean): Promise<BackOutcome> => {
   await dropRequestsUseCase(scope.deps, task.id)
-  const saved = await putBackUseCase(scope.deps, task.id, block)
+  const { saved, isCodexTimeLost } = await putBackUseCase(scope.deps, scope.ctx, task.id, block)
   if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
 
-  return { view: await realmView(d, scope.key, saved), went: 'back', missedCheckpoint: missedCheckpoint ? { lastAt: lastNoteAt(task) } : null }
+  return { view: await realmView(d, scope.key, saved), went: 'back', missedCheckpoint: missedCheckpoint ? { lastAt: lastNoteAt(task) } : null, isCodexTimeLost }
 }
 
 // With a session open it writes Claude's checkpoint, then the quest goes back.
-// A begin still waiting means Claude hasn't started, so there is nothing to save.
+// A begin still waiting means Claude hasn't started, and a quest with Codex
+// isn't Claude's, so there is nothing to save.
 export const putBackQuest = (d: TasksDeps, key: unknown, taskId: unknown, seal: unknown): Promise<Reply<BackOutcome>> =>
   reply(d.log, MESSAGES.putBackQuest, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const block = seal === null || seal === undefined ? undefined : sealOf(seal)
     const task = activeTask(scope, id)
     if (block !== undefined && 'waitFor' in block && wouldLoop(scope.record.tasks, id, block.waitFor)) throw new Refusal(inGameWords(LOOP))
 
     const hasBegun = !scope.record.requests.some(q => q.kind === 'begin' && q.taskId === id)
-    if (!hasBegun || !(await isSessionOpen(d, scope.ctx.projectPath))) return goBack(d, scope, task, block, hasBegun)
+    if (task.codexSince !== null) return goBack(d, scope, task, block, false)
+    if (!hasBegun || !(await isSessionOpen(d, scope.ctx.cwd))) return goBack(d, scope, task, block, hasBegun)
 
     const saved = await addRequestUseCase(scope.deps, scope.ctx, 'putBack', id, block)
     if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
 
-    return { view: await realmView(d, scope.key, saved), went: 'asked', missedCheckpoint: null }
+    return { view: await realmView(d, scope.key, saved), went: 'asked', missedCheckpoint: null, isCodexTimeLost: false }
   })
 
 // Without waiting for the session. A seal it was going to apply still applies.
 export const putBackNow = (d: TasksDeps, key: unknown, taskId: unknown): Promise<Reply<BackOutcome>> =>
   reply(d.log, MESSAGES.putBackQuest, async () => {
-    const scope = await scopeOf(d, key)
+    const scope = await scopeOf(d, key, taskId)
     const id = questIdOf(taskId)
     const task = activeTask(scope, id)
     const asked = scope.record.requests.find(q => q.kind === 'putBack' && q.taskId === id)

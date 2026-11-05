@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 
-import type { Difficulty } from '../../../../../../types'
+import type { Allowance, Difficulty, Platform } from '../../../../../../types'
 import type { EngineApi } from '../../../../../shared/engine_api'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { dayOf, formatSpan } from '../../../../core/domain/format'
@@ -11,13 +11,16 @@ import { Spinner } from '../../../../core/widgets/states'
 import type { Row } from '../../domain/board'
 import { titleError } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
+import { ClaudeOut } from './claude_out'
+import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
 
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
 export type DetailActions = {
-  onStart: () => void
+  onStart: (platform: Platform) => void
+  allowance: Allowance | null
   onSeal: () => void
   onUnseal: () => void
   onPartOf: () => void
@@ -26,7 +29,7 @@ export type DetailActions = {
   onActiveSaga: () => void
 }
 
-type DetailProps = DetailActions & { engine: EngineApi; realm: string; row: Row | null; hasActive: boolean; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
+type DetailProps = DetailActions & { engine: EngineApi; realm: string; row: Row | null; isBusy: boolean; isActiveSaga: boolean; isSaved: boolean; note: string | undefined; edits: QuestEdits }
 
 // The title, read until clicked. A field being edited keeps its text when the
 // record changes underneath it.
@@ -158,7 +161,7 @@ const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: stri
   )
 }
 
-export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSaga, isSaved, note, edits, onStart, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
+export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved, note, edits, onStart, allowance, onSeal, onUnseal, onPartOf, onRemove, onPlayNext, onActiveSaga }: DetailProps) => {
   if (row === null) {
     return (
       <aside class="detail panel" aria-label={t.detail.label}>
@@ -199,10 +202,16 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
         <XpReward xp={quest.xp} />
         <GoldReward gold={quest.xp} />
       </div>
+      {!isSealed && <ClaudeOut allowance={allowance} />}
       <div class="q-actions">
         {!isSealed && (
-          <button type="button" class="btn primary" disabled={hasActive || isBusy} onClick={onStart}>
+          <button type="button" class="btn primary" disabled={isBusy} onClick={() => onStart('claude')}>
             {quest.isStar ? t.actions.startMain : t.actions.start}
+          </button>
+        )}
+        {!isSealed && (
+          <button type="button" class="btn" disabled={isBusy} onClick={() => onStart('codex')}>
+            {t.actions.startCodex}
           </button>
         )}
         {!isSealed && (
@@ -220,7 +229,6 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
           </button>
         )}
       </div>
-      {hasActive && <p class="hint">{t.board.startHint}</p>}
       {note !== undefined && <p class="card-note">⚠ {note}</p>}
       <hr />
       {quest.why !== null && <p class="d-star">{t.detail.main(quest.why)}</p>}
@@ -239,6 +247,8 @@ export const QuestDetail = ({ engine, realm, row, hasActive, isBusy, isActiveSag
           {t.detail.useAcceptance(quest.acceptance.length)}
         </button>
       )}
+      <h3>{t.helpers.label}</h3>
+      <HelperToggles on={quest.helpers} onChange={helpers => edits.edit(realm, quest, { helpers })} />
       {sagaOf !== null && (
         <>
           <h3>{t.detail.chapters(sagaOf.chapters.length)}</h3>

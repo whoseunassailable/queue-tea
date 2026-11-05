@@ -1,8 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
-import { checkLines, checkpointPrompt, commandRun, emptyCheckpoint, firstMessage, latestNote, noteSeen, parseCheckpoint } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
+import { checkLines, checkpointPrompt, codexBrief, commandRun, emptyCheckpoint, firstMessage, latestNote, noteSeen, parseCheckpoint } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
+import { checkNowUseCase } from '../../../hooks/shared/checkpoints/domain/usecases/check_now'
+import type { GitRepository } from '../../../hooks/shared/git/domain/repositories/git_repository'
 import { parseStatusPaths } from '../../../hooks/shared/git/domain/services/branch_rules'
 import { readDrift } from '../../../hooks/shared/git/data/datasources/git_source'
+import type { GitFacts } from '../../../types'
 import { makeTask, memoryHost } from '../../helpers'
 
 const AT = '2026-10-21T10:00:00+02:00'
@@ -103,6 +106,12 @@ test('the first message brings the checkpoint, what was seen, what was checked, 
   expect(firstMessage(makeTask({ title: 'New', messages: ['do it'] }))).toBe('Task: New\n\ndo it')
 })
 
+test('firstMessage carries the description and criteria', () => {
+  expect(firstMessage(makeTask({ title: 'New', messages: ['do it'], description: 'Why', criteria: ['One', 'Two'] }))).toBe(
+    'Task: New\n\nDescription: Why\n\nAcceptance criteria:\n- One\n- Two\n\ndo it',
+  )
+})
+
 test('a plain note written after the checkpoint is the one the first message carries', () => {
   const checkpoint = { ...parseCheckpoint(REPLY, AT)!, seen: null }
   const newer = makeTask({ checkpoint, handoff: { text: 'Plain note.', written: '2026-10-21T11:00:00+02:00' } })
@@ -162,4 +171,69 @@ test('drift: a gone branch, a lost start commit, a base branch ahead', async () 
     ),
   ).toEqual([])
   expect(await readDrift(memoryHost().host, '/p', { ...task, branch: null })).toEqual([])
+})
+
+test("Codex's brief puts Queue-tea's rules, with the folder and branch, before what Claude would be told", () => {
+  const task = makeTask({ title: 'Retry', messages: ['add a retry button'], branch: 'task/retry' })
+  const brief = codexBrief(task, '/p/app', ['✓ On task/retry, the task\'s branch.'])
+
+  expect(brief).toStartWith('From Queue-tea, before you start:\n')
+  expect(brief).toContain("- You're working on one task, in /p/app, on the branch task/retry. Stay in that folder and on that branch.")
+  expect(brief).toContain('Never commit, push, merge, rebase, cherry-pick, revert, reset or tag, and never run gh pr merge.')
+  expect(brief).toContain('When you say a check passed, name the command and what it printed.')
+  expect(brief).toEndWith(`\n\n${firstMessage(task, ['✓ On task/retry, the task\'s branch.'])}`)
+})
+
+test("Codex's brief for a task with no branch names only the folder", () => {
+  const brief = codexBrief(makeTask({ title: 'Notes', messages: ['tidy'] }), '/p/notes', null)
+
+  expect(brief).toContain("- You're working on one task, in /p/notes. Stay in that folder.\n")
+  expect(brief).not.toContain('branch')
+  expect(brief).toEndWith('\n\nTask: Notes\n\ntidy')
+})
+
+// Git that answers facts and drift, and counts how often it was asked.
+const fakeGit = (facts: () => Promise<GitFacts | null>, drift: string[] = []) => {
+  let asked = 0
+  const git = {
+    facts: async () => {
+      asked += 1
+
+      return facts()
+    },
+    drift: async () => drift,
+  } as unknown as GitRepository
+
+  return { git, asked: () => asked }
+}
+
+test('checking now puts what git says beside the checkpoint', async () => {
+  const task = makeTask({ handoff: { text: 'Button done.', written: AT } })
+  const now: GitFacts = { branch: 'task/retry', head: '1a2b3c4 Add bars', uncommitted: [] }
+  const { git } = fakeGit(async () => now, ['lib/a.dart'])
+
+  expect(await checkNowUseCase(git, () => {}, task)).toEqual(checkLines(task, now, ['lib/a.dart']))
+})
+
+test('checking now outside a repository says there is no branch to check', async () => {
+  const task = makeTask({ handoff: { text: 'Button done.', written: AT } })
+
+  expect(await checkNowUseCase(fakeGit(async () => null, ['ignored']).git, () => {}, task)).toEqual(['Not a git repository, so there is no branch to check.'])
+})
+
+test('a task with nothing saved yet is not checked, and git is not asked', async () => {
+  const { git, asked } = fakeGit(async () => null)
+
+  expect(await checkNowUseCase(git, () => {}, makeTask())).toBeNull()
+  expect(asked()).toBe(0)
+})
+
+test('git failing while checking gives no check, and the failure is logged', async () => {
+  const logs: string[] = []
+  const { git } = fakeGit(async () => {
+    throw new Error('git broke')
+  })
+
+  expect(await checkNowUseCase(git, text => logs.push(text), makeTask({ handoff: { text: 'x', written: AT } }))).toBeNull()
+  expect(logs).toEqual(['checking the repository failed: git broke'])
 })

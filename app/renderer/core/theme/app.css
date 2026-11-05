@@ -593,6 +593,19 @@ body,
   padding-bottom: 0;
 }
 
+.rm .board-tools-row.wrap {
+  flex-wrap: wrap;
+}
+
+/* Over the sky a see-through chip reads as disabled. */
+.rm .board-tools .chip-btn:not(.on) {
+  background: var(--pn-solid);
+}
+
+.rm .board-tools .chip-btn:not(.on):hover {
+  background: linear-gradient(var(--hov), var(--hov)), var(--pn-solid);
+}
+
 .rm .filters {
   padding: 10px 14px;
   display: flex;
@@ -1164,3 +1177,70 @@ body,
 .rm .book-done {
   font-weight: 800;
 }
+
+/* Quest branches remain legible with long branch names and narrow windows. */
+.rm .branch-page { padding: 24px; display: grid; gap: 22px; max-width: 1100px; margin: auto; }
+.rm .branch-heading, .rm .branch-card { padding: 20px; }
+.rm .branch-heading h1, .rm .branch-card h3 { margin: 0 0 10px; }
+.rm .branch-path, .rm .branch-card .mono { overflow-wrap: anywhere; }
+.rm .copy-line code { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Branch history and explicit review / integration flow. */
+.branch-page { display: grid; gap: 16px; min-width: 0; }
+.history-graph { padding: 16px; min-width: 0; }
+.graph-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.graph-tools strong { margin-right: auto; }
+.graph-scroll { overflow: auto; max-height: 400px; border-radius: 10px; background: color-mix(in srgb, currentColor 3%, transparent); }
+.commit-edge { stroke: var(--accent, #6c9d83); stroke-width: 2; opacity: .5; fill: none; }
+.commit-dot { fill: var(--accent, #6c9d83); stroke: currentColor; stroke-width: 1; }
+.commit-label-bg { fill: var(--pn-solid, #f2eddf); stroke: var(--accent, #6c9d83); }
+.commit-label { fill: var(--ink, #283e33); font: 12px ui-monospace, monospace; }
+.commit-caption { fill: currentColor; opacity: .65; font: 11px ui-monospace, monospace; }
+.history-graph g[role=button] { cursor: pointer; }
+.history-graph g[role=button]:focus .commit-label-bg { stroke-width: 3; }
+.branch-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 16px; list-style: none; padding: 0; margin: 0; }
+.branch-state { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+.branch-state::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.branch-card.working { border-color: var(--accent, #6c9d83); }
+.branch-card.review { border-color: #b38a3e; }
+.branch-latest { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.branch-filter { display: flex; align-items: center; gap: 12px; }
+.sheet:has(.branch-review) { width: min(1000px, calc(100vw - 48px)); max-width: none; }
+.branch-review { display: grid; gap: 16px; }
+.branch-review label { display: grid; gap: 6px; }
+.branch-review select, .branch-review textarea { width: 100%; }
+.branch-tabs { display: flex; gap: 4px; border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.branch-tabs button { padding: 12px; background: none; border: 0; color: inherit; cursor: pointer; }
+.branch-tabs .selected { border-bottom: 3px solid var(--accent, #6c9d83); font-weight: 700; }
+.branch-refs { display: grid; gap: 6px; }
+.branch-refs dd { margin: 0 0 10px; overflow-wrap: anywhere; font-size: 12px; }
+.branch-diff, .merge-log pre, .three-way pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; padding: 12px; font: 12px/1.6 ui-monospace, monospace; background: color-mix(in srgb, currentColor 4%, transparent); border-radius: 8px; }
+.branch-files { list-style: none; padding: 0; }
+.branch-files label, .branch-review .branch-confirm { display: flex; align-items: start; gap: 8px; margin: 12px 0; }
+.branch-files input, .branch-confirm input { flex: 0 0 auto; width: auto; margin-top: 3px; }
+.merge-start, .merge-review { padding-top: 18px; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.merge-review > * { margin-bottom: 14px; }
+.merge-log code { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.merge-log li { margin: 12px 0; }
+.three-way { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.three-way summary { font-size: 12px; overflow-wrap: anywhere; }
+.conflict-result { min-height: 180px; }
+.conflict-file { padding-bottom: 18px; }
+.branch-abandon { padding: 16px; border: 1px solid #b38a3e; border-radius: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+  .observed-working { animation: observed-branch-work 1.8s ease-in-out infinite; }
+}
+@keyframes observed-branch-work { 50% { opacity: .55; } }
+@media (max-width: 700px) { .three-way { grid-template-columns: 1fr; } .branch-tabs button { padding: 8px; } }
+
+.rm .branch-review select, .rm .branch-review textarea, .rm .branch-filter select {
+  box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line-soft);
+  border-radius: 8px; background: var(--pn-solid); color: var(--ink); font: inherit;
+}
+.rm .branch-review textarea { min-height: 80px; resize: vertical; }
+.rm .branch-review .conflict-result { min-height: 180px; font-family: ui-monospace, monospace; }
+.rm .branch-heading .sec-row { justify-content: space-between; }
+.rm .branch-page { padding: 16px 24px; gap: 14px; }
+.rm .branch-heading { padding: 16px 20px; }
+.rm .branch-heading p { margin: 8px 0; }
+@media (max-width: 700px) { .rm .branch-page { padding: 12px; } }

@@ -39,6 +39,11 @@ const agoOf = (at: number, now: number) => {
 // Every string the user reads. On screen the app uses the game's words; the
 // engine and the record keep their own.
 export const t = {
+  update: {
+    label: 'Application update', version: (version: string) => `v${version}`, reading: 'Reading version…',
+    button: 'Update', retry: 'Retry update', ready: 'Update installed. Restart when your work is saved.',
+    phases: { idle: 'Updates follow a successful push to main.', queued: 'Update queued…', checking: 'Checking published source…', building: 'Building and testing update…', verifying: 'Verifying update…', installing: 'Installing update…', installed: 'The latest build is installed. Restart waits for your work to finish.', failed: 'Update failed. Check the update log, then retry.' },
+  },
   activity: {
     title: 'Task activity',
     empty: 'No steps recorded yet. Start this quest in a connected session to see its activity here.',

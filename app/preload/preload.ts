@@ -5,6 +5,8 @@ import type { EngineApi } from '../shared/engine_api'
 
 // The window reaches main through this one object and nothing else.
 const engine: EngineApi = {
+  readAppUpdate: () => ipcRenderer.invoke(CHANNELS.readAppUpdate),
+  applyAppUpdate: () => ipcRenderer.invoke(CHANNELS.applyAppUpdate),
   listProjects: () => ipcRenderer.invoke(CHANNELS.listProjects),
   readProject: key => ipcRenderer.invoke(CHANNELS.readProject, key),
   readGame: () => ipcRenderer.invoke(CHANNELS.readGame),

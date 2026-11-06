@@ -28,7 +28,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 - **The other 2.0 sub-projects:** Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4, planned in [plan-parallel-quests.md](plan-parallel-quests.md)) and lifecycle hardening (5). No placeholders for any of them.
 - **Windows.** It comes after the Mac (see Decisions).
 - **A phone or web app.** The window talks to the engine through one typed API, so HTTP can sit behind it later.
-- **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own commits.
+- **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own pushes to main.
 - **From the game:** a shop to spend gold, naming the dragon, and quests or rewards from the helpers.
 - **Commit, Push, Merge and Pull buttons, ever.** Git commands appear only as text to copy (criterion 3 of the design).
 
@@ -51,7 +51,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
 | The rest | The suggested answers in section 8 of the design | Rohan took them all on 2026-10-27 |
 | Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and downloaded updates would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
-| Updating an open app | Added 2026-11-03. Each commit's build is swapped in under the open app, which restarts itself when you're away from it with nothing half done, back on the same screen and in the same place. A new major version asks first if you're using the window | Rohan asked that an update never stop his work unless it's a big one. Restarting is the only way to run new code: the open app can't reload its own files |
+| Updating an open app | Added 2026-11-03. Each successful push to main is built, tested and swapped in under the open app, which restarts itself when you're away from it with nothing half done, back on the same screen and in the same place. A new major version asks first if you're using the window | Rohan asked that an update never stop his work unless it's a big one. Restarting is the only way to run new code: the open app can't reload its own files |
 | Codex | Added 2026-11-03. Any quest can start on Codex, or move to it and back. Claude Code keeps the first button; a hint names Codex when Claude's allowance is used up | Rohan's 5-hour allowance runs out partway through quests. Codex has no Queue-tea mod, so its own sandbox stands in for the git guard |
 
 ## Architecture
@@ -106,15 +106,19 @@ Main watches the folders `~/.queue-tea/projects` and `~/.queue-tea/sessions`, no
 
 `tools/install_app.sh` copies the new build in beside the open app and swaps it in by renaming, never by writing over files: macOS kills an app whose open files change under it, and a renamed bundle keeps everything the open app has already read.
 
-Every 30 seconds a packaged app compares the version in its bundle's `Info.plist` with its own. When they differ, the rules in `main/features/update/domain/update_watch.ts` decide:
+Every 30 seconds a packaged app compares the version in its bundle's `Info.plist`, and the commit in its `provenance.json`, with its own. When they differ, the rules in `main/features/update/domain/update_watch.ts` decide:
 
 | Situation | What the app does |
 | --- | --- |
 | No window of ours has the keyboard, and nothing is half done | Restarts behind what you're using (`open -g`, then `showInactive`) |
 | You're using the window, minor or patch version | Waits |
-| You're using the window, new major version | Asks once: Restart now, or Later. Later waits like a minor one |
+| You're using the window, new major version, and nothing is half done | Asks once: Restart now, or Later. Later waits like a minor one |
 
 Half done means a dialog is open, a text field holds the keyboard, an engine call that changes something is still running, or a helper is at work on an order from the Guild Hall. Calls that only read (`list-`, `read-`, `check-`) don't count: the window rereads every 30 seconds, so they would hold an update off for good. Before it exits, the app writes the window's screen and bounds to `restart.json` in its settings folder. The new copy reads it once, deletes it and opens the window there. With no window open, the new copy opens none until the Dock icon is clicked.
+
+The app never restarts while an install is swapping a new copy in. A later push that is still queued or building, or whose build failed, doesn't hold a restart back: that build touches nothing installed until its own swap.
+
+The sidebar's **Settings** row shows the running version as `vX.Y.Z`, with its commit in a tooltip. **Update** beside it restarts into the installed copy when nothing is half done. After a failed build it reads **Retry update** and builds the same push again.
 
 ### Sessions: the mod tells the app where Claude Code is
 

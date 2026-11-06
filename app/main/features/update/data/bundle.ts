@@ -8,6 +8,13 @@ const PLIST_VERSION = /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<
 
 export const versionOfPlist = (plist: string): string | null => PLIST_VERSION.exec(plist)?.[1] ?? null
 
+export const commitOfProvenance = (text: string): string | null => {
+  const value: unknown = JSON.parse(text)
+  if (value === null || typeof value !== 'object') return null
+  const { commit } = value as Record<string, unknown>
+  return typeof commit === 'string' && /^[a-f0-9]{40,64}$/.test(commit) ? commit : null
+}
+
 // Waits for this app to end, then opens the bundle again. -g keeps it behind
 // whatever you're using. Backgrounded, so the run returns at once.
 export const relaunchArgv = (pid: number, bundle: string, isInFront: boolean): string[] => [

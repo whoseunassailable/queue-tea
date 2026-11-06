@@ -45,6 +45,10 @@ export const pushMerge = (d: BranchDeps, key: unknown, input: unknown): Promise<
       if (result.exitCode !== 0) throw new Refusal(BRANCH_TEXT.push)
     }
     op.published = { remote: checked.remote, at: d.now(), commit: checked.head }; await saveOperation(d, op)
+    // Publication has succeeded (or was acknowledged by the remote after a
+    // lost response). An update failure must never misreport a failed push.
+    try { await d.published?.(scope.ctx.projectPath, checked.remote, checked.branch, checked.head) }
+    catch (err) { d.log.error('starting the published application update failed', err) }
     return workspaceOf(d, scope.ctx.projectPath, op)
   })
 })

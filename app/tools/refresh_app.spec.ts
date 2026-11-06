@@ -1,114 +1,128 @@
 import { execFile } from 'node:child_process'
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, realpath, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { publishedSource, queuePublished, readUpdate, runUpdates } from './update_runner.mjs'
+import type { PublishedRequest } from './update_runner.mjs'
 
-const run = promisify(execFile)
-const SCRIPT = join(__dirname, 'refresh_app.sh')
+const exec = promisify(execFile)
+const integration = process.env.QUEUE_TEA_GIT_TESTS === '1' ? describe : describe.skip
 
-// Every command that reaches outside is a stand-in that writes what it was
-// asked to a journal, so nothing here builds or replaces the real app.
-describe('refreshing the installed app', () => {
-  let folder: string
-  let app: string
-
-  const journal = () => readFile(join(folder, 'journal'), 'utf8').catch(() => '')
-  const standIn = async (name: string, body: string) => {
-    await writeFile(join(folder, 'bin', name), `#!/bin/sh\necho "${name} $*" >>"${join(folder, 'journal')}"\n${body}\n`)
-    await chmod(join(folder, 'bin', name), 0o755)
+// Real objects/worktrees, with every build command replaced and installation
+// directed into this test's temporary Applications folder. No network/packages.
+integration('updates from acknowledged source in any worktree', () => {
+  let folder: string; let repo: string; let task: string; let state: string; let target: string; let request: PublishedRequest
+  let commands: string[]; let corrupt: boolean; let fail: boolean; let builtSource: string
+  const git = async (cwd: string, ...args: string[]) => (await exec('git', args, { cwd, env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' } })).stdout.trim()
+  const command = async (argv: string[], cwd: string, env: NodeJS.ProcessEnv) => {
+    commands.push(argv.join(' '))
+    if (fail && argv[1] === 'test') throw new Error('Test failure')
+    if (argv[2] === 'package') {
+      builtSource = await readFile(join(cwd, 'source.txt'), 'utf8')
+      const resources = join(cwd, 'dist/mac-arm64/Queue-tea.app/Contents/Resources')
+      await mkdir(resources, { recursive: true })
+      const provenance = JSON.parse(await readFile(env.QUEUE_TEA_RELEASE_CONTEXT!, 'utf8'))
+      if (corrupt) provenance.commit = '0'.repeat(40)
+      await writeFile(join(resources, 'provenance.json'), JSON.stringify(provenance))
+    }
+    if (argv[0] === '/bin/sh') await exec(argv[0], argv.slice(1), { cwd, env: { ...env, PATH: `${join(folder, 'bin')}:${env.PATH}` } })
   }
-  const refresh = () => run('/bin/sh', [join(app, 'tools/refresh_app.sh')], { env: { ...process.env, HOME: folder, PATH: `${join(folder, 'bin')}:/usr/bin:/bin:${process.env.PATH ?? ''}` } })
-  const lock = () => join(folder, 'Library/Logs/Queue-tea/refresh.lock')
-
+  const run = () => runUpdates(state, { target, tools: __dirname, command })
   beforeEach(async () => {
-    folder = await mkdtemp(join(tmpdir(), 'queue-tea-refresh-'))
-    app = join(folder, 'app')
-    await mkdir(join(app, 'tools'), { recursive: true })
-    await mkdir(join(app, 'node_modules/electron/dist/Electron.app'), { recursive: true })
-    await mkdir(join(folder, 'bin'))
-    await copyFile(SCRIPT, join(app, 'tools/refresh_app.sh'))
-    // Guard policy has separate tests; this suite tests the updater after approval.
-    await writeFile(join(app, 'tools/release_guard.mjs'), '')
-    await writeFile(join(app, 'tools/install_app.sh'), `echo "install" >>"${join(folder, 'journal')}"\n`)
-    await writeFile(join(app, 'package.json'), '{ "version": "1.2.0" }\n')
-    await standIn('npm', `mkdir -p "${join(app, 'dist/mac-arm64')}"`)
-    await standIn('osascript', '')
+    folder = await realpath(await mkdtemp(join(tmpdir(), 'queue-tea-published-')))
+    repo = join(folder, 'repo'); task = join(folder, 'task'); state = join(folder, 'state'); target = join(folder, 'Applications/Queue-tea.app')
+    await mkdir(join(repo, 'app/tools'), { recursive: true }); await mkdir(state); await mkdir(join(folder, 'Applications')); await mkdir(join(folder, 'bin'))
+    await writeFile(join(folder, 'bin/lsregister'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+    await git(repo, 'init', '-b', 'main'); await git(repo, 'config', 'user.name', 'Test'); await git(repo, 'config', 'user.email', 'test@example.invalid'); await git(repo, 'config', 'core.hooksPath', '/dev/null'); await git(repo, 'config', 'commit.gpgsign', 'false')
+    await writeFile(join(repo, '.gitignore'), 'node_modules/\n')
+    await writeFile(join(repo, 'app/package.json'), JSON.stringify({ name: 'queue-tea-app', productName: 'Queue-tea', version: '1.5.2' }))
+    await writeFile(join(repo, 'app/package-lock.json'), '{}')
+    await writeFile(join(repo, 'app/source.txt'), 'published source')
+    await copyFile(join(__dirname, 'release_guard.mjs'), join(repo, 'app/tools/release_guard.mjs'))
+    await git(repo, 'add', '.'); await git(repo, 'commit', '-m', 'Published source')
+    const commit = await git(repo, 'rev-parse', 'HEAD')
+    await git(repo, 'worktree', 'add', '-b', 'task/feature', task)
+    await mkdir(join(task, 'app/node_modules/electron'), { recursive: true }); await writeFile(join(task, 'app/node_modules/electron/package.json'), '{}')
+    request = { repo: task, remote: 'origin', branch: 'main', commit, repository: await git(repo, 'rev-parse', '--path-format=absolute', '--git-common-dir') }
+    await writeFile(join(state, 'request.json'), JSON.stringify(request))
+    commands = []; corrupt = false; fail = false; builtSource = ''
   })
-  afterEach(() => rm(folder, { recursive: true, force: true }))
-
-  it('builds, installs, tells you, and leaves no second app behind', async () => {
-    await refresh()
-
-    const said = await journal()
-    expect(said).toContain('npm run package')
-    expect(said).toContain('install')
-    expect(said).toContain('Version 1.2.0 is installed')
-    await expect(stat(join(app, 'dist'))).rejects.toThrow()
-    await expect(stat(lock())).rejects.toThrow()
+  afterEach(async () => { await rm(folder, { recursive: true, force: true }) })
+  it('builds the acknowledged commit from a feature worktree despite dirty files and newer local main, then retains the previous bundle', async () => {
+    const resources = join(target, 'Contents/Resources'); await mkdir(resources, { recursive: true })
+    await writeFile(join(resources, 'provenance.json'), JSON.stringify({ commit: request.commit }))
+    await writeFile(join(repo, 'app/source.txt'), 'unpublished next main'); await git(repo, 'commit', '-am', 'Unpublished main')
+    await writeFile(join(task, 'app/source.txt'), 'dirty feature work')
+    await run()
+    expect(builtSource).toBe('published source')
+    expect(commands.slice(0, 3)).toEqual(['npm run typecheck', 'npm test', 'npm run package'])
+    expect(commands.some(c => c.includes('codesign --verify'))).toBe(true)
+    expect((await readUpdate(state))?.phase).toBe('installed')
+    expect(JSON.parse(await readFile(join(resources, 'provenance.json'), 'utf8')).commit).toBe(request.commit)
+    expect((await readdir(join(folder, 'Applications'))).some(n => n.startsWith('.Queue-tea.app.previous-'))).toBe(true)
+    expect(await readFile(join(task, 'app/source.txt'), 'utf8')).toBe('dirty feature work')
+    expect(await git(task, 'branch', '--show-current')).toBe('task/feature')
   })
-
-  it('installs while the app is open, without waiting for it to quit', async () => {
-    await standIn('pgrep', 'exit 0')
-
-    await refresh()
-
-    const said = await journal()
-    expect(said).toContain('install\n')
-    expect(said).not.toContain('Quit')
-    expect(said).toContain('Version 1.2.0 is installed')
+  it('rejects feature publication before launching a worker or writing state', async () => {
+    expect(await publishedSource({ ...request, branch: 'task/feature' })).toBeNull()
+    expect(await queuePublished({ ...request, branch: 'task/feature' }, { folder: state })).toBe(false)
+    expect(commands).toEqual([]); expect(await readUpdate(state)).toBeNull()
+    const other = join(folder, 'other-repository'); await mkdir(other)
+    expect(await queuePublished(request, { folder: state, repository: other })).toBe(false)
+    expect(await readUpdate(state)).toBeNull()
   })
-
-  it('says so when the build fails, and installs nothing', async () => {
-    await standIn('npm', 'exit 1')
-
-    await refresh()
-
-    const said = await journal()
-    expect(said).toContain('refresh.log')
-    expect(said).not.toContain('install\n')
-    await expect(stat(lock())).rejects.toThrow()
+  it('rejects mismatched packaged provenance before installation', async () => {
+    corrupt = true; await run()
+    expect((await readUpdate(state))?.phase).toBe('failed')
+    expect(commands.some(c => c.startsWith('/bin/sh'))).toBe(false)
   })
-
-  it('a commit during a build asks that build to go round again', async () => {
-    await mkdir(lock(), { recursive: true })
-    await writeFile(join(lock(), 'pid'), String(process.pid))
-
-    await refresh()
-
-    await expect(stat(join(lock(), 'again'))).resolves.toBeDefined()
-    expect(await journal()).toBe('')
+  it('refuses changed source files and signature failures before installation', async () => {
+    const modify = async (argv: string[], cwd: string, env: NodeJS.ProcessEnv) => {
+      await command(argv, cwd, env)
+      if (argv[1] === 'test') await writeFile(join(cwd, 'source.txt'), 'modified by check')
+    }
+    await runUpdates(state, { target, tools: __dirname, command: modify })
+    expect((await readUpdate(state))?.phase).toBe('failed')
+    expect(commands.some(c => c.startsWith('/bin/sh'))).toBe(false)
+    commands = []
+    await runUpdates(state, { target, tools: __dirname, command: async (argv, cwd, env) => {
+      if (argv[0] === '/usr/bin/codesign') throw new Error('Invalid signature')
+      await command(argv, cwd, env)
+    } })
+    expect((await readUpdate(state))?.phase).toBe('failed')
+    expect(commands.some(c => c.startsWith('/bin/sh'))).toBe(false)
   })
-
-  it('goes round again without installing the build that is already out of date', async () => {
-    await standIn('npm', `mkdir -p "${join(app, 'dist/mac-arm64')}"\n[ "$(grep -c '^npm' "${join(folder, 'journal')}")" -eq 1 ] && : >"${join(lock(), 'again')}"\nexit 0`)
-
-    await refresh()
-
-    const said = await journal()
-    expect(said.match(/^npm run package$/gm)).toHaveLength(2)
-    expect(said.match(/^install$/gm)).toHaveLength(1)
+  it('fails visibly without installing dependencies and recovers an interrupted worker', async () => {
+    await rm(join(task, 'app/node_modules'), { recursive: true })
+    await run(); expect((await readUpdate(state))?.phase).toBe('failed'); expect(commands).toEqual([])
+    await writeFile(join(state, 'state.json'), JSON.stringify({ phase: 'building', commit: request.commit, repository: request.repository, updatedAt: 1, detail: null }))
+    expect(await readUpdate(state)).toMatchObject({ phase: 'failed', detail: expect.stringContaining('retry') })
   })
-
-  it('takes over from a run that was killed', async () => {
-    await mkdir(lock(), { recursive: true })
-    await writeFile(join(lock(), 'pid'), '999999')
-
-    await refresh()
-
-    expect(await journal()).toContain('Version 1.2.0 is installed')
+  it('preserves production after a failed check and supports retry of the acknowledged commit', async () => {
+    fail = true; await run(); expect((await readUpdate(state))?.phase).toBe('failed')
+    expect(commands).toEqual(['npm run typecheck', 'npm test'])
+    fail = false; await run(); expect((await readUpdate(state))?.phase).toBe('installed')
   })
-
-  it('fetches what the build needs in a folder that has never built', async () => {
-    await rm(join(app, 'node_modules'), { recursive: true })
-    await standIn('npx', '')
-
-    await refresh()
-
-    const said = await journal()
-    expect(said).toContain('npm ci')
-    expect(said).toContain('npx --no install-electron')
+  it('refuses installed ancestry outside the acknowledged history before building', async () => {
+    await mkdir(join(target, 'Contents/Resources'), { recursive: true })
+    await writeFile(join(target, 'Contents/Resources/provenance.json'), JSON.stringify({ commit: 'a'.repeat(40) }))
+    await run(); expect((await readUpdate(state))?.phase).toBe('failed'); expect(commands).toEqual([])
+  })
+  it('keeps the worker alive and skips stale installation when another push arrives during the build', async () => {
+    let changed = false
+    const nextCommand = async (argv: string[], cwd: string, env: NodeJS.ProcessEnv) => {
+      await command(argv, cwd, env)
+      if (!changed && argv[2] === 'package') {
+        changed = true
+        await writeFile(join(repo, 'app/source.txt'), 'newly published'); await git(repo, 'commit', '-am', 'Next release')
+        request = { ...request, commit: await git(repo, 'rev-parse', 'HEAD') }
+        await writeFile(join(state, 'request.json'), JSON.stringify(request))
+      }
+    }
+    await runUpdates(state, { target, tools: __dirname, command: nextCommand })
+    expect(commands.filter(c => c.startsWith('/bin/sh'))).toHaveLength(1)
+    expect(builtSource).toBe('newly published'); expect((await readUpdate(state))?.commit).toBe(request.commit)
   })
 })

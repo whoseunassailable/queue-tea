@@ -212,6 +212,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
   const listeners = new Set<() => void>()
   const helperListeners = new Set<(jobs: HelperJob[]) => void>()
   const engine: EngineApi = {
+    readAppUpdate: async () => ({ ok: true, data: { running: { version: '1.5.2', commit: 'a'.repeat(40) }, installed: null, state: { phase: 'idle', commit: null, detail: null }, canRetry: false, canRestart: false } }),
+    applyAppUpdate: vi.fn(async () => ({ ok: true as const, data: { running: { version: '1.5.2', commit: 'a'.repeat(40) }, installed: null, state: { phase: 'idle' as const, commit: null, detail: null }, canRetry: false, canRestart: false } })),
     listProjects: async () => ({ ok: true, data: [projectRow('a-000001')] }),
     readProject: async key => ({ ok: true, data: projectView(key) }),
     readGame: async () => ({ ok: true, data: GAME }),

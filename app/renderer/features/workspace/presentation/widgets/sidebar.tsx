@@ -1,4 +1,5 @@
-import type { ProjectRow, ProjectStatus, SessionState } from '../../../../../shared/engine_api'
+import type { EngineApi, ProjectRow, ProjectStatus, SessionState } from '../../../../../shared/engine_api'
+import { UpdateControl } from '../../../update/presentation/update_control'
 import { hrefOf, ROUTES } from '../../../../config/routing/routes'
 import type { Route } from '../../../../config/routing/routes'
 import { Spinner } from '../../../../core/widgets/states'
@@ -52,12 +53,11 @@ const LINKS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.guild, label: t.nav.guild },
   { route: ROUTES.hoard, label: t.nav.hoard },
   { route: ROUTES.library, label: t.nav.library },
-  { route: ROUTES.settings, label: t.nav.settings },
 ]
 
-type SidebarProps = { projects: Load<ProjectRow[]>; selected: string | null; detected: string | null; route: Route; onPick: (key: string) => void; onOpenFolder: () => void }
+type SidebarProps = { engine: EngineApi; projects: Load<ProjectRow[]>; selected: string | null; detected: string | null; route: Route; onPick: (key: string) => void; onOpenFolder: () => void }
 
-export const Sidebar = ({ projects, selected, detected, route, onPick, onOpenFolder }: SidebarProps) => (
+export const Sidebar = ({ engine, projects, selected, detected, route, onPick, onOpenFolder }: SidebarProps) => (
   <nav class="side panel" aria-label={t.nav.realms}>
     <div class="lights" aria-hidden="true" />
     <div class="side-h">
@@ -82,5 +82,6 @@ export const Sidebar = ({ projects, selected, detected, route, onPick, onOpenFol
         </a>
       ))}
     </nav>
+    <UpdateControl engine={engine} isSettings={route === ROUTES.settings} />
   </nav>
 )

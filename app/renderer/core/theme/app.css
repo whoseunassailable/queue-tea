@@ -1257,3 +1257,27 @@ body,
 .rm .live-terminal { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 300px; padding: 14px; background: #071a20; color: #d1f0dc; border: 1px solid var(--line-soft); border-radius: 8px; font: 12px/1.6 ui-monospace, monospace; }
 .rm .check-runs { padding-left: 20px; }
 .rm .check-runs > li { margin: 16px 0; }
+.rm .app-update {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px;
+  color: var(--ink2);
+}
+.rm .app-update > .side-link { margin: 0; padding: 6px 0; display: flex; gap: 8px; align-items: baseline; }
+.rm .app-version { font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; color: var(--ink3); }
+.rm .app-update p { grid-column: 1 / -1; margin: 0; font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
+.rm .app-update .spinner { width: 13px; height: 13px; margin-right: 4px; vertical-align: middle; }
+.rm .update-button {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--ink);
+  background: linear-gradient(135deg, var(--g3), var(--g4));
+}
+.rm .update-button:hover:enabled { background: var(--sel); }
+.rm .update-button:disabled { cursor: default; opacity: .55; color: var(--ink3); border-color: var(--line-soft); }
+.rm .app-update [role="alert"] { color: var(--urg-t); }

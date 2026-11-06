@@ -49,3 +49,6 @@ export const DRAG_SLOP_PX = 3
 export const NUDGE_PX = { small: 1, big: 10 } as const
 // The width a card's thumbnail fits into.
 export const THUMB_BOX = { width: 220, height: 300 } as const
+
+// How often the update button asks whether a new version is ready.
+export const UPDATE_POLL_MS = 2_000

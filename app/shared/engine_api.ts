@@ -339,6 +339,8 @@ export type HelperJob = {
 }
 
 export type EngineApi = {
+  readAppUpdate: () => Promise<Reply<import('./update').AppUpdate>>
+  applyAppUpdate: () => Promise<Reply<import('./update').AppUpdate>>
   listProjects: () => Promise<Reply<ProjectRow[]>>
   readProject: (key: string) => Promise<Reply<ProjectView>>
   readGame: () => Promise<Reply<GameView>>
@@ -426,6 +428,8 @@ export type EngineApi = {
 }
 
 export const CHANNELS = {
+  readAppUpdate: 'engine:read-app-update',
+  applyAppUpdate: 'engine:apply-app-update',
   listProjects: 'engine:list-projects',
   readProject: 'engine:read-project',
   readGame: 'engine:read-game',

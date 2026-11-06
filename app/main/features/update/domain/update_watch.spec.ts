@@ -6,12 +6,24 @@ const setup = ({ installed = '1.5.0' as string | null, isAway = true, isBusy = f
   const restart = vi.fn(async () => {})
   const ask = vi.fn(async () => says)
   const log = { error: vi.fn() }
-  const check = updateWatch({ running: '1.4.0', installed: async () => installed, isAway: () => isAway, isBusy: async () => isBusy, ask, restart, log })
+  const check = updateWatch({ running: { version: '1.4.0', commit: 'a'.repeat(40) }, installed: async () => installed === null ? null : { version: installed, commit: 'a'.repeat(40) }, isAway: () => isAway, isBusy: async () => isBusy, ask, restart, log })
 
   return { check, restart, ask, log }
 }
 
 describe('moving to the installed version', () => {
+  it('restarts for a changed source commit at the same displayed version, after work is safe', async () => {
+    let busy = true
+    const restart = vi.fn(async () => {})
+    const check = updateWatch({ running: { version: '1.5.2', commit: 'a'.repeat(40) }, installed: async () => ({ version: '1.5.2', commit: 'b'.repeat(40) }), isAway: () => true, isBusy: async () => busy, ask: vi.fn(), restart, log: { error: vi.fn() } })
+    await check(); expect(restart).not.toHaveBeenCalled()
+    busy = false; await check(); expect(restart).toHaveBeenCalledWith(false)
+  })
+
+  it('never restarts a busy app for a major update even after an earlier confirmation', async () => {
+    const { check, restart, ask } = setup({ installed: '2.0.0', isAway: false, isBusy: true, says: true })
+    await check(); expect(ask).not.toHaveBeenCalled(); expect(restart).not.toHaveBeenCalled()
+  })
   it('does nothing while the installed copy is the one running', async () => {
     const { check, restart, ask, log } = setup({ installed: '1.4.0' })
 

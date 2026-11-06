@@ -321,7 +321,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
    - Line 2: "Detected" when it applies, then the status. Status, first match wins: Needs you (amber) › Working › ▶ current task › "N waiting · ★ title" › "Nothing queued".
    - An unreadable record shows "⚠ name / Couldn't read".
    - Order is last activity at launch, then stable for the session.
-4. Pinned to the bottom: Guild Hall, Hoard, Library and Settings (36 px rows).
+4. Pinned to the bottom: Guild Hall, Hoard and Library (36 px rows), then Settings with the running version on its right, an **Update** button, and one status line (spinner while an update runs, warning colour with **Retry update** when it fails).
 5. The project the app was opened from (`queue-tea open`, or `queue-tea://open?path=` from the tea-cup menu) is selected and tagged Detected. Opened without one, the app shows the last project used. On the very first launch with records it shows a "Pick a project" list beside Open folder….
 
 **Navigation**

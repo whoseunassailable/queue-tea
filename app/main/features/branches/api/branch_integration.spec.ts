@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { emptyRecord } from '../../../../../hooks/shared/records/data/datasources/record_source'
 import type { Reply } from '../../../../shared/engine_api'
 import { createLogger } from '../../../core/logger'
@@ -129,6 +129,7 @@ integration('user-approved branch workflow in disposable repositories', () => {
     expect(await git(taskPath, 'rev-parse', 'HEAD')).toBe(committed)
   })
   it('keeps a local merge after push failure and publishes only after a fresh remote review', async () => {
+    d.published = vi.fn(async () => {})
     const remote = join(folder, 'remote.git'); await mkdir(remote); await git(remote, 'init', '--bare')
     await git(repo, 'remote', 'add', 'origin', remote)
     const prepared = await prepare(); const completed = data(await finish(prepared.operation.id, prepared.approval!))
@@ -136,10 +137,12 @@ integration('user-approved branch workflow in disposable repositories', () => {
     const original = d.userGit
     d.userGit = async (cwd, action) => action.kind === 'push' ? { exitCode: 1, stdout: '', stderr: 'Rejected' } : original(cwd, action)
     expect(await pushMerge(d, KEY, checked)).toMatchObject({ ok: false })
+    expect(d.published).not.toHaveBeenCalled()
     expect(await git(repo, 'rev-parse', 'HEAD')).toBe(completed.operation.commit)
     d.userGit = original
     const published = data(await pushMerge(d, KEY, checked))
     expect(published.operation.published?.commit).toBe(completed.operation.commit)
+    expect(d.published).toHaveBeenCalledWith(repo, 'origin', 'main', checked.head)
     expect(await git(remote, 'rev-parse', 'refs/heads/main')).toBe(completed.operation.commit)
     expect(await git(workspacePath(d, published.operation), 'status', '--porcelain')).toBe('')
   })

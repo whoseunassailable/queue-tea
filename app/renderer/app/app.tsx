@@ -323,7 +323,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   return (
     <div class={classes.join(' ')} data-testid="root">
       <Sky />
-      <Sidebar projects={state.projects} selected={state.selected} detected={state.detected} route={route} onPick={pickRealm} onOpenFolder={() => void openFolder()} />
+      <Sidebar engine={engine} projects={state.projects} selected={state.selected} detected={state.detected} route={route} onPick={pickRealm} onOpenFolder={() => void openFolder()} />
       <div class="main">
         <header class="top">
           <button type="button" class="icon-btn big panel side-toggle" aria-label={t.narrow.showRealms} aria-expanded={isSideOpen} onClick={() => setSideOpen(!isSideOpen)}>

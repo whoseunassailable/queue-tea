@@ -11,6 +11,7 @@ import { Toasts } from '../core/widgets/toasts'
 import { useWindowKeys } from '../core/widgets/window_keys'
 import { useWindowWidth } from '../core/widgets/window_width'
 import { ChroniclePage } from '../features/chronicle/presentation/pages/chronicle_page'
+import { DesignsPage } from '../features/designs/presentation/pages/designs_page'
 import { ConnectDialog } from '../features/github/presentation/widgets/connect_dialog'
 import { GithubChip } from '../features/github/presentation/widgets/github_chip'
 import { GuildPage } from '../features/guild/presentation/pages/guild_page'
@@ -51,6 +52,7 @@ import { t } from '../l10n/en'
 const TABS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.home, label: t.nav.home },
   { route: ROUTES.quests, label: t.nav.quests },
+  { route: ROUTES.designs, label: t.nav.designs },
   { route: ROUTES.branches, label: t.nav.branches },
   { route: ROUTES.chronicle, label: t.nav.chronicle },
   { route: ROUTES.mana, label: t.nav.mana },
@@ -118,6 +120,7 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
     )
   }
   if (route === ROUTES.mana) return <ManaPage engine={engine} realm={view.key} />
+  if (route === ROUTES.designs) return <DesignsPage engine={engine} realm={view.key} name={view.name} onQuests={() => (window.location.hash = hrefOf(ROUTES.quests))} />
   if (route === ROUTES.chronicle) {
     return (
       <ChroniclePage
@@ -237,7 +240,8 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
     workspace.dismissBadges()
   }
 
-  // ⌘N and ⌘Z work from every screen. Inside a text field ⌘Z is the field's.
+  // ⌘N and ⌘Z work from every screen. Inside a text field ⌘Z is the field's,
+  // and on Designs it's the editor's.
   useWindowKeys(event => {
     if (event.key === 'Escape' && state.won !== null) closeWon()
     if (!event.metaKey || sheet !== null || isPaletteOpen) return
@@ -260,7 +264,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
     } else if (event.key === 'n' && readable !== null) {
       event.preventDefault()
       setSheet({ kind: 'new', parentId: null })
-    } else if (event.key === 'z' && !event.shiftKey && !isTyping(event.target)) {
+    } else if (event.key === 'z' && !event.shiftKey && !isTyping(event.target) && route !== ROUTES.designs) {
       event.preventDefault()
       void workspace.undo()
     }

@@ -1,3 +1,4 @@
+import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
@@ -321,6 +322,16 @@ export type EngineApi = {
   readHoard: () => Promise<Reply<HoardView>>
   readChronicle: (scope: string | null, day: string | null) => Promise<Reply<ChronicleView>>
   readMana: (key: string) => Promise<Reply<ManaView>>
+  readDesigns: (key: string) => Promise<Reply<DesignsView>>
+  readDesignVersion: (key: string, folder: string) => Promise<Reply<VersionView>>
+  readDesign: (key: string, folder: string, id: string) => Promise<Reply<DesignRead>>
+  saveDesign: (key: string, folder: string, id: string, scene: Scene, stamp: string) => Promise<Reply<DesignSave>>
+  saveDesignCopy: (key: string, folder: string, id: string, scene: Scene) => Promise<Reply<string>>
+  restoreDesignFile: (key: string, folder: string, file: string) => Promise<Reply<null>>
+  addDesignComment: (key: string, folder: string, comment: CommentInput) => Promise<Reply<DesignComment[]>>
+  setDesignComment: (key: string, folder: string, id: string, isResolved: boolean) => Promise<Reply<DesignComment[]>>
+  sendDesignComments: (key: string, folder: string, next: NextVersion) => Promise<Reply<null>>
+  showDesigns: (key: string) => Promise<Reply<null>>
   readSettings: () => Promise<Reply<Settings>>
   saveSettings: (patch: Partial<Settings>) => Promise<Reply<Settings>>
   readSettingsPage: (key: string | null) => Promise<Reply<SettingsPage>>
@@ -393,6 +404,16 @@ export const CHANNELS = {
   readHoard: 'engine:read-hoard',
   readChronicle: 'engine:read-chronicle',
   readMana: 'engine:read-mana',
+  readDesigns: 'engine:read-designs',
+  readDesignVersion: 'engine:read-design-version',
+  readDesign: 'engine:read-design',
+  saveDesign: 'engine:save-design',
+  saveDesignCopy: 'engine:save-design-copy',
+  restoreDesignFile: 'engine:restore-design-file',
+  addDesignComment: 'engine:add-design-comment',
+  setDesignComment: 'engine:set-design-comment',
+  sendDesignComments: 'engine:send-design-comments',
+  showDesigns: 'engine:show-designs',
   readSettings: 'engine:read-settings',
   saveSettings: 'engine:save-settings',
   readSettingsPage: 'engine:read-settings-page',

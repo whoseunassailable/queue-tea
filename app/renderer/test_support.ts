@@ -1,6 +1,7 @@
 import { branchGraph, branchReview, mergeWorkspace } from './features/branches/test_fixtures'
 import { vi } from 'vitest'
 
+import type { DesignsView } from '../shared/designs'
 import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
@@ -168,6 +169,8 @@ export const SETTINGS_PAGE: SettingsPage = {
   command: null,
 }
 
+export const DESIGNS: DesignsView = { versions: [], coming: [] }
+
 export const LIBRARY: LibraryView = { reading: [], finished: [], finishedCount: 0, pagesRead: 0, pagesThisWeek: 0, pagesToday: 0 }
 
 export const MANA: ManaView = {
@@ -198,6 +201,16 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readHoard: async () => ({ ok: true, data: HOARD }),
     readChronicle: vi.fn(async () => ({ ok: true as const, data: CHRONICLE })),
     readMana: vi.fn(async () => ({ ok: true as const, data: MANA })),
+    readDesigns: vi.fn(async () => ({ ok: true as const, data: DESIGNS })),
+    readDesignVersion: vi.fn(async (_key: string, folder: string) => ({ ok: true as const, data: { folder, label: folder, designs: [], comments: [], commentsProblem: null, uncommitted: 0 } })),
+    readDesign: vi.fn(async () => ({ ok: false as const, error: { message: 'No design in this test.' } })),
+    saveDesign: vi.fn(async () => ({ ok: true as const, data: { kind: 'saved' as const, stamp: 'saved', at: 0 } })),
+    saveDesignCopy: vi.fn(async () => ({ ok: true as const, data: 'copy' })),
+    restoreDesignFile: vi.fn(async () => ({ ok: true as const, data: null })),
+    addDesignComment: vi.fn(async () => ({ ok: true as const, data: [] })),
+    setDesignComment: vi.fn(async () => ({ ok: true as const, data: [] })),
+    sendDesignComments: vi.fn(async () => ({ ok: true as const, data: null })),
+    showDesigns: vi.fn(async () => ({ ok: true as const, data: null })),
     readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }),
     saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' as const, chronicleScope: 'realm' as const, letterKeys: true, realmAccounts: {}, ...patch } })),
     readSettingsPage: async () => ({ ok: true, data: SETTINGS_PAGE }),

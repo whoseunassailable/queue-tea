@@ -1,7 +1,7 @@
 {
   "name": "queue-tea-app",
   "productName": "Queue-tea",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "private": true,
   "description": "The Queue-tea workspace app: every project's queue, beside Claude Code.",
   "author": "Rohan Bhande",

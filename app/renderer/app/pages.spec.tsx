@@ -43,13 +43,24 @@ describe('finding the pages', () => {
     expect(screen.getByRole('link', { name: t.nav.hoard }).getAttribute('href')).toBe('#/hoard')
   })
 
-  it('⌘4 and ⌘5 go to Chronicle and Mana', async () => {
+  it('⌘3 opens Designs, and Branches, Chronicle and Mana move to ⌘4, ⌘5 and ⌘6', async () => {
     await open('/home')
 
+    await act(() => void fireEvent.keyDown(document.body, { key: '3', metaKey: true }))
+    await waitFor(() => expect(window.location.hash).toBe('#/designs'))
     await act(() => void fireEvent.keyDown(document.body, { key: '4', metaKey: true }))
-    await waitFor(() => expect(window.location.hash).toBe('#/chronicle'))
+    await waitFor(() => expect(window.location.hash).toBe('#/branches'))
     await act(() => void fireEvent.keyDown(document.body, { key: '5', metaKey: true }))
+    await waitFor(() => expect(window.location.hash).toBe('#/chronicle'))
+    await act(() => void fireEvent.keyDown(document.body, { key: '6', metaKey: true }))
     await waitFor(() => expect(window.location.hash).toBe('#/mana'))
+  })
+
+  it('puts the Designs tab right after Quests', async () => {
+    await open('/home')
+
+    const tabs = screen.getAllByRole('link').map(link => link.getAttribute('href'))
+    expect(tabs.indexOf('#/designs')).toBe(tabs.indexOf('#/quests') + 1)
   })
 
   it('opens the app-wide pages with no realm picked', async () => {

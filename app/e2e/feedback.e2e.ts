@@ -32,7 +32,8 @@ const shot = async (name: string) => {
 const fileOf = (path: string) => join(folder, `${projectKey(path)}.json`)
 const saved = async () => JSON.parse(await readFile(join(home, 'user-data/settings.json'), 'utf8'))
 const realm = (name: string) => page.getByRole('navigation', { name: 'Realms' }).getByRole('button', { name: new RegExp(`^${name}`) })
-const dayBefore = () => new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+// Yesterday on this computer's clock; toISOString alone is UTC, which is "today" here in the evening.
+const dayBefore = () => new Date(Date.now() - 86_400_000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 const won = (id: string, actual: Task['difficulty']['actual']): Task => makeTask({ id, title: id, state: 'done', finished: `${dayBefore()}T12:00:00+00:00`, difficulty: { expected: 'medium', actual }, minutesByDay: { [dayBefore()]: 45 } })
 // Everything that holds a project's data, to show what didn't land there.
 const records = async () => (await Promise.all((await readdir(folder)).map(name => readFile(join(folder, name), 'utf8')))).join('\n')

@@ -40,3 +40,12 @@ export const LINES_REFRESH_MS = 30_000
 
 // Codex appends session events independently of Queue-tea record changes.
 export const ACTIVITY_REFRESH_MS = 1_000
+
+// The Designs editor: how long after the last change it saves, how far zoom
+// goes, the drag that counts as a move, and how far arrows nudge.
+export const AUTOSAVE_MS = 600
+export const ZOOM_RANGE = { low: 0.1, high: 8 } as const
+export const DRAG_SLOP_PX = 3
+export const NUDGE_PX = { small: 1, big: 10 } as const
+// The width a card's thumbnail fits into.
+export const THUMB_BOX = { width: 220, height: 300 } as const

@@ -44,9 +44,10 @@ const entry = (over: Pick<PaletteEntry, 'id' | 'section' | 'label' | 'run'> & Pa
 const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
   { route: ROUTES.home, label: t.nav.home, keys: '⌘1' },
   { route: ROUTES.quests, label: t.nav.quests, keys: '⌘2' },
-  { route: ROUTES.branches, label: t.nav.branches, keys: '⌘3' },
-  { route: ROUTES.chronicle, label: t.nav.chronicle, keys: '⌘4' },
-  { route: ROUTES.mana, label: t.nav.mana, keys: '⌘5' },
+  { route: ROUTES.designs, label: t.nav.designs, keys: '⌘3' },
+  { route: ROUTES.branches, label: t.nav.branches, keys: '⌘4' },
+  { route: ROUTES.chronicle, label: t.nav.chronicle, keys: '⌘5' },
+  { route: ROUTES.mana, label: t.nav.mana, keys: '⌘6' },
   { route: ROUTES.guild, label: t.nav.guild, keys: null },
   { route: ROUTES.hoard, label: t.nav.hoard, keys: null },
   { route: ROUTES.library, label: t.nav.library, keys: null },

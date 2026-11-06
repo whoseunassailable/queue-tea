@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
 
 import { appleScriptText, bringForwardArgv, claudeLine, codexLine, codexPasteLine, openLineArgv, shellQuote } from './mac'
+import { codexConfigArgs } from '../../features/codex/data/setup'
 
 const run = promisify(execFile)
 
@@ -41,6 +42,18 @@ const codexArgs = async (line: string, cwd: string) =>
 const BRIEF = 'From Queue-tea:\n- Don\'t commit; say "done".\n$(touch pwned) `touch pwned` back\\slash'
 
 describe('the line that opens Codex', () => {
+  it('passes MCP configuration through the shell as literal arguments, even with quoted paths', async () => {
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'queue-tea-mcp-quote-')))
+    try {
+      const config = codexConfigArgs({ command: `o'brien $(touch pwned)`, server: `${root}/a "quoted" server.cjs`, electron: true }, root)
+      const line = codexPasteLine(root, BRIEF, config)
+      expect(await codexArgs(line, root)).toBe(`<--sandbox><workspace-write><--ask-for-approval><on-request>${config.map(arg => `<${arg}>`).join('')}<${BRIEF}>`)
+      await expect(run('ls', [join(root, 'pwned')])).rejects.toThrow()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('reaches the folder and gives codex its guard, then the brief from the file whole, running nothing else', async () => {
     const root = await realpath(await mkdtemp(join(tmpdir(), 'queue-tea-codex-')))
     const folder = join(root, "o'brien $(touch pwned)")

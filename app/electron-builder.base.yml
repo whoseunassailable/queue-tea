@@ -5,6 +5,8 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: out/codex
+    to: codex
   - from: out/provenance.json
     to: provenance.json
   - from: tools
@@ -13,7 +15,7 @@ extraResources:
       - update_runner.mjs
       - release_guard.mjs
       - install_app.sh
-# Everything is bundled, so nothing is needed from node_modules.
+# The app and Codex server are bundled, including the server's SDK.
 electronDist: node_modules/electron/dist
 npmRebuild: false
 afterPack: tools/sign_ad_hoc.cjs

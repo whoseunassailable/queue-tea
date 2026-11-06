@@ -1,7 +1,7 @@
 {
   "name": "queue-tea-app",
   "productName": "Queue-tea",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "private": true,
   "description": "The Queue-tea workspace app: every project's queue, beside Claude Code.",
   "author": "Rohan Bhande",
@@ -13,6 +13,7 @@
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:codex": "node --test tools/codex_smoke.test.mjs",
     "e2e": "electron-vite build && playwright test",
     "package": "electron-vite build && electron-builder --mac --dir",
     "package:stage": "QUEUE_TEA_BUILD_FLAVOR=stage electron-vite build && electron-builder --mac --dir --config electron-builder.stage.yml",
@@ -35,5 +36,9 @@
     "typescript": "5.9.3",
     "vite": "7.3.7",
     "vitest": "3.2.7"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
   }
 }

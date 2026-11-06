@@ -17,6 +17,8 @@ A Claude Code mod that keeps one task per working folder, with parallel tasks in
 
 ## Commands
 
+These slash commands are registered in Claude Code. Codex uses the equivalent `$brew`, `$instant`, `$tea`, `$steep`, `$done`, `$feature` and `$queue-tea` skills with Queue-tea’s local MCP server. The four helpers and Tea-concile are also available as Codex skills. See [Codex setup, behavior and limits](docs/codex-integration.md).
+
 | Command | Does |
 | --- | --- |
 | `/queue-tea` | Opens the tea cup's menu with its keys |

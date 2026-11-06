@@ -8,6 +8,8 @@ Designs (⌘3) shows a realm's design versions from `docs/designs/` in its own f
 
 In the Guild Hall each helper takes an order. Pick a realm in the sidebar, type the order on a helper's card and press **Send**: the app runs Claude Code in the background as that helper, in the worktree of the quest under way or else the realm's folder. The card's speech bubble shows each step, then the answer, and **Stop** ends it. Each helper takes one order at a time, and the four can work at once. It needs `claude` installed and signed in, with the queue-tea plugin. Answers last only until the app quits.
 
+**Start in Codex** and **Continue in Codex** prepare Queue-tea’s Codex skills and local MCP server before opening the terminal. Codex gets the same command workflows through `$brew`, `$instant`, `$tea`, `$steep`, `$done`, `$feature` and `$queue-tea`, plus the four helper skills and Tea-concile. Available companion skills are linked from the local Claude installation. Bare Claude slash commands and its interactive tea-cup menu are not registered in Codex. Existing sessions need a new launch to pick up the server configuration. See [Codex setup and limits](../docs/codex-integration.md).
+
 It also runs a quest from end to end: Start through the git check, onto the quest's branch, and over to Claude Code; Judgement; Finish quest with the task log row and the victory; Back to the board; and sealing the active quest. Start creates a branch in its own checkout; Finish updates the task record and log. From Branches, you can review pending files, approve a selected-file commit, resolve a prepared merge, run its checks, approve integration, and separately approve a push. The general agent interface still refuses commits, merges, pushes and pulls.
 
 Open a quest's details for **Task activity**: timestamped branch creation and switching, file reads and edits, commands, and check results. A connected Claude Code session records tool calls when they start and return. The local Codex adapter reads native command, file-change and background-result events, including commands nested in exec batches and resumed older sessions. Activity follows record changes automatically; Codex panes refresh every second and read appended log bytes incrementally. **Refresh activity** retries a failed read while keeping the last result visible.
@@ -45,6 +47,7 @@ npm test            # unit and component tests, *.spec.ts(x)
 npm run typecheck   # also fails if the app reaches anything that imports claude-code
 npm run e2e         # builds, then drives the real app on a temporary HOME
 npm run e2e:packaged  # the same, on the built apps themselves
+npm run test:codex  # after build: real stdio MCP client/server and isolated skill setup
 ```
 
 Keep the Mac awake for the end-to-end run, with `caffeinate -dimsu npm run e2e`: a sleeping display stops the window painting, and the failures look like the app's.

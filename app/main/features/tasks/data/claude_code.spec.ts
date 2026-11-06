@@ -4,7 +4,7 @@ import type { Host } from '../../../../../hooks/core/host/host'
 import type { TerminalChoice } from '../../../../shared/engine_api'
 import { createLogger } from '../../../core/logger'
 import { codexLine, codexPasteLine } from '../../../core/platform/mac'
-import { openClaudeCode, openCodex } from './claude_code'
+import { focusCodex, openClaudeCode, openCodex } from './claude_code'
 import type { ClaudeDeps } from './claude_code'
 
 let ran: string[][]
@@ -103,6 +103,41 @@ const briefHost = (over: { madeExit?: number; write?: () => Promise<void> } = {}
 const BRIEF_FILE = '/home/.queue-tea/briefs/t-1.md'
 
 describe('opening Codex', () => {
+  it('focuses an existing session without attempting setup that would fail', async () => {
+    const prepareCodex = vi.fn(async (): Promise<string[]> => { throw new Error('edited skill') })
+    expect(await focusCodex(deps('terminal', { prepareCodex }), '/p/demo', 'Task: A')).toEqual({ kind: 'opened', terminal: 'terminal' })
+    expect(prepareCodex).not.toHaveBeenCalled()
+    expect(ran).toHaveLength(1)
+    expect(ran[0]!.join(' ')).not.toContain('do script')
+  })
+
+  it('prepares a configured recovery command only after focusing fails', async () => {
+    exitCode = 1
+    const args = ['-c', 'mcp_servers.queue-tea.required=true']
+    const prepareCodex = vi.fn(async () => {
+      expect(ran).toHaveLength(1)
+
+      return args
+    })
+    expect(await focusCodex(deps('iterm', { prepareCodex }), '/p/demo', 'Task: A')).toEqual({ kind: 'failed', terminal: 'iterm', command: codexPasteLine('/p/demo', 'Task: A', args) })
+    expect(prepareCodex).toHaveBeenCalledWith('/p/demo')
+  })
+
+  it('prepares the adapter before launch and preserves its configuration in fallback commands', async () => {
+    const { host } = briefHost({ madeExit: 1 })
+    const prepareCodex = vi.fn(async () => ['-c', 'mcp_servers.queue-tea.required=true'])
+    const result = await openCodex(deps('terminal', { host, prepareCodex }), '/p/demo', 't-1', 'Task: A')
+    expect(prepareCodex).toHaveBeenCalledWith('/p/demo')
+    expect(result).toEqual({ kind: 'failed', terminal: 'terminal', command: codexPasteLine('/p/demo', 'Task: A', await prepareCodex()) })
+    expect(ran).toEqual([])
+  })
+
+  it('does not launch a bare session when adapter setup fails', async () => {
+    const { host } = briefHost()
+    await expect(openCodex(deps('terminal', { host, prepareCodex: async () => { throw new Error('edited skill') } }), '/p/demo', 't-1', 'Task: A')).rejects.toThrow('edited skill')
+    expect(ran).toEqual([])
+  })
+
   it('writes the brief under ~/.queue-tea/briefs and opens the terminal on Codex reading it', async () => {
     const { host, written } = briefHost()
 

@@ -3,6 +3,7 @@ import { debug } from '../../core/logger/logger'
 import { portsOf } from '../../core/ports/claude_ports'
 import type { Ports } from '../../core/ports/ports'
 import { live } from '../../core/session/live'
+import { QUEUE_TEA_COMMANDS } from '../../core/session/commands'
 import { commitGuardState, commitWarning } from '../../features/commit_guard/presentation/state_management/commit_guard_controller'
 import { readAllowance } from '../../features/conversation/domain/services/allowance'
 import { afterTurn, conversationState } from '../../features/conversation/presentation/state_management/conversation_turn_controller'
@@ -72,13 +73,9 @@ export async function startSession($: EngineInterface) {
     },
     isDeferred: false,
   })
-  await registerCommand($, 'queue-tea', 'Open the Queue-tea menu')
-  await registerCommand($, 'done', 'Ask whether the current Queue-tea task is done for now')
-  await registerCommand($, 'steep', 'Steep a message for later: file it as a new Queue-tea task, with no check', '<message>')
-  await registerCommand($, 'brew', 'Do this now, outside the Queue-tea queue: no task, same branch and conversation', '<request>')
-  await registerCommand($, 'instant', 'The same as /brew', '<request>')
-  await registerCommand($, 'tea', 'Ask or explain, outside the Queue-tea queue: no task, no changes', '<question>')
-  await registerCommand($, 'feature', 'Show, set or clear the Queue-tea feature new tasks are offered under', '<task title> | off')
+  for (const command of QUEUE_TEA_COMMANDS) {
+    await registerCommand($, command.name, command.description, 'argumentHint' in command ? command.argumentHint : undefined)
+  }
   try {
     await checkResume(portsOf($))
   } catch (err) {

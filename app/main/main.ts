@@ -15,6 +15,7 @@ import { appIdOf, flavorOf } from './core/flavor'
 import { createLogger, fileSink } from './core/logger'
 import { MESSAGES, UPDATE_TEXT } from './core/messages'
 import { nodeHost } from './core/node_host'
+import { codexConfigArgs, installCodexSkills, linkCompanionSkills } from './features/codex/data/setup'
 import { stopProcesses, streamProcess } from './core/stream_process'
 import { windowChrome } from './core/platform/mac'
 import { reply } from './core/reply'
@@ -96,6 +97,20 @@ const quests = {
     return chosen.ok ? chosen.data.terminal : DEFAULT_SETTINGS.terminal
   },
   copy: (text: string) => clipboard.writeText(text),
+  prepareCodex: async (path: string) => {
+    try {
+      const server = app.isPackaged ? join(process.resourcesPath, 'codex/server.cjs') : join(__dirname, '../codex/server.cjs')
+      if (!(await host.exists(server))) throw new Error('Build the Queue-tea Codex server before opening a session.')
+      await installCodexSkills(join(home, '.agents/skills'))
+      const companions = await linkCompanionSkills(join(home, '.agents/skills'), home)
+      if (companions.missing.length > 0) log.warn(`Codex companion skills unavailable: ${companions.missing.join(', ')}`)
+
+      return codexConfigArgs({ command: process.execPath, server, electron: true }, path)
+    } catch (err) {
+      log.error('preparing Queue-tea for Codex failed', err)
+      throw err
+    }
+  },
 }
 
 const branchActions = { ...quests, userGit: nodeUserGit(log), reveal: (path: string) => shell.showItemInFolder(path), published: (repo: string, remote: string, branch: string, commit: string) => updates.published(repo, remote, branch, commit) }

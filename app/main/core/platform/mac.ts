@@ -21,10 +21,12 @@ export const claudeLine = (path: string): string => `cd ${shellQuote(path)} && c
 const CODEX_GUARD = '--sandbox workspace-write --ask-for-approval on-request'
 
 // The brief comes from a file: typed through AppleScript its quotes and lines would break.
-export const codexLine = (path: string, briefFile: string): string => `cd ${shellQuote(path)} && codex ${CODEX_GUARD} "$(cat ${shellQuote(briefFile)})"`
+const codexOptions = (args: string[]) => args.length === 0 ? '' : `${args.map(shellQuote).join(' ')} `
+
+export const codexLine = (path: string, briefFile: string, args: string[] = []): string => `cd ${shellQuote(path)} && codex ${CODEX_GUARD} ${codexOptions(args)}"$(cat ${shellQuote(briefFile)})"`
 
 // For copying when the brief file couldn't be written: pasted, it needs no file.
-export const codexPasteLine = (path: string, brief: string): string => `cd ${shellQuote(path)} && codex ${CODEX_GUARD} ${shellQuote(brief)}`
+export const codexPasteLine = (path: string, brief: string, args: string[] = []): string => `cd ${shellQuote(path)} && codex ${CODEX_GUARD} ${codexOptions(args)}${shellQuote(brief)}`
 
 const script = (...lines: string[]): string[] => ['osascript', ...lines.flatMap(line => ['-e', line])]
 

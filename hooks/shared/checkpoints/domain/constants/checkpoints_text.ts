@@ -10,4 +10,6 @@ export const CODEX_RULES = (folder: string, branch: string | null): string =>
     "- Ask before anything that deletes files outside the task's own changes, installs software or reaches the network.",
     "- Queue-tea can't see what you run. When you say a check passed, name the command and what it printed.",
     "- When the task looks done, say so and say what's left, if anything. Rohan finishes it in Queue-tea.",
+    '- If the Queue-tea MCP tools are connected, read queue_tea for the task in this folder, and use task_looks_done with its taskId to request review. Do not mark it finished.',
+    '- Queue-tea skills in Codex: $brew, $instant, $tea, $steep, $done, $feature, $queue-tea, $chai-pter, $commit-chai-n, $mocha-mockup, $tea-dd and $tea-concile. Use /skills to find them. Bare /brew and the other Claude slash commands are not registered by this integration.',
   ].join('\n')

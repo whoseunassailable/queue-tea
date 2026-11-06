@@ -164,6 +164,7 @@ export const QuestsPage = ({ engine, view, picked, folded, savedQuest, isRefresh
       isSaved={row.quest.id === savedQuest}
       onOpen={openDetail}
       onFold={onFold}
+      onAddChild={id => onSheet({ kind: 'new', parentId: id })}
       onPriority={(r, priority: Priority) => void edits.setPriority(view.key, r.quest, priority)}
       search={search}
       isDropTarget={row.quest.id === overId}

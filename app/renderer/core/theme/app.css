@@ -188,6 +188,15 @@ body,
   margin-left: 34px;
 }
 
+.rm .quest-add-child {
+  flex: none;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  color: var(--link);
+  font-size: 22px;
+  line-height: 1;
+}
+
 .rm .chapter-form {
   margin-left: 34px;
 }

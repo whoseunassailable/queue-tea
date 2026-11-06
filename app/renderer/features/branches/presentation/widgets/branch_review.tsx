@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import type { BranchReview as Review } from '../../../../../shared/branches'
 import type { EngineApi } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
@@ -11,7 +11,7 @@ import { BRANCH_POLL_MS, MESSAGE_LIMIT } from '../../domain/constants'
 import { MergeReview } from './merge_review'
 
 type Tab = keyof typeof t.branches.tabs
-const ReviewContents = ({ engine, realm, review, pending, onTarget, onRefresh, onAdopt }: { engine: EngineApi; realm: string; review: Review; pending: boolean; onTarget: (target: string) => void; onRefresh: () => void; onAdopt: (review: Review) => void }) => {
+const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }: { engine: EngineApi; realm: string; review: Review; onTarget: (target: string) => void; onRefresh: () => void; onAdopt: (review: Review) => void }) => {
   const [tab, setTab] = useState<Tab>('overview')
   const [selected, setSelected] = useState<string[]>([])
   const [message, setMessage] = useState('')
@@ -21,7 +21,6 @@ const ReviewContents = ({ engine, realm, review, pending, onTarget, onRefresh, o
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [operationId, setOperationId] = useState<string | null>(review.operation?.id ?? null)
-  useLayoutEffect(() => { setSelected([]) }, [review.fingerprint])
   useEffect(() => { setOperationId(review.operation?.id ?? null) }, [review.operation?.id])
   const request = { taskId: review.taskId, target: review.target, fingerprint: review.fingerprint, idleConfirmed: idle }
   const validate = () => {
@@ -29,7 +28,11 @@ const ReviewContents = ({ engine, realm, review, pending, onTarget, onRefresh, o
     setMessageError(problem); return !problem
   }
   useEffect(() => { if (!busy) return; const timer = window.setInterval(onRefresh, 400); return () => window.clearInterval(timer) }, [busy, onRefresh])
-  const disabled = !!busy || pending
+  // A background reread never locks the form: the engine refuses a commit made on a stale fingerprint.
+  const disabled = !!busy
+  // Ticks outlive a reread; only files that are no longer changed drop out.
+  const chosen = selected.filter(path => review.files.some(file => file.path === path))
+  const isAllChosen = review.files.length > 0 && chosen.length === review.files.length
   const steps = tab === 'checks' ? review.steps.filter(s => s.kind === 'test') : review.steps
   return <>
     <p class="branch-direction mono">{review.source} → {review.target}</p>
@@ -55,15 +58,16 @@ const ReviewContents = ({ engine, realm, review, pending, onTarget, onRefresh, o
       {tab === 'changes' && <>
         <h3>{t.branches.files}</h3>
         {review.files.length === 0 ? <p>{t.branches.noFiles}</p> : <>
-          <ul class="branch-files">{review.files.map(file => <li key={file.path}><label><input type="checkbox" checked={selected.includes(file.path)} disabled={disabled} onChange={e => { const checked = e.currentTarget.checked; setSelected(was => checked ? [...was, file.path] : was.filter(f => f !== file.path)) }} /><code>{file.status}</code> {file.path}</label></li>)}</ul>
+          <label class="branch-confirm"><input type="checkbox" checked={isAllChosen} disabled={disabled} onChange={e => setSelected(e.currentTarget.checked ? review.files.map(file => file.path) : [])} />{t.branches.selectAll}</label>
+          <ul class="branch-files">{review.files.map(file => <li key={file.path}><label><input type="checkbox" checked={chosen.includes(file.path)} disabled={disabled} onChange={e => { const checked = e.currentTarget.checked; setSelected(was => checked ? [...was, file.path] : was.filter(f => f !== file.path)) }} /><code>{file.status}</code> {file.path}</label></li>)}</ul>
           <label>{t.branches.commitMessage}<textarea value={message} disabled={disabled} onInput={e => setMessage(e.currentTarget.value)} onBlur={validate} aria-invalid={!!messageError} /></label>
           {messageError && <p role="alert">{messageError}</p>}
           <label class="branch-confirm"><input type="checkbox" checked={idle} disabled={disabled} onChange={e => setIdleFor(e.currentTarget.checked ? review.fingerprint : null)} />{t.branches.idle}</label>
           <button type="button" class="btn primary" disabled={disabled || !idle || review.state === 'working'} onClick={async () => {
             if (!validate()) return
-            if (!selected.length) { setError(t.branches.selectFiles); return }
+            if (!chosen.length) { setError(t.branches.selectFiles); return }
             setBusy(t.branches.committing); setError(null)
-            const answer = await ask(engine, () => engine.commitBranchFiles(realm, { ...request, files: selected, message }))
+            const answer = await ask(engine, () => engine.commitBranchFiles(realm, { ...request, files: chosen, message }))
             if (answer.ok) { onAdopt(answer.data); setMessage('') } else setError(answer.message)
             setBusy(null)
           }}>{t.branches.commitSelected}</button>
@@ -101,7 +105,7 @@ export const BranchReview = ({ engine, realm, id, onClose }: { engine: EngineApi
   useEffect(() => { const timer = window.setInterval(read.refresh, BRANCH_POLL_MS); return () => window.clearInterval(timer) }, [read.refresh])
   return <Dialog title={t.branches.review} isSheet onCancel={onClose} onSubmit={() => { /* Only a named action button may mutate Git. */ }}>
     <div class="branch-review">
-      <ReadView read={read} line={t.branches.checking}>{review => <ReviewContents key={`${id}:${review.target}`} engine={engine} realm={realm} review={review} pending={read.isRefreshing} onTarget={setTarget} onRefresh={read.refresh} onAdopt={read.adopt} />}</ReadView>
+      <ReadView read={read} line={t.branches.checking}>{review => <ReviewContents key={`${id}:${review.target}`} engine={engine} realm={realm} review={review} onTarget={setTarget} onRefresh={read.refresh} onAdopt={read.adopt} />}</ReadView>
     </div>
     <div class="sheet-actions"><button type="button" class="btn" onClick={read.refresh}>{t.branches.refresh}</button><button type="button" class="btn" onClick={onClose}>{t.branches.close}</button></div>
   </Dialog>

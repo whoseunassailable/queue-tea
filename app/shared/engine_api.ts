@@ -315,6 +315,29 @@ export type LibraryView = { reading: Book[]; finished: Book[]; finishedCount: nu
 // What a menu bar item asks of the window. Most are the key that does the same.
 export type MenuItem = { kind: 'key'; key: string; isMeta: boolean } | { kind: 'showRecord' } | { kind: 'toggleRealms' } | { kind: 'installCommand' }
 
+// The longest order a helper takes, checked by the form and again by main.
+export const HELPER_ORDER_CHARS = 4_000
+
+// A helper at work on an order from the Guild Hall: what it is doing now, then
+// what it answered. Main keeps the latest one per helper while the app runs.
+export type HelperDoingKind = 'reading' | 'editing' | 'writing' | 'running' | 'step' | 'searching' | 'browsing' | 'asking' | 'skill' | 'planning' | 'thinking' | 'working'
+export type HelperDoing = { kind: HelperDoingKind; target: string | null }
+export type HelperJob = {
+  helper: HelperId
+  realm: string
+  folder: string
+  order: string
+  // The merge it was sent to resolve, or null for an order from the Guild Hall.
+  merge: string | null
+  status: 'working' | 'done' | 'failed' | 'stopped'
+  doing: HelperDoing | null
+  steps: number
+  reply: string | null
+  error: string | null
+  started: number
+  finished: number | null
+}
+
 export type EngineApi = {
   listProjects: () => Promise<Reply<ProjectRow[]>>
   readProject: (key: string) => Promise<Reply<ProjectView>>
@@ -391,6 +414,11 @@ export type EngineApi = {
   putBackQuest: (key: string, taskId: string, seal: Seal | null) => Promise<Reply<BackOutcome>>
   putBackNow: (key: string, taskId: string) => Promise<Reply<BackOutcome>>
   copyText: (text: string) => Promise<Reply<null>>
+  readHelpers: () => Promise<Reply<HelperJob[]>>
+  sendHelper: (key: string, helper: HelperId, order: string) => Promise<Reply<HelperJob>>
+  concileMerge: (key: string, helper: HelperId, operationId: string) => Promise<Reply<HelperJob>>
+  stopHelper: (helper: HelperId) => Promise<Reply<null>>
+  onHelpers: (listener: (jobs: HelperJob[]) => void) => () => void
   onChange: (listener: () => void) => () => void
   onMenu: (listener: (item: MenuItem) => void) => () => void
   onOpened: (listener: (opened: Opened) => void) => () => void
@@ -473,6 +501,11 @@ export const CHANNELS = {
   putBackQuest: 'engine:put-back-quest',
   putBackNow: 'engine:put-back-now',
   copyText: 'engine:copy-text',
+  readHelpers: 'engine:read-helpers',
+  sendHelper: 'engine:send-helper',
+  concileMerge: 'engine:concile-merge',
+  stopHelper: 'engine:stop-helper',
+  helpers: 'engine:helpers',
   changed: 'engine:changed',
   menu: 'engine:menu',
   log: 'engine:log',

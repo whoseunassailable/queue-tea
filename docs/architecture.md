@@ -169,6 +169,7 @@ flowchart LR
     rules --> node["Node's own file and git access"]
   end
   client -->|"asks"| handler
+  handler -->|"an order from the Guild Hall"| claude["Claude Code, run in the background as one helper"]
   node --> store[("Storage: the task records, the session files, the app's settings")]
 ```
 
@@ -188,7 +189,8 @@ app/
     └── features/<screen>/    data/ (its API calls), domain/, presentation/ (pages, state_management, widgets)
 ```
 
-- **Screens are features:** `home`, `quests`, `chronicle`, `mana`, `hoard`, `guild_hall`, `settings`, plus the moments each screen opens (start, judgement, done, seal, move).
+- **Screens are features:** `home`, `quests`, `chronicle`, `mana`, `hoard`, `guild`, `settings`, plus the moments each screen opens (start, judgement, done, seal, move).
+- **The helpers** (`main/features/helpers/`) run the Guild Hall's orders: Claude Code in the background as that helper, with every change pushed to the window. They keep the latest order per helper in memory and store nothing.
 - **The game rules** (XP, levels, stages, streak, gold, badges) are a `game` feature's `domain/services`, pure functions over the records, so the backend works them out and the frontend only draws them.
 - **Storage is only the files** there today: the records in `~/.queue-tea/projects`, the session files in `~/.queue-tea/sessions`, and the app's settings in Electron's `userData`. There is no other database.
 - The app imports `shared/*/domain`, `features/*/domain`, `shared/git/data/` and `shared/records/data/` from the mod, never a mod view, a controller or anything that reaches Claude Code. The rest of `shared/` reaches it through `core/ports/`.

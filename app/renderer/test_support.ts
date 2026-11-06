@@ -2,7 +2,7 @@ import { branchGraph, branchReview, mergeWorkspace } from './features/branches/t
 import { vi } from 'vitest'
 
 import type { DesignsView } from '../shared/designs'
-import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
+import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -191,9 +191,26 @@ export const MANA: ManaView = {
 
 const reply = async (key: string): Promise<Reply<ProjectView>> => ({ ok: true, data: projectView(key) })
 
+export const helperJob = (over: Partial<HelperJob> = {}): HelperJob => ({
+  helper: 'tea-dd',
+  realm: 'a-000001',
+  folder: '/p/a-000001',
+  order: 'Write tests for the timer',
+  merge: null,
+  status: 'working',
+  doing: null,
+  steps: 0,
+  reply: null,
+  error: null,
+  started: Date.parse('2026-10-27T17:50:00Z'),
+  finished: null,
+  ...over,
+})
+
 // An engine held in memory. A test swaps any call, and `fire` plays a change.
 export const fakeEngine = (over: Partial<EngineApi> = {}) => {
   const listeners = new Set<() => void>()
+  const helperListeners = new Set<(jobs: HelperJob[]) => void>()
   const engine: EngineApi = {
     listProjects: async () => ({ ok: true, data: [projectRow('a-000001')] }),
     readProject: async key => ({ ok: true, data: projectView(key) }),
@@ -269,6 +286,15 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     putBackQuest: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: null, isCodexTimeLost: false } })),
     putBackNow: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), went: 'back' as const, missedCheckpoint: { lastAt: null }, isCodexTimeLost: false } })),
     copyText: vi.fn(async () => ({ ok: true as const, data: null })),
+    readHelpers: async () => ({ ok: true, data: [] }),
+    sendHelper: vi.fn(async (key: string, helper: HelperJob['helper'], order: string) => ({ ok: true as const, data: helperJob({ realm: key, helper, order }) })),
+    concileMerge: vi.fn(async (key: string, helper: HelperJob['helper'], operationId: string) => ({ ok: true as const, data: helperJob({ realm: key, helper, merge: operationId, order: 'Resolve the conflicts' }) })),
+    stopHelper: vi.fn(async () => ({ ok: true as const, data: null })),
+    onHelpers: listener => {
+      helperListeners.add(listener)
+
+      return () => helperListeners.delete(listener)
+    },
     onChange: listener => {
       listeners.add(listener)
 
@@ -280,5 +306,5 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     ...over,
   }
 
-  return { engine, fire: () => listeners.forEach(listener => listener()) }
+  return { engine, fire: () => listeners.forEach(listener => listener()), tellHelpers: (jobs: HelperJob[]) => helperListeners.forEach(listener => listener(jobs)) }
 }

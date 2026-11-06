@@ -134,6 +134,8 @@ test('resolves a real conflict, shows a failed check, reruns it, and merges only
   await dialog().getByRole('checkbox', { name: /I have stopped/ }).last().check()
   await dialog().getByRole('button', { name: 'Prepare merge for review' }).click()
   await expect(dialog().getByRole('heading', { name: 'Resolve conflicts', exact: true })).toBeVisible()
+  await expect(dialog().getByRole('button', { name: 'Send Commit Chai-n to resolve these conflicts' })).toBeEnabled()
+  await page.screenshot({ path: testInfo.outputPath('helper-bench.png'), fullPage: true })
   await dialog().getByLabel('Resolved result', { exact: true }).fill('combined result\n')
   await dialog().getByRole('button', { name: 'Save resolved file' }).click()
   const checks = dialog().getByRole('region', { name: 'Checks on the prepared result' })

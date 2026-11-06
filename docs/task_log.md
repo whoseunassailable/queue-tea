@@ -2,6 +2,18 @@
 
 Every task finished in this project, newest first. Written by Queue-tea.
 
+## 2026-11-06
+
+| Task | Priority | Difficulty | Time | Branch |
+| --- | --- | --- | --- | --- |
+| Design Tab | Urgent | Medium → Hard | 1m | `task/design-tab` |
+
+## 2026-11-05
+
+| Task | Priority | Difficulty | Time | Branch |
+| --- | --- | --- | --- | --- |
+| Task description | High | Hard | 2h 53m | `task/task-description` |
+
 ## 2026-11-03
 
 | Task | Priority | Difficulty | Time | Branch |

@@ -1,44 +1,43 @@
 import cup from '../../../../../../.claude-plugin/icon.png'
+import type { EngineApi } from '../../../../../shared/engine_api'
+import { Failed } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import { HELPERS } from '../../domain/helpers'
+import { useHelperJobs } from '../state_management/helper_jobs'
+import { HelperCard } from '../widgets/helper_card'
+import type { GuildRealm } from '../widgets/helper_card'
 
-const skillsText = (skills: string[]): string => (skills.length > 1 ? `${skills[0]} +${skills.length - 1}` : (skills[0] ?? ''))
+// The helpers, each ready for an order in the realm picked in the sidebar.
+export const GuildPage = ({ engine, realm, onCopy }: { engine: EngineApi; realm: GuildRealm | null; onCopy: (text: string) => void }) => {
+  const { read, jobOf, send, retry, stop } = useHelperJobs(engine)
 
-// Read-only: it teaches the helpers and where they're turned on, and hands nothing out.
-export const GuildPage = ({ onCopy }: { onCopy: (text: string) => void }) => (
-  <main class="page">
-    <section class="guild-h panel panel-pad" aria-labelledby="guild-h">
-      <img src={cup} alt={t.guild.cup} width={84} height={84} />
-      <div>
-        <h1 id="guild-h">{t.guild.title}</h1>
-        <p>{t.guild.line}</p>
-        <p>{t.guild.where}</p>
+  return (
+    <main class="page">
+      <section class="guild-h panel panel-pad" aria-labelledby="guild-h">
+        <img src={cup} alt={t.guild.cup} width={84} height={84} />
+        <div>
+          <h1 id="guild-h">{t.guild.title}</h1>
+          <p>{t.guild.line}</p>
+          <p>{t.guild.where}</p>
+          <p>{realm === null ? t.guild.pickRealm : t.guild.worksIn(realm.name)}</p>
+        </div>
+      </section>
+      {read.load.status === 'failed' && <Failed message={read.load.message} onRetry={read.retry} />}
+      <div class="party">
+        {HELPERS.map(helper => (
+          <HelperCard
+            key={helper.id}
+            helper={helper}
+            job={jobOf(helper.id)}
+            isChecking={read.load.status === 'loading'}
+            realm={realm}
+            onSend={(key, order) => send(key, helper.id, order)}
+            onStop={() => stop(helper.id)}
+            onRetry={retry}
+            onCopy={onCopy}
+          />
+        ))}
       </div>
-    </section>
-    <div class="party">
-      {HELPERS.map(helper => (
-        <article key={helper.id} class={`member panel ${helper.kind}`}>
-          <div class="m-top">
-            <span class="portrait">
-              <img src={helper.logo} alt="" width={70} height={70} />
-            </span>
-            <div>
-              <h2 class="m-name">{helper.name}</h2>
-              <span class="m-class">{helper.role}</span>
-            </div>
-          </div>
-          <p class="m-desc">{helper.summary}</p>
-          <p class="card-note">
-            <b>{t.guild.skills}</b> · {skillsText(helper.skills)}
-          </p>
-          <div class="m-call">
-            <code>{helper.mention}</code>
-            <button type="button" class="icon-btn" aria-label={t.guild.copy(helper.name)} onClick={() => onCopy(helper.mention)}>
-              ⧉
-            </button>
-          </div>
-        </article>
-      ))}
-    </div>
-  </main>
-)
+    </main>
+  )
+}

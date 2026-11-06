@@ -15,7 +15,7 @@ import { appIdOf, flavorOf } from './core/flavor'
 import { createLogger, fileSink } from './core/logger'
 import { MESSAGES, UPDATE_TEXT } from './core/messages'
 import { nodeHost } from './core/node_host'
-import { stopProcesses } from './core/stream_process'
+import { stopProcesses, streamProcess } from './core/stream_process'
 import { windowChrome } from './core/platform/mac'
 import { reply } from './core/reply'
 import { watchFolders } from './core/watcher'
@@ -25,6 +25,7 @@ import { readMana } from './features/mana/api/mana_api'
 import { githubApi } from './features/github/api/github_api'
 import { libraryApi } from './features/library/api/library_api'
 import { designsApi } from './features/designs/api/designs_api'
+import { helpersApi } from './features/helpers/api/helpers_api'
 import { judgementWatch } from './features/notify/domain/judgements'
 import type { Asked } from './features/notify/domain/judgements'
 import { installCommand, openedFromUrl } from './features/opening/api/opening_api'
@@ -111,6 +112,14 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
+// Each change to a helper's work goes to every window as it happens.
+const helpers = helpersApi({
+  ...quests,
+  stream: streamProcess,
+  tell: jobs => {
+    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(CHANNELS.helpers, jobs)
+  },
+})
 const designs = designsApi({
   ...quests,
   reveal: (path: string) => shell.showItemInFolder(path),
@@ -222,6 +231,10 @@ const serveEngine = () => {
   handle(CHANNELS.putBackQuest, (_, key: unknown, taskId: unknown, seal: unknown) => back.putBackQuest(quests, key, taskId, seal))
   handle(CHANNELS.putBackNow, (_, key: unknown, taskId: unknown) => back.putBackNow(quests, key, taskId))
   handle(CHANNELS.copyText, (_, text: unknown) => setOut.copyText(quests, text))
+  handle(CHANNELS.readHelpers, () => helpers.readHelpers())
+  handle(CHANNELS.sendHelper, (_, key: unknown, helper: unknown, order: unknown) => helpers.sendHelper(key, helper, order))
+  handle(CHANNELS.concileMerge, (_, key: unknown, helper: unknown, operationId: unknown) => helpers.concileMerge(key, helper, operationId))
+  handle(CHANNELS.stopHelper, (_, helper: unknown) => helpers.stopHelper(helper))
   ipcMain.on(CHANNELS.log, (_, level: unknown, text: unknown) => {
     const line = `window: ${String(text)}`
     if (level === 'warn') log.warn(line)
@@ -342,7 +355,8 @@ const checkUpdate = updateWatch({
   installed: async () => versionOfPlist(await host.read(join(bundle, 'Contents/Info.plist'))),
   isAway: () => BrowserWindow.getFocusedWindow() === null,
   isBusy: async () => {
-    if (callsRunning > 0) return true
+    // A restart would end a helper's order half done.
+    if (callsRunning > 0 || helpers.isBusy()) return true
     const [window] = BrowserWindow.getAllWindows()
 
     return window !== undefined && (await window.webContents.executeJavaScript(BUSY_PROBE)) === true

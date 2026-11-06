@@ -739,6 +739,7 @@ export const t = {
     sagaOff: 'Active saga · turn off',
     remove: 'Remove…',
     addChapter: '+ Add a chapter',
+    addChildTask: (title: string) => `Add a child task to ${title}`,
     addCriterion: 'Add a criterion',
     removeCriterion: (line: string) => `Remove ${line}`,
     fold: (title: string) => `Fold ${title}`,

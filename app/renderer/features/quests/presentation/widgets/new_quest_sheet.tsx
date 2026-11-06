@@ -16,10 +16,10 @@ import { HelperToggles } from './helper_toggles'
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
-const titleOfPart = (choices: Choices, part: string, sagaTitle: string): string | null => {
+const titleOfPart = (choices: Choices['features'], part: string, sagaTitle: string): string | null => {
   if (part === 'new') return sagaTitle.trim()
 
-  return [...choices.features, ...choices.lone].find(c => c.id === part)?.title ?? null
+  return choices.find(c => c.id === part)?.title ?? null
 }
 
 type SheetProps = { engine: EngineApi; view: ReadableView; edits: QuestEdits; parentId: string | null; title?: string | undefined; onClose: () => void }
@@ -43,6 +43,12 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
   }, [])
 
   const errors = validateQuest(form)
+  const parent = [...view.ready, ...view.sealed].find(entry => entry.quest.id === parentId)?.quest
+  const parentChoices = choices.status === 'ready' ? [...choices.data.features, ...choices.data.lone] : []
+  // The board can pick a quest outside the limited list of suggested parents.
+  if (parent !== undefined && !parentChoices.some(choice => choice.id === parent.id)) {
+    parentChoices.unshift({ id: parent.id, title: parent.title, detail: null })
+  }
   const shown: QuestErrors = Object.fromEntries(Object.entries(errors).filter(([field]) => touched.includes(field as QuestField)))
   const set = (patch: Partial<QuestForm>) => setForm({ ...form, ...patch })
   const touch = (field: QuestField) => setTouched(touched.includes(field) ? touched : [...touched, field])
@@ -52,7 +58,7 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
     setFailure(null)
     if (isSaving || Object.keys(validateQuest(form)).length > 0) return
     setSaving(true)
-    const saga = choices.status === 'ready' ? titleOfPart(choices.data, form.part, form.sagaTitle) : null
+    const saga = titleOfPart(parentChoices, form.part, form.sagaTitle)
     const answer = await edits.file(view.key, questOf(form), saga)
     setSaving(false)
     if (answer.ok) onClose()
@@ -90,7 +96,7 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
         {choices.status === 'ready' && (
           <div class="picks">
             <Pick name="part" label={t.form.alone} isPicked={form.part === 'none'} onPick={() => set({ part: 'none' })} />
-            {[...choices.data.features, ...choices.data.lone].map(choice => (
+            {parentChoices.map(choice => (
               <Pick
                 key={choice.id}
                 name="part"

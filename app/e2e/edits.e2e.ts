@@ -220,6 +220,29 @@ test('the detail pane keeps a description and criteria', async () => {
   expect((await stored('one')).description).toBe('Why it matters')
 })
 
+test('the plus inside a newly filed quest saves its first child under that quest', async () => {
+  const parent = (await titled('Filed from the app'))!
+  const row = page.locator('.qrow').filter({ has: page.getByText(parent.title, { exact: true }) })
+  const add = row.getByRole('button', { name: `Add a child task to ${parent.title}`, exact: true })
+  await expect(add).toHaveText('+')
+  await add.click()
+  await expect(dialog().getByRole('radio', { name: parent.title, exact: true })).toBeChecked()
+  await dialog().getByLabel('Title *').fill('First child from the card')
+  await dialog().getByRole('button', { name: 'Add to the board' }).click()
+  await expect(dialog()).toBeHidden()
+
+  const child = page.locator('.qrow.child').filter({ hasText: 'First child from the card' })
+  await expect(child).toBeVisible()
+  expect(await titled('First child from the card')).toMatchObject({ parentId: parent.id, state: 'queued', started: null, branch: null })
+  await expect(child.getByRole('button', { name: /Add a child task/ })).toHaveCount(0)
+  await expect(add).toBeVisible()
+  await row.getByRole('button', { name: `Fold ${parent.title}`, exact: true }).click()
+  await expect(child).toHaveCount(0)
+  await expect(add).toBeVisible()
+  await row.getByRole('button', { name: `Unfold ${parent.title}`, exact: true }).click()
+  await expect(child).toBeVisible()
+})
+
 test('every edit left a record the mod can read, with a good copy beside it', async () => {
   const record = await onDisk()
 

@@ -5,6 +5,8 @@ import type { EngineApi } from '../shared/engine_api'
 
 // The window reaches main through this one object and nothing else.
 const engine: EngineApi = {
+  readAppUpdate: () => ipcRenderer.invoke(CHANNELS.readAppUpdate),
+  applyAppUpdate: () => ipcRenderer.invoke(CHANNELS.applyAppUpdate),
   listProjects: () => ipcRenderer.invoke(CHANNELS.listProjects),
   readProject: key => ipcRenderer.invoke(CHANNELS.readProject, key),
   readGame: () => ipcRenderer.invoke(CHANNELS.readGame),
@@ -79,6 +81,16 @@ const engine: EngineApi = {
   putBackQuest: (key, taskId, seal) => ipcRenderer.invoke(CHANNELS.putBackQuest, key, taskId, seal),
   putBackNow: (key, taskId) => ipcRenderer.invoke(CHANNELS.putBackNow, key, taskId),
   copyText: text => ipcRenderer.invoke(CHANNELS.copyText, text),
+  readHelpers: () => ipcRenderer.invoke(CHANNELS.readHelpers),
+  sendHelper: (key, helper, order) => ipcRenderer.invoke(CHANNELS.sendHelper, key, helper, order),
+  concileMerge: (key, helper, operationId) => ipcRenderer.invoke(CHANNELS.concileMerge, key, helper, operationId),
+  stopHelper: helper => ipcRenderer.invoke(CHANNELS.stopHelper, helper),
+  onHelpers: listener => {
+    const heard = (_: unknown, jobs: Parameters<typeof listener>[0]) => listener(jobs)
+    ipcRenderer.on(CHANNELS.helpers, heard)
+
+    return () => ipcRenderer.off(CHANNELS.helpers, heard)
+  },
   onChange: listener => {
     const heard = () => listener()
     ipcRenderer.on(CHANNELS.changed, heard)

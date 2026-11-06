@@ -27,6 +27,9 @@ if [ -e "$staged" ]; then
   exit 1
 fi
 cp -R "$built" "$staged"
+# Check the copied bundle and re-read installed ancestry immediately before the
+# swap, so a failed copy or an intervening installer leaves production intact.
+node tools/release_guard.mjs install "$staged" "$target"
 # Renamed, never written over: macOS kills an open app whose files change under it.
 [ ! -e "$target" ] || mv "$target" "$old"
 if ! mv "$staged" "$target"; then

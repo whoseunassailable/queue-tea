@@ -31,16 +31,16 @@ A Claude Code mod that keeps one task per working folder, with parallel tasks in
 
 ## Helpers
 
-Four subagents come with Queue-tea, each with a job, the skills for it and a logo of its own: a cup-bot in its colour, with its symbol rising where the steam would be. Ask for one by name ("have Commit Chai-n write the commits") or @-mention it.
+Four subagents come with Queue-tea, each with a job, the skills for it and a logo of its own: a cup-bot in its colour, with its symbol rising where the steam would be. Ask for one by name ("have Commit Chai-n write the commits") or @-mention it. In the workspace app's Guild Hall you can also type an order on a helper's card and watch it work ([app/README.md](app/README.md)).
 
 | | Helper | Its job | Skills it starts with |
 | --- | --- | --- | --- |
-| <img src=".claude-plugin/helpers/commit-chai-n.svg" width="72" alt="Commit Chai-n"> | **Commit Chai-n** (`queue-tea:commit-chai-n`) | Branch names, splitting work into commits and writing their messages, pull requests, and planning pushes, merges and pulls. It hands you the commands that commit, push or merge, each starting with `! `, and never runs them | `git-workflow-and-versioning` |
+| <img src=".claude-plugin/helpers/commit-chai-n.svg" width="72" alt="Commit Chai-n"> | **Commit Chai-n** (`queue-tea:commit-chai-n`) | Branch names, splitting work into commits and writing their messages, pull requests, and planning pushes, merges and pulls. It hands you the commands that commit, push or merge, ready to paste into a terminal with no leading `!`, and never runs them | `git-workflow-and-versioning`, `tea-concile` |
 | <img src=".claude-plugin/helpers/mocha-mockup.svg" width="72" alt="Mocha Mockup"> | **Mocha Mockup** (`queue-tea:mocha-mockup`) | The design stage, before code: options and trade-offs, screens and their states, keys, interfaces and data, acceptance criteria | `spec-driven-development`, `api-and-interface-design`, `frontend-ui-engineering`, `frontend-design` |
 | <img src=".claude-plugin/helpers/chai-pter.svg" width="72" alt="Chai-pter"> | **Chai-pter** (`queue-tea:chai-pter`) | Writing docs and keeping them true to the code, in plain writing that reads as a person wrote it. Uses `write-like-a-human`'s word and pattern lists when that skill is in `~/.claude/skills` | `documentation-and-adrs` |
 | <img src=".claude-plugin/helpers/tea-dd.svg" width="72" alt="Tea-DD"> | **Tea-DD** (`queue-tea:tea-dd`) | Tests for every feature and fix, in the project's own style; for a bug, the failing test first. It runs them and reports the results | `test-driven-development`, `verification-before-completion` |
 
-The skills come from the agent-skills, superpowers and frontend-design plugins; a helper without one of them installed starts without it. Each helper's shell commands go through the same commit and push guard as Claude's.
+Queue-tea brings one skill of its own, **Tea-concile** (`queue-tea:tea-concile`), which reconciles two branches. Use it when a merge stops on conflicts: Branches in the app shows **Resolve conflicts** on a prepared merge, or a merge you ran yourself reports CONFLICT. Ask Claude to resolve them. It works only in that merge's folder, reads what each branch was for, keeps the higher version number, keeps both sides' rows in logs and lists, regenerates lockfiles and generated files, combines code so both changes survive, and asks when the two sides really disagree. It stages the result for you to review and merge in Branches, or hands you the commit command for a merge you ran; it never commits. The other skills come from the agent-skills, superpowers and frontend-design plugins; a helper without one of them installed starts without it. Each helper's shell commands go through the same commit and push guard as Claude's.
 
 ## Settings
 

@@ -7,6 +7,12 @@ files:
 extraResources:
   - from: out/provenance.json
     to: provenance.json
+  - from: tools
+    to: update-tools
+    filter:
+      - update_runner.mjs
+      - release_guard.mjs
+      - install_app.sh
 # Everything is bundled, so nothing is needed from node_modules.
 electronDist: node_modules/electron/dist
 npmRebuild: false

@@ -15,7 +15,7 @@ import { appIdOf, flavorOf } from './core/flavor'
 import { createLogger, fileSink } from './core/logger'
 import { MESSAGES, UPDATE_TEXT } from './core/messages'
 import { nodeHost } from './core/node_host'
-import { stopProcesses } from './core/stream_process'
+import { stopProcesses, streamProcess } from './core/stream_process'
 import { windowChrome } from './core/platform/mac'
 import { reply } from './core/reply'
 import { watchFolders } from './core/watcher'
@@ -25,6 +25,7 @@ import { readMana } from './features/mana/api/mana_api'
 import { githubApi } from './features/github/api/github_api'
 import { libraryApi } from './features/library/api/library_api'
 import { designsApi } from './features/designs/api/designs_api'
+import { helpersApi } from './features/helpers/api/helpers_api'
 import { judgementWatch } from './features/notify/domain/judgements'
 import type { Asked } from './features/notify/domain/judgements'
 import { installCommand, openedFromUrl } from './features/opening/api/opening_api'
@@ -43,9 +44,11 @@ import { readPush, pushMerge } from './features/branches/api/push_api'
 import { nodeUserGit } from './features/branches/data/user_git'
 import * as setOut from './features/tasks/api/start_api'
 import * as tasks from './features/tasks/api/tasks_api'
-import { relaunchArgv, restoredOf, versionOfPlist } from './features/update/data/bundle'
+import { commitOfProvenance, relaunchArgv, restoredOf, versionOfPlist } from './features/update/data/bundle'
 import type { Restored } from './features/update/data/bundle'
 import { updateWatch } from './features/update/domain/update_watch'
+import { updateService } from './features/update/data/update_service'
+import type { Provenance } from '../tools/release_guard.mjs'
 import { sessionsFolder } from '../../hooks/shared/sessions/domain/services/session_rules'
 
 // How often the window hears from main with no file event, so a session that
@@ -55,6 +58,7 @@ const STALE_CHECK_MS = 30_000
 
 // Set by the build: empty for prod and for development.
 declare const QUEUE_TEA_BUILT_FLAVOR: string
+declare const QUEUE_TEA_SOURCE: Provenance
 
 const flavor = flavorOf(process.env.QUEUE_TEA_FLAVOR ?? (QUEUE_TEA_BUILT_FLAVOR || undefined), app.isPackaged)
 app.on('before-quit', stopProcesses)
@@ -94,7 +98,7 @@ const quests = {
   copy: (text: string) => clipboard.writeText(text),
 }
 
-const branchActions = { ...quests, userGit: nodeUserGit(log), reveal: (path: string) => shell.showItemInFolder(path) }
+const branchActions = { ...quests, userGit: nodeUserGit(log), reveal: (path: string) => shell.showItemInFolder(path), published: (repo: string, remote: string, branch: string, commit: string) => updates.published(repo, remote, branch, commit) }
 
 const places = {
   ...game,
@@ -111,6 +115,14 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
+// Each change to a helper's work goes to every window as it happens.
+const helpers = helpersApi({
+  ...quests,
+  stream: streamProcess,
+  tell: jobs => {
+    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(CHANNELS.helpers, jobs)
+  },
+})
 const designs = designsApi({
   ...quests,
   reveal: (path: string) => shell.showItemInFolder(path),
@@ -138,7 +150,7 @@ const handle = (channel: string, work: (event: IpcMainInvokeEvent, ...args: unkn
       log.warn(`Refused engine request from an unexpected frame: ${channel}`)
       return { ok: false, error: { message: MESSAGES.badValue } }
     }
-    if (READS.test(channel)) return work(event, ...args)
+    if (READS.test(channel) || channel === CHANNELS.applyAppUpdate) return work(event, ...args)
     callsRunning += 1
     try {
       return await work(event, ...args)
@@ -148,6 +160,8 @@ const handle = (channel: string, work: (event: IpcMainInvokeEvent, ...args: unkn
   })
 
 const serveEngine = () => {
+  handle(CHANNELS.readAppUpdate, () => reply(log, UPDATE_TEXT.failed, updates.read))
+  handle(CHANNELS.applyAppUpdate, () => reply(log, UPDATE_TEXT.failed, updates.apply))
   handle(CHANNELS.listProjects, () => listProjects(projects))
   handle(CHANNELS.readProject, (_, key: unknown) => readProject(projects, key))
   handle(CHANNELS.readGame, () => readGame(game))
@@ -222,6 +236,10 @@ const serveEngine = () => {
   handle(CHANNELS.putBackQuest, (_, key: unknown, taskId: unknown, seal: unknown) => back.putBackQuest(quests, key, taskId, seal))
   handle(CHANNELS.putBackNow, (_, key: unknown, taskId: unknown) => back.putBackNow(quests, key, taskId))
   handle(CHANNELS.copyText, (_, text: unknown) => setOut.copyText(quests, text))
+  handle(CHANNELS.readHelpers, () => helpers.readHelpers())
+  handle(CHANNELS.sendHelper, (_, key: unknown, helper: unknown, order: unknown) => helpers.sendHelper(key, helper, order))
+  handle(CHANNELS.concileMerge, (_, key: unknown, helper: unknown, operationId: unknown) => helpers.concileMerge(key, helper, operationId))
+  handle(CHANNELS.stopHelper, (_, helper: unknown) => helpers.stopHelper(helper))
   ipcMain.on(CHANNELS.log, (_, level: unknown, text: unknown) => {
     const line = `window: ${String(text)}`
     if (level === 'warn') log.warn(line)
@@ -337,16 +355,29 @@ const askRestart = async (version: string): Promise<boolean> => {
   return response === 0
 }
 
-const checkUpdate = updateWatch({
-  running: app.getVersion(),
-  installed: async () => versionOfPlist(await host.read(join(bundle, 'Contents/Info.plist'))),
-  isAway: () => BrowserWindow.getFocusedWindow() === null,
-  isBusy: async () => {
-    if (callsRunning > 0) return true
-    const [window] = BrowserWindow.getAllWindows()
+const isUpdateBusy = async () => {
+  // A restart would end a helper's order half done.
+  if (callsRunning > 0 || helpers.isBusy()) return true
+  const [window] = BrowserWindow.getAllWindows()
 
-    return window !== undefined && (await window.webContents.executeJavaScript(BUSY_PROBE)) === true
-  },
+  return window !== undefined && (await window.webContents.executeJavaScript(BUSY_PROBE)) === true
+}
+const runningBuild = { version: app.getVersion(), commit: QUEUE_TEA_SOURCE.commit }
+const installedBuild = async () => {
+  const version = versionOfPlist(await host.read(join(bundle, 'Contents/Info.plist')))
+  if (version === null) return null
+  const file = join(bundle, 'Contents/Resources/provenance.json')
+  const commit = await host.exists(file) ? commitOfProvenance(await host.read(file)) : null
+  return { version, commit }
+}
+const updates = updateService({ running: runningBuild, repository: QUEUE_TEA_SOURCE.repository, enabled: app.isPackaged && flavor === 'prod',
+  tools: app.isPackaged ? join(process.resourcesPath, 'update-tools') : resolve(__dirname, '../../tools'),
+  isBusy: isUpdateBusy, installed: installedBuild, restart: () => restart(true), log })
+const checkUpdate = updateWatch({
+  running: runningBuild,
+  installed: async () => { const state = await updates.read(); return state.canRestart ? state.installed : null },
+  isAway: () => BrowserWindow.getFocusedWindow() === null,
+  isBusy: isUpdateBusy,
   ask: askRestart,
   restart,
   log,
@@ -380,7 +411,7 @@ const start = async () => {
   }
   setInterval(tellWindows, STALE_CHECK_MS)
   // Only a packaged app has a bundle that an install replaces.
-  if (app.isPackaged) setInterval(() => void checkUpdate(), UPDATE_CHECK_MS)
+  if (app.isPackaged && flavor === 'prod') setInterval(() => void checkUpdate(), UPDATE_CHECK_MS)
 }
 
 app

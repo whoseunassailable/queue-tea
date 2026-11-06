@@ -98,6 +98,22 @@ test('Settings shows at once and is remembered', async () => {
   await shot('settings')
 })
 
+test('Settings shows the running version and the disabled update follows every sky', async () => {
+  const version = await app.evaluate(({ app }) => app.getVersion())
+  await expect(page.getByRole('link', { name: 'Settings', exact: true })).toContainText(`v${version}`)
+  const update = page.getByRole('button', { name: 'Update', exact: true })
+  await expect(update).toBeDisabled()
+  const backgrounds = []
+  for (const sky of ['Morning', 'Day', 'Evening', 'Night']) {
+    await page.getByRole('button', { name: `${sky} sky` }).click()
+    await expect(page.locator('.rm')).toHaveClass(new RegExp(`t-${sky.toLowerCase()}`))
+    backgrounds.push(await update.evaluate(button => getComputedStyle(button).backgroundImage))
+    const bounds = await page.locator('.app-update').boundingBox()
+    expect(bounds!.width).toBeLessThan(260)
+  }
+  expect(new Set(backgrounds).size).toBe(4)
+})
+
 test('the task log path is checked, then saved', async () => {
   await page.getByRole('button', { name: 'Set now…' }).click()
   const dialog = page.getByRole('dialog')

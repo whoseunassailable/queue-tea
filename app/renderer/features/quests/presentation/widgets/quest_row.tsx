@@ -12,6 +12,7 @@ type RowProps = {
   isSaved: boolean
   onOpen: (id: string) => void
   onFold: (id: string) => void
+  onAddChild: (id: string) => void
   onPriority: (row: Row, priority: Priority) => void
   search: string
   isDropTarget: boolean
@@ -25,7 +26,7 @@ const Title = ({ title, search }: { title: string; search: string }) => (
   <span class="qc-title">{partsOf(title, search).map(part => (part.isMatch ? <mark key={part.text}>{part.text}</mark> : part.text))}</span>
 )
 
-export const QuestRowView = ({ row, isOpen, isSaved, onOpen, onFold, onPriority, search, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop }: RowProps) => {
+export const QuestRowView = ({ row, isOpen, isSaved, onOpen, onFold, onAddChild, onPriority, search, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop }: RowProps) => {
   const { quest, isChapter, sagaOf, isFolded, foldedStar } = row
   const parts = ['qrow', isChapter ? 'child' : '', isOpen ? 'sel' : '', quest.sealedBecause === null ? '' : 'sealed', isDropTarget ? 'drop' : ''].filter(part => part !== '')
 
@@ -66,6 +67,11 @@ export const QuestRowView = ({ row, isOpen, isSaved, onOpen, onFold, onPriority,
           <PriorityControl title={quest.title} priority={quest.priority} isSaved={isSaved} onPick={priority => onPriority(row, priority)} />
           <XpReward xp={quest.xp} />
         </span>
+        {!isChapter && (
+          <button type="button" class="icon-btn quest-add-child" aria-label={t.actions.addChildTask(quest.title)} title={t.actions.addChildTask(quest.title)} onClick={() => onAddChild(quest.id)}>
+            +
+          </button>
+        )}
       </div>
     </li>
   )

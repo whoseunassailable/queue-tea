@@ -126,6 +126,7 @@ describe('sagas', () => {
     fireEvent.click(screen.getByRole('button', { name: t.actions.fold('The saga') }))
 
     await waitFor(() => expect(screen.queryByText('A chapter')).toBe(null))
+    expect(screen.getByRole('button', { name: t.actions.addChildTask('The saga') }).closest('.qrow')).toBeTruthy()
     expect(engine.saveSettings).toHaveBeenCalledWith({ folds: { [KEY]: ['saga'] } })
   })
 
@@ -245,6 +246,36 @@ describe('New quest', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBe(null))
     expect(engine.fileQuest).toHaveBeenCalledWith(KEY, expect.objectContaining({ title: 'New one', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' } }))
     expect(screen.getByText(t.edit.queued('New one', 'Mid', null))).toBeTruthy()
+  })
+
+  it('adds a child task using the plus inside a newly filed quest card', async () => {
+    const parent = quest({ id: 'filed-parent', title: 'New one' })
+    const child = quest({ id: 'child', title: 'First chapter', parentId: parent.id })
+    const fileQuest = vi.fn<EngineApi['fileQuest']>()
+      .mockResolvedValueOnce({ ok: true, data: projectView(KEY, { ready: [{ kind: 'quest', quest: parent }] }) })
+      .mockResolvedValueOnce({ ok: true, data: projectView(KEY, {
+        ready: [{ kind: 'saga', quest: parent, chapters: [child], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false }],
+      }) })
+    await openSheet({ fileQuest })
+    fireEvent.input(title(), { target: { value: parent.title } })
+    submit()
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBe(null))
+    const add = screen.getByRole('button', { name: t.actions.addChildTask(parent.title) })
+    expect(add.textContent?.trim()).toBe('+')
+    expect(add.closest('.qrow')?.querySelector('.qc-title')?.textContent).toBe(parent.title)
+    fireEvent.click(add)
+    const pickedParent = await within(dialog()).findByRole('radio', { name: parent.title }) as HTMLInputElement
+    expect(pickedParent.checked).toBe(true)
+    fireEvent.input(title(), { target: { value: child.title } })
+    submit()
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBe(null))
+    await waitFor(() => expect(document.querySelector('.qrow.child .qc-title')?.textContent).toBe(child.title))
+    expect(fileQuest).toHaveBeenNthCalledWith(2, KEY, expect.objectContaining({ title: child.title, parent: { kind: 'task', id: parent.id } }))
+    expect(screen.getByText(t.edit.queued(child.title, 'Mid', parent.title))).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.actions.addChildTask(parent.title) }).closest('.qrow')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t.actions.addChildTask(child.title) })).toBe(null)
   })
 
   it('stays open and shows the failure when the save fails', async () => {

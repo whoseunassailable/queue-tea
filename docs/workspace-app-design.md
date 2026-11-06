@@ -14,7 +14,7 @@
   - It fits a narrow window and, later, a phone.
   - In progress is already a list of cards, so tasks running side by side won't need a new layout.
 - **The Board** (option 1's tab) shows the same data in columns. I'd add it with parallel tasks, when In progress and Review can hold several cards.
-- **Guild Hall** (the Tea Room, renamed on 28 Oct): keep it, read-only. Leave Tea Leaves, Obsi-tea, delegation and parallel tasks out entirely, with no placeholders.
+- **Guild Hall** (the Tea Room, renamed on 28 Oct): keep it, read-only. Since 6 Nov each helper there takes orders (4.13). Leave Tea Leaves, Obsi-tea, delegation and parallel tasks out entirely, with no placeholders.
 - **Decided with Rohan on 2026-10-27:**
   - (a) List now; the Board comes with parallel tasks.
   - (b) Tea House. Neon Lab stays below as the road not taken.
@@ -321,7 +321,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
    - Line 2: "Detected" when it applies, then the status. Status, first match wins: Needs you (amber) › Working › ▶ current task › "N waiting · ★ title" › "Nothing queued".
    - An unreadable record shows "⚠ name / Couldn't read".
    - Order is last activity at launch, then stable for the session.
-4. Pinned to the bottom: Guild Hall, Hoard, Library and Settings (36 px rows).
+4. Pinned to the bottom: Guild Hall, Hoard and Library (36 px rows), then Settings with the running version on its right, an **Update** button, and one status line (spinner while an update runs, warning colour with **Retry update** when it fails).
 5. The project the app was opened from (`queue-tea open`, or `queue-tea://open?path=` from the tea-cup menu) is selected and tagged Detected. Opened without one, the app shows the last project used. On the very first launch with records it shows a "Pick a project" list beside Open folder….
 
 **Navigation**
@@ -993,9 +993,9 @@ BLOCKED… (k), then the feature dialogs: Move (drag or Part of…) and Remove a
 
 ### 4.13 Guild Hall, formerly the Tea Room
 
-The hall itself only shows the four helpers. Which of them Claude uses is turned on per quest: in the new-task sheet and in the detail panel of a queued quest and of the task in progress.
+The hall shows the four helpers, and each one takes orders. Which of them Claude uses on a quest is still turned on per quest: in the new-task sheet and in the detail panel of a queued quest and of the task in progress.
 
-In the Jade Peaks mockups each helper is a party member: its logo in an 88 px gold ring, its role as a chip in its colour, then what it does, its skills and its @-mention to copy.
+In the Jade Peaks mockups each helper is a party member: its logo in an 88 px gold ring, its role as a chip in its colour, then what it does, its skills and its @-mention to copy. The built card adds a state chip beside the role (Ready, At work, Done, Stuck, Stopped), a speech bubble under the header and the order box above the @-mention. The drawing below is from before orders. Since 6 Nov each helper is drawn as a little bot instead of its logo: a white egg-shaped shell that glows in its colour, an antenna, two eyes, arms and legs, and a prop after its pun (Commit Chai-n swings a chain, Mocha Mockup holds up a mockup, Chai-pter reads a book, Tea-DD shakes a test flask). It stands on top of its card rather than inside a ring. In Branches, a merge with conflicts shows the same four bots on a bench; one dragged onto the merge, or pressed, resolves it with Tea-concile, one at a time.
 
 ```
 ┌───────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1039,7 +1039,10 @@ In the Jade Peaks mockups each helper is a party member: its logo in an 88 px go
 - **Grid:** cards 440×236 px in 2×2 with 24 px gaps; one column below 900 px. The ╭╮ box stands for the 72 px dark logo tile.
 - **Hover:** the tile lifts 2 px with a 24%-alpha glow in the bot's colour; the cup winks (400 ms).
 - **Content** is bundled at build time from the `agents/*.md` frontmatter and `.claude-plugin/helpers/*.svg`.
-- **Why include it:** it's cheap, it carries the character, and it teaches the @-mentions that work today. It has no delegation buttons and no "coming later" lines.
+- **Orders:** each card has an "Order for <helper>" box and Send. The order goes to Claude Code, run in the background as that helper, in the realm picked in the sidebar, or in the worktree of the quest under way. The header says which realm. With no realm picked, the header asks for one and the cards have no order box. An empty order shows "Order is required." under the box, and one over 4,000 characters "Keep the order under 4,000 characters."; a refusal from the app shows there too.
+- **The helper at work:** a speech bubble under the portrait says what the helper is doing now ("Reading timer.ts…", "Editing README.md…"), how many steps so far and in which folder, and Send becomes Stop. When it is done the bubble holds its answer. When it gets stuck it says why in plain words, with Try again, which sends the same order to the same realm again; a stopped helper says "Stopped. Nothing after that step was done." and offers Try again too. An idle helper's bubble has a line of its own ("Which chapter needs writing?"). While the first read is on its way each bubble says "Checking on the helpers…"; if that read fails, the failed state with Try again sits above the cards.
+- **Motion:** an idle helper floats, blinks and sways its antenna, each a beat apart, and waves when the pointer is on it. At work it bobs, works its prop and steam rises; done, it hops once and wears a ✓; stuck, it shakes once and wears a !; stopped, it shakes once. A bench bot squashes as it is picked up. With reduced motion or Calm mode none of it moves, and the badges stay.
+- **One order at a time per helper.** The four can work at once. Main keeps each helper's latest order while the app runs, so a restart forgets the answers, and an update waits until no helper is at work.
 
 ### 4.14 First run with no projects
 
@@ -1315,7 +1318,7 @@ COMPONENT STATES · priority control, progress, toasts
 | State chip | 20 px, Caption: ○ Backlog, ▶ In progress, ? Review, ⊘ Blocked, ✓ Done; markers ★ Suggested, ↥ Play next, ◆ Feature, Detected | static; Review and Done tinted |
 | Progress bar | 5 segments, each 10×6 px with 2 px gaps (as `progressText`), plus the text | 0/n, partial, an in-progress segment hatched tea, blocked count, complete (green) |
 | Session badge | toolbar pill (28 px: 16 px mood cup, word, allowance) and the sidebar mark (8 px) | Working (steam), Open, Needs you, Elsewhere ›, None, Stale, several sessions, allowance unknown |
-| Party portrait | the helper's logo in an 88 px circle with a gold ring and its colour behind it | default, hover, focus |
+| Party portrait | the helper drawn as a bot, 120 px, standing on its card and glowing in its colour; 56 px on the Branches bench | default, hover (waves), focus; idle, at work, done, stuck, stopped (4.13) |
 | Toast | bottom centre, 40 px, radius 10, shadow-2; glyph, text, optional action | info, success, warning, error; 4 s, or 6 s with an action; up to 3 stacked; hover pauses; announced politely (errors assertively) |
 | Dialog / sheet | sheets 600 px, confirmations 480 px; 15/20 title; buttons right-aligned | default, invalid (primary disabled plus an amber hint), busy ("◌ Finishing…"), error (inline, stays open), destructive (red primary) |
 | Empty state | cup 96–120 px with its mood face, a 15/20 title, one line, one action | no projects, no tasks, nothing this week, nothing blocked (header only), no search match |
@@ -1346,7 +1349,7 @@ COMPONENT STATES · priority control, progress, toasts
 | History | `finishedTasks`, `weekOf`, `weekMinutes`, `unassignedMinutesByDay`, both difficulties, `effort.linesAdded/linesRemoved/filesTouched`, from every record for All projects |
 | Usage & time | `formatAllowance` on the session's allowance, `weekMinutes`, `unassignedMinutesByDay`, the current task's `effort`, a live `diffSince` |
 | Settings | `Options` from the session file; `docsLogPath` per record; whether `<record>.bak` exists; the app's own settings |
-| Guild Hall | `agents/*.md` frontmatter (name, description, colour, skills) and `.claude-plugin/helpers/*.svg`, bundled at build time |
+| Guild Hall | `agents/*.md` frontmatter (name, description, colour, skills) and `.claude-plugin/helpers/*.svg`, bundled at build time; each helper's latest order from main (`readHelpers`, then `onHelpers` as it changes), not the record |
 | HUD and Hoard | `finishedTasks` from every record (`difficulty.actual`, `finished`, `parentId`) and `childrenOf`, through the rules in 2.2 |
 | Designs | not the record: `docs/designs/` in the realm's folder (`version.json`, `comments.json`, `*.design.json`), `git config user.name` for comment authors and `git status` for uncommitted files; Next version files its quest with `fileQuest` |
 

@@ -42,7 +42,7 @@ esac
   )
   await chmod(gh, 0o755)
 }
-const WAITS = `printf '\\n! First copy your one-time code: 100F-29B8\\nOpen this URL to continue in your web browser: https://github.com/login/device\\n' >&2; while [ ! -f '${join('$HOME_DIR', 'go')}' ]; do sleep 0.05; done`
+const WAITS = `printf '\\n! First copy your one-time code: 100F-29B8\\nOpen this URL to continue in your web browser: https://github.com/login/device\\n' >&2; while [ ! -f '${join('$HOME_DIR', 'go')}' ] && [ -d '$HOME_DIR' ]; do sleep 0.05; done`
 
 const login = (over: Partial<GithubDeps> = {}) => githubApi({ ...deps, ...over })
 const callLog = async () => {
@@ -62,7 +62,7 @@ beforeEach(async () => {
   state = join(home, 'status.json')
   opened = []
   await writeFile(state, statusJson([{ login: 'first', active: true }]))
-  await fakeGh(state, WAITS.replace('$HOME_DIR', home))
+  await fakeGh(state, WAITS.replaceAll('$HOME_DIR', home))
   const log = createLogger('dev', () => {})
   const host = nodeHost(log, async url => {
     opened.push(url)

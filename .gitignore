@@ -1,4 +1,5 @@
 # Laid by Claude Code while the mod is developed; regenerated, never edited
 .claude-plugin/types/
 node_modules/
+/app/node_modules
 .DS_Store

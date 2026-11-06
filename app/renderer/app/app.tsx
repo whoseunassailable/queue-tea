@@ -93,7 +93,11 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
   const isCovered = sheet !== null || isPaletteOpen
   const { projects, project, game, selected } = state
   // These don't belong to a realm, so they don't wait for one to be picked.
-  if (route === ROUTES.guild) return <GuildPage onCopy={onCopy} />
+  if (route === ROUTES.guild) {
+    const row = projects.status === 'ready' ? projects.data.find(p => p.key === selected) : undefined
+
+    return <GuildPage engine={engine} realm={row?.kind === 'readable' ? { key: row.key, name: row.name } : null} onCopy={onCopy} />
+  }
   if (route === ROUTES.hoard) return <HoardPage engine={engine} />
   if (route === ROUTES.library) return <LibraryPage engine={engine} />
   if (route === ROUTES.settings) {
@@ -319,7 +323,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   return (
     <div class={classes.join(' ')} data-testid="root">
       <Sky />
-      <Sidebar projects={state.projects} selected={state.selected} detected={state.detected} route={route} onPick={pickRealm} onOpenFolder={() => void openFolder()} />
+      <Sidebar engine={engine} projects={state.projects} selected={state.selected} detected={state.detected} route={route} onPick={pickRealm} onOpenFolder={() => void openFolder()} />
       <div class="main">
         <header class="top">
           <button type="button" class="icon-btn big panel side-toggle" aria-label={t.narrow.showRealms} aria-expanded={isSideOpen} onClick={() => setSideOpen(!isSideOpen)}>

@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)). Updated 2026-11-05: a Designs tab after Quests, for a realm's design versions and comments ([The Designs tab](#the-designs-tab), [design-tab.md](design-tab.md)).
+- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)). Updated 2026-11-05: a Designs tab after Quests, for a realm's design versions and comments ([The Designs tab](#the-designs-tab), [design-tab.md](design-tab.md)). Updated 2026-11-06: each helper in the Guild Hall takes an order ([The Guild Hall's helpers](#the-guild-halls-helpers)).
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -14,7 +14,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 
 ## In this release
 
-- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (read-only; helpers are turned on per quest, not in the hall), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
+- **Screens:** Home, Quests (the ranked list in state sections, with a detail pane), a quest's and a saga's detail, New quest, Start with the git hold, Judgement, Done and the victory, Back to the board, Seal…, Move, Remove, Chronicle, Mana & time, Hoard and badges, Settings, the Library, the Guild Hall (each helper takes an order and works on it there; which helpers Claude uses on a quest is still turned on per quest), first run, the failed record, the command palette and the narrow window. They are drawn and measured in sections 3–5 of the design. On screen they use the game's words (section 2.2 of the design); the engine and the record keep their own.
 - **The look:** Jade Peaks. A sky behind every screen follows the clock: morning, day and evening on light panels, the lantern night on dark ones. Settings can fix the sky to one time of day and has Calm mode, which stops every animation.
 - **The game layer:** XP, levels, a lóng that grows from egg to elder, a day streak, gold and seven badges. All of it is worked out from the record.
 - **New record fields:** `description`, `criteria` and `review` on every task, and `requests` on the record. Each task also gets `helpers`, the helpers Claude uses on it, which Rohan turns on or off per quest (Tea-DD is on by default), and `codexSince`, when the quest went to Codex.
@@ -25,10 +25,10 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 ## Not in this release
 
 - **The Board tab.** It comes with tasks side by side (sub-project 4), when In progress and Review can hold several cards.
-- **The other 2.0 sub-projects:** helpers handed work from the Guild Hall (2), Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4, planned in [plan-parallel-quests.md](plan-parallel-quests.md)) and lifecycle hardening (5). No placeholders for any of them.
+- **The other 2.0 sub-projects:** Tea Leaves and Obsi-tea (3), tasks side by side in worktrees (4, planned in [plan-parallel-quests.md](plan-parallel-quests.md)) and lifecycle hardening (5). No placeholders for any of them.
 - **Windows.** It comes after the Mac (see Decisions).
 - **A phone or web app.** The window talks to the engine through one typed API, so HTTP can sit behind it later.
-- **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own commits.
+- **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own pushes to main.
 - **From the game:** a shop to spend gold, naming the dragon, and quests or rewards from the helpers.
 - **Commit, Push, Merge and Pull buttons, ever.** Git commands appear only as text to copy (criterion 3 of the design).
 
@@ -45,13 +45,13 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 | Look | Jade Peaks, from 28 Oct; Tea House before that | Rohan wanted a fun, game-style app with dragons and living, colourful backgrounds. The day takes its feel from Liyue in Genshin Impact; the night is a lantern-and-aurora sky. The art is original |
 | Game layer | Full: XP, levels, a growing dragon, streak, gold, badges, quests | Rohan's pick on 28 Oct. Worked out from the record, so nothing new is stored and the engine doesn't change |
 | Sky | Follows the clock; Settings can fix it | Rohan's ask: a pink morning, a blue day and so on, with the night on dark panels |
-| Guild Hall (the Tea Room) | In, read-only; helpers are turned on per quest, not in the hall | Cheap, carries the character, and teaches the @-mentions that work today |
+| Guild Hall (the Tea Room) | In: each helper takes an order and works on it in the picked realm; helpers are still turned on per quest in the quest's panel | It carries the character, and a helper can be put to work without opening a terminal |
 | Single-letter keys | The terminal's letters, off inside text fields, a switch in Settings | Same muscle memory in both places |
 | Description and criteria | On every task, collapsed when empty | Any task becomes a feature once it has children |
 | VS Code | Open the folder, copy `claude`, toast "Paste it in VS Code's terminal" | The Claude Code extension (2.1.311) can't start a terminal from outside VS Code; its `vscode://anthropic.claude-code/open` URL opens the graphical panel |
 | The rest | The suggested answers in section 8 of the design | Rohan took them all on 2026-10-27 |
 | Build and install | **New in this spec:** a local build signed ad hoc, from one npm script, copied to /Applications | One user; notarisation and downloaded updates would be work with no reader. An Apple Silicon Mac won't run an unsigned app, so it can't be less than ad hoc |
-| Updating an open app | Added 2026-11-03. Each commit's build is swapped in under the open app, which restarts itself when you're away from it with nothing half done, back on the same screen and in the same place. A new major version asks first if you're using the window | Rohan asked that an update never stop his work unless it's a big one. Restarting is the only way to run new code: the open app can't reload its own files |
+| Updating an open app | Added 2026-11-03. Each successful push to main is built, tested and swapped in under the open app, which restarts itself when you're away from it with nothing half done, back on the same screen and in the same place. A new major version asks first if you're using the window | Rohan asked that an update never stop his work unless it's a big one. Restarting is the only way to run new code: the open app can't reload its own files |
 | Codex | Added 2026-11-03. Any quest can start on Codex, or move to it and back. Claude Code keeps the first button; a hint names Codex when Claude's allowance is used up | Rohan's 5-hour allowance runs out partway through quests. Codex has no Queue-tea mod, so its own sandbox stands in for the git guard |
 
 ## Architecture
@@ -106,15 +106,19 @@ Main watches the folders `~/.queue-tea/projects` and `~/.queue-tea/sessions`, no
 
 `tools/install_app.sh` copies the new build in beside the open app and swaps it in by renaming, never by writing over files: macOS kills an app whose open files change under it, and a renamed bundle keeps everything the open app has already read.
 
-Every 30 seconds a packaged app compares the version in its bundle's `Info.plist` with its own. When they differ, the rules in `main/features/update/domain/update_watch.ts` decide:
+Every 30 seconds a packaged app compares the version in its bundle's `Info.plist`, and the commit in its `provenance.json`, with its own. When they differ, the rules in `main/features/update/domain/update_watch.ts` decide:
 
 | Situation | What the app does |
 | --- | --- |
 | No window of ours has the keyboard, and nothing is half done | Restarts behind what you're using (`open -g`, then `showInactive`) |
 | You're using the window, minor or patch version | Waits |
-| You're using the window, new major version | Asks once: Restart now, or Later. Later waits like a minor one |
+| You're using the window, new major version, and nothing is half done | Asks once: Restart now, or Later. Later waits like a minor one |
 
-Half done means a dialog is open, a text field holds the keyboard, or an engine call that changes something is still running. Calls that only read (`list-`, `read-`, `check-`) don't count: the window rereads every 30 seconds, so they would hold an update off for good. Before it exits, the app writes the window's screen and bounds to `restart.json` in its settings folder. The new copy reads it once, deletes it and opens the window there. With no window open, the new copy opens none until the Dock icon is clicked.
+Half done means a dialog is open, a text field holds the keyboard, an engine call that changes something is still running, or a helper is at work on an order from the Guild Hall. Calls that only read (`list-`, `read-`, `check-`) don't count: the window rereads every 30 seconds, so they would hold an update off for good. Before it exits, the app writes the window's screen and bounds to `restart.json` in its settings folder. The new copy reads it once, deletes it and opens the window there. With no window open, the new copy opens none until the Dock icon is clicked.
+
+The app never restarts while an install is swapping a new copy in. A later push that is still queued or building, or whose build failed, doesn't hold a restart back: that build touches nothing installed until its own swap.
+
+The sidebar's **Settings** row shows the running version as `vX.Y.Z`, with its commit in a tooltip. **Update** beside it restarts into the installed copy when nothing is half done. After a failed build it reads **Retry update** and builds the same push again.
 
 ### Sessions: the mod tells the app where Claude Code is
 
@@ -177,6 +181,18 @@ The full behavior and safe folder retention are in [Parallel quests and branches
 Added 2026-11-05. Designs sits between Quests and Branches at `/designs` and opens with ⌘3. It shows the selected realm's design versions, newest first, from `docs/designs/` in the realm's own folder, so git keeps their history. A version's designs open in an editor that moves, resizes and restyles their layers and saves as you go. Each design has its comments, and **Next version…** files the open ones as a quest for Claude to draft the next version from. The tab never starts Claude Code.
 
 The window reaches the files only through the engine API, by realm key, version folder and design id; main checks each against its pattern and builds the paths. The last good copy of each file is kept outside the realm, under `~/.queue-tea/designs/`, so it never counts as an uncommitted file. The file format, screens, states and limits are in [design-tab.md](design-tab.md).
+
+### The Guild Hall's helpers
+
+Added 2026-11-06. Each helper's card takes an order for the realm picked in the sidebar, and a helper dragged onto a merge with conflicts in Branches resolves them. The screen is section 4.13 of the design. Five engine API calls carry it:
+
+- **`sendHelper(key, helper, order)`** checks the helper and the order: trimmed, not empty and at most 4,000 characters. The helper works in the worktree of the realm's quest under way, or in the realm's folder when no quest has one. A folder that has gone, or a helper still on its last order, is refused with a message and nothing starts. Otherwise main runs `claude -p --agent queue-tea:<helper> --output-format stream-json --verbose -- <order>` in that folder and returns at once.
+- **`concileMerge(key, helper, operationId)`** sends a helper to a merge prepared in Branches whose stage is still conflicts; any other stage is refused with "This merge has no conflicts left to resolve." The helper runs the same way, in that merge's own folder, with a fixed order: resolve the conflicts with the Tea-concile skill, stage every resolved file and never commit. Its job carries the merge's id (`merge`), so Branches knows which helper is on which merge. While it works the merge's buttons wait, the merge is reread every 350 ms and once more when it ends, and its answer stays under the bench. Rohan still reads the diff, runs the checks and approves the merge.
+- **`onHelpers(listener)`** hears every change. Main reads Claude Code's output line by line: each tool call becomes the bubble's line and counts a step ("Reading timer.ts…"), thinking shows "Thinking…" without counting one, and the final result is the answer.
+- **`stopHelper(helper)`** ends the run. The card then says "Stopped. Nothing after that step was done."
+- **`readHelpers()`** returns each helper's latest order, read when the Guild Hall opens.
+
+When an order fails, the card says why: the queue-tea plugin isn't installed in Claude Code, `claude` can't be found, the order ran 30 minutes and was stopped, or anything else, which asks Rohan to check that Claude Code is signed in. Main keeps the orders in memory only, so a restart forgets them, and an update waits while any helper is at work.
 
 ## Data
 

@@ -60,7 +60,7 @@ describe('the Designs page', () => {
   it('says what it is reading while the realm\'s designs load', async () => {
     await open({ readDesigns: never })
 
-    expect(screen.getByRole('status').textContent).toContain(t.designs.loading)
+    expect(within(screen.getByRole('main')).getByRole('status').textContent).toContain(t.designs.loading)
     expect(screen.getByText(t.designs.loadingWhere('a'))).toBeTruthy()
   })
 

@@ -125,10 +125,26 @@ export const MESSAGES = {
   folderGone: (path: string) => `This realm's folder isn't at ${path} any more, so nothing was started. Put it back, then try again.`,
   sealedQuest: (title: string, why: string) => `${title} is sealed: ${why}. Unseal it first.`,
   startedFirst: (other: string, title: string) => `${other} was started first, maybe in another session, so ${title} waits on the board.`,
+  readHelpers: "Couldn't see what the helpers are doing. Try again.",
+  sendHelper: "Couldn't hand the helper your order. Try again.",
+  stopHelper: "Couldn't stop the helper. Try again.",
+  concileMerge: "Couldn't send the helper to this merge. Try again.",
+  helperNoConflicts: 'This merge has no conflicts left to resolve. Read its diff, run its checks and approve it.',
+  concileOrder: (source: string, target: string) =>
+    `Resolve the conflicts in this merge of ${source} into ${target} with the queue-tea:tea-concile skill. This folder is Queue-tea's merge folder for it: work only here, stage every file you resolve, and never commit. Then report each file as the skill says.`,
+  helperOrderEmpty: 'Order is required.',
+  helperOrderLong: (limit: number) => `Keep the order under ${limit.toLocaleString('en')} characters.`,
+  helperBusy: 'This helper is still on its last order. Wait for it to finish, or stop it first.',
+  helperMissing: "Claude Code doesn't have Queue-tea's helpers. Install the queue-tea plugin in Claude Code, then try again.",
+  helperNoClaude: "The app couldn't find Claude Code. Install it, run claude once in a terminal to sign in, then try again.",
+  helperTimedOut: (minutes: number) => `The order ran for ${minutes} minutes without finishing, so it was stopped. Try a smaller order.`,
+  helperFailed: "The helper couldn't finish this order. Check that Claude Code is signed in by running claude in a terminal, then try again.",
 } as const
 
 // The one question an update asks, for a new major version.
 export const UPDATE_TEXT = {
+  startFailed: "The push succeeded, but the update couldn't start. Check the app log, then retry.",
+  failed: "Couldn't read or apply the app update. Try again.",
   ready: (version: string) => `Queue-tea ${version} is installed`,
   detail: "It's a big update, so Queue-tea restarts to use it. Your quests are saved, and sessions in Terminal keep running. Choose Later and it restarts on its own the next time you step away.",
   restartNow: 'Restart now',

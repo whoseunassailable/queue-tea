@@ -1,7 +1,10 @@
+import { changedBuild } from '../../../../shared/update'
+import type { AppIdentity } from '../../../../shared/update'
+
 type WatchDeps = {
-  running: string
+  running: AppIdentity
   // The version now on disk, which an install swaps in under the running app.
-  installed: () => Promise<string | null>
+  installed: () => Promise<AppIdentity | null>
   // True when no window of ours has the keyboard.
   isAway: () => boolean
   // True while a restart would lose something: a dialog open, a field being
@@ -27,11 +30,11 @@ export const updateWatch = (d: WatchDeps) => {
     isChecking = true
     try {
       const installed = await d.installed()
-      if (installed !== null && installed !== d.running) {
+      if (installed !== null && changedBuild(d.running, installed)) {
         if (d.isAway() && !(await d.isBusy())) await d.restart(false)
-        else if (!hasAsked && majorOf(installed) !== majorOf(d.running)) {
+        else if (!hasAsked && !(await d.isBusy()) && majorOf(installed.version) !== majorOf(d.running.version)) {
           hasAsked = true
-          if (await d.ask(installed)) await d.restart(true)
+          if (await d.ask(installed.version) && !(await d.isBusy())) await d.restart(true)
         }
       }
     } catch (err) {

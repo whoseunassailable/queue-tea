@@ -16,7 +16,7 @@ import { readCommitProgress } from '../data/commit_progress'
 import { liveOutput } from '../data/live_output'
 import type { UserGit, UserGitAction } from '../data/user_git'
 
-export type BranchDeps = TasksDeps & { userGit: UserGit; reveal?: (path: string) => void }
+export type BranchDeps = TasksDeps & { userGit: UserGit; reveal?: (path: string) => void; published?: (repo: string, remote: string, branch: string, commit: string) => Promise<void> }
 export const requestOf = (input: unknown): MergeRequest => {
   const r = input as Partial<MergeRequest> | null
   if (!r || !isBranch(r.target) || typeof r.fingerprint !== 'string') throw new Refusal(BRANCH_TEXT.invalid)

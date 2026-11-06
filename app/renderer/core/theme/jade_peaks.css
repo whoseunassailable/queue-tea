@@ -415,18 +415,93 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 .rm .guild-h{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
 .rm .guild-h img{display:block;border-radius:20px;box-shadow:0 0 0 2px var(--line),0 8px 20px rgba(0,0,0,.2)}
 .rm .guild-h p{margin:6px 0 0;max-width:560px;color:var(--ink2)}
-.rm .party{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:18px}
+.rm .party{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:96px 18px;padding-top:84px}
 .rm .member{--m:#0E7490;--mb:#E0F7FA;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
-.rm .member.git,.rm .helper-chip.git{--m:#0E7490;--mb:#E0F7FA}.rm .member.design,.rm .helper-chip.design{--m:#047857;--mb:#E3F8EF}.rm .member.docs,.rm .helper-chip.docs{--m:#8A5300;--mb:#FEF6D8}.rm .member.tests,.rm .helper-chip.tests{--m:#6D28D9;--mb:#F1ECFE}
-.rm.t-night .member.git,.rm.t-night .helper-chip.git{--m:#67E8F9;--mb:#0E3440}.rm.t-night .member.design,.rm.t-night .helper-chip.design{--m:#6EE7B7;--mb:#0F3A2E}.rm.t-night .member.docs,.rm.t-night .helper-chip.docs{--m:#FCD34D;--mb:#3A3112}.rm.t-night .member.tests,.rm.t-night .helper-chip.tests{--m:#C4B5FD;--mb:#2E2650}
-.rm .m-top{display:flex;align-items:center;gap:16px}
-.rm .portrait{flex:none;width:88px;height:88px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,var(--mb),transparent 70%);box-shadow:0 0 0 2px var(--line),0 0 0 6px rgba(232,176,75,.18)}
-.rm .portrait img{display:block;width:70px;height:70px}
+.rm .member.git,.rm .helper-chip.git,.rm .bench-bot.git{--m:#0E7490;--mb:#E0F7FA}.rm .member.design,.rm .helper-chip.design,.rm .bench-bot.design{--m:#047857;--mb:#E3F8EF}.rm .member.docs,.rm .helper-chip.docs,.rm .bench-bot.docs{--m:#8A5300;--mb:#FEF6D8}.rm .member.tests,.rm .helper-chip.tests,.rm .bench-bot.tests{--m:#6D28D9;--mb:#F1ECFE}
+.rm.t-night .member.git,.rm.t-night .helper-chip.git,.rm.t-night .bench-bot.git{--m:#67E8F9;--mb:#0E3440}.rm.t-night .member.design,.rm.t-night .helper-chip.design,.rm.t-night .bench-bot.design{--m:#6EE7B7;--mb:#0F3A2E}.rm.t-night .member.docs,.rm.t-night .helper-chip.docs,.rm.t-night .bench-bot.docs{--m:#FCD34D;--mb:#3A3112}.rm.t-night .member.tests,.rm.t-night .helper-chip.tests,.rm.t-night .bench-bot.tests{--m:#C4B5FD;--mb:#2E2650}
+.rm .m-top{display:flex;align-items:flex-end;gap:16px;margin-top:-104px}
+.rm .m-top>div{padding-bottom:6px}
+.rm .portrait{flex:none;display:block}
 .rm .m-name{margin:0;font-size:20px;line-height:26px;font-weight:400}
 .rm .m-class{align-self:flex-start;margin-top:4px;padding:2px 10px;border-radius:999px;background:var(--mb);color:var(--m);font-size:12px;font-weight:800}
 .rm .m-desc{margin:0;color:var(--ink2)}
 .rm .m-call{display:flex;align-items:center;gap:6px}
 .rm .m-call code{padding:3px 10px;border-radius:6px;background:var(--mb);color:var(--m);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600}
+.rm .member .portrait{position:relative}
+.rm .portrait::after{position:absolute;right:4px;top:18px;z-index:2;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--m);color:var(--pn-solid);font-size:14px;font-weight:800;box-shadow:0 0 0 3px var(--pn-solid)}
+.rm .portrait.done::after{content:'✓'}
+.rm .portrait.failed::after{content:'!';background:var(--urg-t)}
+.rm .steam{position:absolute;left:52%;top:-14px;display:none;width:40px;height:30px;transform:translateX(-50%);pointer-events:none}
+.rm .portrait.working .steam{display:block}
+.rm .steam i{position:absolute;bottom:0;width:8px;height:8px;border-radius:50%;background:var(--m);opacity:0}
+.rm .steam i:nth-child(1){left:6px}.rm .steam i:nth-child(2){left:16px}.rm .steam i:nth-child(3){left:26px}
+.rm .m-state{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink2);font-size:12px;font-weight:700}
+.rm .m-state.working{box-shadow:inset 0 0 0 1px var(--m);color:var(--m)}
+.rm .m-state.failed{box-shadow:inset 0 0 0 1px var(--urg-t);color:var(--urg-t)}
+.rm .bubble{position:relative;margin-top:4px;padding:10px 14px;border-radius:14px;background:var(--mb);color:var(--ink);display:flex;flex-direction:column;gap:6px}
+.rm .bubble::before{content:'';position:absolute;top:-8px;left:52px;border:8px solid transparent;border-top:0;border-bottom-color:var(--mb)}
+.rm .bubble p{margin:0}
+.rm .bubble.idle p{font-style:italic;color:var(--m);font-weight:600}
+.rm .bubble-order{color:var(--ink2);font-size:13px;overflow-wrap:anywhere}
+.rm .bubble-now{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--m);overflow-wrap:anywhere}
+.rm .bubble-now .spinner{flex:none}
+.rm .bubble-reply{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.rm .bubble-error{color:var(--urg-t);font-weight:700}
+.rm .m-order{display:flex;flex-direction:column;gap:8px}
+.rm .m-send{display:flex;justify-content:flex-end}
+/* helper bots: white shells that glow in their helper's colour */
+.rm{--bot-shell:#FFFFFF;--bot-limb:#DDD6CA;--bot-edge:rgba(42,34,24,.22);--bot-eye:#1F2430;--bot-floor:rgba(42,34,24,.14)}
+.rm.t-night{--bot-shell:#F4F1EA;--bot-limb:#CFC9BE;--bot-edge:rgba(0,0,0,.45);--bot-eye:#141821;--bot-floor:rgba(0,0,0,.35)}
+.rm .bot{display:block;overflow:visible;filter:drop-shadow(0 4px 12px color-mix(in srgb,var(--m) 50%,transparent))}
+.rm .bot .shell,.rm .bot .hand,.rm .bot .foot{fill:var(--bot-shell);stroke:var(--bot-edge);stroke-width:1.2}
+.rm .bot .limb{fill:none;stroke:var(--bot-limb);stroke-width:6;stroke-linecap:round}
+.rm .bot .limb.thin{stroke:var(--bot-edge);stroke-width:2.2}
+.rm .bot .tip{fill:var(--m)}
+.rm .bot .shine{fill:var(--m);opacity:.08}
+.rm .bot .eye{fill:var(--bot-eye)}.rm .bot .glint{fill:#fff}
+.rm .bot .cheek{fill:var(--m);opacity:.3}
+.rm .bot .smile{fill:none;stroke:var(--bot-eye);stroke-width:2;stroke-linecap:round}
+.rm .bot .floor{fill:var(--bot-floor)}
+.rm .bot .prop{fill:none;stroke:var(--m);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rm .bot .prop ellipse{stroke-width:3}
+.rm .bot .prop .paper{fill:var(--bot-shell)}.rm .bot .prop .tint{fill:var(--m);stroke:none;opacity:.55}
+.rm .bot .whole,.rm .bot .wave,.rm .bot .hold,.rm .bot .antenna{transform-box:view-box}
+.rm .bot .whole{transform-origin:56px 122px}.rm .bot .wave{transform-origin:27px 75px}.rm .bot .hold{transform-origin:85px 75px}.rm .bot .antenna{transform-origin:56px 27px}
+@keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes gbob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+@keyframes gsteam{0%{transform:translateY(0) scale(.6);opacity:0}30%{opacity:.7}100%{transform:translateY(-26px) scale(1.4);opacity:0}}
+@keyframes ghop{0%,100%{transform:translateY(0)}30%{transform:translateY(-16px) rotate(-6deg)}60%{transform:translateY(0) rotate(4deg)}80%{transform:translateY(-4px)}}
+@keyframes gshake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+@keyframes gblink{0%,93%,100%{ry:7px}96%{ry:.8px}}
+@keyframes gsway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+@keyframes gwave{0%,100%{transform:rotate(115deg)}50%{transform:rotate(150deg)}}
+@keyframes gbusy{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+@media (prefers-reduced-motion: no-preference){
+.rm .bot .whole{animation:gfloat 4s ease-in-out infinite}
+.rm .bot .eye{animation:gblink 5s linear infinite}
+.rm .bot .antenna{animation:gsway 3s ease-in-out infinite}
+.rm .design .bot.idle *{animation-delay:-1.3s}.rm .docs .bot.idle *{animation-delay:-2.6s}.rm .tests .bot.idle *{animation-delay:-3.9s}
+.rm .portrait:hover .bot .wave,.rm .bench-bot:hover .bot .wave,.rm .bench-bot:focus-visible .bot .wave{animation:gwave .8s ease-in-out infinite}
+.rm .bot.working .whole{animation:gbob .7s ease-in-out infinite}
+.rm .bot.working .hold{animation:gbusy .3s ease-in-out infinite alternate}
+.rm .portrait.working .steam i{animation:gsteam 1.8s ease-out infinite}
+.rm .steam i:nth-child(2){animation-delay:.6s!important}.rm .steam i:nth-child(3){animation-delay:1.2s!important}
+.rm .bot.done .whole{animation:ghop .9s ease-out 1,gfloat 4s ease-in-out .9s infinite}
+.rm .bot.failed .whole,.rm .bot.stopped .whole{animation:gshake .5s ease-in-out 1}
+}
+.rm .bench-bot:active .bot .whole{transform:scale(1.06,.9)}
+
+/* the helper bench on a merge with conflicts */
+.rm .merge-review.dropping{outline:3px dashed var(--line);outline-offset:4px;background:var(--hov)}
+.rm .bench{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line-soft)}
+.rm .bench p{margin:0}
+.rm .bench-row{display:flex;flex-wrap:wrap;gap:6px}
+.rm .bench-bot{--m:#0E7490;--mb:#E0F7FA;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px 4px;border:0;border-radius:12px;background:none;color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:grab}
+.rm .bench-bot:hover,.rm .bench-bot:focus-visible{background:var(--mb)}
+.rm .bench-bot:disabled{cursor:not-allowed;opacity:.55}
+.rm .bench-bot:active{cursor:grabbing}
+.rm .bench-now{display:flex;align-items:center;gap:8px;font-weight:700}
+.rm .bench-reply{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* settings */
 .rm .set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px;align-items:start}

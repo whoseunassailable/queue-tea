@@ -20,14 +20,14 @@ export const BranchesPage = ({ view, actions, engine, flow, onOpen }: { view: Re
   useEffect(() => setSelected(null), [view.key])
   return <main class="branch-page">
     <header class="panel branch-heading">
-      <div class="sec-row"><h1>{t.branches.title}</h1><button type="button" class="btn" disabled={read.isRefreshing} onClick={read.refresh}>{t.branches.refresh}</button></div>
+      <div class="sec-row"><h1>{t.branches.title}</h1><button type="button" class="btn" onClick={read.refresh}>{t.branches.refresh}</button></div>
       <p>{t.branches.line}</p>
       <p class="hint">{t.branches.active(view.activeQuests.length)}</p>
       <a class="btn" href={hrefOf(ROUTES.quests)}>{t.nav.quests}</a>
     </header>
     {flow && <FlowCard flow={flow} actions={actions} />}
     <ReadView read={read} line={t.branches.reading}>{graph => <>
-      <p class="hint" role="status">{read.isRefreshing ? t.branches.reading : t.branches.observed(graph.at)}</p>
+      <p class="hint" role="status">{t.branches.observed(graph.at)}</p>
       {graph.tasks.length === 0 ? <p class="panel branch-heading">{t.branches.empty}</p> : <>
         <BranchGraph graph={graph} onSelect={setSelected} />
         <label class="branch-filter">{t.branches.filter}<select value={filter} onChange={e => setFilter(e.currentTarget.value as BranchState | 'all')}><option value="all">{t.branches.all}</option>{(Object.keys(t.branches.states) as BranchState[]).map(state => <option key={state} value={state}>{t.branches.states[state]}</option>)}</select></label>

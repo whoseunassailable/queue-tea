@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
+import { readdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -23,6 +24,7 @@ import { readGame, readHoard } from './features/game/api/game_api'
 import { readMana } from './features/mana/api/mana_api'
 import { githubApi } from './features/github/api/github_api'
 import { libraryApi } from './features/library/api/library_api'
+import { designsApi } from './features/designs/api/designs_api'
 import { judgementWatch } from './features/notify/domain/judgements'
 import type { Asked } from './features/notify/domain/judgements'
 import { installCommand, openedFromUrl } from './features/opening/api/opening_api'
@@ -109,6 +111,19 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
+const designs = designsApi({
+  ...quests,
+  reveal: (path: string) => shell.showItemInFolder(path),
+  listFolders: async (dir: string) => {
+    try {
+      return (await readdir(dir, { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)
+    } catch (err) {
+      // A realm with no docs/designs yet has no designs; anything else is a fault.
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
+      throw err
+    }
+  },
+})
 
 // Engine calls still changing something. A restart in the middle of one could
 // lose a save; one that only reads is read again by the new copy, and the
@@ -139,6 +154,16 @@ const serveEngine = () => {
   handle(CHANNELS.readHoard, () => readHoard(game))
   handle(CHANNELS.readChronicle, (_, scope: unknown, day: unknown) => readChronicle(game, scope, day))
   handle(CHANNELS.readMana, (_, key: unknown) => readMana(quests, key))
+  handle(CHANNELS.readDesigns, (_, key: unknown) => designs.readDesigns(key))
+  handle(CHANNELS.readDesignVersion, (_, key: unknown, folder: unknown) => designs.readDesignVersion(key, folder))
+  handle(CHANNELS.readDesign, (_, key: unknown, folder: unknown, id: unknown) => designs.readDesign(key, folder, id))
+  handle(CHANNELS.saveDesign, (_, key: unknown, folder: unknown, id: unknown, scene: unknown, stamp: unknown) => designs.saveDesign(key, folder, id, scene, stamp))
+  handle(CHANNELS.saveDesignCopy, (_, key: unknown, folder: unknown, id: unknown, scene: unknown) => designs.saveDesignCopy(key, folder, id, scene))
+  handle(CHANNELS.restoreDesignFile, (_, key: unknown, folder: unknown, file: unknown) => designs.restoreDesignFile(key, folder, file))
+  handle(CHANNELS.addDesignComment, (_, key: unknown, folder: unknown, comment: unknown) => designs.addDesignComment(key, folder, comment))
+  handle(CHANNELS.setDesignComment, (_, key: unknown, folder: unknown, id: unknown, isResolved: unknown) => designs.setDesignComment(key, folder, id, isResolved))
+  handle(CHANNELS.sendDesignComments, (_, key: unknown, folder: unknown, next: unknown) => designs.sendDesignComments(key, folder, next))
+  handle(CHANNELS.showDesigns, (_, key: unknown) => designs.showDesigns(key))
   handle(CHANNELS.readSettings, () => readSettings(settings))
   handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))
   handle(CHANNELS.readSettingsPage, (_, key: unknown) => realms.readSettingsPage(places, key))

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 
 // Every route in the app. A path is lowercase words naming the screen.
-export const ROUTES = { home: '/home', quests: '/quests', branches: '/branches', chronicle: '/chronicle', mana: '/mana', hoard: '/hoard', guild: '/guild', library: '/library', settings: '/settings' } as const
+export const ROUTES = { home: '/home', quests: '/quests', designs: '/designs', branches: '/branches', chronicle: '/chronicle', mana: '/mana', hoard: '/hoard', guild: '/guild', library: '/library', settings: '/settings' } as const
 
 export type Route = (typeof ROUTES)[keyof typeof ROUTES]
 

@@ -325,7 +325,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
 5. The project the app was opened from (`queue-tea open`, or `queue-tea://open?path=` from the tea-cup menu) is selected and tagged Detected. Opened without one, the app shows the last project used. On the very first launch with records it shows a "Pick a project" list beside Open folder….
 
 **Navigation**
-- Tabs in the toolbar for the selected project: Home ⌘1, Quests ⌘2, Chronicle ⌘3, Mana & time ⌘4. The sky dial sits at the right of the toolbar, and the HUD (level and XP, streak, gold, mana) runs under the tabs on every screen.
+- Tabs in the toolbar for the selected project: Home ⌘1 (`/home`), Quests ⌘2 (`/quests`), Designs ⌘3 (`/designs`, 4.20), Branches ⌘4 (`/branches`), Chronicle ⌘5 (`/chronicle`), Mana & time ⌘6 (`/mana`). The sky dial sits at the right of the toolbar, and the HUD (level and XP, streak, gold, mana) runs under the tabs on every screen.
 - Guild Hall, Hoard, Library and Settings are app-wide pages; Settings is also ⌘,, and it leads with the realm you're in.
 - Each project keeps its own tab, selection, scroll, folds, search and Time I have while you switch.
 
@@ -1188,7 +1188,8 @@ COMMAND PALETTE (⌘K, 600 px, 80 px below the toolbar): empty, then typing
 │   Done… Finish Insole Bridge…                        d │  │   Fix cut-off text in docs diagrams… · Backlog · High  │
 │   New task                                          ⌘N │  │   Fix privacy, battery alert, hist… · Backlog · High   │
 │ Go to                                                  │  │ Actions                                                │
-│   Home ⌘1 · Tasks ⌘2 · History ⌘3 · Usage & time ⌘4    │  │   Back to queue: Finish Insole Bridge…               b │
+│   Home ⌘1 · Tasks ⌘2 · Designs ⌘3 · Branches ⌘4        │  │   Back to queue: Finish Insole Bridge…               b │
+│   History ⌘5 · Usage & time ⌘6                         │  │                                                        │
 │ Projects                                               │  │ Create                                                 │
 │   queue-tie                                        ⌥⌘2 │  │   + New task "fix"                                  ⌘N │
 ├────────────────────────────────────────────────────────┤  ├────────────────────────────────────────────────────────┤
@@ -1266,6 +1267,15 @@ ACTIVE QUEST WITH CLAUDE CODE: the same card, its last lines
 - **VS Code** as the terminal: the folder opens, the Codex line is copied, and the toast says "The Codex line is copied: paste it in VS Code's terminal".
 - **Codex's time not read:** after Finish, Back to the board, Seal or Continue in Claude Code, an error toast says "Couldn't read Codex's log, so this quest's time on Codex wasn't added." The action itself has gone through.
 
+### 4.20 Designs
+
+Added 2026-11-05. The approved screens are in `docs/design-tab.pen`, and [design-tab.md](design-tab.md) has the file format, every state and the keys.
+
+- **Where:** a tab between Quests and Branches, at `/designs`, opened with ⌘3.
+- **The version page:** a History rail of the realm's design versions, newest first, beside the chosen version's designs as cards. **Next version…** sits in the header. Until you pick a version, the page shows the newest one that reads.
+- **The editor:** the canvas in the middle, with the inspector and the design's comments on the right. It saves 600 ms after the last change.
+- **Below 900 px:** the rail becomes a "Version 1 of 5, newest" menu, and the inspector and comments float over the canvas.
+
 ---
 
 ## 5. Components
@@ -1338,6 +1348,7 @@ COMPONENT STATES · priority control, progress, toasts
 | Settings | `Options` from the session file; `docsLogPath` per record; whether `<record>.bak` exists; the app's own settings |
 | Guild Hall | `agents/*.md` frontmatter (name, description, colour, skills) and `.claude-plugin/helpers/*.svg`, bundled at build time |
 | HUD and Hoard | `finishedTasks` from every record (`difficulty.actual`, `finished`, `parentId`) and `childrenOf`, through the rules in 2.2 |
+| Designs | not the record: `docs/designs/` in the realm's folder (`version.json`, `comments.json`, `*.design.json`), `git config user.name` for comment authors and `git status` for uncommitted files; Next version files its quest with `fileQuest` |
 
 ### New fields
 
@@ -1358,6 +1369,7 @@ The game layer adds no fields: XP, levels, the stage, the streak, gold and badge
 - **The session file** `~/.queue-tea/sessions/<id>.json` holds `{ id, projectPath, recordFile, currentTaskId, isTurnRunning, cup: { mood, line }, allowance, options, heartbeat, startedAt }`. That's the plan's list plus two fields:
   - `options`, so Settings shows the real /config values;
   - `cup.mood`, so the pill can mirror "needs you".
+- **Designs** live in the realm, at `docs/designs/<version folder>/`, in the format in [design-tab.md](design-tab.md). The last good copy of each file is kept at `~/.queue-tea/designs/<realm key>/`.
 - **App settings** (Electron `userData`): terminal (`terminal | iterm2 | vscode`), sky (`auto | morning | day | evening | night`), Calm mode on or off, pane widths, folded features per project, single-letter keys on or off, window bounds.
 
 **Not saved anywhere:** the git hold, Time I have, the selection and the search. They are view state per project.

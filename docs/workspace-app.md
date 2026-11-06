@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)).
+- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)). Updated 2026-11-05: a Designs tab after Quests, for a realm's design versions and comments ([The Designs tab](#the-designs-tab), [design-tab.md](design-tab.md)).
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -166,11 +166,17 @@ Finish, Back to the board and Seal on a quest with Codex read Codex's log before
 
 ### Parallel quests and the Branches tab
 
-Quests and Home show all current quests. Start and Start in Codex stay available for queued, unsealed quests, even with others active. Each new start creates its own worktree from main, keeping the original folder untouched. Existing current quests keep their original folder. The Branches tab sits immediately after Quests: base branch → quest cards, with platform, status, worktree folder, saga and terminal controls. The keyboard tabs are Home ⌘1, Quests ⌘2, Branches ⌘3, Chronicle ⌘4 and Mana ⌘5.
+Quests and Home show all current quests. Start and Start in Codex stay available for queued, unsealed quests, even with others active. Each new start creates its own worktree from main, keeping the original folder untouched. Existing current quests keep their original folder. The Branches tab sits after Quests and Designs: base branch → quest cards, with platform, status, worktree folder, saga and terminal controls. The keyboard tabs are Home ⌘1, Quests ⌘2, Designs ⌘3, Branches ⌘4, Chronicle ⌘5 and Mana & time ⌘6.
 
 `ProjectView.activeQuests` holds every active card and its folder's session; `active` remains the primary quest for Home shortcuts. `branches` includes queued, active and finished quests with saved branches. `openClaude(key, taskId)` addresses the selected quest. `readMerge(key, taskId)` checks local merge readiness and returns commands as text. Merge instructions shows loading, errors with retry, conflicts, readiness or already merged status. No Git commit, push or merge runs from the app.
 
 The full behavior and safe folder retention are in [Parallel quests and branches](spec.md#parallel-quests-and-branches). The implementation decisions are recorded in [plan-parallel-quests.md](plan-parallel-quests.md).
+
+### The Designs tab
+
+Added 2026-11-05. Designs sits between Quests and Branches at `/designs` and opens with ⌘3. It shows the selected realm's design versions, newest first, from `docs/designs/` in the realm's own folder, so git keeps their history. A version's designs open in an editor that moves, resizes and restyles their layers and saves as you go. Each design has its comments, and **Next version…** files the open ones as a quest for Claude to draft the next version from. The tab never starts Claude Code.
+
+The window reaches the files only through the engine API, by realm key, version folder and design id; main checks each against its pattern and builds the paths. The last good copy of each file is kept outside the realm, under `~/.queue-tea/designs/`, so it never counts as an uncommitted file. The file format, screens, states and limits are in [design-tab.md](design-tab.md).
 
 ## Data
 

@@ -58,6 +58,19 @@ describe('the menu bar', () => {
     expect(send).toHaveBeenCalledWith({ kind: 'showRecord' })
   })
 
+  it('numbers the tabs ⌘1 to ⌘6, with Designs third', () => {
+    const tabs = items('View').filter(item => /^CmdOrCtrl\+\d$/.test(String(item.accelerator)))
+
+    expect(tabs.map(item => [item.label, item.accelerator])).toEqual([
+      ['Home', 'CmdOrCtrl+1'],
+      ['Quests', 'CmdOrCtrl+2'],
+      ['Designs', 'CmdOrCtrl+3'],
+      ['Branches', 'CmdOrCtrl+4'],
+      ['Chronicle', 'CmdOrCtrl+5'],
+      ['Mana & time', 'CmdOrCtrl+6'],
+    ])
+  })
+
   it('leaves Reload and the developer tools out of a real build', () => {
     expect(items('View', menu(false)).some(item => item.role === 'toggleDevTools')).toBe(false)
     expect(items('View', menu(true)).some(item => item.role === 'toggleDevTools')).toBe(true)

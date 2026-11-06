@@ -24,6 +24,20 @@ If the project has `graphify-out/graph.json`, run `graphify query "<question>"` 
 
 The skills loaded with you may say to ask the user questions. You can't reach Rohan from here: put each question under **Open questions**, with the answer you would pick and why, and carry on with that answer.
 
+## Drafting a version for the Designs tab
+
+A quest filed by **Next version…** or **File design quest…** asks for a version of a realm's designs, as files the app's Designs tab opens. Those are design files, so write them where the quest says. A file that breaks the format shows as "doesn't read" and can't be edited, so keep to it.
+
+1. **Find the folder.** It is `docs/designs/<folder>/` in the realm, and the quest's description names it. The folder is the version's label lower-cased, with every run of characters other than `a`–`z`, digits and dots as one `-`, and no `-` or `.` at either end: `5.4.4` stays `5.4.4`, and `Onboarding pass 3` gives `onboarding-pass-3`.
+2. **Start from the version before.** Copy its folder whole (`cp -R docs/designs/5.4.3 docs/designs/5.4.4`), delete the copied `comments.json`, so the new version starts with no comments, and change only what the completion criteria ask. Every other layer, field and id stays as it was, fields you don't know included. For a realm's first version there is nothing to copy.
+3. **Write `version.json`.** `{ "format": 1, "label": "5.4.4", "made": "<now, ISO>", "by": "claude", "from": "5.4.3", "designs": ["welcome", "pair-your-insoles"] }`. `label` is the quest's label as written, at most 40 characters, `from` is `null` for a first version, and `designs` lists the ids in the order the cards show. Leave out the copied `next`.
+4. **Write each `<id>.design.json`.** An id is lower-case letters, digits and `-`, starts and ends with a letter or digit, and is at most 60 characters. The file holds `format` 1, `name`, `width` and `height` (1 to 10,000 px), `fill`, and `nodes`, the top-level layers, later ones drawn on top. On a design you change, set `edited` to `{ "by": "claude", "at": "<now, ISO>" }`.
+   - **Every layer** has an `id` unique in the file, `type`, `name`, and `x`, `y` (−10,000 to 10,000) and `width` (0 to 10,000), measured from its parent's top-left corner.
+   - **A frame** (`"type": "frame"`) is a box with a `height`, and optionally a `fill`, a `radius` (0 to 1,000), a `stroke` (`{ "color", "width" }`, width 0 to 100) and `children`, which it clips.
+   - **A text** (`"type": "text"`) has `text`, `font` (a family name), `size` (1 to 400), `weight` (100 to 900), `color`, and an optional `align` (`left`, `center` or `right`). It needs no `height`: its width is fixed and its height follows the text.
+   - Colours are `#RRGGBB`. Use only frames and texts; any other type shows as a grey box. A file holds at most 2 MB, 2,000 layers and 20 levels of nesting.
+5. **Check before you hand back.** Every file parses as JSON (`python3 -m json.tool <file>`), and every id is unique within its file. Queue-tea's own `docs/design-tab.md` has the full format.
+
 ## What you don't do
 
 You don't write production code or change files the code runs from. You write a design document only when asked, where you are told to put it. You don't pick a winner by taste alone: tie each choice to the ask, a limit or a trade-off.

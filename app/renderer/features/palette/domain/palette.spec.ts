@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { activeQuest, projectRow, projectView, quest } from '../../../test_support'
-import { filterPalette, matchScore, paletteEntries } from './palette'
+import { activeQuest, note, NOTES, projectRow, projectView, quest } from '../../../test_support'
+import { canRun, filterPalette, matchScore, paletteEntries, snippetOf } from './palette'
 import type { PaletteInput } from './palette'
 
 const noop = () => {}
@@ -9,6 +9,7 @@ const BOARD = projectView('a-000001', { ready: [{ kind: 'quest', quest: quest({ 
 
 const input = (over: Partial<PaletteInput> = {}): PaletteInput => ({
   view: BOARD as PaletteInput['view'],
+  notes: { status: 'ready', data: NOTES },
   realms: [projectRow('a-000001', { name: 'here' }), projectRow('b-000002', { name: 'elsewhere' })],
   selected: 'a-000001',
   onStart: noop,
@@ -17,6 +18,9 @@ const input = (over: Partial<PaletteInput> = {}): PaletteInput => ({
   onBack: noop,
   onOpenClaude: noop,
   onNewQuest: noop,
+  onNewNote: noop,
+  onOpenNote: noop,
+  onJot: noop,
   onGo: noop,
   onPickRealm: noop,
   onOpenFolder: noop,
@@ -92,7 +96,7 @@ describe('typing in the palette', () => {
   })
 
   it('offers to file what was typed, always', () => {
-    expect(labels(filterPalette(paletteEntries(input()), 'zebra'), 'create')).toEqual(['+ New quest "zebra"'])
+    expect(labels(filterPalette(paletteEntries(input()), 'zebra'), 'create')).toEqual(['+ New quest "zebra"', '+ Jot "zebra" into Inbox'])
   })
 
   it('offers no Create with no realm to file in', () => {
@@ -180,5 +184,85 @@ describe('matching', () => {
     expect(inside).toBeGreaterThan(scattered)
     expect(scattered).toBeGreaterThan(0)
     expect(matchScore('Other', 'fix')).toBe(0)
+  })
+})
+
+describe('notes in the palette', () => {
+  const withNotes = (notes: ReturnType<typeof note>[], over: Partial<PaletteInput> = {}) => paletteEntries(input({ notes: { status: 'ready', data: { ...NOTES, notes } }, ...over }))
+
+  it('finds every word across title and text, ignoring case, without fuzzy body matches', () => {
+    const entries = withNotes([note({ title: 'Sensor diary', body: 'Calibrate the pressure gauge.' })])
+
+    expect(labels(filterPalette(entries, 'SENSOR pressure'), 'notes')).toEqual(['Sensor diary'])
+    expect(labels(filterPalette(entries, 'srdy'), 'notes')).toEqual([])
+    expect(labels(filterPalette(entries, 'sensor missing'), 'notes')).toEqual([])
+  })
+
+  it('matches #words only against tags and leaves archived notes out', () => {
+    const entries = withNotes([note({ id: 'tagged', title: 'Tagged', tags: ['research'] }), note({ id: 'body', title: 'Body', body: '#research' }), note({ id: 'old', title: 'Archived', tags: ['research'], isArchived: true })])
+
+    expect(labels(filterPalette(entries, '#res'), 'notes')).toEqual(['Tagged'])
+  })
+
+  it('ranks title matches before text and keeps newest first for equal matches', () => {
+    const entries = withNotes([note({ id: 'text', title: 'Diary', body: 'sensor' }), note({ id: 'old', title: 'Sensor old', updated: '2026-11-01' }), note({ id: 'new', title: 'Sensor new', updated: '2026-11-08' }), note({ id: 'inside', title: 'A sensor' })])
+
+    expect(labels(filterPalette(entries, 'sensor'), 'notes')).toEqual(['Sensor new', 'Sensor old', 'A sensor', 'Diary'])
+    expect(labels(filterPalette(entries, ''), 'notes')).toEqual([])
+  })
+
+  it('limits note results to five without hiding other sections', () => {
+    const entries = withNotes(Array.from({ length: 8 }, (_, i) => note({ id: `n-${i}`, title: `Docs ${i}` })))
+    const found = filterPalette(entries, 'docs')
+
+    expect(labels(found, 'notes')).toHaveLength(5)
+    expect(labels(found, 'quests')).toEqual(['Fix the docs'])
+    expect(labels(found, 'create')).toHaveLength(2)
+  })
+
+  it('opens a note by id with Return or the open shortcut', () => {
+    const onOpenNote = vi.fn()
+    const found = filterPalette(withNotes([note({ id: 'sensor', title: 'Sensor' })], { onOpenNote }), 'sensor').find(e => e.note !== null)!
+    found.run()
+    expect(onOpenNote).toHaveBeenLastCalledWith('sensor')
+    expect(found.start).toBeTypeOf('function')
+    found.start?.()
+    expect(onOpenNote).toHaveBeenCalledTimes(2)
+  })
+
+  it('offers New note with its key and jots the trimmed words with either open choice', () => {
+    const onNewNote = vi.fn()
+    const onJot = vi.fn()
+    const entries = withNotes([], { onNewNote, onJot })
+    const make = filterPalette(entries, 'new note').find(e => e.id === 'action:new-note')!
+    expect(make.keys).toBe('⇧⌘N')
+    make.run()
+    expect(onNewNote).toHaveBeenCalledOnce()
+    const jot = filterPalette(entries, '  Buy milk  ').find(e => e.id === 'create:jot')!
+    jot.run()
+    jot.start?.()
+    expect(onJot.mock.calls).toEqual([['Buy milk', false], ['Buy milk', true]])
+  })
+
+  it('keeps navigation and creation working while notes load or fail', () => {
+    const onGo = vi.fn()
+    const loading = filterPalette(paletteEntries(input({ notes: { status: 'loading' } })), 'sensor')
+    expect(canRun(loading.find(e => e.id === 'notes:reading')!)).toBe(false)
+    expect(labels(loading, 'create')).toHaveLength(2)
+    const failed = filterPalette(paletteEntries(input({ notes: { status: 'failed', message: 'private failure' }, onGo })), 'sensor')
+    const retry = failed.find(e => e.id === 'notes:failed')!
+    expect(retry.label).not.toContain('private failure')
+    retry.run()
+    expect(onGo).toHaveBeenCalledWith('/notes')
+  })
+
+  it('shows the matching line around a body word, and no snippet for title-only matches', () => {
+    const one = note({ title: 'Sensor', body: `Unrelated line\n${'a'.repeat(90)} pressure ${'z'.repeat(90)}` })
+    const snippet = snippetOf(one, 'sensor pressure')!
+    expect(snippet).toContain('pressure')
+    expect(snippet.startsWith('…')).toBe(true)
+    expect(snippet.endsWith('…')).toBe(true)
+    expect(snippet.length).toBeLessThanOrEqual(62)
+    expect(snippetOf(one, 'sensor')).toBeNull()
   })
 })

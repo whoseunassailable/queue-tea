@@ -1,0 +1,1916 @@
+{
+ "format": 1,
+ "name": "6 · Narrow window: the note list as a drawer",
+ "width": 760,
+ "height": 954,
+ "fill": "#4FA2E2",
+ "nodes": [
+  {
+   "id": "l1",
+   "name": "Main",
+   "x": 20,
+   "y": 12,
+   "width": 724,
+   "type": "frame",
+   "height": 930,
+   "children": [
+    {
+     "id": "l2",
+     "name": "Top bar",
+     "x": 0,
+     "y": 0,
+     "width": 724,
+     "type": "frame",
+     "height": 42,
+     "children": [
+      {
+       "id": "l3",
+       "name": "Side toggle",
+       "x": 0,
+       "y": 0,
+       "width": 42,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l4",
+         "name": "Icon",
+         "x": 12,
+         "y": 12,
+         "width": 18,
+         "type": "text",
+         "text": "☰",
+         "font": "Nunito Sans",
+         "size": 18,
+         "weight": 700,
+         "color": "#2A2218",
+         "align": "center"
+        }
+       ]
+      },
+      {
+       "id": "l5",
+       "name": "Section menu",
+       "x": 58,
+       "y": 3,
+       "width": 89,
+       "type": "frame",
+       "height": 36,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l6",
+         "name": "Label",
+         "x": 16,
+         "y": 10,
+         "width": 42,
+         "type": "text",
+         "text": "Notes",
+         "font": "Marcellus",
+         "size": 13,
+         "weight": 600,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l7",
+         "name": "Icon",
+         "x": 63,
+         "y": 11,
+         "width": 14,
+         "type": "text",
+         "text": "▾",
+         "font": "Nunito Sans",
+         "size": 14,
+         "weight": 700,
+         "color": "#54473A",
+         "align": "center"
+        }
+       ]
+      },
+      {
+       "id": "l8",
+       "name": "Spacer",
+       "x": 163,
+       "y": 20.5,
+       "width": 311,
+       "type": "frame",
+       "height": 1
+      },
+      {
+       "id": "l9",
+       "name": "Sky dial",
+       "x": 490,
+       "y": 1,
+       "width": 176,
+       "type": "frame",
+       "height": 40,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l10",
+         "name": "Follow my clock",
+         "x": 4,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "fill": "#F8E7B4",
+         "radius": 999,
+         "stroke": {
+          "color": "#B08A3E",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l11",
+           "name": "Icon",
+           "x": 8,
+           "y": 8,
+           "width": 16,
+           "type": "text",
+           "text": "◷",
+           "font": "Nunito Sans",
+           "size": 16,
+           "weight": 700,
+           "color": "#3A2C14",
+           "align": "center"
+          }
+         ]
+        },
+        {
+         "id": "l12",
+         "name": "Morning",
+         "x": 38,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999
+        },
+        {
+         "id": "l14",
+         "name": "Day",
+         "x": 72,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l15",
+           "name": "Icon",
+           "x": 8,
+           "y": 8,
+           "width": 16,
+           "type": "text",
+           "text": "☀",
+           "font": "Nunito Sans",
+           "size": 16,
+           "weight": 700,
+           "color": "#54473A",
+           "align": "center"
+          }
+         ]
+        },
+        {
+         "id": "l16",
+         "name": "Evening",
+         "x": 106,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999
+        },
+        {
+         "id": "l18",
+         "name": "Night",
+         "x": 140,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l19",
+           "name": "Icon",
+           "x": 8,
+           "y": 8,
+           "width": 16,
+           "type": "text",
+           "text": "☾",
+           "font": "Nunito Sans",
+           "size": 16,
+           "weight": 700,
+           "color": "#54473A",
+           "align": "center"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l20",
+       "name": "New quest",
+       "x": 682,
+       "y": 0,
+       "width": 42,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l21",
+         "name": "Plus",
+         "x": 12,
+         "y": 12,
+         "width": 18,
+         "type": "text",
+         "text": "+",
+         "font": "Nunito Sans",
+         "size": 18,
+         "weight": 700,
+         "color": "#2A2218",
+         "align": "center"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l22",
+     "name": "HUD",
+     "x": 0,
+     "y": 60,
+     "width": 701,
+     "type": "frame",
+     "height": 42,
+     "children": [
+      {
+       "id": "l23",
+       "name": "Level",
+       "x": 0,
+       "y": 0,
+       "width": 190,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l24",
+         "name": "Badge",
+         "x": 8,
+         "y": 6,
+         "width": 30,
+         "type": "frame",
+         "height": 30,
+         "fill": "#F8E7B4",
+         "radius": 999,
+         "stroke": {
+          "color": "#B08A3E",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l25",
+           "name": "Lv",
+           "x": 5.5,
+           "y": 8,
+           "width": 22,
+           "type": "text",
+           "text": "Lv 7",
+           "font": "Marcellus",
+           "size": 11,
+           "weight": 400,
+           "color": "#3A2C14"
+          }
+         ]
+        },
+        {
+         "id": "l26",
+         "name": "Road",
+         "x": 46,
+         "y": 8.5,
+         "width": 130,
+         "type": "frame",
+         "height": 25,
+         "children": [
+          {
+           "id": "l27",
+           "name": "Headline",
+           "x": 0,
+           "y": 0,
+           "width": 79,
+           "type": "text",
+           "text": "40 XP to Lv 8",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 800,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l28",
+           "name": "Bar",
+           "x": 0,
+           "y": 19,
+           "width": 130,
+           "type": "frame",
+           "height": 6,
+           "fill": "#F4E9D2",
+           "radius": 3,
+           "children": [
+            {
+             "id": "l29",
+             "name": "Fill",
+             "x": 0,
+             "y": 0,
+             "width": 84,
+             "type": "frame",
+             "height": 6,
+             "fill": "#2E9C7E",
+             "radius": 3
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l30",
+       "name": "Streak",
+       "x": 202,
+       "y": 0,
+       "width": 90,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l31",
+         "name": "Icon",
+         "x": 8,
+         "y": 11,
+         "width": 20,
+         "type": "text",
+         "text": "♨",
+         "font": "Nunito Sans",
+         "size": 20,
+         "weight": 700,
+         "color": "#D9622B",
+         "align": "center"
+        },
+        {
+         "id": "l32",
+         "name": "Stack",
+         "x": 36,
+         "y": 4.5,
+         "width": 40,
+         "type": "frame",
+         "height": 33,
+         "children": [
+          {
+           "id": "l33",
+           "name": "Value",
+           "x": 0,
+           "y": 0,
+           "width": 43,
+           "type": "text",
+           "text": "5 days",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 800,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l34",
+           "name": "Sub",
+           "x": 0,
+           "y": 18,
+           "width": 41,
+           "type": "text",
+           "text": "best 12",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l35",
+       "name": "Gold",
+       "x": 304,
+       "y": 0,
+       "width": 74,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l36",
+         "name": "Icon",
+         "x": 8,
+         "y": 11,
+         "width": 20,
+         "type": "text",
+         "text": "◎",
+         "font": "Nunito Sans",
+         "size": 20,
+         "weight": 700,
+         "color": "#C9922E",
+         "align": "center"
+        },
+        {
+         "id": "l37",
+         "name": "Stack",
+         "x": 36,
+         "y": 4.5,
+         "width": 24,
+         "type": "frame",
+         "height": 33,
+         "children": [
+          {
+           "id": "l38",
+           "name": "Value",
+           "x": 0,
+           "y": 0,
+           "width": 27,
+           "type": "text",
+           "text": "340",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 800,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l39",
+           "name": "Sub",
+           "x": 0,
+           "y": 18,
+           "width": 26,
+           "type": "text",
+           "text": "gold",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l40",
+       "name": "Mana",
+       "x": 390,
+       "y": 0,
+       "width": 173,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l41",
+         "name": "Icon",
+         "x": 8,
+         "y": 11,
+         "width": 20,
+         "type": "text",
+         "text": "◆",
+         "font": "Nunito Sans",
+         "size": 20,
+         "weight": 700,
+         "color": "#3BA6D6",
+         "align": "center"
+        },
+        {
+         "id": "l42",
+         "name": "Stack",
+         "x": 36,
+         "y": 9,
+         "width": 123,
+         "type": "frame",
+         "height": 24,
+         "children": [
+          {
+           "id": "l43",
+           "name": "Bar",
+           "x": 0,
+           "y": 0,
+           "width": 120,
+           "type": "frame",
+           "height": 6,
+           "fill": "#F4E9D2",
+           "radius": 3,
+           "children": [
+            {
+             "id": "l44",
+             "name": "Fill",
+             "x": 0,
+             "y": 0,
+             "width": 74,
+             "type": "frame",
+             "height": 6,
+             "fill": "#3BA6D6",
+             "radius": 3
+            }
+           ]
+          },
+          {
+           "id": "l45",
+           "name": "Sub",
+           "x": 0,
+           "y": 9,
+           "width": 126,
+           "type": "text",
+           "text": "62% mana · refills 19:40",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l46",
+       "name": "Account",
+       "x": 575,
+       "y": 0,
+       "width": 126,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l47",
+         "name": "Icon",
+         "x": 14,
+         "y": 13,
+         "width": 16,
+         "type": "text",
+         "text": "⑂",
+         "font": "Nunito Sans",
+         "size": 16,
+         "weight": 700,
+         "color": "#54473A",
+         "align": "center"
+        },
+        {
+         "id": "l48",
+         "name": "Login",
+         "x": 38,
+         "y": 13,
+         "width": 77,
+         "type": "text",
+         "text": "rohanbhande",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l49",
+     "name": "Notes",
+     "x": 0,
+     "y": 120,
+     "width": 724,
+     "type": "frame",
+     "height": 810,
+     "children": [
+      {
+       "id": "l50",
+       "name": "Editor",
+       "x": 0,
+       "y": 0,
+       "width": 724,
+       "type": "frame",
+       "height": 810,
+       "fill": "#FEF9EB",
+       "radius": 10,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l51",
+         "name": "Bracket",
+         "x": -6,
+         "y": -6,
+         "width": 12,
+         "type": "frame",
+         "height": 12,
+         "fill": "#B8893A",
+         "radius": 6
+        },
+        {
+         "id": "l52",
+         "name": "Head",
+         "x": 28,
+         "y": 16,
+         "width": 668,
+         "type": "frame",
+         "height": 28,
+         "children": [
+          {
+           "id": "l53",
+           "name": "Notes button",
+           "x": 0,
+           "y": 0,
+           "width": 73,
+           "type": "frame",
+           "height": 28,
+           "fill": "#FFFDF9",
+           "radius": 999,
+           "stroke": {
+            "color": "#DFC9A3",
+            "width": 1
+           },
+           "children": [
+            {
+             "id": "l54",
+             "name": "Icon",
+             "x": 10,
+             "y": 7,
+             "width": 14,
+             "type": "text",
+             "text": "◧",
+             "font": "Nunito Sans",
+             "size": 14,
+             "weight": 700,
+             "color": "#2A2218",
+             "align": "center"
+            },
+            {
+             "id": "l55",
+             "name": "Label",
+             "x": 30,
+             "y": 6,
+             "width": 36,
+             "type": "text",
+             "text": "Notes",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#2A2218"
+            }
+           ]
+          },
+          {
+           "id": "l56",
+           "name": "Icon",
+           "x": 81,
+           "y": 7,
+           "width": 14,
+           "type": "text",
+           "text": "▱",
+           "font": "Nunito Sans",
+           "size": 14,
+           "weight": 700,
+           "color": "#665848",
+           "align": "center"
+          },
+          {
+           "id": "l57",
+           "name": "Folder",
+           "x": 103,
+           "y": 6,
+           "width": 54,
+           "type": "text",
+           "text": "Research",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 700,
+           "color": "#665848"
+          },
+          {
+           "id": "l58",
+           "name": "Spacer",
+           "x": 162,
+           "y": 13.5,
+           "width": 322,
+           "type": "frame",
+           "height": 1
+          },
+          {
+           "id": "l59",
+           "name": "Save line",
+           "x": 492,
+           "y": 6,
+           "width": 88,
+           "type": "frame",
+           "height": 16,
+           "children": [
+            {
+             "id": "l60",
+             "name": "Icon",
+             "x": 0,
+             "y": 1.5,
+             "width": 13,
+             "type": "text",
+             "text": "✓",
+             "font": "Nunito Sans",
+             "size": 13,
+             "weight": 700,
+             "color": "#1B6650",
+             "align": "center"
+            },
+            {
+             "id": "l61",
+             "name": "State",
+             "x": 18,
+             "y": 0,
+             "width": 73,
+             "type": "text",
+             "text": "Saved 14:02",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#665848"
+            }
+           ]
+          },
+          {
+           "id": "l62",
+           "name": "Details button",
+           "x": 588,
+           "y": 0,
+           "width": 80,
+           "type": "frame",
+           "height": 28,
+           "fill": "#FFFDF9",
+           "radius": 999,
+           "stroke": {
+            "color": "#DFC9A3",
+            "width": 1
+           },
+           "children": [
+            {
+             "id": "l63",
+             "name": "Icon",
+             "x": 10,
+             "y": 7,
+             "width": 14,
+             "type": "text",
+             "text": "◨",
+             "font": "Nunito Sans",
+             "size": 14,
+             "weight": 700,
+             "color": "#2A2218",
+             "align": "center"
+            },
+            {
+             "id": "l64",
+             "name": "Label",
+             "x": 30,
+             "y": 6,
+             "width": 43,
+             "type": "text",
+             "text": "Details",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#2A2218"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "l65",
+         "name": "Title",
+         "x": 28,
+         "y": 56,
+         "width": 668,
+         "type": "text",
+         "text": "False steps in the March recordings",
+         "font": "Marcellus",
+         "size": 26,
+         "weight": 400,
+         "color": "#2A2218",
+         "lineHeight": 1.2
+        },
+        {
+         "id": "l66",
+         "name": "Rule",
+         "x": 28,
+         "y": 99,
+         "width": 668,
+         "type": "frame",
+         "height": 1,
+         "fill": "#DFC69B"
+        },
+        {
+         "id": "l67",
+         "name": "Body",
+         "x": 28,
+         "y": 112,
+         "width": 668,
+         "type": "frame",
+         "height": 607.2,
+         "children": [
+          {
+           "id": "l68",
+           "name": "Text",
+           "x": 0,
+           "y": 0,
+           "width": 668,
+           "type": "text",
+           "text": "The step counter double-counts when a patient shuffles. Most false steps in the March recordings come from heel lift under 18 N, which reads as a new strike.\n\nSee [[Sensor sampling rates]] for why 100 Hz misses the short lifts, and [[Clinic recording protocol]] for how the sessions were taken.\n\n## Next\n- [x] Mark the 41 false steps by hand in session 3\n- [ ] Raise the heel strike threshold to 18 N and rerun sessions 1–6\n- [ ] Log raw pressure at 200 Hz for one walk\n- [ ] Ask the clinic for two shuffling recordings\n\nShuffling patients matter most: they're who the music orb is for.",
+           "font": "Nunito Sans",
+           "size": 15,
+           "weight": 400,
+           "color": "#2A2218",
+           "lineHeight": 1.7
+          }
+         ]
+        },
+        {
+         "id": "l69",
+         "name": "Foot",
+         "x": 28,
+         "y": 731.2,
+         "width": 668,
+         "type": "frame",
+         "height": 64.8,
+         "children": [
+          {
+           "id": "l70",
+           "name": "BrewQuest",
+           "x": 280,
+           "y": 0,
+           "width": 388,
+           "type": "frame",
+           "height": 64.8,
+           "fill": "#FFFAEE",
+           "radius": 12,
+           "stroke": {
+            "color": "#DFC79D",
+            "width": 1
+           },
+           "children": [
+            {
+             "id": "l71",
+             "name": "Bot",
+             "x": 6,
+             "y": 6,
+             "width": 48,
+             "type": "frame",
+             "height": 52.8,
+             "children": [
+              {
+               "id": "l72",
+               "name": "Floor",
+               "x": 10.4,
+               "y": 48.4,
+               "width": 24,
+               "type": "frame",
+               "height": 3.2,
+               "radius": 2,
+               "fill": "#E1DCD0"
+              },
+              {
+               "id": "l74",
+               "name": "Foot",
+               "x": 14.8,
+               "y": 45.4,
+               "width": 6.4,
+               "type": "frame",
+               "height": 3.6,
+               "radius": 2,
+               "fill": "#FFFFFF"
+              },
+              {
+               "id": "l75",
+               "name": "Foot",
+               "x": 23.6,
+               "y": 45.4,
+               "width": 6.4,
+               "type": "frame",
+               "height": 3.6,
+               "radius": 2,
+               "fill": "#FFFFFF"
+              },
+              {
+               "id": "l77",
+               "name": "Antenna tip",
+               "x": 21.2,
+               "y": 1.2,
+               "width": 4,
+               "type": "frame",
+               "height": 4,
+               "radius": 2,
+               "fill": "#B23C2B"
+              },
+              {
+               "id": "l78",
+               "name": "Shell",
+               "x": 0,
+               "y": 0,
+               "width": 48,
+               "type": "frame",
+               "height": 52.8,
+               "fill": "#FFFFFF",
+               "radius": 24
+              },
+              {
+               "id": "l79",
+               "name": "Shine",
+               "x": 14,
+               "y": 13.2,
+               "width": 5.6,
+               "type": "frame",
+               "height": 8.8,
+               "radius": 3,
+               "fill": "#F9EBDF"
+              },
+              {
+               "id": "l80",
+               "name": "Eye",
+               "x": 16.2,
+               "y": 21.2,
+               "width": 3.6,
+               "type": "frame",
+               "height": 5.6,
+               "radius": 2,
+               "fill": "#1F2430"
+              },
+              {
+               "id": "l81",
+               "name": "Eye",
+               "x": 25,
+               "y": 21.2,
+               "width": 3.6,
+               "type": "frame",
+               "height": 5.6,
+               "radius": 2,
+               "fill": "#1F2430"
+              },
+              {
+               "id": "l82",
+               "name": "Glint",
+               "x": 18,
+               "y": 22,
+               "width": 1.3,
+               "type": "frame",
+               "height": 1.3,
+               "radius": 1,
+               "fill": "#FFFFFF"
+              },
+              {
+               "id": "l83",
+               "name": "Glint",
+               "x": 26.8,
+               "y": 22,
+               "width": 1.3,
+               "type": "frame",
+               "height": 1.3,
+               "radius": 1,
+               "fill": "#FFFFFF"
+              },
+              {
+               "id": "l84",
+               "name": "Cheek",
+               "x": 12.8,
+               "y": 28,
+               "width": 4,
+               "type": "frame",
+               "height": 2.4,
+               "radius": 1,
+               "fill": "#E8C1B3"
+              },
+              {
+               "id": "l85",
+               "name": "Cheek",
+               "x": 28,
+               "y": 28,
+               "width": 4,
+               "type": "frame",
+               "height": 2.4,
+               "radius": 1,
+               "fill": "#E8C1B3"
+              },
+              {
+               "id": "l88",
+               "name": "Hand",
+               "x": 4,
+               "y": 35.2,
+               "width": 4,
+               "type": "frame",
+               "height": 4,
+               "radius": 2,
+               "fill": "#FFFFFF"
+              },
+              {
+               "id": "l89",
+               "name": "Scroll",
+               "x": 36,
+               "y": 24,
+               "width": 9.6,
+               "type": "frame",
+               "height": 12.8,
+               "fill": "#FFFFFF",
+               "radius": 1,
+               "stroke": {
+                "color": "#B23C2B",
+                "width": 0.8
+               }
+              },
+              {
+               "id": "l90",
+               "name": "Scroll top",
+               "x": 35.2,
+               "y": 22.4,
+               "width": 11.2,
+               "type": "frame",
+               "height": 2.4,
+               "fill": "#D59283",
+               "radius": 1
+              },
+              {
+               "id": "l91",
+               "name": "Scroll foot",
+               "x": 35.2,
+               "y": 36,
+               "width": 11.2,
+               "type": "frame",
+               "height": 2.4,
+               "fill": "#D59283",
+               "radius": 1
+              },
+              {
+               "id": "l94",
+               "name": "Hand",
+               "x": 36.4,
+               "y": 34.8,
+               "width": 4,
+               "type": "frame",
+               "height": 4,
+               "radius": 2,
+               "fill": "#FFFFFF"
+              }
+             ]
+            },
+            {
+             "id": "l95",
+             "name": "Words",
+             "x": 64,
+             "y": 14.9,
+             "width": 168,
+             "type": "frame",
+             "height": 35,
+             "children": [
+              {
+               "id": "l96",
+               "name": "Name",
+               "x": 0,
+               "y": 0,
+               "width": 76,
+               "type": "text",
+               "text": "BrewQuest",
+               "font": "Marcellus",
+               "size": 14,
+               "weight": 400,
+               "color": "#2A2218"
+              },
+              {
+               "id": "l97",
+               "name": "Line",
+               "x": 0,
+               "y": 19,
+               "width": 171,
+               "type": "text",
+               "text": "3 checklist lines can be quests.",
+               "font": "Nunito Sans",
+               "size": 12,
+               "weight": 600,
+               "color": "#54473A"
+              }
+             ]
+            },
+            {
+             "id": "l98",
+             "name": "Turn into quests",
+             "x": 242,
+             "y": 16.4,
+             "width": 136,
+             "type": "frame",
+             "height": 32,
+             "fill": "#B23C2B",
+             "radius": 999,
+             "stroke": {
+              "color": "#6E1A12",
+              "width": 1
+             },
+             "children": [
+              {
+               "id": "l99",
+               "name": "Label",
+               "x": 14,
+               "y": 7,
+               "width": 111,
+               "type": "text",
+               "text": "Turn into quests…",
+               "font": "Nunito Sans",
+               "size": 13,
+               "weight": 700,
+               "color": "#FFF4DC"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "l100",
+   "name": "Scrim",
+   "x": 0,
+   "y": 0,
+   "width": 760,
+   "type": "frame",
+   "height": 954
+  },
+  {
+   "id": "l101",
+   "name": "Note list",
+   "x": 20,
+   "y": 132,
+   "width": 300,
+   "type": "frame",
+   "height": 810,
+   "fill": "#FFFAEE",
+   "radius": 10,
+   "stroke": {
+    "color": "#B8893A",
+    "width": 1
+   },
+   "children": [
+    {
+     "id": "l102",
+     "name": "Header",
+     "x": 10,
+     "y": 14,
+     "width": 280,
+     "type": "frame",
+     "height": 28,
+     "children": [
+      {
+       "id": "l103",
+       "name": "Title",
+       "x": 6,
+       "y": 3.5,
+       "width": 48,
+       "type": "text",
+       "text": "Notes",
+       "font": "Marcellus",
+       "size": 17,
+       "weight": 400,
+       "color": "#2A2218"
+      },
+      {
+       "id": "l104",
+       "name": "Count",
+       "x": 59,
+       "y": 6,
+       "width": 11,
+       "type": "text",
+       "text": "7",
+       "font": "Nunito Sans",
+       "size": 12,
+       "weight": 700,
+       "color": "#665848"
+      },
+      {
+       "id": "l105",
+       "name": "Spacer",
+       "x": 75,
+       "y": 13.5,
+       "width": 85,
+       "type": "frame",
+       "height": 1
+      },
+      {
+       "id": "l106",
+       "name": "New note",
+       "x": 168,
+       "y": 0,
+       "width": 74,
+       "type": "frame",
+       "height": 28,
+       "fill": "#FFFAEE",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l107",
+         "name": "Label",
+         "x": 10,
+         "y": 6,
+         "width": 57,
+         "type": "text",
+         "text": "New note",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      },
+      {
+       "id": "l108",
+       "name": "Close",
+       "x": 250,
+       "y": 0,
+       "width": 28,
+       "type": "frame",
+       "height": 28,
+       "radius": 999,
+       "stroke": {
+        "color": "#DFC79D",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l109",
+         "name": "Icon",
+         "x": 7,
+         "y": 7,
+         "width": 14,
+         "type": "text",
+         "text": "✕",
+         "font": "Nunito Sans",
+         "size": 14,
+         "weight": 700,
+         "color": "#2A2218",
+         "align": "center"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l110",
+     "name": "Quick capture",
+     "x": 10,
+     "y": 52,
+     "width": 280,
+     "type": "frame",
+     "height": 34,
+     "fill": "#FFFEFA",
+     "radius": 8,
+     "stroke": {
+      "color": "#DFC9A3",
+      "width": 1
+     },
+     "children": [
+      {
+       "id": "l111",
+       "name": "Icon",
+       "x": 10,
+       "y": 10,
+       "width": 14,
+       "type": "text",
+       "text": "✎",
+       "font": "Nunito Sans",
+       "size": 14,
+       "weight": 700,
+       "color": "#665848",
+       "align": "center"
+      },
+      {
+       "id": "l112",
+       "name": "Placeholder",
+       "x": 32,
+       "y": 8,
+       "width": 184,
+       "type": "text",
+       "text": "Jot an idea, then press Return…",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#665848"
+      },
+      {
+       "id": "l113",
+       "name": "Spacer",
+       "x": 221,
+       "y": 16.5,
+       "width": 49,
+       "type": "frame",
+       "height": 1
+      }
+     ]
+    },
+    {
+     "id": "l114",
+     "name": "Search",
+     "x": 10,
+     "y": 96,
+     "width": 280,
+     "type": "frame",
+     "height": 34,
+     "fill": "#FFFEFA",
+     "radius": 8,
+     "stroke": {
+      "color": "#DFC9A3",
+      "width": 1
+     },
+     "children": [
+      {
+       "id": "l115",
+       "name": "Icon",
+       "x": 10,
+       "y": 10,
+       "width": 14,
+       "type": "text",
+       "text": "⌕",
+       "font": "Nunito Sans",
+       "size": 14,
+       "weight": 700,
+       "color": "#665848",
+       "align": "center"
+      },
+      {
+       "id": "l116",
+       "name": "Placeholder",
+       "x": 32,
+       "y": 8,
+       "width": 166,
+       "type": "text",
+       "text": "Search titles, text and #tags",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#665848"
+      },
+      {
+       "id": "l117",
+       "name": "Spacer",
+       "x": 203,
+       "y": 16.5,
+       "width": 67,
+       "type": "frame",
+       "height": 1
+      }
+     ]
+    },
+    {
+     "id": "l118",
+     "name": "Folders",
+     "x": 10,
+     "y": 140,
+     "width": 280,
+     "type": "frame",
+     "height": 413,
+     "children": [
+      {
+       "id": "l119",
+       "name": "Folder Inbox",
+       "x": 0,
+       "y": 4,
+       "width": 280,
+       "type": "frame",
+       "height": 26,
+       "children": [
+        {
+         "id": "l120",
+         "name": "Icon",
+         "x": 6,
+         "y": 7,
+         "width": 12,
+         "type": "text",
+         "text": "▾",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#665848",
+         "align": "center"
+        },
+        {
+         "id": "l121",
+         "name": "Name",
+         "x": 24,
+         "y": 5,
+         "width": 35,
+         "type": "text",
+         "text": "Inbox",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 800,
+         "color": "#54473A"
+        },
+        {
+         "id": "l122",
+         "name": "Count",
+         "x": 62,
+         "y": 5.5,
+         "width": 10,
+         "type": "text",
+         "text": "3",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 700,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l123",
+       "name": "Music orb pacing idea",
+       "x": 0,
+       "y": 31,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l124",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "Music orb pacing idea",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l125",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "Today 09:12 · #idea",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l126",
+       "name": "Ask the clinic about recordings",
+       "x": 0,
+       "y": 78,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l127",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "Ask the clinic about recordings",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l128",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "Yesterday",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l129",
+       "name": "Heel lift under 18 N?",
+       "x": 0,
+       "y": 125,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l130",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "Heel lift under 18 N?",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l131",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "Yesterday · #idea",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l132",
+       "name": "Folder Research",
+       "x": 0,
+       "y": 172,
+       "width": 280,
+       "type": "frame",
+       "height": 26,
+       "children": [
+        {
+         "id": "l133",
+         "name": "Icon",
+         "x": 6,
+         "y": 7,
+         "width": 12,
+         "type": "text",
+         "text": "▾",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#665848",
+         "align": "center"
+        },
+        {
+         "id": "l134",
+         "name": "Name",
+         "x": 24,
+         "y": 5,
+         "width": 55,
+         "type": "text",
+         "text": "Research",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 800,
+         "color": "#54473A"
+        },
+        {
+         "id": "l135",
+         "name": "Count",
+         "x": 82,
+         "y": 5.5,
+         "width": 10,
+         "type": "text",
+         "text": "3",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 700,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l136",
+       "name": "False steps in the March recordings",
+       "x": 0,
+       "y": 199,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "fill": "#D9F1E5",
+       "radius": 8,
+       "children": [
+        {
+         "id": "l137",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "False steps in the March recordings",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l138",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "Today 14:02 · #research",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        },
+        {
+         "id": "l139",
+         "name": "Selection bar",
+         "x": 0,
+         "y": 7,
+         "width": 3,
+         "type": "frame",
+         "height": 30,
+         "fill": "#B8893A",
+         "radius": 2
+        }
+       ]
+      },
+      {
+       "id": "l140",
+       "name": "Sensor sampling rates",
+       "x": 0,
+       "y": 246,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l141",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "Sensor sampling rates",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l142",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "5 Nov · #sensors",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l143",
+       "name": "Shuffling gait papers",
+       "x": 0,
+       "y": 293,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l144",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "Shuffling gait papers",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l145",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "2 Nov · #reading",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l146",
+       "name": "Folder Releases",
+       "x": 0,
+       "y": 340,
+       "width": 280,
+       "type": "frame",
+       "height": 26,
+       "children": [
+        {
+         "id": "l147",
+         "name": "Icon",
+         "x": 6,
+         "y": 7,
+         "width": 12,
+         "type": "text",
+         "text": "▾",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#665848",
+         "align": "center"
+        },
+        {
+         "id": "l148",
+         "name": "Name",
+         "x": 24,
+         "y": 5,
+         "width": 54,
+         "type": "text",
+         "text": "Releases",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 800,
+         "color": "#54473A"
+        },
+        {
+         "id": "l149",
+         "name": "Count",
+         "x": 81,
+         "y": 5.5,
+         "width": 10,
+         "type": "text",
+         "text": "1",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 700,
+         "color": "#665848"
+        }
+       ]
+      },
+      {
+       "id": "l150",
+       "name": "1.4 release checklist",
+       "x": 0,
+       "y": 367,
+       "width": 280,
+       "type": "frame",
+       "height": 46,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l151",
+         "name": "Title",
+         "x": 12,
+         "y": 6,
+         "width": 258,
+         "type": "text",
+         "text": "1.4 release checklist",
+         "font": "Nunito Sans",
+         "size": 13,
+         "weight": 700,
+         "color": "#2A2218"
+        },
+        {
+         "id": "l152",
+         "name": "Meta",
+         "x": 12,
+         "y": 25,
+         "width": 258,
+         "type": "text",
+         "text": "4 Nov · #release",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l153",
+     "name": "Fill",
+     "x": 10,
+     "y": 563,
+     "width": 280,
+     "type": "frame",
+     "height": 191
+    },
+    {
+     "id": "l154",
+     "name": "Archived link",
+     "x": 10,
+     "y": 764,
+     "width": 280,
+     "type": "frame",
+     "height": 34,
+     "children": [
+      {
+       "id": "l155",
+       "name": "Icon",
+       "x": 6,
+       "y": 10,
+       "width": 14,
+       "type": "text",
+       "text": "▭",
+       "font": "Nunito Sans",
+       "size": 14,
+       "weight": 700,
+       "color": "#8E2A1E",
+       "align": "center"
+      },
+      {
+       "id": "l156",
+       "name": "Label",
+       "x": 28,
+       "y": 9,
+       "width": 73,
+       "type": "text",
+       "text": "Archived (2)",
+       "font": "Nunito Sans",
+       "size": 12,
+       "weight": 800,
+       "color": "#8E2A1E"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

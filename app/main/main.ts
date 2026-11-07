@@ -25,6 +25,7 @@ import { readGame, readHoard } from './features/game/api/game_api'
 import { readMana } from './features/mana/api/mana_api'
 import { githubApi } from './features/github/api/github_api'
 import { libraryApi } from './features/library/api/library_api'
+import { notesApi } from './features/notes/api/notes_api'
 import { designsApi } from './features/designs/api/designs_api'
 import { helpersApi } from './features/helpers/api/helpers_api'
 import { judgementWatch } from './features/notify/domain/judgements'
@@ -130,6 +131,7 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
+const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}` })
 // Each change to a helper's work goes to every window as it happens.
 const helpers = helpersApi({
   ...quests,
@@ -212,6 +214,12 @@ const serveEngine = () => {
   handle(CHANNELS.setBookPage, (_, id: unknown, page: unknown) => library.setBookPage(id, page))
   handle(CHANNELS.finishBook, (_, id: unknown) => library.finishBook(id))
   handle(CHANNELS.removeBook, (_, id: unknown) => library.removeBook(id))
+  handle(CHANNELS.readNotes, (_, key: unknown) => notes.readNotes(key))
+  handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
+  handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
+  handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))
+  handle(CHANNELS.deleteNote, (_, key: unknown, id: unknown) => notes.deleteNote(key, id))
+  handle(CHANNELS.fileNoteQuests, (_, key: unknown, id: unknown, proposal: unknown) => notes.fileNoteQuests(key, id, proposal))
   handle(CHANNELS.takeOpened, () => reply(log, MESSAGES.openFolder, async () => takeOpened()))
   handle(CHANNELS.readChoices, (_, key: unknown, taskId: unknown) => tasks.readChoices(quests, key, taskId))
   handle(CHANNELS.setPriority, (_, key: unknown, taskId: unknown, priority: unknown) => tasks.setPriority(quests, key, taskId, priority))

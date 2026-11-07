@@ -1,0 +1,2566 @@
+{
+ "format": 1,
+ "name": "5 · Archived notes and Delete forever",
+ "width": 1280,
+ "height": 954,
+ "fill": "#4FA2E2",
+ "nodes": [
+  {
+   "id": "l1",
+   "name": "Sidebar",
+   "x": 12,
+   "y": 12,
+   "width": 248,
+   "type": "frame",
+   "height": 930,
+   "fill": "#FEF9EB",
+   "radius": 10,
+   "stroke": {
+    "color": "#B8893A",
+    "width": 1
+   },
+   "children": [
+    {
+     "id": "l2",
+     "name": "Inner rule",
+     "x": 3,
+     "y": 3,
+     "width": 240,
+     "type": "frame",
+     "height": 922,
+     "radius": 8,
+     "stroke": {
+      "color": "#DFC69B",
+      "width": 1
+     }
+    },
+    {
+     "id": "l3",
+     "name": "Window lights",
+     "x": 10,
+     "y": 0,
+     "width": 60,
+     "type": "frame",
+     "height": 46,
+     "children": [
+      {
+       "id": "l4",
+       "name": "Light",
+       "x": 8,
+       "y": 17,
+       "width": 12,
+       "type": "frame",
+       "height": 12,
+       "radius": 6,
+       "fill": "#FF5F57"
+      },
+      {
+       "id": "l5",
+       "name": "Light",
+       "x": 28,
+       "y": 17,
+       "width": 12,
+       "type": "frame",
+       "height": 12,
+       "radius": 6,
+       "fill": "#FEBC2E"
+      },
+      {
+       "id": "l6",
+       "name": "Light",
+       "x": 48,
+       "y": 17,
+       "width": 12,
+       "type": "frame",
+       "height": 12,
+       "radius": 6,
+       "fill": "#28C840"
+      }
+     ]
+    },
+    {
+     "id": "l7",
+     "name": "Header",
+     "x": 10,
+     "y": 50,
+     "width": 228,
+     "type": "frame",
+     "height": 30,
+     "children": [
+      {
+       "id": "l8",
+       "name": "Title",
+       "x": 10,
+       "y": 7,
+       "width": 50,
+       "type": "text",
+       "text": "Realms",
+       "font": "Marcellus",
+       "size": 13,
+       "weight": 600,
+       "color": "#54473A"
+      },
+      {
+       "id": "l9",
+       "name": "Open folder",
+       "x": 194,
+       "y": 0,
+       "width": 30,
+       "type": "frame",
+       "height": 30,
+       "radius": 999,
+       "children": [
+        {
+         "id": "l10",
+         "name": "Plus",
+         "x": 7,
+         "y": 7,
+         "width": 16,
+         "type": "text",
+         "text": "+",
+         "font": "Nunito Sans",
+         "size": 16,
+         "weight": 700,
+         "color": "#2A2218",
+         "align": "center"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l11",
+     "name": "Realm rows",
+     "x": 10,
+     "y": 84,
+     "width": 228,
+     "type": "frame",
+     "height": 160,
+     "children": [
+      {
+       "id": "l12",
+       "name": "Gait-feedback",
+       "x": 0,
+       "y": 0,
+       "width": 228,
+       "type": "frame",
+       "height": 52,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l13",
+         "name": "Line 1",
+         "x": 12,
+         "y": 7,
+         "width": 204,
+         "type": "frame",
+         "height": 20,
+         "children": [
+          {
+           "id": "l14",
+           "name": "Mark",
+           "x": 0,
+           "y": 4,
+           "width": 12,
+           "type": "frame",
+           "height": 12,
+           "children": [
+            {
+             "id": "l15",
+             "name": "Diamond",
+             "x": 2,
+             "y": 2,
+             "width": 8,
+             "type": "frame",
+             "height": 8,
+             "fill": "#3FAE8E",
+             "radius": 4
+            }
+           ]
+          },
+          {
+           "id": "l16",
+           "name": "Name",
+           "x": 20,
+           "y": 0,
+           "width": 168,
+           "type": "text",
+           "text": "Gait-feedback",
+           "font": "Nunito Sans",
+           "size": 15,
+           "weight": 700,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l17",
+           "name": "Count",
+           "x": 196,
+           "y": 1,
+           "width": 11,
+           "type": "text",
+           "text": "6",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 800,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l18",
+         "name": "Line 2",
+         "x": 12,
+         "y": 29,
+         "width": 204,
+         "type": "frame",
+         "height": 16,
+         "children": [
+          {
+           "id": "l19",
+           "name": "Status",
+           "x": 20,
+           "y": 0,
+           "width": 184,
+           "type": "text",
+           "text": "6 waiting · ★ Fix the docs",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 400,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l20",
+         "name": "Selection bar",
+         "x": 0,
+         "y": 8,
+         "width": 3,
+         "type": "frame",
+         "height": 34,
+         "fill": "#B8893A",
+         "radius": 2
+        }
+       ]
+      },
+      {
+       "id": "l21",
+       "name": "queue-tea",
+       "x": 0,
+       "y": 54,
+       "width": 228,
+       "type": "frame",
+       "height": 52,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l22",
+         "name": "Line 1",
+         "x": 12,
+         "y": 7,
+         "width": 204,
+         "type": "frame",
+         "height": 20,
+         "children": [
+          {
+           "id": "l23",
+           "name": "Mark",
+           "x": 0,
+           "y": 4,
+           "width": 12,
+           "type": "frame",
+           "height": 12,
+           "children": [
+            {
+             "id": "l24",
+             "name": "Diamond",
+             "x": 2,
+             "y": 2,
+             "width": 8,
+             "type": "frame",
+             "height": 8,
+             "fill": "#C46A16",
+             "radius": 4
+            }
+           ]
+          },
+          {
+           "id": "l25",
+           "name": "Name",
+           "x": 20,
+           "y": 0,
+           "width": 168,
+           "type": "text",
+           "text": "queue-tea",
+           "font": "Nunito Sans",
+           "size": 15,
+           "weight": 700,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l26",
+           "name": "Count",
+           "x": 196,
+           "y": 1,
+           "width": 11,
+           "type": "text",
+           "text": "2",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 800,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l27",
+         "name": "Line 2",
+         "x": 12,
+         "y": 29,
+         "width": 204,
+         "type": "frame",
+         "height": 16,
+         "children": [
+          {
+           "id": "l28",
+           "name": "Status",
+           "x": 20,
+           "y": 0,
+           "width": 184,
+           "type": "text",
+           "text": "▶ Notes workspace for the app",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 400,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l29",
+       "name": "Insole bridge",
+       "x": 0,
+       "y": 108,
+       "width": 228,
+       "type": "frame",
+       "height": 52,
+       "radius": 8,
+       "children": [
+        {
+         "id": "l30",
+         "name": "Line 1",
+         "x": 12,
+         "y": 7,
+         "width": 204,
+         "type": "frame",
+         "height": 20,
+         "children": [
+          {
+           "id": "l31",
+           "name": "Mark",
+           "x": 0,
+           "y": 4,
+           "width": 12,
+           "type": "frame",
+           "height": 12,
+           "children": [
+            {
+             "id": "l32",
+             "name": "Diamond",
+             "x": 2,
+             "y": 2,
+             "width": 8,
+             "type": "frame",
+             "height": 8,
+             "fill": "#DFC69B",
+             "radius": 4
+            }
+           ]
+          },
+          {
+           "id": "l33",
+           "name": "Name",
+           "x": 20,
+           "y": 0,
+           "width": 184,
+           "type": "text",
+           "text": "Insole bridge",
+           "font": "Nunito Sans",
+           "size": 15,
+           "weight": 700,
+           "color": "#2A2218"
+          }
+         ]
+        },
+        {
+         "id": "l34",
+         "name": "Line 2",
+         "x": 12,
+         "y": 29,
+         "width": 204,
+         "type": "frame",
+         "height": 16,
+         "children": [
+          {
+           "id": "l35",
+           "name": "Status",
+           "x": 20,
+           "y": 0,
+           "width": 184,
+           "type": "text",
+           "text": "Nothing queued",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 400,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l36",
+     "name": "Fill",
+     "x": 10,
+     "y": 248,
+     "width": 228,
+     "type": "frame",
+     "height": 512
+    },
+    {
+     "id": "l37",
+     "name": "Links",
+     "x": 10,
+     "y": 764,
+     "width": 228,
+     "type": "frame",
+     "height": 152,
+     "children": [
+      {
+       "id": "l38",
+       "name": "Guild Hall",
+       "x": 0,
+       "y": 0,
+       "width": 228,
+       "type": "frame",
+       "height": 38,
+       "children": [
+        {
+         "id": "l39",
+         "name": "Label",
+         "x": 12,
+         "y": 9.5,
+         "width": 69,
+         "type": "text",
+         "text": "Guild Hall",
+         "font": "Nunito Sans",
+         "size": 14,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      },
+      {
+       "id": "l40",
+       "name": "Hoard",
+       "x": 0,
+       "y": 38,
+       "width": 228,
+       "type": "frame",
+       "height": 38,
+       "children": [
+        {
+         "id": "l41",
+         "name": "Label",
+         "x": 12,
+         "y": 9.5,
+         "width": 44,
+         "type": "text",
+         "text": "Hoard",
+         "font": "Nunito Sans",
+         "size": 14,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      },
+      {
+       "id": "l42",
+       "name": "Library",
+       "x": 0,
+       "y": 76,
+       "width": 228,
+       "type": "frame",
+       "height": 38,
+       "children": [
+        {
+         "id": "l43",
+         "name": "Label",
+         "x": 12,
+         "y": 9.5,
+         "width": 50,
+         "type": "text",
+         "text": "Library",
+         "font": "Nunito Sans",
+         "size": 14,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      },
+      {
+       "id": "l44",
+       "name": "Settings",
+       "x": 0,
+       "y": 114,
+       "width": 228,
+       "type": "frame",
+       "height": 38,
+       "children": [
+        {
+         "id": "l45",
+         "name": "Label",
+         "x": 12,
+         "y": 9.5,
+         "width": 57,
+         "type": "text",
+         "text": "Settings",
+         "font": "Nunito Sans",
+         "size": 14,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "l46",
+   "name": "Main",
+   "x": 280,
+   "y": 12,
+   "width": 984,
+   "type": "frame",
+   "height": 930,
+   "children": [
+    {
+     "id": "l47",
+     "name": "Top bar",
+     "x": 0,
+     "y": 0,
+     "width": 984,
+     "type": "frame",
+     "height": 42,
+     "children": [
+      {
+       "id": "l48",
+       "name": "Tabs",
+       "x": 0,
+       "y": 1,
+       "width": 604,
+       "type": "frame",
+       "height": 40,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l49",
+         "name": "Tab Home",
+         "x": 6,
+         "y": 4,
+         "width": 68,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l50",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 43,
+           "type": "text",
+           "text": "Home",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l51",
+         "name": "Tab Quests",
+         "x": 76,
+         "y": 4,
+         "width": 72,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l52",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 47,
+           "type": "text",
+           "text": "Quests",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l53",
+         "name": "Tab Designs",
+         "x": 150,
+         "y": 4,
+         "width": 78,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l54",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 53,
+           "type": "text",
+           "text": "Designs",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l55",
+         "name": "Tab Branches",
+         "x": 230,
+         "y": 4,
+         "width": 87,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l56",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 62,
+           "type": "text",
+           "text": "Branches",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l57",
+         "name": "Tab Chronicle",
+         "x": 319,
+         "y": 4,
+         "width": 92,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l58",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 67,
+           "type": "text",
+           "text": "Chronicle",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l59",
+         "name": "Tab Mana & time",
+         "x": 413,
+         "y": 4,
+         "width": 116,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l60",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 91,
+           "type": "text",
+           "text": "Mana & time",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l61",
+         "name": "Tab Notes",
+         "x": 531,
+         "y": 4,
+         "width": 67,
+         "type": "frame",
+         "height": 32,
+         "fill": "#F8E7B4",
+         "radius": 999,
+         "stroke": {
+          "color": "#B08A3E",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l62",
+           "name": "Label",
+           "x": 14,
+           "y": 8,
+           "width": 42,
+           "type": "text",
+           "text": "Notes",
+           "font": "Marcellus",
+           "size": 13,
+           "weight": 600,
+           "color": "#3A2C14"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l63",
+       "name": "Spacer",
+       "x": 620,
+       "y": 20.5,
+       "width": 114,
+       "type": "frame",
+       "height": 1
+      },
+      {
+       "id": "l64",
+       "name": "Sky dial",
+       "x": 750,
+       "y": 1,
+       "width": 176,
+       "type": "frame",
+       "height": 40,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l65",
+         "name": "Follow my clock",
+         "x": 4,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "fill": "#F8E7B4",
+         "radius": 999,
+         "stroke": {
+          "color": "#B08A3E",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l66",
+           "name": "Icon",
+           "x": 8,
+           "y": 8,
+           "width": 16,
+           "type": "text",
+           "text": "◷",
+           "font": "Nunito Sans",
+           "size": 16,
+           "weight": 700,
+           "color": "#3A2C14",
+           "align": "center"
+          }
+         ]
+        },
+        {
+         "id": "l67",
+         "name": "Morning",
+         "x": 38,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999
+        },
+        {
+         "id": "l69",
+         "name": "Day",
+         "x": 72,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l70",
+           "name": "Icon",
+           "x": 8,
+           "y": 8,
+           "width": 16,
+           "type": "text",
+           "text": "☀",
+           "font": "Nunito Sans",
+           "size": 16,
+           "weight": 700,
+           "color": "#54473A",
+           "align": "center"
+          }
+         ]
+        },
+        {
+         "id": "l71",
+         "name": "Evening",
+         "x": 106,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999
+        },
+        {
+         "id": "l73",
+         "name": "Night",
+         "x": 140,
+         "y": 4,
+         "width": 32,
+         "type": "frame",
+         "height": 32,
+         "radius": 999,
+         "children": [
+          {
+           "id": "l74",
+           "name": "Icon",
+           "x": 8,
+           "y": 8,
+           "width": 16,
+           "type": "text",
+           "text": "☾",
+           "font": "Nunito Sans",
+           "size": 16,
+           "weight": 700,
+           "color": "#54473A",
+           "align": "center"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l75",
+       "name": "New quest",
+       "x": 942,
+       "y": 0,
+       "width": 42,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l76",
+         "name": "Plus",
+         "x": 12,
+         "y": 12,
+         "width": 18,
+         "type": "text",
+         "text": "+",
+         "font": "Nunito Sans",
+         "size": 18,
+         "weight": 700,
+         "color": "#2A2218",
+         "align": "center"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l77",
+     "name": "HUD",
+     "x": 0,
+     "y": 60,
+     "width": 701,
+     "type": "frame",
+     "height": 42,
+     "children": [
+      {
+       "id": "l78",
+       "name": "Level",
+       "x": 0,
+       "y": 0,
+       "width": 190,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l79",
+         "name": "Badge",
+         "x": 8,
+         "y": 6,
+         "width": 30,
+         "type": "frame",
+         "height": 30,
+         "fill": "#F8E7B4",
+         "radius": 999,
+         "stroke": {
+          "color": "#B08A3E",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l80",
+           "name": "Lv",
+           "x": 5.5,
+           "y": 8,
+           "width": 22,
+           "type": "text",
+           "text": "Lv 7",
+           "font": "Marcellus",
+           "size": 11,
+           "weight": 400,
+           "color": "#3A2C14"
+          }
+         ]
+        },
+        {
+         "id": "l81",
+         "name": "Road",
+         "x": 46,
+         "y": 8.5,
+         "width": 130,
+         "type": "frame",
+         "height": 25,
+         "children": [
+          {
+           "id": "l82",
+           "name": "Headline",
+           "x": 0,
+           "y": 0,
+           "width": 79,
+           "type": "text",
+           "text": "40 XP to Lv 8",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 800,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l83",
+           "name": "Bar",
+           "x": 0,
+           "y": 19,
+           "width": 130,
+           "type": "frame",
+           "height": 6,
+           "fill": "#F4E9D2",
+           "radius": 3,
+           "children": [
+            {
+             "id": "l84",
+             "name": "Fill",
+             "x": 0,
+             "y": 0,
+             "width": 84,
+             "type": "frame",
+             "height": 6,
+             "fill": "#2E9C7E",
+             "radius": 3
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l85",
+       "name": "Streak",
+       "x": 202,
+       "y": 0,
+       "width": 90,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l86",
+         "name": "Icon",
+         "x": 8,
+         "y": 11,
+         "width": 20,
+         "type": "text",
+         "text": "♨",
+         "font": "Nunito Sans",
+         "size": 20,
+         "weight": 700,
+         "color": "#D9622B",
+         "align": "center"
+        },
+        {
+         "id": "l87",
+         "name": "Stack",
+         "x": 36,
+         "y": 4.5,
+         "width": 40,
+         "type": "frame",
+         "height": 33,
+         "children": [
+          {
+           "id": "l88",
+           "name": "Value",
+           "x": 0,
+           "y": 0,
+           "width": 43,
+           "type": "text",
+           "text": "5 days",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 800,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l89",
+           "name": "Sub",
+           "x": 0,
+           "y": 18,
+           "width": 41,
+           "type": "text",
+           "text": "best 12",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l90",
+       "name": "Gold",
+       "x": 304,
+       "y": 0,
+       "width": 74,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l91",
+         "name": "Icon",
+         "x": 8,
+         "y": 11,
+         "width": 20,
+         "type": "text",
+         "text": "◎",
+         "font": "Nunito Sans",
+         "size": 20,
+         "weight": 700,
+         "color": "#C9922E",
+         "align": "center"
+        },
+        {
+         "id": "l92",
+         "name": "Stack",
+         "x": 36,
+         "y": 4.5,
+         "width": 24,
+         "type": "frame",
+         "height": 33,
+         "children": [
+          {
+           "id": "l93",
+           "name": "Value",
+           "x": 0,
+           "y": 0,
+           "width": 27,
+           "type": "text",
+           "text": "340",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 800,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l94",
+           "name": "Sub",
+           "x": 0,
+           "y": 18,
+           "width": 26,
+           "type": "text",
+           "text": "gold",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l95",
+       "name": "Mana",
+       "x": 390,
+       "y": 0,
+       "width": 173,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l96",
+         "name": "Icon",
+         "x": 8,
+         "y": 11,
+         "width": 20,
+         "type": "text",
+         "text": "◆",
+         "font": "Nunito Sans",
+         "size": 20,
+         "weight": 700,
+         "color": "#3BA6D6",
+         "align": "center"
+        },
+        {
+         "id": "l97",
+         "name": "Stack",
+         "x": 36,
+         "y": 9,
+         "width": 123,
+         "type": "frame",
+         "height": 24,
+         "children": [
+          {
+           "id": "l98",
+           "name": "Bar",
+           "x": 0,
+           "y": 0,
+           "width": 120,
+           "type": "frame",
+           "height": 6,
+           "fill": "#F4E9D2",
+           "radius": 3,
+           "children": [
+            {
+             "id": "l99",
+             "name": "Fill",
+             "x": 0,
+             "y": 0,
+             "width": 74,
+             "type": "frame",
+             "height": 6,
+             "fill": "#3BA6D6",
+             "radius": 3
+            }
+           ]
+          },
+          {
+           "id": "l100",
+           "name": "Sub",
+           "x": 0,
+           "y": 9,
+           "width": 126,
+           "type": "text",
+           "text": "62% mana · refills 19:40",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#54473A"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l101",
+       "name": "Account",
+       "x": 575,
+       "y": 0,
+       "width": 126,
+       "type": "frame",
+       "height": 42,
+       "fill": "#FEF9EB",
+       "radius": 999,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l102",
+         "name": "Icon",
+         "x": 14,
+         "y": 13,
+         "width": 16,
+         "type": "text",
+         "text": "⑂",
+         "font": "Nunito Sans",
+         "size": 16,
+         "weight": 700,
+         "color": "#54473A",
+         "align": "center"
+        },
+        {
+         "id": "l103",
+         "name": "Login",
+         "x": 38,
+         "y": 13,
+         "width": 77,
+         "type": "text",
+         "text": "rohanbhande",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#2A2218"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l104",
+     "name": "Notes",
+     "x": 0,
+     "y": 120,
+     "width": 984,
+     "type": "frame",
+     "height": 810,
+     "children": [
+      {
+       "id": "l105",
+       "name": "Note list",
+       "x": 0,
+       "y": 0,
+       "width": 240,
+       "type": "frame",
+       "height": 810,
+       "fill": "#FEF9EB",
+       "radius": 10,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l106",
+         "name": "Header",
+         "x": 10,
+         "y": 14,
+         "width": 220,
+         "type": "frame",
+         "height": 21,
+         "children": [
+          {
+           "id": "l107",
+           "name": "Title",
+           "x": 6,
+           "y": 0,
+           "width": 72,
+           "type": "text",
+           "text": "Archived",
+           "font": "Marcellus",
+           "size": 17,
+           "weight": 400,
+           "color": "#2A2218"
+          },
+          {
+           "id": "l108",
+           "name": "Count",
+           "x": 83,
+           "y": 2.5,
+           "width": 11,
+           "type": "text",
+           "text": "2",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 700,
+           "color": "#665848"
+          },
+          {
+           "id": "l109",
+           "name": "Spacer",
+           "x": 99,
+           "y": 10,
+           "width": 119,
+           "type": "frame",
+           "height": 1
+          }
+         ]
+        },
+        {
+         "id": "l110",
+         "name": "Search",
+         "x": 10,
+         "y": 45,
+         "width": 220,
+         "type": "frame",
+         "height": 34,
+         "fill": "#FFFDF9",
+         "radius": 8,
+         "stroke": {
+          "color": "#DFC9A3",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l111",
+           "name": "Icon",
+           "x": 10,
+           "y": 10,
+           "width": 14,
+           "type": "text",
+           "text": "⌕",
+           "font": "Nunito Sans",
+           "size": 14,
+           "weight": 700,
+           "color": "#665848",
+           "align": "center"
+          },
+          {
+           "id": "l112",
+           "name": "Placeholder",
+           "x": 32,
+           "y": 8,
+           "width": 131,
+           "type": "text",
+           "text": "Search archived notes",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 400,
+           "color": "#665848"
+          },
+          {
+           "id": "l113",
+           "name": "Spacer",
+           "x": 168,
+           "y": 16.5,
+           "width": 42,
+           "type": "frame",
+           "height": 1
+          }
+         ]
+        },
+        {
+         "id": "l114",
+         "name": "Folders",
+         "x": 10,
+         "y": 89,
+         "width": 220,
+         "type": "frame",
+         "height": 151,
+         "children": [
+          {
+           "id": "l115",
+           "name": "Folder Inbox",
+           "x": 0,
+           "y": 4,
+           "width": 220,
+           "type": "frame",
+           "height": 26,
+           "children": [
+            {
+             "id": "l116",
+             "name": "Icon",
+             "x": 6,
+             "y": 7,
+             "width": 12,
+             "type": "text",
+             "text": "▾",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#665848",
+             "align": "center"
+            },
+            {
+             "id": "l117",
+             "name": "Name",
+             "x": 24,
+             "y": 5,
+             "width": 35,
+             "type": "text",
+             "text": "Inbox",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 800,
+             "color": "#54473A"
+            },
+            {
+             "id": "l118",
+             "name": "Count",
+             "x": 62,
+             "y": 5.5,
+             "width": 10,
+             "type": "text",
+             "text": "1",
+             "font": "Nunito Sans",
+             "size": 11,
+             "weight": 700,
+             "color": "#665848"
+            }
+           ]
+          },
+          {
+           "id": "l119",
+           "name": "Pressure plate trial",
+           "x": 0,
+           "y": 31,
+           "width": 220,
+           "type": "frame",
+           "height": 46,
+           "radius": 8,
+           "children": [
+            {
+             "id": "l120",
+             "name": "Title",
+             "x": 12,
+             "y": 6,
+             "width": 198,
+             "type": "text",
+             "text": "Pressure plate trial",
+             "font": "Nunito Sans",
+             "size": 13,
+             "weight": 700,
+             "color": "#2A2218"
+            },
+            {
+             "id": "l121",
+             "name": "Meta",
+             "x": 12,
+             "y": 25,
+             "width": 198,
+             "type": "text",
+             "text": "Archived 28 Oct",
+             "font": "Nunito Sans",
+             "size": 11,
+             "weight": 600,
+             "color": "#665848"
+            }
+           ]
+          },
+          {
+           "id": "l122",
+           "name": "Folder Research",
+           "x": 0,
+           "y": 78,
+           "width": 220,
+           "type": "frame",
+           "height": 26,
+           "children": [
+            {
+             "id": "l123",
+             "name": "Icon",
+             "x": 6,
+             "y": 7,
+             "width": 12,
+             "type": "text",
+             "text": "▾",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#665848",
+             "align": "center"
+            },
+            {
+             "id": "l124",
+             "name": "Name",
+             "x": 24,
+             "y": 5,
+             "width": 55,
+             "type": "text",
+             "text": "Research",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 800,
+             "color": "#54473A"
+            },
+            {
+             "id": "l125",
+             "name": "Count",
+             "x": 82,
+             "y": 5.5,
+             "width": 10,
+             "type": "text",
+             "text": "1",
+             "font": "Nunito Sans",
+             "size": 11,
+             "weight": 700,
+             "color": "#665848"
+            }
+           ]
+          },
+          {
+           "id": "l126",
+           "name": "Old sensor list",
+           "x": 0,
+           "y": 105,
+           "width": 220,
+           "type": "frame",
+           "height": 46,
+           "fill": "#D9F1E5",
+           "radius": 8,
+           "children": [
+            {
+             "id": "l127",
+             "name": "Title",
+             "x": 12,
+             "y": 6,
+             "width": 198,
+             "type": "text",
+             "text": "Old sensor list",
+             "font": "Nunito Sans",
+             "size": 13,
+             "weight": 700,
+             "color": "#2A2218"
+            },
+            {
+             "id": "l128",
+             "name": "Meta",
+             "x": 12,
+             "y": 25,
+             "width": 198,
+             "type": "text",
+             "text": "Archived 1 Nov · #sensors",
+             "font": "Nunito Sans",
+             "size": 11,
+             "weight": 600,
+             "color": "#665848"
+            },
+            {
+             "id": "l129",
+             "name": "Selection bar",
+             "x": 0,
+             "y": 7,
+             "width": 3,
+             "type": "frame",
+             "height": 30,
+             "fill": "#B8893A",
+             "radius": 2
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "l130",
+         "name": "Fill",
+         "x": 10,
+         "y": 250,
+         "width": 220,
+         "type": "frame",
+         "height": 504
+        },
+        {
+         "id": "l131",
+         "name": "Archived link",
+         "x": 10,
+         "y": 764,
+         "width": 220,
+         "type": "frame",
+         "height": 34,
+         "children": [
+          {
+           "id": "l132",
+           "name": "Icon",
+           "x": 6,
+           "y": 10,
+           "width": 14,
+           "type": "text",
+           "text": "←",
+           "font": "Nunito Sans",
+           "size": 14,
+           "weight": 700,
+           "color": "#8E2A1E",
+           "align": "center"
+          },
+          {
+           "id": "l133",
+           "name": "Label",
+           "x": 28,
+           "y": 9,
+           "width": 81,
+           "type": "text",
+           "text": "Back to notes",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 800,
+           "color": "#8E2A1E"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l134",
+       "name": "Editor",
+       "x": 252,
+       "y": 0,
+       "width": 480,
+       "type": "frame",
+       "height": 810,
+       "fill": "#FEF9EB",
+       "radius": 10,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l135",
+         "name": "Bracket",
+         "x": -6,
+         "y": -6,
+         "width": 12,
+         "type": "frame",
+         "height": 12,
+         "fill": "#B8893A",
+         "radius": 6
+        },
+        {
+         "id": "l136",
+         "name": "Head",
+         "x": 28,
+         "y": 16,
+         "width": 424,
+         "type": "frame",
+         "height": 24,
+         "children": [
+          {
+           "id": "l137",
+           "name": "Icon",
+           "x": 0,
+           "y": 5,
+           "width": 14,
+           "type": "text",
+           "text": "▱",
+           "font": "Nunito Sans",
+           "size": 14,
+           "weight": 700,
+           "color": "#665848",
+           "align": "center"
+          },
+          {
+           "id": "l138",
+           "name": "Folder",
+           "x": 20,
+           "y": 4,
+           "width": 54,
+           "type": "text",
+           "text": "Research",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 700,
+           "color": "#665848"
+          },
+          {
+           "id": "l139",
+           "name": "Spacer",
+           "x": 77,
+           "y": 11.5,
+           "width": 237,
+           "type": "frame",
+           "height": 1
+          },
+          {
+           "id": "l140",
+           "name": "Save line",
+           "x": 320,
+           "y": 4,
+           "width": 104,
+           "type": "frame",
+           "height": 16,
+           "children": [
+            {
+             "id": "l141",
+             "name": "Icon",
+             "x": 0,
+             "y": 1.5,
+             "width": 13,
+             "type": "text",
+             "text": "▭",
+             "font": "Nunito Sans",
+             "size": 13,
+             "weight": 700,
+             "color": "#665848",
+             "align": "center"
+            },
+            {
+             "id": "l142",
+             "name": "State",
+             "x": 19,
+             "y": 0,
+             "width": 88,
+             "type": "text",
+             "text": "Archived 1 Nov",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#665848"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "l143",
+         "name": "Archived banner",
+         "x": 28,
+         "y": 52,
+         "width": 424,
+         "type": "frame",
+         "height": 82,
+         "fill": "#F4E9D2",
+         "radius": 8,
+         "children": [
+          {
+           "id": "l144",
+           "name": "Line",
+           "x": 14,
+           "y": 12,
+           "width": 396,
+           "type": "frame",
+           "height": 18,
+           "children": [
+            {
+             "id": "l145",
+             "name": "Icon",
+             "x": 0,
+             "y": 0,
+             "width": 15,
+             "type": "text",
+             "text": "▭",
+             "font": "Nunito Sans",
+             "size": 15,
+             "weight": 700,
+             "color": "#54473A",
+             "align": "center"
+            },
+            {
+             "id": "l146",
+             "name": "Text",
+             "x": 25,
+             "y": 0,
+             "width": 371,
+             "type": "text",
+             "text": "This note is archived. Restore it to edit it.",
+             "font": "Nunito Sans",
+             "size": 13,
+             "weight": 700,
+             "color": "#54473A",
+             "lineHeight": 1.38
+            }
+           ]
+          },
+          {
+           "id": "l147",
+           "name": "Choices",
+           "x": 14,
+           "y": 40,
+           "width": 197,
+           "type": "frame",
+           "height": 30,
+           "children": [
+            {
+             "id": "l148",
+             "name": "Restore",
+             "x": 25,
+             "y": 0,
+             "width": 67,
+             "type": "frame",
+             "height": 30,
+             "fill": "#FFFAEE",
+             "radius": 999,
+             "stroke": {
+              "color": "#B8893A",
+              "width": 1
+             },
+             "children": [
+              {
+               "id": "l149",
+               "name": "Label",
+               "x": 12,
+               "y": 7,
+               "width": 46,
+               "type": "text",
+               "text": "Restore",
+               "font": "Nunito Sans",
+               "size": 12,
+               "weight": 700,
+               "color": "#2A2218"
+              }
+             ]
+            },
+            {
+             "id": "l150",
+             "name": "Delete forever",
+             "x": 100,
+             "y": 0,
+             "width": 97,
+             "type": "frame",
+             "height": 30,
+             "children": [
+              {
+               "id": "l151",
+               "name": "Label",
+               "x": 4,
+               "y": 7,
+               "width": 92,
+               "type": "text",
+               "text": "Delete forever…",
+               "font": "Nunito Sans",
+               "size": 12,
+               "weight": 700,
+               "color": "#8E2A1E"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "l152",
+         "name": "Title",
+         "x": 28,
+         "y": 146,
+         "width": 424,
+         "type": "text",
+         "text": "Old sensor list",
+         "font": "Marcellus",
+         "size": 26,
+         "weight": 400,
+         "color": "#54473A",
+         "lineHeight": 1.2
+        },
+        {
+         "id": "l153",
+         "name": "Rule",
+         "x": 28,
+         "y": 189,
+         "width": 424,
+         "type": "frame",
+         "height": 1,
+         "fill": "#DFC69B"
+        },
+        {
+         "id": "l154",
+         "name": "Body",
+         "x": 28,
+         "y": 202,
+         "width": 424,
+         "type": "frame",
+         "height": 594,
+         "children": [
+          {
+           "id": "l155",
+           "name": "Text",
+           "x": 0,
+           "y": 0,
+           "width": 424,
+           "type": "text",
+           "text": "Left insole, March build. Kept for the record.\n\n- FSR 402 under the heel, three FSR 400s under the forefoot\n- 100 Hz over Bluetooth, 12-bit\n- Calibration drifts about 4% an hour; see [[Sensor sampling rates]]\n\nReplaced by the 1.3 board.",
+           "font": "Nunito Sans",
+           "size": 15,
+           "weight": 400,
+           "color": "#54473A",
+           "lineHeight": 1.7
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "l156",
+       "name": "Inspector",
+       "x": 744,
+       "y": 0,
+       "width": 240,
+       "type": "frame",
+       "height": 810,
+       "fill": "#FEF9EB",
+       "radius": 10,
+       "stroke": {
+        "color": "#B8893A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l157",
+         "name": "Folder",
+         "x": 14,
+         "y": 16,
+         "width": 212,
+         "type": "frame",
+         "height": 40,
+         "children": [
+          {
+           "id": "l158",
+           "name": "Label",
+           "x": 0,
+           "y": 0,
+           "width": 40,
+           "type": "text",
+           "text": "Folder",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 800,
+           "color": "#54473A"
+          },
+          {
+           "id": "l159",
+           "name": "Value",
+           "x": 0,
+           "y": 22,
+           "width": 57,
+           "type": "text",
+           "text": "Research",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 400,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l160",
+         "name": "Tags",
+         "x": 14,
+         "y": 74,
+         "width": 212,
+         "type": "frame",
+         "height": 40,
+         "children": [
+          {
+           "id": "l161",
+           "name": "Label",
+           "x": 0,
+           "y": 0,
+           "width": 30,
+           "type": "text",
+           "text": "Tags",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 800,
+           "color": "#54473A"
+          },
+          {
+           "id": "l162",
+           "name": "Value",
+           "x": 0,
+           "y": 22,
+           "width": 48,
+           "type": "text",
+           "text": "sensors",
+           "font": "Nunito Sans",
+           "size": 13,
+           "weight": 400,
+           "color": "#54473A"
+          }
+         ]
+        },
+        {
+         "id": "l163",
+         "name": "Quests",
+         "x": 14,
+         "y": 132,
+         "width": 212,
+         "type": "frame",
+         "height": 39,
+         "children": [
+          {
+           "id": "l164",
+           "name": "Head",
+           "x": 0,
+           "y": 0,
+           "width": 212,
+           "type": "frame",
+           "height": 16,
+           "children": [
+            {
+             "id": "l165",
+             "name": "Label",
+             "x": 0,
+             "y": 0,
+             "width": 43,
+             "type": "text",
+             "text": "Quests",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 800,
+             "color": "#54473A"
+            }
+           ]
+          },
+          {
+           "id": "l166",
+           "name": "Empty",
+           "x": 0,
+           "y": 22,
+           "width": 212,
+           "type": "text",
+           "text": "None filed from this note.",
+           "font": "Nunito Sans",
+           "size": 12,
+           "weight": 600,
+           "color": "#665848",
+           "lineHeight": 1.4
+          }
+         ]
+        },
+        {
+         "id": "l167",
+         "name": "Links",
+         "x": 14,
+         "y": 189,
+         "width": 212,
+         "type": "frame",
+         "height": 48,
+         "children": [
+          {
+           "id": "l168",
+           "name": "Head",
+           "x": 0,
+           "y": 0,
+           "width": 212,
+           "type": "frame",
+           "height": 16,
+           "children": [
+            {
+             "id": "l169",
+             "name": "Label",
+             "x": 0,
+             "y": 0,
+             "width": 33,
+             "type": "text",
+             "text": "Links",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 800,
+             "color": "#54473A"
+            },
+            {
+             "id": "l170",
+             "name": "Count",
+             "x": 36,
+             "y": 0.5,
+             "width": 10,
+             "type": "text",
+             "text": "1",
+             "font": "Nunito Sans",
+             "size": 11,
+             "weight": 700,
+             "color": "#665848"
+            }
+           ]
+          },
+          {
+           "id": "l171",
+           "name": "Link",
+           "x": 0,
+           "y": 22,
+           "width": 212,
+           "type": "frame",
+           "height": 26,
+           "children": [
+            {
+             "id": "l172",
+             "name": "Line",
+             "x": 0,
+             "y": 4,
+             "width": 212,
+             "type": "frame",
+             "height": 18,
+             "children": [
+              {
+               "id": "l173",
+               "name": "Icon",
+               "x": 0,
+               "y": 2.5,
+               "width": 13,
+               "type": "text",
+               "text": "▤",
+               "font": "Nunito Sans",
+               "size": 13,
+               "weight": 700,
+               "color": "#8E2A1E",
+               "align": "center"
+              },
+              {
+               "id": "l174",
+               "name": "Title",
+               "x": 19,
+               "y": 0,
+               "width": 193,
+               "type": "text",
+               "text": "Sensor sampling rates",
+               "font": "Nunito Sans",
+               "size": 13,
+               "weight": 700,
+               "color": "#8E2A1E"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "l175",
+         "name": "Backlinks",
+         "x": 14,
+         "y": 255,
+         "width": 212,
+         "type": "frame",
+         "height": 80,
+         "children": [
+          {
+           "id": "l176",
+           "name": "Head",
+           "x": 0,
+           "y": 0,
+           "width": 212,
+           "type": "frame",
+           "height": 16,
+           "children": [
+            {
+             "id": "l177",
+             "name": "Label",
+             "x": 0,
+             "y": 0,
+             "width": 58,
+             "type": "text",
+             "text": "Backlinks",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 800,
+             "color": "#54473A"
+            },
+            {
+             "id": "l178",
+             "name": "Count",
+             "x": 61,
+             "y": 0.5,
+             "width": 10,
+             "type": "text",
+             "text": "1",
+             "font": "Nunito Sans",
+             "size": 11,
+             "weight": 700,
+             "color": "#665848"
+            }
+           ]
+          },
+          {
+           "id": "l179",
+           "name": "Backlink",
+           "x": 0,
+           "y": 22,
+           "width": 212,
+           "type": "frame",
+           "height": 58,
+           "children": [
+            {
+             "id": "l180",
+             "name": "Line",
+             "x": 0,
+             "y": 4,
+             "width": 212,
+             "type": "frame",
+             "height": 18,
+             "children": [
+              {
+               "id": "l181",
+               "name": "Icon",
+               "x": 0,
+               "y": 2.5,
+               "width": 13,
+               "type": "text",
+               "text": "↳",
+               "font": "Nunito Sans",
+               "size": 13,
+               "weight": 700,
+               "color": "#8E2A1E",
+               "align": "center"
+              },
+              {
+               "id": "l182",
+               "name": "Title",
+               "x": 19,
+               "y": 0,
+               "width": 193,
+               "type": "text",
+               "text": "Sensor sampling rates",
+               "font": "Nunito Sans",
+               "size": 13,
+               "weight": 700,
+               "color": "#8E2A1E"
+              }
+             ]
+            },
+            {
+             "id": "l183",
+             "name": "Snippet",
+             "x": 0,
+             "y": 24,
+             "width": 212,
+             "type": "frame",
+             "height": 30,
+             "children": [
+              {
+               "id": "l184",
+               "name": "Text",
+               "x": 19,
+               "y": 0,
+               "width": 193,
+               "type": "text",
+               "text": "The old figures are in [[Old sensor list]].",
+               "font": "Nunito Sans",
+               "size": 11,
+               "weight": 600,
+               "color": "#665848",
+               "lineHeight": 1.35
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "l185",
+         "name": "Fill",
+         "x": 14,
+         "y": 353,
+         "width": 212,
+         "type": "frame",
+         "height": 372
+        },
+        {
+         "id": "l186",
+         "name": "Foot",
+         "x": 14,
+         "y": 743,
+         "width": 212,
+         "type": "frame",
+         "height": 53,
+         "children": [
+          {
+           "id": "l187",
+           "name": "Dates",
+           "x": 0,
+           "y": 0,
+           "width": 212,
+           "type": "text",
+           "text": "Created 2 Sep · archived 1 Nov",
+           "font": "Nunito Sans",
+           "size": 11,
+           "weight": 600,
+           "color": "#665848"
+          },
+          {
+           "id": "l188",
+           "name": "Archive",
+           "x": 0,
+           "y": 23,
+           "width": 96,
+           "type": "frame",
+           "height": 30,
+           "fill": "#FFFAEE",
+           "radius": 999,
+           "stroke": {
+            "color": "#B8893A",
+            "width": 1
+           },
+           "children": [
+            {
+             "id": "l189",
+             "name": "Label",
+             "x": 12,
+             "y": 7,
+             "width": 75,
+             "type": "text",
+             "text": "Restore note",
+             "font": "Nunito Sans",
+             "size": 12,
+             "weight": 700,
+             "color": "#2A2218"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "l190",
+   "name": "Scrim",
+   "x": 0,
+   "y": 0,
+   "width": 1280,
+   "type": "frame",
+   "height": 954,
+   "children": [
+    {
+     "id": "l191",
+     "name": "Delete forever dialog",
+     "x": 400,
+     "y": 340,
+     "width": 480,
+     "type": "frame",
+     "height": 225,
+     "fill": "#FFFAEE",
+     "radius": 10,
+     "stroke": {
+      "color": "#B8893A",
+      "width": 1
+     },
+     "children": [
+      {
+       "id": "l192",
+       "name": "Bracket",
+       "x": -6,
+       "y": -6,
+       "width": 12,
+       "type": "frame",
+       "height": 12,
+       "fill": "#B8893A",
+       "radius": 6
+      },
+      {
+       "id": "l193",
+       "name": "Bracket",
+       "x": 474,
+       "y": -6,
+       "width": 12,
+       "type": "frame",
+       "height": 12,
+       "fill": "#B8893A",
+       "radius": 6
+      },
+      {
+       "id": "l194",
+       "name": "Title",
+       "x": 20,
+       "y": 20,
+       "width": 258,
+       "type": "text",
+       "text": "Delete “Old sensor list” forever?",
+       "font": "Marcellus",
+       "size": 18,
+       "weight": 400,
+       "color": "#2A2218"
+      },
+      {
+       "id": "l195",
+       "name": "Line",
+       "x": 20,
+       "y": 55,
+       "width": 440,
+       "type": "text",
+       "text": "Its file is removed and can't be brought back. Quests filed from it stay in the queue.",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A",
+       "lineHeight": 1.38
+      },
+      {
+       "id": "l196",
+       "name": "Links note",
+       "x": 20,
+       "y": 103,
+       "width": 440,
+       "type": "frame",
+       "height": 50,
+       "fill": "#F7EBC8",
+       "radius": 8,
+       "children": [
+        {
+         "id": "l197",
+         "name": "Icon",
+         "x": 12,
+         "y": 8,
+         "width": 15,
+         "type": "text",
+         "text": "⛓",
+         "font": "Nunito Sans",
+         "size": 15,
+         "weight": 700,
+         "color": "#664809",
+         "align": "center"
+        },
+        {
+         "id": "l198",
+         "name": "Text",
+         "x": 35,
+         "y": 8,
+         "width": 393,
+         "type": "text",
+         "text": "1 note links to it: Sensor sampling rates. That link will show as not found.",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#664809",
+         "lineHeight": 1.38
+        }
+       ]
+      },
+      {
+       "id": "l199",
+       "name": "Actions",
+       "x": 20,
+       "y": 165,
+       "width": 440,
+       "type": "frame",
+       "height": 40,
+       "children": [
+        {
+         "id": "l200",
+         "name": "Keys",
+         "x": 0,
+         "y": 14.5,
+         "width": 232,
+         "type": "text",
+         "text": "Esc cancels",
+         "font": "Nunito Sans",
+         "size": 11,
+         "weight": 600,
+         "color": "#665848"
+        },
+        {
+         "id": "l201",
+         "name": "Cancel",
+         "x": 240,
+         "y": 4,
+         "width": 80,
+         "type": "frame",
+         "height": 36,
+         "fill": "#FFFAEE",
+         "radius": 999,
+         "stroke": {
+          "color": "#2E9C7E",
+          "width": 2
+         },
+         "children": [
+          {
+           "id": "l202",
+           "name": "Label",
+           "x": 18,
+           "y": 8.5,
+           "width": 47,
+           "type": "text",
+           "text": "Cancel",
+           "font": "Nunito Sans",
+           "size": 14,
+           "weight": 700,
+           "color": "#2A2218"
+          }
+         ]
+        },
+        {
+         "id": "l203",
+         "name": "Delete forever",
+         "x": 328,
+         "y": 4,
+         "width": 112,
+         "type": "frame",
+         "height": 36,
+         "fill": "#B23C2B",
+         "radius": 999,
+         "stroke": {
+          "color": "#6E1A12",
+          "width": 1
+         },
+         "children": [
+          {
+           "id": "l204",
+           "name": "Label",
+           "x": 18,
+           "y": 8.5,
+           "width": 79,
+           "type": "text",
+           "text": "Delete note",
+           "font": "Nunito Sans",
+           "size": 14,
+           "weight": 700,
+           "color": "#FFF4DC"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

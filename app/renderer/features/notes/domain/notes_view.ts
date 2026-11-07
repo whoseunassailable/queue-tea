@@ -1,0 +1,134 @@
+import { cleanTag, INBOX, isTitleTaken, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD } from '../../../../shared/notes'
+import type { Note, NoteInput } from '../../../../shared/notes'
+import { t } from '../../../l10n/en'
+import type { ReadableView } from '../../workspace/state_management/workspace_store'
+
+export type FolderGroup = { folder: string; notes: Note[] }
+
+const words = (query: string) => query.toLowerCase().split(/\s+/).filter(word => word !== '')
+
+// A note matches when every word is in its title, body or tags; a #word
+// matches tags only.
+export const matches = (note: Note, query: string): boolean => {
+  const text = `${note.title}\n${note.body}\n${note.tags.map(tag => `#${tag}`).join(' ')}`.toLowerCase()
+  const tags = note.tags.map(tag => tag.toLowerCase())
+
+  return words(query).every(word => (word.startsWith('#') ? tags.some(tag => tag.startsWith(word.slice(1))) : text.includes(word)))
+}
+
+// Inbox first, then the rest A to Z; newest note first in each.
+export const foldersOf = (notes: readonly Note[], query: string, isArchived: boolean): FolderGroup[] => {
+  const shown = notes.filter(note => note.isArchived === isArchived && matches(note, query))
+  const names = [...new Set(shown.map(note => note.folder))].sort((a, b) => (a === INBOX ? -1 : b === INBOX ? 1 : a.localeCompare(b)))
+
+  return names.map(folder => ({ folder, notes: shown.filter(note => note.folder === folder).sort((a, b) => b.updated.localeCompare(a.updated)) }))
+}
+
+// notes and id, when given, check the title is free among the live notes.
+export const titleError = (title: string, notes: readonly Note[] = [], id: string | null = null): string | undefined => {
+  const trimmed = title.trim()
+  if (trimmed === '') return t.notebook.titleRequired
+  if (trimmed.length > NOTE_LIMITS.title) return t.notebook.titleLong
+  if (NOTE_TITLE_BAD.test(trimmed)) return t.notebook.titleBad
+  if (isTitleTaken(notes, trimmed, id)) return t.notebook.titleTaken(trimmed)
+
+  return undefined
+}
+
+export const folderError = (folder: string): string | undefined => {
+  if (folder.trim().length > NOTE_LIMITS.folder) return t.notebook.folderLong
+  if (NOTE_FOLDER_BAD.test(folder)) return t.notebook.folderSlash
+
+  return undefined
+}
+
+export const tagsOf = (text: string): string[] => [...new Set(text.split(',').map(cleanTag).filter(tag => tag !== ''))]
+
+export const tagsError = (text: string): string | undefined => {
+  const tags = tagsOf(text)
+  if (tags.some(tag => tag.length > NOTE_LIMITS.tag)) return t.notebook.tagLong
+  if (tags.length > NOTE_LIMITS.tags) return t.notebook.tooManyTags
+
+  return undefined
+}
+
+const CAPTURE_TITLE = 80
+
+// A jotted line becomes a note: its first line, cleaned, is the title, and the
+// whole text is the body when the title couldn't hold it.
+export const captureOf = (text: string): NoteInput | null => {
+  const trimmed = text.trim()
+  if (trimmed === '') return null
+  const first = trimmed.split('\n')[0]!.replace(new RegExp(NOTE_TITLE_BAD.source, 'g'), ' ').replace(/\s+/g, ' ').trim()
+  const cut = first.length <= CAPTURE_TITLE ? first : `${first.slice(0, first.lastIndexOf(' ', CAPTURE_TITLE) > 20 ? first.lastIndexOf(' ', CAPTURE_TITLE) : CAPTURE_TITLE)}…`
+  const title = cut === '' ? t.notebook.untitled : cut
+
+  return { title, folder: INBOX, body: title === trimmed ? '' : trimmed }
+}
+
+export const untitledIn = (notes: readonly Note[]): string => {
+  const taken = new Set(notes.map(note => note.title.toLowerCase()))
+  let n = 1
+  while (taken.has((n === 1 ? t.notebook.untitled : `${t.notebook.untitled} ${n}`).toLowerCase())) n += 1
+
+  return n === 1 ? t.notebook.untitled : `${t.notebook.untitled} ${n}`
+}
+
+// The notes the [[ picker offers: titles starting with what's typed first,
+// then a word starting with it, then holding it anywhere; newest first in each.
+export const linkOptionsOf = (notes: readonly Note[], query: string, exceptId: string, most: number): Note[] => {
+  const q = query.trim().toLowerCase()
+  const rank = (title: string) => {
+    const low = title.toLowerCase()
+    if (low.startsWith(q)) return 0
+    if (low.split(/\s+/).some(word => word.startsWith(q))) return 1
+
+    return low.includes(q) ? 2 : 3
+  }
+
+  return notes
+    .filter(note => !note.isArchived && note.id !== exceptId && rank(note.title) < 3)
+    .sort((a, b) => rank(a.title) - rank(b.title) || b.updated.localeCompare(a.updated))
+    .slice(0, most)
+}
+
+// The [[ being typed at the caret, and what follows it so far, on one line.
+export const linkQueryAt = (body: string, caret: number): { start: number; query: string } | null => {
+  const line = body.slice(body.lastIndexOf('\n', caret - 1) + 1, caret)
+  const open = line.lastIndexOf('[[')
+  if (open === -1) return null
+  const query = line.slice(open + 2)
+  if (query.includes(']') || query.includes('[') || query.length > NOTE_LIMITS.title) return null
+
+  return { start: caret - query.length, query }
+}
+
+export const withLink = (body: string, start: number, caret: number, title: string): { body: string; caret: number } => {
+  const after = body.slice(caret).startsWith(']]') ? body.slice(caret + 2) : body.slice(caret)
+  const inserted = `${title}]]`
+
+  return { body: body.slice(0, start) + inserted + after, caret: start + inserted.length }
+}
+
+export type QuestState = 'waiting' | 'sealed' | 'active' | 'done' | 'gone'
+export type QuestLine = { title: string | null; state: QuestState }
+
+// Where a quest filed from a note is now, read from the queue itself, so a
+// note never keeps its own copy to go stale.
+export const questLinesOf = (view: ReadableView): Map<string, QuestLine> => {
+  const lines = new Map<string, QuestLine>()
+  const add = (entries: ReadableView['ready'], state: QuestState) => {
+    for (const entry of entries) {
+      lines.set(entry.quest.id, { title: entry.quest.title, state })
+      if (entry.kind === 'saga') for (const chapter of entry.chapters) lines.set(chapter.id, { title: chapter.title, state })
+    }
+  }
+  add(view.ready, 'waiting')
+  add(view.sealed, 'sealed')
+  for (const victory of view.victories) lines.set(victory.id, { title: victory.title, state: 'done' })
+  for (const quest of view.activeQuests) lines.set(quest.id, { title: quest.title, state: 'active' })
+
+  return lines
+}
+
+export const questLineOf = (lines: Map<string, QuestLine>, id: string): QuestLine => lines.get(id) ?? { title: null, state: 'gone' }

@@ -21,6 +21,7 @@ import { LibraryPage } from '../features/library/presentation/pages/library_page
 import { ManaPage } from '../features/mana/presentation/pages/mana_page'
 import { paletteEntries } from '../features/palette/domain/palette'
 import { PaletteDialog } from '../features/palette/presentation/widgets/palette_dialog'
+import { NotesPage } from '../features/notes/presentation/pages/notes_page'
 import { BranchesPage } from '../features/branches/presentation/pages/branches_page'
 import { QuestsPage } from '../features/quests/presentation/pages/quests_page'
 import type { Sheet } from '../features/quests/presentation/pages/quests_page'
@@ -56,6 +57,7 @@ const TABS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.branches, label: t.nav.branches },
   { route: ROUTES.chronicle, label: t.nav.chronicle },
   { route: ROUTES.mana, label: t.nav.mana },
+  { route: ROUTES.notes, label: t.nav.notes },
 ]
 
 const MORE_PAGES: readonly { route: Route; label: string }[] = [
@@ -124,6 +126,23 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
     )
   }
   if (route === ROUTES.mana) return <ManaPage engine={engine} realm={view.key} />
+  if (route === ROUTES.notes) {
+    return (
+      <NotesPage
+        // One page per realm, so a save still on its way lands in the realm it came from.
+        key={view.key}
+        engine={engine}
+        realm={view}
+        isCovered={isCovered}
+        onProject={next => workspace.adopt(view.key, next)}
+        onOpenQuest={id => {
+          workspace.openQuest(view.key, id)
+          window.location.hash = hrefOf(ROUTES.quests)
+        }}
+        onSay={text => workspace.say({ tone: 'success', text })}
+      />
+    )
+  }
   if (route === ROUTES.designs) return <DesignsPage engine={engine} realm={view.key} name={view.name} onQuests={() => (window.location.hash = hrefOf(ROUTES.quests))} />
   if (route === ROUTES.chronicle) {
     return (

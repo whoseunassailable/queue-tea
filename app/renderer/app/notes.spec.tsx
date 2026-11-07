@@ -1,0 +1,332 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import type { EngineApi, Reply } from '../../shared/engine_api'
+import type { Note, NoteChange, NoteFiled, NoteInput, NotesView, QuestProposal } from '../../shared/notes'
+import { createWorkspace } from '../features/workspace/state_management/workspace_store'
+import { t } from '../l10n/en'
+import { fakeEngine, note, projectView, quest } from '../test_support'
+import { App } from './app'
+
+const KEY = 'a-000001'
+const FOLDER = '/Users/me/.queue-tea/notes/a-000001'
+const ok = <T,>(data: T): Reply<T> => ({ ok: true, data })
+const never = <T,>() => new Promise<T>(() => {})
+
+// The notes a test works on, changed as main would change them.
+const memoryNotes = (start: Note[]) => {
+  let notes = start
+  let n = 0
+  const view = (): NotesView => ({ notes, unreadable: [], folder: FOLDER })
+
+  return {
+    readNotes: vi.fn(async () => ok(view())),
+    createNote: vi.fn(async (_key: string, input: NoteInput) => {
+      n += 1
+      const made = note({ id: `n-new${n}`, ...input, stamp: `new-${n}`, updated: '2026-11-07T12:00:00+01:00' })
+      notes = [made, ...notes]
+
+      return ok({ view: view(), id: made.id })
+    }),
+    saveNote: vi.fn(async (_key: string, id: string, change: NoteChange) => {
+      n += 1
+      const saved = { ...notes.find(one => one.id === id)!, ...change, stamp: `s-${n}` }
+      notes = notes.map(one => (one.id === id ? saved : one))
+
+      return ok({ kind: 'saved' as const, view: view(), note: saved })
+    }),
+    archiveNote: vi.fn(async (_key: string, id: string, isArchived: boolean) => {
+      notes = notes.map(one => (one.id === id ? { ...one, isArchived, stamp: `a-${id}` } : one))
+
+      return ok(view())
+    }),
+    deleteNote: vi.fn(async (_key: string, id: string) => {
+      notes = notes.filter(one => one.id !== id)
+
+      return ok(view())
+    }),
+    fileNoteQuests: vi.fn(async (key: string, id: string, proposal: QuestProposal): Promise<Reply<NoteFiled>> => {
+      const parent = proposal.parent.kind === 'new' && !notes.find(one => one.id === id)!.quests.some(q => q.item === null) ? [{ id: 't-parent', item: null }] : []
+      notes = notes.map(one => (one.id === id ? { ...one, quests: [...one.quests, ...parent, ...proposal.quests.map(q => ({ id: `t-${q.item}`, item: q.item }))], stamp: `filed-${one.quests.length}` } : one))
+
+      return ok({ view: view(), project: projectView(key, { ready: proposal.quests.map(q => ({ kind: 'quest' as const, quest: quest({ id: `t-${q.item}`, title: q.title }) })) }) })
+    }),
+  }
+}
+
+const open = async (over: Partial<EngineApi> = {}) => {
+  window.location.hash = '#/notes'
+  const { engine } = fakeEngine(over)
+  const workspace = createWorkspace(engine)
+  await act(async () => {
+    render(<App workspace={workspace} engine={engine} />)
+    await workspace.start()
+  })
+
+  return engine
+}
+
+const press = (name: string | RegExp) => act(() => void fireEvent.click(screen.getByRole('button', { name })))
+const body = () => screen.getByLabelText(t.notebook.body, { selector: 'textarea' }) as HTMLTextAreaElement
+const write = (text: string) => {
+  const box = body()
+  box.focus()
+  fireEvent.input(box, { target: { value: text, selectionStart: text.length, selectionEnd: text.length } })
+}
+
+afterEach(() => {
+  cleanup()
+  window.innerWidth = 1280
+})
+
+describe('the Notes page', () => {
+  it('is the seventh tab, and says what it is reading while the notes load', async () => {
+    await open({ readNotes: never })
+
+    expect(screen.getByRole('link', { name: t.nav.notes }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByText(t.loading.notes).closest('[role="status"]')).toBeTruthy()
+  })
+
+  it('says why the notes could not be read, and reads them again', async () => {
+    const notes = memoryNotes([note()])
+    const readNotes = vi.fn().mockResolvedValueOnce({ ok: false, error: { message: "Couldn't read this realm's notes." } }).mockImplementation(notes.readNotes)
+    await open({ ...notes, readNotes })
+
+    expect((await screen.findByRole('alert')).textContent).toContain("Couldn't read this realm's notes.")
+    await press(t.failed.tryAgain)
+    expect(await screen.findByDisplayValue('Bug Bounty Helper')).toBeTruthy()
+  })
+
+  it('with no notes yet, says where they will live, and a jotted line becomes one', async () => {
+    const notes = memoryNotes([])
+    await open(notes)
+
+    expect(await screen.findByText(t.notebook.emptyTitle('a'))).toBeTruthy()
+    expect(screen.getByText(t.notebook.emptyLine(FOLDER))).toBeTruthy()
+    const capture = screen.getByLabelText(t.notebook.capture) as HTMLInputElement
+    await act(async () => void fireEvent.submit(capture.closest('form')!))
+    expect(document.getElementById(capture.getAttribute('aria-describedby')!)?.textContent).toBe(t.notebook.captureEmpty)
+
+    fireEvent.input(capture, { target: { value: 'Try a [[graph]] view' } })
+    await act(async () => void fireEvent.submit(capture.closest('form')!))
+    expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: 'Try a graph view', folder: 'Inbox', body: 'Try a [[graph]] view' })
+    await waitFor(() => expect(capture.value).toBe(''))
+
+    fireEvent.input(capture, { target: { value: 'Open this one' } })
+    await act(async () => void fireEvent.keyDown(capture, { key: 'Enter', metaKey: true }))
+    expect(await screen.findByDisplayValue('Open this one')).toBeTruthy()
+  })
+
+  it('⌘J puts the cursor in the capture line, and ⌘F in search', async () => {
+    await open(memoryNotes([note()]))
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    fireEvent.keyDown(window, { key: 'j', metaKey: true })
+    expect(document.activeElement).toBe(screen.getByLabelText(t.notebook.capture))
+    fireEvent.keyDown(window, { key: 'f', metaKey: true })
+    expect(document.activeElement).toBe(screen.getByLabelText(t.notebook.search))
+  })
+
+  it('a title another note has is refused under the field, and Esc puts the saved one back', async () => {
+    await open(memoryNotes([note({ id: 'a', title: 'Alpha', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]))
+    const title = (await screen.findByDisplayValue('Alpha')) as HTMLInputElement
+
+    fireEvent.input(title, { target: { value: 'beta' } })
+    fireEvent.blur(title)
+    expect(document.getElementById(title.getAttribute('aria-describedby')!)?.textContent).toBe(t.notebook.titleTaken('beta'))
+    fireEvent.keyDown(title, { key: 'Escape' })
+    expect(title.value).toBe('Alpha')
+    expect(title.getAttribute('aria-invalid')).toBeNull()
+  })
+
+  it('edits that could not be saved come back when the note is opened again', async () => {
+    const notes = memoryNotes([note({ id: 'a', title: 'Alpha', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })])
+    const saveNote = vi.fn(async () => ({ ok: false as const, error: { message: "Couldn't save this note." } }))
+    await open({ ...notes, saveNote })
+    await screen.findByDisplayValue('Alpha')
+
+    write('Words not yet saved')
+    await press(/^Beta/)
+    await screen.findByDisplayValue('Beta')
+    expect(await screen.findByText(t.notebook.notSavedRow)).toBeTruthy()
+    await press(/^Alpha/)
+
+    expect(body().value).toBe('Words not yet saved')
+  })
+
+  it('opens the newest note, and saves what is typed a moment after typing stops', async () => {
+    const notes = memoryNotes([note({ id: 'old', title: 'Old', updated: '2026-11-01T00:00:00' }), note({ id: 'new', title: 'New', updated: '2026-11-06T00:00:00' })])
+    await open(notes)
+    await screen.findByDisplayValue('New')
+
+    write('Hello')
+    expect(screen.getByText(t.notebook.unsaved)).toBeTruthy()
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'new', { title: 'New', folder: 'Ideas', tags: [], body: 'Hello' }, 's-1'), { timeout: 2000 })
+    expect(await screen.findByText(/^Saved/)).toBeTruthy()
+  })
+
+  it('typing back to what is saved needs no save, and says Saved', async () => {
+    const notes = memoryNotes([note({ body: 'Same' })])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    write('Samex')
+    write('Same')
+    expect(await screen.findByText(/^Saved/, {}, { timeout: 2000 })).toBeTruthy()
+    expect(notes.saveNote).not.toHaveBeenCalled()
+  })
+
+  it('a blank title shows its error under the field and is never saved', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    const title = (await screen.findByDisplayValue('Bug Bounty Helper')) as HTMLInputElement
+
+    fireEvent.input(title, { target: { value: '  ' } })
+    fireEvent.blur(title)
+
+    expect(document.getElementById(title.getAttribute('aria-describedby')!)?.textContent).toBe('Title is required.')
+    write('Still saves the text')
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalled(), { timeout: 2000 })
+    expect(notes.saveNote.mock.calls[0]![2].title).toBe('Bug Bounty Helper')
+  })
+
+  it('when the file changed outside, stops and asks which version to keep', async () => {
+    const theirs = note({ body: 'Their words', stamp: 's-theirs' })
+    const notes = memoryNotes([note()])
+    const saveNote = vi.fn(async () => ok({ kind: 'changed' as const, note: theirs }))
+    await open({ ...notes, saveNote })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    write('My words')
+    expect(await screen.findByText(t.notebook.changedTitle, {}, { timeout: 2000 })).toBeTruthy()
+    await press(t.notebook.loadTheirs)
+
+    expect(body().value).toBe('Their words')
+    expect(screen.queryByText(t.notebook.changedTitle)).toBeNull()
+  })
+
+  it('a failed save says so where the saving happens, and tries again', async () => {
+    const notes = memoryNotes([note()])
+    const saveNote = vi.fn().mockResolvedValueOnce({ ok: false, error: { message: "Couldn't save this note. Your text is still here. Try again." } }).mockImplementation(notes.saveNote)
+    await open({ ...notes, saveNote })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    write('Words')
+    expect((await screen.findByText(/Couldn't save this note/, {}, { timeout: 2000 })).closest('[role="alert"]')).toBeTruthy()
+    await press(t.failed.tryAgain)
+    expect(await screen.findByText(/^Saved/)).toBeTruthy()
+  })
+
+  it('typing [[ offers the realm’s other notes, and Enter links one', async () => {
+    await open(memoryNotes([note({ id: 'here', title: 'Here', updated: '2026-11-08' }), note({ id: 'plan', title: 'Plan', folder: 'Research' }), note({ id: 'other', title: 'Other' })]))
+    await screen.findByDisplayValue('Here')
+
+    write('See [[pl')
+    const picker = screen.getByRole('listbox', { name: t.notebook.linkPicker })
+    expect(within(picker).getAllByRole('option').map(option => option.textContent)).toEqual(['Plan · Research'])
+    fireEvent.keyDown(body(), { key: 'Enter' })
+
+    expect(body().value).toBe('See [[Plan]]')
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('shows links, broken links with a way to make the note, and backlinks', async () => {
+    const notes = memoryNotes([note({ id: 'here', title: 'Here', body: '[[Plan]] and [[Missing]]', updated: '2026-11-08' }), note({ id: 'plan', title: 'Plan' }), note({ id: 'fan', title: 'Fan', body: 'I like [[here]]' })])
+    await open(notes)
+    await screen.findByDisplayValue('Here')
+
+    const about = screen.getByRole('complementary', { name: t.notebook.inspector })
+    expect(within(about).getByRole('button', { name: 'Plan' })).toBeTruthy()
+    expect(within(about).getByText(t.notebook.broken('Missing'))).toBeTruthy()
+    expect(within(about).getByRole('button', { name: 'Fan' })).toBeTruthy()
+    await press(t.notebook.makeIt)
+    expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: 'Missing', folder: 'Ideas', body: '' })
+  })
+
+  it('BrewQuest drafts quests from the checklist, checks them, and files only what you keep', async () => {
+    const notes = memoryNotes([note({ body: 'A helper.\n\n- [ ] Scan\n- [ ] Report\n- [x] Done' })])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
+    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    expect((within(sheet).getByLabelText(`${t.notebook.brew.parent} *`) as HTMLInputElement).value).toBe('Bug Bounty Helper')
+    const second = within(sheet).getByLabelText(`${t.notebook.brew.questTitle(2)} *`)
+    fireEvent.input(second, { target: { value: '' } })
+    fireEvent.blur(second)
+    expect(within(sheet).getByText(t.notebook.brew.questTitleRequired)).toBeTruthy()
+
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(2) })))
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
+    fireEvent.click(within(sheet).getByLabelText(t.notebook.brew.include(2)))
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(1) })))
+
+    expect(notes.fileNoteQuests).toHaveBeenCalledWith(KEY, 'n-00000001', { parent: { kind: 'new', title: 'Bug Bounty Helper' }, quests: [{ title: 'Scan', priority: 'mid', difficulty: 'medium', item: 'Scan' }] })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(await screen.findByText(t.notebook.brew.filed(2))).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.notebook.openQuest('Scan') })).toBeTruthy()
+    expect(screen.getByText(t.notebook.questState.waiting)).toBeTruthy()
+  })
+
+  it('BrewQuest says why filing failed, in its sheet, locks what went in, and tries again for the rest', async () => {
+    const notes = memoryNotes([note({ body: '- [ ] Scan\n- [ ] Report' })])
+    // The first quest goes in before the queue fails, as main links each one as it's filed.
+    const fileNoteQuests = vi.fn().mockImplementationOnce(async (key: string, id: string, proposal: QuestProposal) => {
+      await notes.fileNoteQuests(key, id, { ...proposal, quests: proposal.quests.slice(0, 1) })
+
+      return { ok: false, error: { message: "Couldn't file the quests." } }
+    }).mockImplementation(notes.fileNoteQuests)
+    await open({ ...notes, fileNoteQuests })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
+    const sheet = await screen.findByRole('dialog')
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(2) })))
+
+    expect((await within(sheet).findByRole('alert')).textContent).toBe("Couldn't file the quests.")
+    expect(await within(sheet).findByText(t.notebook.brew.filedRow)).toBeTruthy()
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.tryAgain })))
+    expect(fileNoteQuests.mock.calls[1]![2].quests.map((q: { title: string }) => q.title)).toEqual(['Report'])
+  })
+
+  it('archives a note, and deletes it forever only from Archived, after asking', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await press(t.notebook.archive)
+    await waitFor(() => expect(notes.archiveNote).toHaveBeenCalledWith(KEY, 'n-00000001', true))
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: t.notebook.archived(1) })))
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: /Bug Bounty Helper/ })))
+    expect(screen.getByText(t.notebook.archivedLine)).toBeTruthy()
+    await press(t.notebook.deleteForever)
+    const dialog = screen.getByRole('dialog', { name: t.notebook.deleteTitle('Bug Bounty Helper') })
+    expect(document.activeElement?.textContent).toBe(t.actions.cancel)
+    await act(async () => void fireEvent.click(within(dialog).getByRole('button', { name: t.notebook.deleteIt })))
+
+    expect(notes.deleteNote).toHaveBeenCalledWith(KEY, 'n-00000001')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('search narrows the list, and says what to try when nothing matches', async () => {
+    await open(memoryNotes([note({ id: 'a', title: 'Alpha', tags: ['security'] }), note({ id: 'b', title: 'Beta' })]))
+    await screen.findByRole('button', { name: /Beta/ })
+    const search = screen.getByLabelText(t.notebook.search)
+
+    fireEvent.input(search, { target: { value: '#security' } })
+    expect(screen.queryByRole('button', { name: /^Beta/ })).toBeNull()
+    fireEvent.input(search, { target: { value: 'zzz' } })
+    expect(screen.getByText(t.notebook.noMatch('zzz'))).toBeTruthy()
+  })
+
+  it('in a narrow window shows the list, then the note with a way back', async () => {
+    window.innerWidth = 700
+    await open(memoryNotes([note()]))
+
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: /Bug Bounty Helper/ })))
+    expect(screen.queryByLabelText(t.notebook.search)).toBeNull()
+    await press(`← ${t.notebook.allNotes}`)
+    expect(screen.getByLabelText(t.notebook.search)).toBeTruthy()
+  })
+})

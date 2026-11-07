@@ -18,6 +18,7 @@ const TABS: readonly (readonly [string, string])[] = [
   ['Branches', '4'],
   ['Chronicle', '5'],
   ['Mana & time', '6'],
+  ['Notes', '7'],
 ]
 
 export const appMenu = (appName: string, isDev: boolean, send: Send): MenuItemConstructorOptions[] => [

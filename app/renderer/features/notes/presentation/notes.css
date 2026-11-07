@@ -1,0 +1,60 @@
+/* The Notes tab. Every class starts nt-, since class names are page-wide. */
+.rm .nt { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.rm .nt-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px; align-items: start; }
+.rm .nt-grid.narrow { grid-template-columns: minmax(0, 1fr); }
+.rm .nt-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.rm .nt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px; position: sticky; top: 0; max-height: calc(100vh - 140px); overflow-y: auto; }
+.rm .nt-list .input { width: 100%; box-sizing: border-box; }
+.rm .nt-list-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rm .nt-folder h2 { margin: 6px 0 4px; font-size: 13px; letter-spacing: 0.08em; color: var(--ink2); }
+.rm .nt-folder ul, .rm .nt-links, .rm .nt-proposal { margin: 0; padding: 0; list-style: none; }
+.rm .nt-item { width: 100%; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border: none; border-radius: 8px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
+.rm .nt-item:hover { background: var(--hov); }
+.rm .nt-item.on { background: var(--sel); box-shadow: inset 3px 0 0 var(--line); }
+.rm .nt-unsaved { color: var(--urg-t); }
+.rm .nt-item-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rm .nt-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rm .nt-back { align-self: flex-start; }
+.rm .nt-open { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; align-items: start; }
+.rm .nt-editor { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; min-width: 0; }
+.rm .nt-title .input { width: 100%; box-sizing: border-box; font-family: 'Marcellus', Georgia, serif; font-size: 22px; height: 44px; }
+.rm .nt-body { position: relative; }
+/* The page to write on: calm, spacious and the full width of the pane. */
+.rm .nt-text { width: 100%; box-sizing: border-box; min-height: 52vh; resize: vertical; padding: 14px 16px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--card); color: var(--ink); font: 15px/24px 'Nunito Sans', -apple-system, system-ui, sans-serif; }
+.rm .nt-text:focus { outline: 2px solid var(--line); outline-offset: 1px; }
+.rm .nt-picker { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 3; margin: 0; padding: 6px; list-style: none; max-height: 240px; overflow-y: auto; }
+.rm .nt-picker li { padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.rm .nt-picker li.on, .rm .nt-picker li:hover { background: var(--sel); }
+.rm .nt-picker-none { color: var(--ink3); cursor: default; }
+.rm .nt-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.rm .nt-save { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink3); min-height: 22px; }
+.rm .nt-save.failed { color: var(--urg-t); font-weight: 700; }
+.rm .nt-banner { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 12px; border-radius: 8px; background: var(--au-b); color: var(--au-t); }
+.rm .nt-banner-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+
+.rm .nt-brew { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--card); }
+.rm .nt-brew-text { display: flex; flex-direction: column; max-width: 220px; }
+.rm .nt-robot { flex: none; }
+
+.rm .nt-inspector { display: flex; flex-direction: column; gap: 8px; padding: 14px; min-width: 0; }
+.rm .nt-inspector h3 { margin: 8px 0 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink2); }
+.rm .nt-inspector .input { width: 100%; box-sizing: border-box; }
+.rm .nt-links li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; }
+.rm .nt-link { padding: 0; border: none; background: none; color: var(--link); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 2px; }
+.rm .nt-broken { color: var(--ink3); font-style: italic; }
+.rm .nt-state { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; background: var(--card); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.rm .nt-state.active { background: var(--xp-b); color: var(--xp-t); }
+.rm .nt-state.done { background: var(--au-b); color: var(--au-t); }
+.rm .nt-state.gone { opacity: 0.7; }
+.rm .nt-inspector-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+.rm .nt-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 8px; padding: 6px 0; }
+.rm .nt-row > input[type='checkbox'] { margin-top: 30px; }
+.rm .nt-row > select { margin-top: 24px; }
+.rm .nt-row.out .nt-row-title { opacity: 0.55; }
+
+@media (max-width: 1180px) {
+  .rm .nt-open { grid-template-columns: minmax(0, 1fr); }
+}

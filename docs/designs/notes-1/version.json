@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "label": "Notes 1",
+  "made": "2026-11-07T10:28:04.693Z",
+  "by": "claude",
+  "from": null,
+  "designs": [
+    "1-notes-note-open",
+    "2a-loading",
+    "2b-empty-realm",
+    "2c-couldnt-read",
+    "2d-couldnt-save",
+    "2e-changed-on-disk",
+    "3-link-picker",
+    "4a-review-sheet",
+    "4b-review-form-error",
+    "4c-filing-failed",
+    "4d-after-filing",
+    "5-archived-delete-forever",
+    "6-narrow-window-drawer"
+  ]
+}

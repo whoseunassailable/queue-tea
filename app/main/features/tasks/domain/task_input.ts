@@ -65,7 +65,7 @@ const helpersOf = (value: unknown): HelperId[] => {
   return onlyHelpers(value)
 }
 
-const parentOf = (value: unknown): ParentPick => {
+export const parentOf = (value: unknown): ParentPick => {
   const pick = value as { kind?: unknown; id?: unknown; title?: unknown } | null
   if (pick?.kind === 'none') return { kind: 'none' }
   if (pick?.kind === 'task') return { kind: 'task', id: questIdOf(pick.id) }

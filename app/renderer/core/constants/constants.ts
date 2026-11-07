@@ -52,3 +52,8 @@ export const THUMB_BOX = { width: 220, height: 300 } as const
 
 // How often the update button asks whether a new version is ready.
 export const UPDATE_POLL_MS = 2_000
+
+// How long a note waits after typing stops before it saves itself.
+export const NOTE_AUTOSAVE_MS = 800
+// How many notes the [[ link picker offers at once.
+export const NOTE_PICKER_ROWS = 8

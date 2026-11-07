@@ -69,6 +69,7 @@ describe('what the palette offers', () => {
       ['Branches', '⌘4'],
       ['Chronicle', '⌘5'],
       ['Mana & time', '⌘6'],
+      ['Notes', '⌘7'],
     ])
   })
 })

@@ -1,4 +1,5 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
+import type { NoteChange, NoteFiled, NoteInput, NoteSave, NotesView, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
@@ -376,6 +377,12 @@ export type EngineApi = {
   setBookPage: (id: string, page: number) => Promise<Reply<LibraryView>>
   finishBook: (id: string) => Promise<Reply<LibraryView>>
   removeBook: (id: string) => Promise<Reply<LibraryView>>
+  readNotes: (key: string) => Promise<Reply<NotesView>>
+  createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
+  saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
+  archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
+  deleteNote: (key: string, id: string) => Promise<Reply<NotesView>>
+  fileNoteQuests: (key: string, id: string, proposal: QuestProposal) => Promise<Reply<NoteFiled>>
   // What arrived before the window was listening.
   takeOpened: () => Promise<Reply<Opened[]>>
   readChoices: (key: string, taskId: string | null) => Promise<Reply<Choices>>
@@ -465,6 +472,12 @@ export const CHANNELS = {
   setBookPage: 'engine:set-book-page',
   finishBook: 'engine:finish-book',
   removeBook: 'engine:remove-book',
+  readNotes: 'engine:read-notes',
+  createNote: 'engine:create-note',
+  saveNote: 'engine:save-note',
+  archiveNote: 'engine:archive-note',
+  deleteNote: 'engine:delete-note',
+  fileNoteQuests: 'engine:file-note-quests',
   takeOpened: 'engine:take-opened',
   opened: 'engine:opened',
   readChoices: 'engine:read-choices',

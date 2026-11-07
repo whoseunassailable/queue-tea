@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 
 import type { DesignsView } from '../shared/designs'
 import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
+import type { Note, NotesView } from '../shared/notes'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -171,6 +172,10 @@ export const SETTINGS_PAGE: SettingsPage = {
 
 export const DESIGNS: DesignsView = { versions: [], coming: [] }
 
+export const NOTES: NotesView = { notes: [], unreadable: [], folder: '/Users/me/.queue-tea/notes/a-000001' }
+
+export const note = (over: Partial<Note> = {}): Note => ({ id: 'n-00000001', title: 'Bug Bounty Helper', folder: 'Ideas', tags: [], created: '2026-11-07T10:00:00+01:00', updated: '2026-11-07T10:00:00+01:00', isArchived: false, quests: [], body: '', stamp: 's-1', ...over })
+
 export const LIBRARY: LibraryView = { reading: [], finished: [], finishedCount: 0, pagesRead: 0, pagesThisWeek: 0, pagesToday: 0 }
 
 export const MANA: ManaView = {
@@ -249,6 +254,12 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     setBookPage: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
     finishBook: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
     removeBook: vi.fn(async () => ({ ok: true as const, data: LIBRARY })),
+    readNotes: vi.fn(async () => ({ ok: true as const, data: NOTES })),
+    createNote: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, id: 'n-00000001' } })),
+    saveNote: vi.fn(async (_key: string, id: string, change: Pick<Note, 'title' | 'folder' | 'tags' | 'body'>) => ({ ok: true as const, data: { kind: 'saved' as const, view: NOTES, note: note({ id, ...change, stamp: 's-2' }) } })),
+    archiveNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),
+    deleteNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),
+    fileNoteQuests: vi.fn(async (key: string) => ({ ok: true as const, data: { view: NOTES, project: projectView(key) } })),
     takeOpened: async () => ({ ok: true, data: [] }),
     readChoices: async () => ({ ok: true, data: { features: [], lone: [], parents: [], waitFor: [] } }),
     setPriority: vi.fn(reply),

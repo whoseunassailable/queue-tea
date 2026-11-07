@@ -133,13 +133,22 @@ export const runUpdates = async (folder = updateFolder(), options = {}) => {
         // Missing dependencies fail visibly; updates never run npm ci.
         const lockText = await readFile(join(app, 'package-lock.json'), 'utf8')
         const worktrees = (await git(request.repo, 'worktree', 'list', '--porcelain')).split('\n').filter(line => line.startsWith('worktree ')).map(line => line.slice(9))
+        // A matching lockfile can sit over an older install, as after a merge with no npm ci.
+        const locked = Object.entries(JSON.parse(lockText).packages ?? {}).filter(([path, p]) => path.startsWith('node_modules/') && !p.optional && !p.devOptional)
+        const isInstalled = async modules => {
+          for (const [path, p] of locked) {
+            if (JSON.parse(await readFile(join(modules, path.slice('node_modules/'.length), 'package.json'), 'utf8')).version !== p.version) return false
+          }
+          return true
+        }
         let dependencies = null
         for (const tree of worktrees) {
           try {
             if (await readFile(join(tree, 'app/package-lock.json'), 'utf8') === lockText) {
               const modules = await realpath(join(tree, 'app/node_modules'))
-              await readFile(join(modules, 'electron/package.json'))
-              dependencies = modules; break
+              // npm ci can leave Electron's binary out; its install script writes path.txt once it is there.
+              await readFile(join(modules, 'electron/path.txt'))
+              if (await isInstalled(modules)) { dependencies = modules; break }
             }
           } catch (err) { if (err.code !== 'ENOENT') throw err }
         }

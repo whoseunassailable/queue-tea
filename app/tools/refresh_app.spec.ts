@@ -38,13 +38,14 @@ integration('updates from acknowledged source in any worktree', () => {
     await git(repo, 'init', '-b', 'main'); await git(repo, 'config', 'user.name', 'Test'); await git(repo, 'config', 'user.email', 'test@example.invalid'); await git(repo, 'config', 'core.hooksPath', '/dev/null'); await git(repo, 'config', 'commit.gpgsign', 'false')
     await writeFile(join(repo, '.gitignore'), 'node_modules/\n')
     await writeFile(join(repo, 'app/package.json'), JSON.stringify({ name: 'queue-tea-app', productName: 'Queue-tea', version: '1.5.2' }))
-    await writeFile(join(repo, 'app/package-lock.json'), '{}')
+    await writeFile(join(repo, 'app/package-lock.json'), JSON.stringify({ packages: { '': {}, 'node_modules/electron': { version: '1.0.0' }, 'node_modules/fsevents': { version: '2.0.0', optional: true } } }))
     await writeFile(join(repo, 'app/source.txt'), 'published source')
     await copyFile(join(__dirname, 'release_guard.mjs'), join(repo, 'app/tools/release_guard.mjs'))
     await git(repo, 'add', '.'); await git(repo, 'commit', '-m', 'Published source')
     const commit = await git(repo, 'rev-parse', 'HEAD')
     await git(repo, 'worktree', 'add', '-b', 'task/feature', task)
-    await mkdir(join(task, 'app/node_modules/electron'), { recursive: true }); await writeFile(join(task, 'app/node_modules/electron/package.json'), '{}')
+    await mkdir(join(task, 'app/node_modules/electron'), { recursive: true }); await writeFile(join(task, 'app/node_modules/electron/package.json'), '{"version":"1.0.0"}')
+    await writeFile(join(task, 'app/node_modules/electron/path.txt'), 'Electron.app/Contents/MacOS/Electron')
     request = { repo: task, remote: 'origin', branch: 'main', commit, repository: await git(repo, 'rev-parse', '--path-format=absolute', '--git-common-dir') }
     await writeFile(join(state, 'request.json'), JSON.stringify(request))
     commands = []; corrupt = false; fail = false; builtSource = ''
@@ -99,6 +100,15 @@ integration('updates from acknowledged source in any worktree', () => {
     await run(); expect((await readUpdate(state))?.phase).toBe('failed'); expect(commands).toEqual([])
     await writeFile(join(state, 'state.json'), JSON.stringify({ phase: 'building', commit: request.commit, repository: request.repository, updatedAt: 1, detail: null }))
     expect(await readUpdate(state)).toMatchObject({ phase: 'failed', detail: expect.stringContaining('retry') })
+  })
+  it('skips an install older than its lockfile, or missing Electron\'s binary, then builds once it is complete', async () => {
+    const electron = join(task, 'app/node_modules/electron')
+    await writeFile(join(electron, 'package.json'), '{"version":"0.9.0"}')
+    await run(); expect((await readUpdate(state))?.phase).toBe('failed'); expect(commands).toEqual([])
+    await writeFile(join(electron, 'package.json'), '{"version":"1.0.0"}'); await rm(join(electron, 'path.txt'))
+    await run(); expect((await readUpdate(state))?.phase).toBe('failed'); expect(commands).toEqual([])
+    await writeFile(join(electron, 'path.txt'), 'Electron.app/Contents/MacOS/Electron')
+    await run(); expect((await readUpdate(state))?.phase).toBe('installed')
   })
   it('preserves production after a failed check and supports retry of the acknowledged commit', async () => {
     fail = true; await run(); expect((await readUpdate(state))?.phase).toBe('failed')

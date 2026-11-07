@@ -6,9 +6,13 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { build as viteBuild } from 'vite'
 import { currentProvenance } from './tools/release_guard.mjs'
 
+// Every build gets its compiler options here, so none reads the repo's root
+// tsconfig, which extends a gitignored file that a clean release copy lacks.
+const esbuild = { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) }
+
 export default defineConfig({
   main: {
-    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
+    esbuild,
     plugins: [externalizeDepsPlugin(), {
       name: 'build-provenance',
       async writeBundle() {
@@ -19,6 +23,7 @@ export default defineConfig({
         // its SDK as well so the user's shell needs no npm install.
         await viteBuild({
           configFile: false,
+          esbuild,
           root: __dirname,
           ssr: { noExternal: true },
           build: {
@@ -35,12 +40,12 @@ export default defineConfig({
     build: { lib: { entry: resolve(__dirname, 'main/main.ts') } },
   },
   preload: {
-    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
+    esbuild,
     plugins: [externalizeDepsPlugin()],
     build: { lib: { entry: resolve(__dirname, 'preload/preload.ts') } },
   },
   renderer: {
-    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { target: 'ES2023', jsx: 'react-jsx', jsxImportSource: 'preact' } }) },
+    esbuild,
     root: resolve(__dirname, 'renderer'),
     plugins: [preact()],
     server: { fs: { allow: [resolve(__dirname, '..')] } },

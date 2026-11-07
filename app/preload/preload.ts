@@ -43,6 +43,7 @@ const engine: EngineApi = {
   finishBook: id => ipcRenderer.invoke(CHANNELS.finishBook, id),
   removeBook: id => ipcRenderer.invoke(CHANNELS.removeBook, id),
   readNotes: key => ipcRenderer.invoke(CHANNELS.readNotes, key),
+  showNotes: key => ipcRenderer.invoke(CHANNELS.showNotes, key),
   createNote: (key, note) => ipcRenderer.invoke(CHANNELS.createNote, key, note),
   saveNote: (key, id, change, stamp) => ipcRenderer.invoke(CHANNELS.saveNote, key, id, change, stamp),
   archiveNote: (key, id, isArchived) => ipcRenderer.invoke(CHANNELS.archiveNote, key, id, isArchived),

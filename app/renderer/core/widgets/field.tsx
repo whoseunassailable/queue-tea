@@ -7,13 +7,17 @@ type FieldProps = {
   error?: string | undefined
   isRequired?: boolean
   isLong?: boolean
+  // The id of a datalist of suggestions.
+  list?: string
+  // The label is still read out, but not shown, where a column heads the fields.
+  isLabelHidden?: boolean
   onInput: (value: string) => void
   onBlur?: () => void
   onEnter?: () => void
 }
 
 // A labelled text field with its error directly under it.
-export const Field = ({ label, value, error, isRequired, isLong, onInput, onBlur, onEnter }: FieldProps) => {
+export const Field = ({ label, value, error, isRequired, isLong, list, isLabelHidden, onInput, onBlur, onEnter }: FieldProps) => {
   const id = useId()
   const errorId = `${id}-error`
   const shared = {
@@ -28,7 +32,7 @@ export const Field = ({ label, value, error, isRequired, isLong, onInput, onBlur
 
   return (
     <div class="form-field">
-      <label for={id}>
+      <label for={id} class={isLabelHidden === true ? 'sr' : undefined}>
         {label}
         {isRequired === true && ' *'}
       </label>
@@ -38,6 +42,7 @@ export const Field = ({ label, value, error, isRequired, isLong, onInput, onBlur
         <input
           {...shared}
           type="text"
+          list={list}
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.metaKey && onEnter !== undefined) {
               event.preventDefault()

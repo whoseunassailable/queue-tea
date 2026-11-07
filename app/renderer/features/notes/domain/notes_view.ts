@@ -1,5 +1,7 @@
-import { cleanTag, INBOX, isTitleTaken, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD } from '../../../../shared/notes'
-import type { Note, NoteInput } from '../../../../shared/notes'
+import type { Difficulty, Priority } from '../../../../../types'
+import { cleanTag, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, openItemsOf } from '../../../../shared/notes'
+import type { Note, NoteInput, QuestProposal } from '../../../../shared/notes'
+import { dayOf } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
 import type { ReadableView } from '../../workspace/state_management/workspace_store'
 
@@ -66,12 +68,44 @@ export const captureOf = (text: string): NoteInput | null => {
   return { title, folder: INBOX, body: title === trimmed ? '' : trimmed }
 }
 
-export const untitledIn = (notes: readonly Note[]): string => {
-  const taken = new Set(notes.map(note => note.title.toLowerCase()))
-  let n = 1
-  while (taken.has((n === 1 ? t.notebook.untitled : `${t.notebook.untitled} ${n}`).toLowerCase())) n += 1
+// When a note was edited, as the list says it: "Today 14:02", "Yesterday" or
+// "5 Nov". today and yesterday are local days, YYYY-MM-DD.
+export const whenOf = (iso: string, today: string, yesterday: string): string => {
+  const day = iso.slice(0, 10)
+  if (day === today) return t.notebook.today(iso.slice(11, 16))
+  if (day === yesterday) return t.notebook.yesterday
 
-  return n === 1 ? t.notebook.untitled : `${t.notebook.untitled} ${n}`
+  return dayOf(iso)
+}
+
+export const localDay = (at: Date): string => `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`
+
+// The line of a note that links to a title, for its backlink.
+export const linkLineOf = (body: string, title: string): string | null =>
+  body
+    .split('\n')
+    .map(line => line.trim())
+    .find(line => linksOf(line).some(linked => linked.toLowerCase() === title.toLowerCase())) ?? null
+
+// The 1-based line a checklist item sits on.
+export const lineOf = (body: string, item: string): number | null => {
+  const at = body.split('\n').findIndex(line => /^\s*[-*+] \[ \] /.test(line) && line.replace(/^\s*[-*+] \[ \] /, '').trim().slice(0, NOTE_LIMITS.item) === item)
+
+  return at === -1 ? null : at + 1
+}
+
+export const tickedItemsOf = (body: string): string[] =>
+  body
+    .split('\n')
+    .map(line => /^\s*[-*+] \[[xX]\] (.+)$/.exec(line)?.[1]?.trim() ?? '')
+    .filter(item => item !== '')
+
+// What BrewQuest's card says about the note.
+export const brewLineOf = (note: Pick<Note, 'body' | 'quests'>, proposal: QuestProposal): string => {
+  const waiting = proposal.quests.length
+  if (note.quests.length === 0) return openItemsOf(note.body).length === 0 ? t.notebook.brew.asOne : t.notebook.brew.canBe(waiting)
+
+  return waiting === 0 ? t.notebook.brew.allFiled(note.quests.length) : t.notebook.brew.someLeft(note.quests.length, waiting)
 }
 
 // The notes the [[ picker offers: titles starting with what's typed first,
@@ -111,7 +145,8 @@ export const withLink = (body: string, start: number, caret: number, title: stri
 }
 
 export type QuestState = 'waiting' | 'sealed' | 'active' | 'done' | 'gone'
-export type QuestLine = { title: string | null; state: QuestState }
+// priority and difficulty are null where the queue no longer says them.
+export type QuestLine = { title: string | null; state: QuestState; priority: Priority | null; difficulty: Difficulty | null }
 
 // Where a quest filed from a note is now, read from the queue itself, so a
 // note never keeps its own copy to go stale.
@@ -119,16 +154,21 @@ export const questLinesOf = (view: ReadableView): Map<string, QuestLine> => {
   const lines = new Map<string, QuestLine>()
   const add = (entries: ReadableView['ready'], state: QuestState) => {
     for (const entry of entries) {
-      lines.set(entry.quest.id, { title: entry.quest.title, state })
-      if (entry.kind === 'saga') for (const chapter of entry.chapters) lines.set(chapter.id, { title: chapter.title, state })
+      lines.set(entry.quest.id, { title: entry.quest.title, state, priority: entry.quest.priority, difficulty: entry.quest.difficulty })
+      if (entry.kind === 'saga') for (const chapter of entry.chapters) lines.set(chapter.id, { title: chapter.title, state, priority: chapter.priority, difficulty: chapter.difficulty })
     }
   }
   add(view.ready, 'waiting')
   add(view.sealed, 'sealed')
-  for (const victory of view.victories) lines.set(victory.id, { title: victory.title, state: 'done' })
-  for (const quest of view.activeQuests) lines.set(quest.id, { title: quest.title, state: 'active' })
+  for (const victory of view.victories) lines.set(victory.id, { title: victory.title, state: 'done', priority: null, difficulty: null })
+  for (const quest of view.activeQuests) lines.set(quest.id, { title: quest.title, state: 'active', priority: quest.priority, difficulty: quest.difficulty })
 
   return lines
 }
 
-export const questLineOf = (lines: Map<string, QuestLine>, id: string): QuestLine => lines.get(id) ?? { title: null, state: 'gone' }
+export const questLineOf = (lines: Map<string, QuestLine>, id: string): QuestLine => lines.get(id) ?? { title: null, state: 'gone', priority: null, difficulty: null }
+
+const IN_PLAY: readonly QuestState[] = ['waiting', 'sealed', 'active']
+
+// Whether a quest can still take more under it.
+export const isInPlay = (lines: Map<string, QuestLine>, id: string): boolean => IN_PLAY.includes(questLineOf(lines, id).state)

@@ -96,6 +96,10 @@ describe('turning a note into quests', () => {
     expect(proposalOf(note({ body: 'Words', quests: [{ id: 't-own', item: null }] }), () => false).quests).toEqual([])
   })
 
+  it('once its lines are all filed, offers nothing, not the note itself', () => {
+    expect(proposalOf(note({ body: '- [ ] Only this', quests: [{ id: 't-1', item: 'Only this' }] })).quests).toEqual([])
+  })
+
   it('makes one line one quest, and a note with none the quest itself', () => {
     expect(proposalOf(note({ body: '- [ ] Only this' })).quests).toEqual([{ title: 'Only this', priority: 'mid', difficulty: 'medium', item: 'Only this' }])
     expect(proposalOf(note({ body: 'Words' }))).toEqual({ parent: { kind: 'none' }, quests: [{ title: 'Bug Bounty Helper', priority: 'mid', difficulty: 'medium', item: null }] })

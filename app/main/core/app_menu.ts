@@ -39,7 +39,7 @@ export const appMenu = (appName: string, isDev: boolean, send: Send): MenuItemCo
   },
   {
     label: 'File',
-    submenu: [command('New quest', 'N', send), command('Open folder…', 'O', send), { type: 'separator' }, { label: 'Show record in Finder', click: () => send({ kind: 'showRecord' }) }],
+    submenu: [command('New quest', 'N', send), { label: 'New note', accelerator: 'Shift+CmdOrCtrl+N', click: () => send({ kind: 'key', key: 'N', isMeta: true }) }, command('Open folder…', 'O', send), { type: 'separator' }, { label: 'Show record in Finder', click: () => send({ kind: 'showRecord' }) }],
   },
   {
     label: 'Edit',

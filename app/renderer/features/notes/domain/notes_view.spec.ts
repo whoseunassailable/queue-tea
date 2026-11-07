@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReadableView } from '../../workspace/state_management/workspace_store'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
-import { captureOf, folderError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, titleError, untitledIn, withLink } from './notes_view'
+import { captureOf, folderError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, titleError, withLink } from './notes_view'
 
 describe('quick capture', () => {
   it('makes the line the title when it fits, with no body', () => {
@@ -34,11 +34,6 @@ describe('checks', () => {
   it('tags come from commas, without # or repeats, with spaces as -', () => {
     expect(tagsOf('#a, b, a, ,, deep work')).toEqual(['a', 'b', 'deep-work'])
     expect(tagsError(Array.from({ length: 21 }, (_, i) => `t${i}`).join(','))).toMatch(/20/)
-  })
-
-  it('Untitled takes the next free number', () => {
-    expect(untitledIn([note({ title: 'Untitled' }), note({ title: 'untitled 2' })])).toBe('Untitled 3')
-    expect(untitledIn([])).toBe('Untitled')
   })
 })
 

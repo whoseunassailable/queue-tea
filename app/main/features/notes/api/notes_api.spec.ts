@@ -18,6 +18,7 @@ let home: string
 let dir: string
 let api: ReturnType<typeof notesApi>
 let ids: number
+const revealed: string[] = []
 
 const data = <T>(answer: Reply<T>): T => {
   if (!answer.ok) throw new Error(`should succeed: ${answer.error.message}`)
@@ -41,7 +42,7 @@ beforeEach(async () => {
   await writeFile(join(home, '.queue-tea/projects', `${KEY}.json`), JSON.stringify(emptyRecord('demo', '/p/demo')))
   const log = createLogger('dev', () => {})
   const host = nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' }))
-  api = notesApi({ host, home, now: () => NOW, offsetMinutes: () => 60, log, newId: () => `t-${(ids += 1)}`, newNoteId: () => `n-${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {}, prepareCodex: async () => [] })
+  api = notesApi({ host, home, now: () => NOW, offsetMinutes: () => 60, log, newId: () => `t-${(ids += 1)}`, newNoteId: () => `n-${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {}, prepareCodex: async () => [], reveal: path => void revealed.push(path) })
 })
 
 afterEach(() => rm(home, { recursive: true, force: true }))
@@ -68,6 +69,15 @@ describe('reading notes', () => {
       ['New', 'New'],
       ['Old idea', 'Old idea'],
     ])
+  })
+})
+
+describe('showing the folder', () => {
+  it('makes the realm’s notes folder if needed, and shows it in Finder', async () => {
+    expect(data(await api.showNotes(KEY))).toBeNull()
+
+    expect(revealed.at(-1)).toBe(dir)
+    expect(await readdir(dir)).toEqual([])
   })
 })
 
@@ -130,6 +140,7 @@ describe('writing notes', () => {
     const view = data(await api.saveNote(KEY, target.id, change({ title: 'Roadmap' }), only(target.view, target.id).stamp))
     if (view.kind !== 'saved') throw new Error('should save')
     expect(only(view.view, linking.id).body).toBe('See [[Roadmap]] and [[Roadmap|this]].')
+    expect(view.relinked).toBe(1)
 
     // Only a file made outside the app can share a title.
     await writeFile(join(dir, 'Roadmap copy.md'), '---\ntitle: Roadmap\n---\n')

@@ -34,7 +34,7 @@ const memoryNotes = (start: Note[]) => {
       const saved = { ...notes.find(one => one.id === id)!, ...change, stamp: `s-${n}` }
       notes = notes.map(one => (one.id === id ? saved : one))
 
-      return ok({ kind: 'saved' as const, view: view(), note: saved })
+      return ok({ kind: 'saved' as const, view: view(), note: saved, relinked: 0 })
     }),
     archiveNote: vi.fn(async (_key: string, id: string, isArchived: boolean) => {
       notes = notes.map(one => (one.id === id ? { ...one, isArchived, stamp: `a-${id}` } : one))
@@ -103,7 +103,8 @@ describe('the Notes page', () => {
     await open(notes)
 
     expect(await screen.findByText(t.notebook.emptyTitle('a'))).toBeTruthy()
-    expect(screen.getByText(t.notebook.emptyLine(FOLDER))).toBeTruthy()
+    expect(screen.getByText(t.notebook.emptyWhere(FOLDER))).toBeTruthy()
+    expect(screen.getByText(t.notebook.captureHint)).toBeTruthy()
     const capture = screen.getByLabelText(t.notebook.capture) as HTMLInputElement
     await act(async () => void fireEvent.submit(capture.closest('form')!))
     expect(document.getElementById(capture.getAttribute('aria-describedby')!)?.textContent).toBe(t.notebook.captureEmpty)
@@ -224,7 +225,7 @@ describe('the Notes page', () => {
 
     write('See [[pl')
     const picker = screen.getByRole('listbox', { name: t.notebook.linkPicker })
-    expect(within(picker).getAllByRole('option').map(option => option.textContent)).toEqual(['Plan · Research'])
+    expect(within(picker).getAllByRole('option').map(option => [...option.children].map(part => part.textContent))).toEqual([['Plan', 'Research']])
     fireEvent.keyDown(body(), { key: 'Enter' })
 
     expect(body().value).toBe('See [[Plan]]')
@@ -257,10 +258,10 @@ describe('the Notes page', () => {
     fireEvent.blur(second)
     expect(within(sheet).getByText(t.notebook.brew.questTitleRequired)).toBeTruthy()
 
-    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(2) })))
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
     expect(notes.fileNoteQuests).not.toHaveBeenCalled()
     fireEvent.click(within(sheet).getByLabelText(t.notebook.brew.include(2)))
-    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(1) })))
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(2) })))
 
     expect(notes.fileNoteQuests).toHaveBeenCalledWith(KEY, 'n-00000001', { parent: { kind: 'new', title: 'Bug Bounty Helper' }, quests: [{ title: 'Scan', priority: 'mid', difficulty: 'medium', item: 'Scan' }] })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -282,10 +283,11 @@ describe('the Notes page', () => {
 
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
     const sheet = await screen.findByRole('dialog')
-    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(2) })))
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
 
     expect((await within(sheet).findByRole('alert')).textContent).toBe("Couldn't file the quests.")
-    expect(await within(sheet).findByText(t.notebook.brew.filedRow)).toBeTruthy()
+    // The parent and the first quest went in; both lock.
+    expect(await within(sheet).findAllByText(t.notebook.brew.filedRow)).toHaveLength(2)
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.tryAgain })))
     expect(fileNoteQuests.mock.calls[1]![2].quests.map((q: { title: string }) => q.title)).toEqual(['Report'])
   })
@@ -295,7 +297,7 @@ describe('the Notes page', () => {
     await open(notes)
     await screen.findByDisplayValue('Bug Bounty Helper')
 
-    await press(t.notebook.archive)
+    await press(t.notebook.archiveNote)
     await waitFor(() => expect(notes.archiveNote).toHaveBeenCalledWith(KEY, 'n-00000001', true))
     await act(async () => void fireEvent.click(await screen.findByRole('button', { name: t.notebook.archived(1) })))
     await act(async () => void fireEvent.click(await screen.findByRole('button', { name: /Bug Bounty Helper/ })))
@@ -320,13 +322,91 @@ describe('the Notes page', () => {
     expect(screen.getByText(t.notebook.noMatch('zzz'))).toBeTruthy()
   })
 
-  it('in a narrow window shows the list, then the note with a way back', async () => {
+  it('below 900 px the note fills the page, and Notes opens the list as a drawer that Esc and picking close', async () => {
     window.innerWidth = 700
-    await open(memoryNotes([note()]))
-
-    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: /Bug Bounty Helper/ })))
+    await open(memoryNotes([note({ id: 'a', title: 'Alpha', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]))
+    await screen.findByDisplayValue('Alpha')
     expect(screen.queryByLabelText(t.notebook.search)).toBeNull()
-    await press(`← ${t.notebook.allNotes}`)
-    expect(screen.getByLabelText(t.notebook.search)).toBeTruthy()
+
+    await press(t.notebook.showList)
+    expect(document.activeElement).toBe(screen.getByLabelText(t.notebook.capture))
+    fireEvent.keyDown(screen.getByLabelText(t.notebook.capture), { key: 'Escape' })
+    expect(screen.queryByLabelText(t.notebook.search)).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: t.notebook.showList })))
+
+    await press(t.notebook.showList)
+    await press(/^Beta/)
+    expect(await screen.findByDisplayValue('Beta')).toBeTruthy()
+    expect(screen.queryByLabelText(t.notebook.search)).toBeNull()
+  })
+
+  it('from 900 to 1,179 px the inspector floats behind Details, and Esc puts it away', async () => {
+    window.innerWidth = 1000
+    await open(memoryNotes([note()]))
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    expect(screen.queryByRole('complementary', { name: t.notebook.inspector })).toBeNull()
+
+    await press(t.notebook.details)
+    const about = screen.getByRole('complementary', { name: t.notebook.inspector })
+    fireEvent.keyDown(within(about).getByLabelText(t.notebook.tags), { key: 'Escape' })
+    expect(screen.queryByRole('complementary', { name: t.notebook.inspector })).toBeNull()
+  })
+
+  it('⇧⌘N from another screen opens Notes on a new Untitled note in Inbox', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await act(async () => void (window.location.hash = '#/quests'))
+    await waitFor(() => expect(screen.queryByLabelText(t.notebook.search)).toBeNull())
+
+    await act(async () => void fireEvent.keyDown(window, { key: 'N', metaKey: true, shiftKey: true }))
+
+    await waitFor(() => expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: 'Untitled', folder: 'Inbox', body: '' }))
+    expect(await screen.findByDisplayValue('Untitled')).toBeTruthy()
+    expect(window.location.hash).toBe('#/notes')
+  })
+
+  it('folders fold, and the arrow keys move between notes and fold them', async () => {
+    await open(memoryNotes([note({ id: 'a', title: 'Alpha', folder: 'Inbox', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta', folder: 'Inbox' }), note({ id: 'c', title: 'Gamma', folder: 'Research' })]))
+    await screen.findByDisplayValue('Alpha')
+    const alpha = screen.getByRole('button', { name: /^Alpha/ })
+
+    expect(alpha.tabIndex).toBe(0)
+    expect(screen.getByRole('button', { name: /^Beta/ }).tabIndex).toBe(-1)
+    alpha.focus()
+    fireEvent.keyDown(alpha, { key: 'ArrowDown' })
+    expect(document.activeElement?.textContent).toMatch(/^Beta/)
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' })
+    expect(screen.queryByRole('button', { name: /^Beta/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Inbox/ }).getAttribute('aria-expanded')).toBe('false')
+    await press(/Inbox/)
+    expect(screen.getByRole('button', { name: /^Beta/ })).toBeTruthy()
+  })
+
+  it('a note that can’t be read shows where it was looking, with Try again and Show in Finder', async () => {
+    const notes = memoryNotes([note()])
+    const readNotes = vi.fn().mockResolvedValue({ ok: false, error: { message: "Queue-tea couldn't open this realm's folder." } })
+    const showNotes = vi.fn(async () => ok(null))
+    await open({ ...notes, readNotes, showNotes })
+
+    expect(await screen.findByText(t.notebook.failedTitle('a'))).toBeTruthy()
+    await press(t.notebook.showInFinder)
+    expect(showNotes).toHaveBeenCalledWith(KEY)
+  })
+
+  it('BrewQuest’s card counts what it can do, and the inspector shows the saga after filing', async () => {
+    const notes = memoryNotes([note({ body: '- [ ] Scan\n- [ ] Report' })])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    expect(screen.getByText(t.notebook.brew.canBe(2))).toBeTruthy()
+
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
+    const sheet = await screen.findByRole('dialog')
+    expect(within(sheet).getByText(t.notebook.brew.fromLine(1))).toBeTruthy()
+    expect(within(sheet).getByText(t.notebook.brew.totalWithParent(3, 'a', 2))).toBeTruthy()
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
+
+    await waitFor(() => expect(screen.getByText(t.notebook.brew.allFiled(3))).toBeTruthy())
+    expect(screen.getByText(t.notebook.saga(0, 2))).toBeTruthy()
   })
 })

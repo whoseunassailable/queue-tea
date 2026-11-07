@@ -16,7 +16,7 @@ import { newQuestOf, parentOf } from '../../tasks/domain/task_input'
 import { noteText, parseNote } from '../domain/note_file'
 import type { NoteFile } from '../domain/note_file'
 
-export type NotesDeps = TasksDeps & { newNoteId: () => string }
+export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void }
 
 const stampOf = (text: string) => createHash('sha1').update(text).digest('hex')
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
@@ -152,13 +152,15 @@ export const notesApi = (d: NotesDeps) => {
 
   // Renaming a note rewrites [[Old]] in the realm's other notes, unless
   // another note has the old title too and the links could mean that one.
-  const relink = async (key: string, id: string, from: string, to: string) => {
+  // How many notes it rewrote, for the save line.
+  const relink = async (key: string, id: string, from: string, to: string): Promise<number> => {
     const { loaded } = await loadAll(key)
     const others = loaded.filter(one => one.id !== id)
-    if (others.some(one => same(one.file.title, from))) return
-    for (const one of others) {
-      if (linksOf(one.file.body).some(title => same(title, from))) await write(key, one.id, { ...one.file, body: renameLinks(one.file.body, from, to) })
-    }
+    if (others.some(one => same(one.file.title, from))) return 0
+    const linking = others.filter(one => linksOf(one.file.body).some(title => same(title, from)))
+    for (const one of linking) await write(key, one.id, { ...one.file, body: renameLinks(one.file.body, from, to) })
+
+    return linking.length
   }
 
   const newId = async (key: string): Promise<string> => {
@@ -171,6 +173,17 @@ export const notesApi = (d: NotesDeps) => {
 
   return {
     readNotes: (key: unknown): Promise<Reply<NotesView>> => reply(d.log, MESSAGES.readNotes, async () => viewOf(await realmOf(key))),
+
+    // Shows the realm's notes folder in Finder, made first if it isn't there yet.
+    showNotes: (key: unknown): Promise<Reply<null>> =>
+      reply(d.log, MESSAGES.showRecord, async () => {
+        const realm = await realmOf(key)
+        const made = await d.host.makeDirs(folderOf(realm))
+        if (made.exitCode !== 0) throw new Error(made.stderr)
+        d.reveal(folderOf(realm))
+
+        return null
+      }),
 
     createNote: (key: unknown, input: unknown): Promise<Reply<{ view: NotesView; id: string }>> =>
       inTurn(MESSAGES.saveNote, async () => {
@@ -197,9 +210,9 @@ export const notesApi = (d: NotesDeps) => {
         if (stampOf(now.text) !== stamp) return { kind: 'changed', note: noteOf(now) }
         if (!same(now.file.title, next.title) && isTitleTaken(await titlesOf(realm), next.title, noteId)) throw new Refusal(MESSAGES.noteTitleTaken(next.title))
         const saved = await write(realm, noteId, { ...now.file, ...next, updated: nowText() })
-        if (!same(now.file.title, next.title)) await relink(realm, noteId, now.file.title, next.title)
+        const relinked = same(now.file.title, next.title) ? 0 : await relink(realm, noteId, now.file.title, next.title)
 
-        return { kind: 'saved', view: await viewOf(realm), note: noteOf(saved) }
+        return { kind: 'saved', view: await viewOf(realm), note: noteOf(saved), relinked }
       }),
 
     archiveNote: (key: unknown, id: unknown, isArchived: unknown): Promise<Reply<NotesView>> =>

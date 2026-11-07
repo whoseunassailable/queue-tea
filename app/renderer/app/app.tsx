@@ -22,6 +22,7 @@ import { ManaPage } from '../features/mana/presentation/pages/mana_page'
 import { paletteEntries } from '../features/palette/domain/palette'
 import { PaletteDialog } from '../features/palette/presentation/widgets/palette_dialog'
 import { NotesPage } from '../features/notes/presentation/pages/notes_page'
+import { askForNewNote } from '../features/notes/presentation/state_management/new_note'
 import { BranchesPage } from '../features/branches/presentation/pages/branches_page'
 import { QuestsPage } from '../features/quests/presentation/pages/quests_page'
 import type { Sheet } from '../features/quests/presentation/pages/quests_page'
@@ -284,6 +285,13 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
     } else if (event.key === 'o') {
       event.preventDefault()
       void openFolder()
+    } else if (event.key.toLowerCase() === 'n' && (event.shiftKey || event.key === 'N') && readable !== null) {
+      // ⇧⌘N, from any screen: Notes opens and makes an Untitled note. The
+      // Notes page's own sheets cover it, as the app's do.
+      event.preventDefault()
+      if (document.querySelector('[role="dialog"]') !== null) return
+      askForNewNote()
+      go(ROUTES.notes)
     } else if (event.key === 'n' && readable !== null) {
       event.preventDefault()
       setSheet({ kind: 'new', parentId: null })

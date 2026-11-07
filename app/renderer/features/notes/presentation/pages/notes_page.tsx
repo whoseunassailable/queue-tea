@@ -1,23 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 
 import type { EngineApi, ProjectView, Reply } from '../../../../../shared/engine_api'
-import { backlinksOf, INBOX } from '../../../../../shared/notes'
+import { backlinksOf, INBOX, NOTES_FOLDER } from '../../../../../shared/notes'
 import type { Note, NoteChange, NoteFiled, NoteInput, NotesView } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
 import type { Answer } from '../../../../core/api/engine_client'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
-import { DETAIL_IS_PAGE_BELOW } from '../../../../core/constants/constants'
-import { dayAndTime } from '../../../../core/domain/format'
+import { DETAIL_FLOATS_BELOW, DETAIL_IS_PAGE_BELOW } from '../../../../core/constants/constants'
 import { Dialog } from '../../../../core/widgets/dialog'
-import { ReadView } from '../../../../core/widgets/read_view'
-import { Empty } from '../../../../core/widgets/states'
+import { Empty, Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { useWindowWidth } from '../../../../core/widgets/window_width'
 import { t } from '../../../../l10n/en'
 import type { ReadableView } from '../../../workspace/state_management/workspace_store'
-import { captureOf, foldersOf, questLinesOf, untitledIn } from '../../domain/notes_view'
+import { captureOf, foldersOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
+import { useNewNoteAsks } from '../state_management/new_note'
+import { Robot } from '../widgets/brew_quest'
 import { NoteWorkspace } from '../widgets/note_workspace'
-import type { Held, NoteActions } from '../widgets/note_workspace'
+import type { Held, Layout, NoteActions } from '../widgets/note_workspace'
 import '../notes.css'
 
 const DeleteNote = ({ note, linkedFrom, onDelete, onClose }: { note: Note; linkedFrom: string[]; onDelete: (note: Note) => Promise<Answer<unknown>>; onClose: () => void }) => {
@@ -55,6 +55,15 @@ const DeleteNote = ({ note, linkedFrom, onDelete, onClose }: { note: Note; linke
 
 type Props = { engine: EngineApi; realm: ReadableView; isCovered: boolean; onProject: (view: ProjectView) => void; onOpenQuest: (id: string) => void; onSay: (text: string) => void }
 
+const layoutOf = (width: number): Layout => (width < DETAIL_IS_PAGE_BELOW ? 'narrow' : width < DETAIL_FLOATS_BELOW ? 'mid' : 'wide')
+
+// Moves focus to the note row before or after the focused one.
+const stepRows = (list: HTMLElement, by: number) => {
+  const rows = [...list.querySelectorAll<HTMLButtonElement>('.nt-item')]
+  const at = rows.indexOf(document.activeElement as HTMLButtonElement)
+  rows[Math.max(0, Math.min(rows.length - 1, at + by))]?.focus()
+}
+
 // A realm's notes: the list on the left, the open note beside it. The notes
 // are the realm's own, kept outside its repository; quests filed from them go
 // into this realm's queue.
@@ -68,12 +77,19 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [failure, setFailure] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Note | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
+  const [isDrawerOpen, setDrawerOpen] = useState(false)
+  const [showFailure, setShowFailure] = useState<string | null>(null)
   // Edits that couldn't be saved yet, by note, kept while another note is open.
   const [held, setHeld] = useState<Record<string, Held>>({})
   const search = useRef<HTMLInputElement>(null)
   const captureBox = useRef<HTMLInputElement>(null)
-  const isNarrow = useWindowWidth() < DETAIL_IS_PAGE_BELOW
+  const list = useRef<HTMLElement>(null)
+  // Which field the drawer puts the cursor in when it opens.
+  const drawerFocus = useRef<'capture' | 'search'>('capture')
+  const layout = layoutOf(useWindowWidth())
   const quests = useMemo(() => questLinesOf(realm), [realm])
+  const where = `~/${NOTES_FOLDER}/${realm.key}/`
 
   // A change's answer: the notes as they are now, or the reason it failed.
   const act = async <T,>(call: () => Promise<Reply<T>>, viewOf: (data: T) => NotesView): Promise<Answer<T>> => {
@@ -91,10 +107,15 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     if (isOpening) {
       setOpenId(made.data.id)
       setNewId(made.data.id)
+      setDrawerOpen(false)
     }
 
     return true
   }
+
+  // An "Untitled" note in Inbox; main numbers it when the name is taken.
+  const newNote = () => void create({ title: t.notebook.untitled, folder: INBOX, body: '' })
+  useNewNoteAsks(newNote)
 
   // ↩ adds the idea and stays in the line; ⌘↩ adds it and opens it.
   const jot = (isOpening: boolean) => {
@@ -103,6 +124,25 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     if (input !== null) void create(input, isOpening).then(isMade => isMade && setCapture(''))
   }
 
+  const pick = (id: string, isFromKeys: boolean) => {
+    setOpenId(id)
+    setDrawerOpen(false)
+    // Picked from the keyboard, the cursor goes on to the note's text.
+    if (isFromKeys) requestAnimationFrame(() => document.getElementById('nt-body')?.focus())
+  }
+  const closeDrawer = () => {
+    setDrawerOpen(false)
+    requestAnimationFrame(() => document.getElementById('nt-show-list')?.focus())
+  }
+  const toggleFold = (folder: string, isFolding?: boolean) =>
+    setFolded(was => {
+      const next = new Set(was)
+      if (isFolding ?? !was.has(folder)) next.add(folder)
+      else next.delete(folder)
+
+      return next
+    })
+
   // Back at the window, notes edited in another app show.
   useEffect(() => {
     const back = () => read.refresh()
@@ -110,22 +150,22 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
 
     return () => window.removeEventListener('focus', back)
   }, [read.refresh])
-
-  const notes = read.load.status === 'ready' ? read.load.data.notes : []
-  const newNote = () => void create({ title: untitledIn(notes), folder: notes.find(n => n.id === openId)?.folder ?? INBOX, body: '' })
+  useEffect(() => {
+    if (!isDrawerOpen) return
+    ;(drawerFocus.current === 'search' ? search : captureBox).current?.focus()
+    drawerFocus.current = 'capture'
+  }, [isDrawerOpen])
 
   useWindowKeys(event => {
     // BrewQuest's sheet and the delete dialog are this page's own cover.
     if (isCovered || !event.metaKey || document.querySelector('[role="dialog"]') !== null) return
-    if (event.shiftKey && event.key.toLowerCase() === 'n') {
-      event.preventDefault()
-      newNote()
-    } else if (event.key === 'f') {
-      event.preventDefault()
-      search.current?.focus()
-    } else if (event.key === 'j') {
-      event.preventDefault()
-      captureBox.current?.focus()
+    if (event.key !== 'f' && event.key !== 'j') return
+    event.preventDefault()
+    const field = event.key === 'f' ? search : captureBox
+    if (field.current !== null) field.current.focus()
+    else {
+      drawerFocus.current = event.key === 'f' ? 'search' : 'capture'
+      setDrawerOpen(true)
     }
   })
 
@@ -151,145 +191,260 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     onRefresh: read.refresh,
   }
 
-  return (
-    <main class="page nt">
-      <ReadView read={read} line={t.loading.notes}>
-        {view => {
-          const live = view.notes.filter(note => !note.isArchived)
-          const archivedCount = view.notes.length - live.length
-          const groups = foldersOf(view.notes, query, isArchivedView)
-          const first = groups[0]?.notes[0]
-          const open = view.notes.find(note => note.id === openId) ?? (isNarrow ? undefined : first)
-          const isListShown = !isNarrow || open === undefined
+  if (read.load.status === 'loading') {
+    return (
+      <main class="page nt">
+        <div class="state panel" role="status">
+          <Spinner />
+          <p class="state-line">{t.loading.notes}</p>
+          <p class="hint">{t.notebook.loadingWhere(where)}</p>
+        </div>
+      </main>
+    )
+  }
+  if (read.load.status === 'failed') {
+    return (
+      <main class="page nt">
+        <div class="state panel" role="alert">
+          <p class="nt-fail-mark" aria-hidden="true">
+            ✕
+          </p>
+          <h2 class="state-title">{t.notebook.failedTitle(realm.name)}</h2>
+          <p class="state-line">{read.load.message}</p>
+          <div class="nt-fail-actions">
+            <button type="button" class="btn" onClick={read.retry}>
+              {t.failed.tryAgain}
+            </button>
+            <button type="button" class="nt-link" onClick={() => void ask(engine, () => engine.showNotes(realm.key)).then(answer => setShowFailure(answer.ok ? null : answer.message))}>
+              {t.notebook.showInFinder}
+            </button>
+          </div>
+          {showFailure !== null && <p class="field-error">{showFailure}</p>}
+        </div>
+      </main>
+    )
+  }
+
+  const view = read.load.data
+  const live = view.notes.filter(note => !note.isArchived)
+  const archivedCount = view.notes.length - live.length
+  const groups = foldersOf(view.notes, query, isArchivedView)
+  const first = groups.find(group => !folded.has(group.folder))?.notes[0] ?? groups[0]?.notes[0]
+  const open = view.notes.find(note => note.id === openId) ?? first
+  const isEmpty = live.length === 0 && !isArchivedView
+  const today = localDay(new Date())
+  const yesterday = localDay(new Date(Date.now() - 86_400_000))
+  const folders = [...new Set(live.map(note => note.folder))].sort()
+  const focusId = open?.id ?? first?.id
+  // Below 900 px the list is a drawer over the note, unless there's no note.
+  const isDrawer = layout === 'narrow' && !isEmpty
+
+  const noteList = (
+    <nav
+      ref={list}
+      class={isDrawer ? 'nt-list panel drawer' : 'nt-list panel'}
+      aria-label={t.notebook.title}
+      onKeyDown={event => {
+        if (event.key !== 'Escape' || !isDrawer) return
+        event.stopPropagation()
+        closeDrawer()
+      }}
+    >
+      <div class="nt-list-head">
+        <h2>
+          {isArchivedView ? t.notebook.archivedHeader : t.notebook.title} <span class="sub">{isArchivedView ? archivedCount : live.length}</span>
+        </h2>
+        {!isArchivedView && (
+          <button type="button" class="chip-btn" onClick={newNote}>
+            {t.notebook.newNote}
+          </button>
+        )}
+        {isDrawer && (
+          <button type="button" class="icon-btn" aria-label={t.notebook.closeList} onClick={closeDrawer}>
+            ✕
+          </button>
+        )}
+      </div>
+      {!isArchivedView && (
+        <form
+          class="nt-capture"
+          noValidate
+          onSubmit={event => {
+            event.preventDefault()
+            jot(false)
+          }}
+        >
+          <label for="nt-capture" class="sr">
+            {t.notebook.capture}
+          </label>
+          <input
+            ref={captureBox}
+            id="nt-capture"
+            class="input"
+            value={capture}
+            placeholder={t.notebook.capturePlaceholder}
+            aria-invalid={captureError === null ? undefined : 'true'}
+            aria-describedby={captureError === null ? undefined : 'nt-capture-error'}
+            onInput={event => {
+              setCapture((event.target as HTMLInputElement).value)
+              setCaptureError(null)
+            }}
+            onKeyDown={event => {
+              if (event.key !== 'Enter' || !event.metaKey) return
+              event.preventDefault()
+              event.stopPropagation()
+              jot(true)
+            }}
+          />
+          {captureError !== null && (
+            <p class="field-error" id="nt-capture-error">
+              {captureError}
+            </p>
+          )}
+        </form>
+      )}
+      {isEmpty ? (
+        <p class="hint">{t.notebook.captureHint}</p>
+      ) : (
+        <>
+          <label for="nt-search" class="sr">
+            {t.notebook.search}
+          </label>
+          <input
+            ref={search}
+            id="nt-search"
+            type="search"
+            class="input"
+            value={query}
+            placeholder={t.notebook.searchPlaceholder}
+            onInput={event => setQuery((event.target as HTMLInputElement).value)}
+            onKeyDown={event => {
+              if (event.key !== 'Escape' || query === '') return
+              event.stopPropagation()
+              setQuery('')
+            }}
+          />
+        </>
+      )}
+      {failure !== null && (
+        <p class="form-banner" role="alert">
+          {failure}
+        </p>
+      )}
+      <div
+        class="nt-folders"
+        onKeyDown={event => {
+          const row = (event.target as HTMLElement).closest<HTMLElement>('.nt-item')
+          if (row === null || list.current === null) return
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            stepRows(list.current, event.key === 'ArrowDown' ? 1 : -1)
+          } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault()
+            toggleFold(row.dataset.folder ?? '', event.key === 'ArrowLeft')
+          }
+        }}
+      >
+        {groups.map(group => {
+          const isFolded = folded.has(group.folder)
 
           return (
-            <>
-              {view.unreadable.length > 0 && (
-                <p class="note panel" role="status">
-                  {t.notebook.unreadable(view.unreadable)}
-                </p>
-              )}
-              <div class={isNarrow ? 'nt-grid narrow' : 'nt-grid'}>
-                {isListShown && (
-                  <nav class="nt-list panel" aria-label={t.notebook.title}>
-                    {!isArchivedView && (
-                      <form
-                        class="nt-capture"
-                        noValidate
-                        onSubmit={event => {
-                          event.preventDefault()
-                          jot(false)
-                        }}
+            <section key={group.folder} class="nt-folder" aria-label={group.folder}>
+              <h3>
+                <button type="button" class="nt-fold" aria-expanded={!isFolded} onClick={() => toggleFold(group.folder)}>
+                  <span aria-hidden="true">{isFolded ? '▸' : '▾'} </span>
+                  {group.folder} <span class="sub">{group.notes.length}</span>
+                </button>
+              </h3>
+              {!isFolded && (
+                <ul>
+                  {group.notes.map(note => (
+                    <li key={note.id}>
+                      <button
+                        type="button"
+                        class={note.id === open?.id ? 'nt-item on' : 'nt-item'}
+                        data-folder={group.folder}
+                        tabIndex={note.id === focusId ? 0 : -1}
+                        aria-current={note.id === open?.id ? 'true' : undefined}
+                        onClick={event => pick(note.id, event.detail === 0)}
                       >
-                        <label for="nt-capture" class="nt-hidden">
-                          {t.notebook.capture}
-                        </label>
-                        <input
-                          ref={captureBox}
-                          id="nt-capture"
-                          class="input"
-                          value={capture}
-                          placeholder={t.notebook.capturePlaceholder}
-                          aria-invalid={captureError === null ? undefined : 'true'}
-                          aria-describedby={captureError === null ? undefined : 'nt-capture-error'}
-                          onInput={event => {
-                            setCapture((event.target as HTMLInputElement).value)
-                            setCaptureError(null)
-                          }}
-                          onKeyDown={event => {
-                            if (event.key !== 'Enter' || !event.metaKey) return
-                            event.preventDefault()
-                            event.stopPropagation()
-                            jot(true)
-                          }}
-                        />
-                        {captureError !== null && (
-                          <p class="field-error" id="nt-capture-error">
-                            {captureError}
-                          </p>
-                        )}
-                      </form>
-                    )}
-                    <label for="nt-search" class="nt-hidden">
-                      {t.notebook.search}
-                    </label>
-                    <input ref={search} id="nt-search" type="search" class="input" value={query} placeholder={t.notebook.searchPlaceholder} onInput={event => setQuery((event.target as HTMLInputElement).value)}
-                      onKeyDown={event => {
-                        if (event.key !== 'Escape' || query === '') return
-                        event.stopPropagation()
-                        setQuery('')
-                      }}
-                    />
-                    {failure !== null && (
-                      <p class="form-banner" role="alert">
-                        {failure}
-                      </p>
-                    )}
-                    <div class="nt-list-actions">
-                      {!isArchivedView && (
-                        <button type="button" class="btn primary" onClick={newNote}>
-                          {t.notebook.newNote}
-                        </button>
-                      )}
-                      {(archivedCount > 0 || isArchivedView) && (
-                        <button type="button" class="chip-btn" aria-pressed={isArchivedView} onClick={() => setArchivedView(!isArchivedView)}>
-                          {isArchivedView ? t.notebook.backToNotes : t.notebook.archived(archivedCount)}
-                        </button>
-                      )}
-                    </div>
-                    {groups.map(group => (
-                      <section key={group.folder} class="nt-folder" aria-label={group.folder}>
-                        <h2>
-                          {group.folder} <span class="sub">{group.notes.length}</span>
-                        </h2>
-                        <ul>
-                          {group.notes.map(note => (
-                            <li key={note.id}>
-                              <button type="button" class={note.id === open?.id ? 'nt-item on' : 'nt-item'} aria-current={note.id === open?.id ? 'true' : undefined} onClick={() => setOpenId(note.id)}>
-                                <span class="nt-item-title">{note.title}</span>
-                                <span class="sub">
-                                  {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : dayAndTime(note.updated)}
-                                  {note.tags.length > 0 && ` · #${note.tags[0]}`}
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ))}
-                    {groups.length === 0 && query.trim() !== '' && (
-                      <p class="hint">
-                        {t.notebook.noMatch(query.trim())}{' '}
-                        <button type="button" class="chip-btn" onClick={() => setQuery('')}>
-                          {t.notebook.clearSearch}
-                        </button>
-                      </p>
-                    )}
-                    {groups.length === 0 && query.trim() === '' && isArchivedView && <p class="hint">{t.notebook.noArchived}</p>}
-                  </nav>
-                )}
-                {open !== undefined ? (
-                  <div class="nt-main">
-                    {isNarrow && (
-                      <button type="button" class="chip-btn nt-back" onClick={() => setOpenId(null)}>
-                        ← {t.notebook.allNotes}
+                        <span class="nt-item-title">{note.title}</span>
+                        <span class="sub">
+                          {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : whenOf(note.updated, today, yesterday)}
+                          {note.tags.length > 0 && ` · #${note.tags[0]}`}
+                        </span>
                       </button>
-                    )}
-                    <NoteWorkspace key={open.id} engine={engine} realm={realm.key} note={open} notes={view.notes} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} actions={actions} />
-                  </div>
-                ) : (
-                  !isNarrow && (live.length === 0 && !isArchivedView ? <Empty title={t.notebook.emptyTitle(realm.name)} line={t.notebook.emptyLine(view.folder)} /> : <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />)
-                )}
-              </div>
-              {isNarrow && open === undefined && live.length === 0 && !isArchivedView && <Empty title={t.notebook.emptyTitle(realm.name)} line={t.notebook.emptyLine(view.folder)} />}
-            </>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           )
-        }}
-      </ReadView>
+        })}
+      </div>
+      {groups.length === 0 && query.trim() !== '' && (
+        <p class="hint">
+          {t.notebook.noMatch(query.trim())}{' '}
+          <button type="button" class="chip-btn" onClick={() => setQuery('')}>
+            {t.notebook.clearSearch}
+          </button>
+        </p>
+      )}
+      {groups.length === 0 && query.trim() === '' && isArchivedView && <p class="hint">{t.notebook.noArchived}</p>}
+      {view.unreadable.length > 0 && (
+        <p class="hint" role="status">
+          {t.notebook.unreadable(view.unreadable)}
+        </p>
+      )}
+      {(archivedCount > 0 || isArchivedView) && (
+        <div class="nt-list-foot">
+          <button type="button" class="nt-link" aria-pressed={isArchivedView} onClick={() => setArchivedView(!isArchivedView)}>
+            {isArchivedView ? t.notebook.backToNotes : t.notebook.archived(archivedCount)}
+          </button>
+        </div>
+      )}
+    </nav>
+  )
+
+  const empty = (
+    <div class="state panel nt-empty">
+      <Robot size={88} />
+      <h2 class="state-title">{t.notebook.emptyTitle(realm.name)}</h2>
+      <p class="state-line">{t.notebook.emptyLine}</p>
+      <p class="hint">{t.notebook.emptyWhere(view.folder)}</p>
+      <p class="nt-empty-actions">
+        <button type="button" class="btn primary" onClick={newNote}>
+          {t.notebook.newNote}
+        </button>
+        <span class="sub">{t.notebook.newNoteKeys}</span>
+      </p>
+    </div>
+  )
+
+  return (
+    <main class="page nt">
+      {read.note !== null && (
+        <p class="note panel" role="status">
+          {read.note}
+        </p>
+      )}
+      <div class={layout === 'narrow' ? 'nt-grid narrow' : 'nt-grid'}>
+        {(!isDrawer || isDrawerOpen) && noteList}
+        {isDrawer && isDrawerOpen && <div class="nt-scrim" aria-hidden="true" onClick={closeDrawer} />}
+        {isEmpty ? (
+          empty
+        ) : open !== undefined ? (
+          <div class="nt-main">
+            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} onShowList={() => setDrawerOpen(true)} actions={actions} />
+          </div>
+        ) : (
+          <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />
+        )}
+      </div>
       {deleting !== null && (
         <DeleteNote
           note={deleting}
-          linkedFrom={read.load.status === 'ready' ? backlinksOf(read.load.data.notes, { ...deleting, isArchived: false }).map(n => n.title) : []}
+          linkedFrom={backlinksOf(view.notes, { ...deleting, isArchived: false }).map(n => n.title)}
           onDelete={async note => {
             const answer = await ask(engine, () => engine.deleteNote(realm.key, note.id))
             if (answer.ok) {

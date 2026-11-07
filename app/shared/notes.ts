@@ -17,7 +17,8 @@ export type NotesView = { notes: Note[]; unreadable: string[]; folder: string }
 export type NoteInput = { title: string; folder: string; body: string }
 export type NoteChange = { title: string; folder: string; tags: string[]; body: string }
 // changed: the file isn't the one the editor read; note is the file now, or null when it's gone.
-export type NoteSave = { kind: 'saved'; view: NotesView; note: Note } | { kind: 'changed'; note: Note | null }
+// relinked: how many other notes had their links to it rewritten by a rename.
+export type NoteSave = { kind: 'saved'; view: NotesView; note: Note; relinked: number } | { kind: 'changed'; note: Note | null }
 export type ProposedQuest = { title: string; priority: Priority; difficulty: Difficulty; item: string | null }
 export type QuestProposal = { parent: ParentPick; quests: ProposedQuest[] }
 // project: the realm's quests once the new ones are in.
@@ -77,13 +78,14 @@ export const openItemsOf = (body: string): string[] =>
 // What Turn into quests offers: one quest per unticked line not filed yet,
 // under the note's own quest while it's still open, or under a new one named
 // after the note when there are two or more. With no lines, the note itself
-// is the quest, once. isOpen says whether a quest is still in play.
+// is the quest, but only while nothing has been filed from it. isOpen says
+// whether a quest is still in play.
 export const proposalOf = (note: Pick<Note, 'title' | 'body' | 'quests'>, isOpen: (id: string) => boolean = () => true): QuestProposal => {
   const filed = new Set(note.quests.map(q => q.item))
   const own = note.quests.find(q => q.item === null && isOpen(q.id))
   const items = openItemsOf(note.body).filter((item, i, all) => !filed.has(item) && all.indexOf(item) === i)
   const quest = (title: string, item: string | null): ProposedQuest => ({ title: title.slice(0, NOTE_LIMITS.title), priority: 'mid', difficulty: 'medium', item })
-  if (items.length === 0) return { parent: { kind: 'none' }, quests: filed.has(null) ? [] : [quest(note.title, null)] }
+  if (items.length === 0) return { parent: { kind: 'none' }, quests: note.quests.length > 0 ? [] : [quest(note.title, null)] }
   if (own !== undefined) return { parent: { kind: 'task', id: own.id }, quests: items.map(item => quest(item, item)) }
   if (items.length === 1) return { parent: { kind: 'none' }, quests: [quest(items[0]!, items[0]!)] }
 

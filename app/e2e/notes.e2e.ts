@@ -89,7 +89,7 @@ test('BrewQuest files the checklist as a saga in the realm’s queue, linked bac
   await page.getByRole('button', { name: 'Turn into quests…' }).click()
   const sheet = page.getByRole('dialog', { name: 'Turn Bug Bounty Helper into quests' })
   await expect(sheet.getByLabel('Parent quest *')).toHaveValue('Bug Bounty Helper')
-  await sheet.getByRole('button', { name: 'File 2 quests' }).click()
+  await sheet.getByRole('button', { name: 'File 3 quests' }).click()
   await expect(sheet).toBeHidden()
 
   const tasks = (await record()).tasks as { id: string; title: string; parentId: string | null; description: string }[]
@@ -101,5 +101,35 @@ test('BrewQuest files the checklist as a saga in the realm’s queue, linked bac
 
   await about.getByRole('button', { name: 'Open Scan dependencies in Quests' }).click()
   expect(page.url()).toContain('#/quests')
+  expect(errors).toEqual([])
+})
+
+test('⇧⌘N from another screen opens Notes on a new Untitled note', async () => {
+  await page.keyboard.press('Meta+2')
+  expect(page.url()).toContain('#/quests')
+
+  await page.keyboard.press('Meta+Shift+N')
+
+  await expect(page.getByLabel('Title *')).toHaveValue('Untitled')
+  expect(page.url()).toContain('#/notes')
+  expect(await noteFiles()).toHaveLength(3)
+})
+
+test('narrower windows float the inspector behind Details, then put the list in a drawer', async () => {
+  await page.setViewportSize({ width: 1000, height: 900 })
+  await expect(page.getByRole('complementary', { name: 'About this note' })).toBeHidden()
+  await page.getByRole('button', { name: 'Details' }).click()
+  await expect(page.getByRole('complementary', { name: 'About this note' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('complementary', { name: 'About this note' })).toBeHidden()
+
+  await page.setViewportSize({ width: 760, height: 900 })
+  await expect(page.getByLabel('Search notes')).toBeHidden()
+  await page.getByRole('button', { name: 'Notes', exact: true }).click()
+  await expect(page.getByLabel('Jot an idea')).toBeFocused()
+  await page.getByRole('navigation', { name: 'Notes' }).getByRole('button', { name: /^Threat model/ }).click()
+  await expect(page.getByLabel('Title *')).toHaveValue('Threat model')
+  await expect(page.getByLabel('Search notes')).toBeHidden()
+  await page.setViewportSize({ width: 1440, height: 900 })
   expect(errors).toEqual([])
 })

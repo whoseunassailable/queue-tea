@@ -1,60 +1,100 @@
-/* The Notes tab. Every class starts nt-, since class names are page-wide. */
+/* The Notes tab, as docs/notes.pen draws it. Every class starts nt-, since
+   class names are page-wide. Nothing here moves on its own. */
 .rm .nt { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
-.rm .nt-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px; align-items: start; }
+.rm .nt-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px; align-items: stretch; min-height: calc(100vh - 190px); }
 .rm .nt-grid.narrow { grid-template-columns: minmax(0, 1fr); }
-.rm .nt-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.rm .nt-folder ul, .rm .nt-links, .rm .nt-proposal, .rm .nt-picker ul { margin: 0; padding: 0; list-style: none; }
+.rm .nt-link { padding: 0; border: none; background: none; color: var(--link); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.rm .nt-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 
-.rm .nt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px; position: sticky; top: 0; max-height: calc(100vh - 140px); overflow-y: auto; }
+/* The list */
+.rm .nt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; max-height: calc(100vh - 190px); overflow-y: auto; box-sizing: border-box; }
 .rm .nt-list .input { width: 100%; box-sizing: border-box; }
-.rm .nt-list-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.rm .nt-folder h2 { margin: 6px 0 4px; font-size: 13px; letter-spacing: 0.08em; color: var(--ink2); }
-.rm .nt-folder ul, .rm .nt-links, .rm .nt-proposal { margin: 0; padding: 0; list-style: none; }
+.rm .nt-list-head { display: flex; align-items: center; gap: 8px; }
+.rm .nt-list-head h2 { margin: 0 auto 0 0; font-size: 20px; }
+.rm .nt-list-head h2 .sub { font-family: 'Nunito Sans', sans-serif; font-size: 12px; }
+.rm .nt-folder h3 { margin: 4px 0 2px; }
+.rm .nt-fold { padding: 2px 0; border: none; background: none; color: var(--ink2); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer; }
 .rm .nt-item { width: 100%; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border: none; border-radius: 8px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
 .rm .nt-item:hover { background: var(--hov); }
 .rm .nt-item.on { background: var(--sel); box-shadow: inset 3px 0 0 var(--line); }
+.rm .nt-item-title { font-weight: 700; }
 .rm .nt-unsaved { color: var(--urg-t); }
-.rm .nt-item-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm .nt-list-foot { margin-top: auto; padding-top: 8px; }
+/* Below 900 px the list is a drawer over the page, which dims behind it. */
+.rm .nt-list.drawer { position: fixed; z-index: 30; left: 12px; top: 12px; bottom: 12px; width: 300px; max-height: none; }
+.rm .nt-scrim { position: fixed; z-index: 29; inset: 0; background: rgba(20, 16, 30, 0.35); }
 
-.rm .nt-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.rm .nt-back { align-self: flex-start; }
-.rm .nt-open { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; align-items: start; }
-.rm .nt-editor { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; min-width: 0; }
-.rm .nt-title .input { width: 100%; box-sizing: border-box; font-family: 'Marcellus', Georgia, serif; font-size: 22px; height: 44px; }
-.rm .nt-body { position: relative; }
-/* The page to write on: calm, spacious and the full width of the pane. */
-.rm .nt-text { width: 100%; box-sizing: border-box; min-height: 52vh; resize: vertical; padding: 14px 16px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--card); color: var(--ink); font: 15px/24px 'Nunito Sans', -apple-system, system-ui, sans-serif; }
-.rm .nt-text:focus { outline: 2px solid var(--line); outline-offset: 1px; }
-.rm .nt-picker { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 3; margin: 0; padding: 6px; list-style: none; max-height: 240px; overflow-y: auto; }
-.rm .nt-picker li { padding: 6px 10px; border-radius: 6px; cursor: pointer; }
-.rm .nt-picker li.on, .rm .nt-picker li:hover { background: var(--sel); }
-.rm .nt-picker-none { color: var(--ink3); cursor: default; }
-.rm .nt-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+/* The editor */
+.rm .nt-main { display: flex; flex-direction: column; min-width: 0; }
+.rm .nt-open { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; align-items: stretch; }
+.rm .nt-open.floats { position: relative; grid-template-columns: minmax(0, 1fr); }
+.rm .nt-editor { display: flex; flex-direction: column; gap: 10px; padding: 14px 22px 16px; min-width: 0; }
+.rm .nt-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
+.rm .nt-head-folder { margin-right: auto; }
 .rm .nt-save { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink3); min-height: 22px; }
+.rm .nt-save.saved::before { content: '✓'; }
 .rm .nt-save.failed { color: var(--urg-t); font-weight: 700; }
 .rm .nt-banner { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 12px; border-radius: 8px; background: var(--au-b); color: var(--au-t); }
 .rm .nt-banner-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
-
+.rm .nt-title, .rm .nt-body { width: 100%; max-width: 640px; }
+.rm .nt-title .input { width: 100%; box-sizing: border-box; height: auto; padding: 2px 0; border: none; border-radius: 0; background: transparent; box-shadow: none; font-family: 'Marcellus', Georgia, serif; font-size: 26px; line-height: 34px; color: var(--ink); }
+.rm .nt-body { position: relative; flex: 1; display: flex; }
+/* The page to write on: calm, spacious, at most 640 px wide. */
+.rm .nt-text { flex: 1; width: 100%; box-sizing: border-box; min-height: 48vh; resize: none; padding: 4px 0; border: none; background: transparent; color: var(--ink); font: 15px/1.7 'Nunito Sans', -apple-system, system-ui, sans-serif; }
+.rm .nt-text:focus { outline: none; }
+.rm .nt-text:focus-visible { outline: 2px solid var(--line-soft); outline-offset: 6px; border-radius: 4px; }
+.rm .nt-picker { position: absolute; z-index: 5; width: 320px; box-sizing: border-box; padding: 8px; }
+.rm .nt-picker-head, .rm .nt-picker-keys { margin: 0; display: flex; justify-content: space-between; gap: 8px; padding: 2px 6px; font-size: 11px; }
+.rm .nt-picker-keys { padding-top: 6px; }
+.rm .nt-picker li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.rm .nt-picker li.on, .rm .nt-picker li:hover { background: var(--sel); }
+.rm .nt-picker-none { color: var(--ink3); cursor: default; }
+.rm .nt-foot { display: flex; justify-content: flex-end; margin-top: auto; }
 .rm .nt-brew { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--card); }
-.rm .nt-brew-text { display: flex; flex-direction: column; max-width: 220px; }
+.rm .nt-brew-text { display: flex; flex-direction: column; min-width: 0; max-width: 240px; }
+.rm .nt-brew .btn { flex: none; white-space: nowrap; }
 .rm .nt-robot { flex: none; }
 
-.rm .nt-inspector { display: flex; flex-direction: column; gap: 8px; padding: 14px; min-width: 0; }
-.rm .nt-inspector h3 { margin: 8px 0 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink2); }
+/* The inspector: beside the editor, or floating over its right edge. */
+.rm .nt-inspector { display: flex; flex-direction: column; gap: 8px; padding: 14px; min-width: 0; box-sizing: border-box; }
+.rm .nt-inspector.floating { position: absolute; z-index: 6; top: 52px; right: 8px; width: 260px; max-height: calc(100% - 64px); overflow-y: auto; }
+.rm .nt-inspector h3 { margin: 8px 0 0; font-size: 13px; letter-spacing: normal; text-transform: none; color: var(--ink); }
 .rm .nt-inspector .input { width: 100%; box-sizing: border-box; }
-.rm .nt-links li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; }
-.rm .nt-link { padding: 0; border: none; background: none; color: var(--link); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 2px; }
-.rm .nt-broken { color: var(--ink3); font-style: italic; }
+.rm .nt-links > li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 3px 0; }
+.rm .nt-linked { flex-direction: column; align-items: flex-start !important; }
+.rm .nt-broken { color: var(--ink2); font-weight: 700; }
+.rm .nt-excerpt { font-size: 11px; line-height: 15px; }
+.rm .nt-quest { flex-direction: column; align-items: flex-start !important; }
+.rm .nt-quest-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rm .nt-saga { flex-direction: column; align-items: flex-start !important; }
+.rm .nt-under { padding-left: 14px !important; }
 .rm .nt-state { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; background: var(--card); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line-soft); }
 .rm .nt-state.active { background: var(--xp-b); color: var(--xp-t); }
-.rm .nt-state.done { background: var(--au-b); color: var(--au-t); }
+.rm .nt-state.done, .rm .nt-state.saga { background: var(--au-b); color: var(--au-t); }
 .rm .nt-state.gone { opacity: 0.7; }
-.rm .nt-inspector-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rm .nt-inspector-foot { margin-top: auto; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.rm .nt-inspector-foot .sub { margin: 0; font-size: 11px; }
+.rm .nt-inspector-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.rm .nt-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 8px; padding: 6px 0; }
-.rm .nt-row > input[type='checkbox'] { margin-top: 30px; }
-.rm .nt-row > select { margin-top: 24px; }
+/* BrewQuest's review sheet */
+.rm .nt-sheet-head { display: flex; align-items: center; gap: 12px; }
+.rm .nt-sheet-head .form-line { margin: 0; }
+.rm .nt-cols, .rm .nt-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 104px 104px; align-items: start; gap: 8px; }
+.rm .nt-cols { padding-top: 6px; font-size: 11px; font-weight: 800; }
+.rm .nt-cols span:first-child { grid-column: 2; }
+.rm .nt-row { padding: 4px 0; }
+.rm .nt-row.parent { grid-template-columns: 22px minmax(0, 1fr); }
+.rm .nt-proposal.under > li { padding-left: 24px; }
+.rm .nt-row > input[type='checkbox'] { margin-top: 10px; }
+.rm .nt-row .form-field { margin: 0; }
+.rm .nt-row .hint { margin: 2px 0 0; }
 .rm .nt-row.out .nt-row-title { opacity: 0.55; }
+.rm .nt-total { margin: 4px 0 0; font-weight: 800; }
+.rm .sheet-actions .nt-keys { margin-right: auto; align-self: center; font-size: 11px; }
 
-@media (max-width: 1180px) {
-  .rm .nt-open { grid-template-columns: minmax(0, 1fr); }
-}
+/* Empty and failed */
+.rm .nt-empty { text-align: center; align-items: center; }
+.rm .nt-empty-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.rm .nt-fail-mark { margin: 0; font-size: 28px; color: var(--urg-t); }
+.rm .nt-fail-actions { display: flex; align-items: center; justify-content: center; gap: 16px; }

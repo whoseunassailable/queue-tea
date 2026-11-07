@@ -131,7 +131,7 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
-const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}` })
+const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path) })
 // Each change to a helper's work goes to every window as it happens.
 const helpers = helpersApi({
   ...quests,
@@ -215,6 +215,7 @@ const serveEngine = () => {
   handle(CHANNELS.finishBook, (_, id: unknown) => library.finishBook(id))
   handle(CHANNELS.removeBook, (_, id: unknown) => library.removeBook(id))
   handle(CHANNELS.readNotes, (_, key: unknown) => notes.readNotes(key))
+  handle(CHANNELS.showNotes, (_, key: unknown) => notes.showNotes(key))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
   handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
   handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))

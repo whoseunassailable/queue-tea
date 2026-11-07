@@ -177,11 +177,11 @@ The feature follows `docs/architecture.md` and the app's layers:
 | --- | --- | --- |
 | Shared | `app/shared/notes.ts` | Types and limits, the id check, links, backlinks, renaming links, checklist lines, BrewQuest's proposal |
 | Rules | `app/main/features/notes/domain/` | Reading and writing a note file: front matter in, the same front matter out |
-| Engine API | `app/main/features/notes/api/` | `readNotes`, `createNote` (a taken title gets the next number), `saveNote` (with the stamp, renaming, and a taken title refused), `archiveNote` (a restore onto a taken title is numbered), `deleteNote`, `fileNoteQuests` (skips lines the note already lists) |
+| Engine API | `app/main/features/notes/api/` | `readNotes`, `showNotes` (Show in Finder, making the folder first), `createNote` (a taken title gets the next number), `saveNote` (with the stamp, renaming and how many notes it relinked, and a taken title refused), `archiveNote` (a restore onto a taken title is numbered), `deleteNote`, `fileNoteQuests` (skips lines the note already lists) |
 | Window rules | `app/renderer/features/notes/domain/` | The list's folders and order, search, the picker's matches, the field checks, the capture title |
 | Screens | `app/renderer/features/notes/presentation/` | The page, the list, the editor, the inspector, BrewQuest, the sheet and the dialogs |
 
-Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook`, and main's messages in `app/main/core/messages.ts`. The route `/notes` is in `app/renderer/config/routing/routes.ts`. The tab and ⌘7 are in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts`. The values are `NOTE_AUTOSAVE_MS` (800) and `NOTE_PICKER_ROWS` (8), and the narrow width is `DETAIL_IS_PAGE_BELOW` (900), all in `app/renderer/core/constants/constants.ts`. The 1,180 px step is in `notes.css`.
+Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook`, and main's messages in `app/main/core/messages.ts`. The route `/notes` is in `app/renderer/config/routing/routes.ts`. The tab and ⌘7 are in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts`. The values are `NOTE_AUTOSAVE_MS` (800) and `NOTE_PICKER_ROWS` (8), and the widths are `DETAIL_FLOATS_BELOW` (1,180) and `DETAIL_IS_PAGE_BELOW` (900), all in `app/renderer/core/constants/constants.ts`. ⇧⌘N from any screen goes through `app/renderer/features/notes/presentation/state_management/new_note.ts`, and File › New note sends the same key.
 
 ## Acceptance checks
 
@@ -221,14 +221,8 @@ Mocha Mockup's four open questions, as Notes 1 settles them:
 
 ## What Notes 1 builds
 
-Everything in the acceptance checks above except where this list says otherwise. These are what the screens show that the build doesn't yet, and they stay on the epic as **Notes 1 polish: match the screens**:
+Everything in the screens and the acceptance checks above, with these small differences:
 
-- **Narrower windows.** Below 1,180 px the inspector sits under the editor rather than floating behind **Details**. Below 900 px the list and the note take turns, with **← All notes** to go back, rather than a drawer (screen 6).
-- **⇧⌘N** works on the Notes page, not from every screen, and the File menu has no New note.
-- **The list** has no fold arrows and no arrow keys between notes. The Archived button sits under New note, not at the foot.
-- **The picker** opens at the foot of the text area, not under the line being typed, and has no header line.
-- **The review sheet** has no per-row captions ("From line 7"), no line about checked-off items and no total above the buttons. The parent is a field of its own, without an include box.
-- **After filing**, the inspector lists each quest with its state, not the saga line with its progress, priority and difficulty, and BrewQuest's card doesn't count lines.
-- **Loading, empty and failed** use the app's shared states: no "Looking in…" line, no BrewQuest or New note in the empty page, and no **Show in Finder** on 2c, which needs an engine call.
-- **The save line** shows the time, but not "links updated in 2 notes". Notes save 800 ms after typing stops, when you leave a note and as the window closes.
-- **The folder field** has no suggestions, and the inspector shows no dates.
+- **Filing that stops part way** shows main's message in the sheet's banner, locks the rows that went in ("Filed already. Try again files only the rest.") and turns the button into **Try again**. It doesn't count "2 of 3 quests are filed" in the banner itself.
+- **The empty page** names the notes folder by its full path, not from `~`.
+- **Loading** shows straight away, without the 150 ms wait.

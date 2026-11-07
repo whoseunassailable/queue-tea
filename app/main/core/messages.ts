@@ -40,7 +40,7 @@ export const MESSAGES = {
   badPage: (total: number) => `Enter a page from 0 to ${total}.`,
   bookGone: "That book isn't on the shelf any more.",
   brokenLibrary: (file: string) => `Your library file can't be read, so nothing was changed. It's at ${file}.`,
-  readNotes: "Couldn't read this realm's notes. Check that ~/.queue-tea/notes can be read, then try again.",
+  readNotes: "Queue-tea couldn't open this realm's folder in ~/.queue-tea/notes. Check that the folder is there and that Queue-tea may read it, then try again.",
   saveNote: "Couldn't save this note. Your text is still here. Try again.",
   unknownNote: "That note isn't one Queue-tea can open. Pick another from the list.",
   noteGone: "That note isn't there any more. Pick another from the list.",

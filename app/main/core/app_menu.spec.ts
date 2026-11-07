@@ -50,6 +50,14 @@ describe('the menu bar', () => {
     expect(send).toHaveBeenCalledWith({ kind: 'key', key: 'n', isMeta: true })
   })
 
+  it('sends New note as ⇧⌘N, the capital N the window hears with ⇧ held', () => {
+    const send = vi.fn()
+
+    click(named('File', 'New note', menu(false, send)))
+
+    expect(send).toHaveBeenCalledWith({ kind: 'key', key: 'N', isMeta: true })
+  })
+
   it('asks the window to show the record, since only it knows which realm', () => {
     const send = vi.fn()
 

@@ -1,18 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 
 import type { EngineApi } from '../../../../../shared/engine_api'
-import { backlinksOf, INBOX, linksOf, noteTitled } from '../../../../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NotesView } from '../../../../../shared/notes'
+import { backlinksOf, INBOX, linksOf, noteTitled, proposalOf } from '../../../../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteQuest, NotesView } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
 import { NOTE_AUTOSAVE_MS, NOTE_PICKER_ROWS } from '../../../../core/constants/constants'
+import { dayOf } from '../../../../core/domain/format'
 import { Field } from '../../../../core/widgets/field'
 import { Spinner } from '../../../../core/widgets/states'
+import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { t } from '../../../../l10n/en'
-import { folderError, linkOptionsOf, linkQueryAt, questLineOf, tagsError, tagsOf, titleError, withLink } from '../../domain/notes_view'
+import { brewLineOf, folderError, isInPlay, linkLineOf, linkOptionsOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, titleError, whenOf, withLink } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 
-type SaveState = { kind: 'saved'; at?: string } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
+type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
 // A note's edits that couldn't be saved yet, kept while another note is open.
 export type Held = { change: NoteChange; stamp: string }
@@ -30,10 +32,35 @@ export type NoteActions = {
   onRefresh: () => void
 }
 
-type Props = { engine: EngineApi; realm: string; note: Note; notes: readonly Note[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; actions: NoteActions }
+// wide: three panes. mid: the inspector floats, behind Details. narrow: the
+// list is a drawer too, behind Notes.
+export type Layout = 'wide' | 'mid' | 'narrow'
+
+type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; onShowList: () => void; actions: NoteActions }
+
+const PICKER_WIDTH = 320
 
 const changeOf = (note: Note): NoteChange => ({ title: note.title, folder: note.folder, tags: note.tags, body: note.body })
 const isSame = (a: NoteChange, b: NoteChange | null) => b !== null && a.title === b.title && a.folder === b.folder && a.body === b.body && a.tags.join('\n') === b.tags.join('\n')
+
+// Where the caret sits in a text area, from its top-left: the text up to it is
+// laid out in a hidden copy with the same box and type, and a mark measured.
+const caretPoint = (box: HTMLTextAreaElement, at: number): { top: number; left: number } => {
+  const style = getComputedStyle(box)
+  const copy = document.createElement('div')
+  for (const name of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingLeft', 'paddingRight', 'borderTopWidth', 'borderLeftWidth', 'boxSizing', 'width'] as const) copy.style[name] = style[name]
+  Object.assign(copy.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', top: '0', left: '0' })
+  copy.textContent = box.value.slice(0, at)
+  const mark = document.createElement('span')
+  mark.textContent = '​'
+  copy.append(mark)
+  document.body.append(copy)
+  const line = Number.parseFloat(style.lineHeight) || 24
+  const point = { top: box.offsetTop + mark.offsetTop - box.scrollTop + line, left: box.offsetLeft + mark.offsetLeft }
+  copy.remove()
+
+  return point
+}
 
 const SaveLine = ({ save, onRetry }: { save: SaveState; onRetry: () => void }) => {
   if (save.kind === 'failed') {
@@ -53,27 +80,83 @@ const SaveLine = ({ save, onRetry }: { save: SaveState; onRetry: () => void }) =
       </p>
     )
   }
+  const said = save.kind === 'saved' ? (save.at === undefined ? t.notebook.saved : save.relinked ? t.notebook.savedRelinked(save.at, save.relinked) : t.notebook.savedAt(save.at)) : save.kind === 'dirty' ? t.notebook.unsaved : t.notebook.notSavedChanged
 
   return (
-    <p class="nt-save" role="status">
-      {save.kind === 'saved' ? (save.at === undefined ? t.notebook.saved : t.notebook.savedAt(save.at)) : save.kind === 'dirty' ? t.notebook.unsaved : ''}
+    <p class={save.kind === 'saved' ? 'nt-save saved' : 'nt-save'} role="status">
+      {said}
     </p>
   )
 }
 
+// A parent filed from the note, with the quests filed under it after it.
+type QuestGroup = { parent: NoteQuest | null; children: NoteQuest[] }
+const groupsOf = (quests: readonly NoteQuest[]): QuestGroup[] =>
+  quests.reduce<QuestGroup[]>((groups, quest) => {
+    if (quest.item === null) return [...groups, { parent: quest, children: [] }]
+    const last = groups.at(-1)
+    if (last === undefined) return [{ parent: null, children: [quest] }]
+
+    return [...groups.slice(0, -1), { ...last, children: [...last.children, quest] }]
+  }, [])
+
+const QuestItem = ({ id, quests, onOpen }: { id: string; quests: Map<string, QuestLine>; onOpen: (id: string) => void }) => {
+  const line = questLineOf(quests, id)
+
+  return (
+    <li class="nt-quest">
+      {line.title === null ? (
+        <span class="sub">{t.notebook.goneQuest}</span>
+      ) : (
+        <button type="button" class="nt-link" aria-label={t.notebook.openQuest(line.title)} onClick={() => onOpen(id)}>
+          {line.title}
+        </button>
+      )}
+      <span class="nt-quest-meta">
+        <span class={`nt-state ${line.state}`}>{t.notebook.questState[line.state]}</span>
+        {line.priority !== null && line.difficulty !== null && <span class="sub">{t.notebook.questMeta(t.priority[line.priority], t.difficulty[line.difficulty])}</span>}
+      </span>
+    </li>
+  )
+}
+
+const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, QuestLine>; onOpen: (id: string) => void }) => (
+  <ul class="nt-links">
+    {groupsOf(note.quests).map(group =>
+      group.parent !== null && group.children.length > 0 ? (
+        <li key={group.parent.id} class="nt-saga">
+          <ul class="nt-links">
+            <QuestItem id={group.parent.id} quests={quests} onOpen={onOpen} />
+          </ul>
+          <span class="nt-state saga">{t.notebook.saga(group.children.filter(child => questLineOf(quests, child.id).state === 'done').length, group.children.length)}</span>
+          <ul class="nt-links nt-under">
+            {group.children.map(child => (
+              <QuestItem key={child.id} id={child.id} quests={quests} onOpen={onOpen} />
+            ))}
+          </ul>
+        </li>
+      ) : (
+        [group.parent, ...group.children].filter((q): q is NoteQuest => q !== null).map(quest => <QuestItem key={quest.id} id={quest.id} quests={quests} onOpen={onOpen} />)
+      ),
+    )}
+  </ul>
+)
+
 // One note, open: its editor, what it links to and from, and BrewQuest. Every
 // change saves itself a moment after typing stops, over the file it was read
 // from; a file changed meanwhile stops the saving and asks what to keep.
-export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held, actions }: Props) => {
+export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, onShowList, actions }: Props) => {
   const start = held?.change ?? changeOf(note)
   const [draft, setDraft] = useState<NoteChange>(start)
   const [titleText, setTitleText] = useState(start.title)
   const [folderText, setFolderText] = useState(start.folder)
   const [tagsText, setTagsText] = useState(start.tags.join(', '))
   const [errors, setErrors] = useState<{ title?: string; folder?: string; tags?: string }>({})
-  const [save, setSave] = useState<SaveState>({ kind: 'saved' })
-  const [picker, setPicker] = useState<{ start: number; query: string; index: number } | null>(null)
+  // Opened, a note says when it was last saved.
+  const [save, setSave] = useState<SaveState>(held === null ? { kind: 'saved', at: note.updated.slice(11, 16) } : { kind: 'dirty' })
+  const [picker, setPicker] = useState<{ start: number; query: string; index: number; top: number; left: number } | null>(null)
   const [isBrewing, setBrewing] = useState(false)
+  const [isDetailsOpen, setDetailsOpen] = useState(false)
   const stamp = useRef(held?.stamp ?? note.stamp)
   // Kept edits aren't on disk yet, so the first save writes them.
   const onDisk = useRef<NoteChange | null>(held === null ? changeOf(note) : null)
@@ -83,9 +166,12 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const running = useRef<Promise<boolean> | null>(null)
   const area = useRef<HTMLTextAreaElement>(null)
+  const bodyBox = useRef<HTMLDivElement>(null)
   const titleBox = useRef<HTMLInputElement>(null)
+  const detailsButton = useRef<HTMLButtonElement>(null)
   const caret = useRef<number | null>(null)
   const isLive = !note.isArchived
+  const isFloating = layout !== 'wide'
 
   const flush = async (): Promise<boolean> => {
     if (timer.current !== null) clearTimeout(timer.current)
@@ -94,7 +180,7 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
     const sent = latest.current
     if (isHeld.current) return false
     if (isSame(sent, onDisk.current)) {
-      setSave({ kind: 'saved' })
+      setSave(was => (was.kind === 'saved' ? was : { kind: 'saved' }))
 
       return true
     }
@@ -116,7 +202,7 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
       onDisk.current = sent
       actions.onSaved(answer.data.view)
       actions.onHeld(note.id, null)
-      setSave(isSame(latest.current, sent) ? { kind: 'saved', at: answer.data.note.updated.slice(11, 16) } : { kind: 'dirty' })
+      setSave(isSame(latest.current, sent) ? { kind: 'saved', at: answer.data.note.updated.slice(11, 16), relinked: answer.data.relinked } : { kind: 'dirty' })
 
       return true
     })()
@@ -152,11 +238,9 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
     setFolderText(from.folder)
     setTagsText(from.tags.join(', '))
     setErrors({})
-    setSave({ kind: 'saved' })
+    setSave({ kind: 'saved', at: from.updated.slice(11, 16) })
   }
 
-  // Leaving the note saves what's left. What can't be saved stays with the
-  // page, so opening the note again brings the edits back.
   // Closing the window saves too: the save is sent before the page goes.
   useEffect(() => {
     const closing = () => void flush()
@@ -164,6 +248,8 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
 
     return () => window.removeEventListener('beforeunload', closing)
   }, [])
+  // Leaving the note saves what's left. What can't be saved stays with the
+  // page, so opening the note again brings the edits back.
   useEffect(() => {
     if (held !== null) schedule()
 
@@ -210,7 +296,11 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
     const box = area.current
     if (box === null || box.selectionStart !== box.selectionEnd) return setPicker(null)
     const found = linkQueryAt(box.value, box.selectionStart)
-    setPicker(found === null ? null : { ...found, index: 0 })
+    if (found === null) return setPicker(null)
+    const point = caretPoint(box, box.selectionStart)
+    // Moved left when it would run out of the editor.
+    const left = Math.max(0, Math.min(point.left, (bodyBox.current?.clientWidth ?? PICKER_WIDTH) - PICKER_WIDTH))
+    setPicker(was => ({ ...found, index: was?.start === found.start ? Math.min(was.index, NOTE_PICKER_ROWS - 1) : 0, top: point.top, left }))
   }
   const link = (title: string) => {
     const box = area.current
@@ -232,20 +322,51 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
       setPicker({ ...picker, index: (picker.index + step) % options.length })
     } else if (options.length > 0 && (event.key === 'Enter' || event.key === 'Tab')) {
       event.preventDefault()
-      link(options[picker.index]!.title)
+      link(options[Math.min(picker.index, options.length - 1)]!.title)
     }
   }
 
   const brew = async () => {
     if (await flush()) setBrewing(true)
   }
+  const closeDetails = () => {
+    setDetailsOpen(false)
+    detailsButton.current?.focus()
+  }
+  // Esc puts the floating inspector away, wherever the focus is; fields that
+  // use Esc themselves keep it from coming here.
+  useWindowKeys(event => {
+    if (event.key !== 'Escape' || !isDetailsOpen || document.querySelector('[role="dialog"]') !== null) return
+    closeDetails()
+  })
 
   const shown: Note = { ...note, ...draft }
   const backlinks = backlinksOf(notes, shown)
+  const links = linksOf(draft.body)
+  const today = localDay(new Date())
+  const yesterday = localDay(new Date(Date.now() - 86_400_000))
+  const brewLine = brewLineOf(shown, proposalOf(shown, id => isInPlay(quests, id)))
 
   return (
-    <div class="nt-open">
+    <div class={isFloating ? 'nt-open floats' : 'nt-open'}>
       <section class="nt-editor panel" aria-label={t.notebook.body}>
+        <header class="nt-head">
+          {layout === 'narrow' && (
+            <button type="button" id="nt-show-list" class="chip-btn" onClick={onShowList}>
+              {t.notebook.showList}
+            </button>
+          )}
+          <span class="nt-head-folder sub">
+            <span aria-hidden="true">▭ </span>
+            {draft.folder}
+          </span>
+          <SaveLine save={save} onRetry={() => void flush()} />
+          {isFloating && (
+            <button ref={detailsButton} type="button" class="chip-btn" aria-expanded={isDetailsOpen} aria-controls="nt-inspector" onClick={() => (isDetailsOpen ? closeDetails() : setDetailsOpen(true))}>
+              {t.notebook.details}
+            </button>
+          )}
+        </header>
         {!isLive && <p class="nt-banner">{t.notebook.archivedLine}</p>}
         {save.kind === 'changed' && (
           <div class="nt-banner" role="alert">
@@ -291,7 +412,9 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
           </div>
         )}
         <div class="form-field nt-title">
-          <label for="nt-title">{t.notebook.noteTitle} *</label>
+          <label for="nt-title" class="sr">
+            {t.notebook.noteTitle} *
+          </label>
           <input
             ref={titleBox}
             id="nt-title"
@@ -320,8 +443,8 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
             </p>
           )}
         </div>
-        <div class="nt-body">
-          <label for="nt-body" class="nt-hidden">
+        <div class="nt-body" ref={bodyBox}>
+          <label for="nt-body" class="sr">
             {t.notebook.body}
           </label>
           <textarea
@@ -335,7 +458,7 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
             aria-autocomplete="list"
             aria-expanded={picker !== null}
             aria-controls="nt-picker"
-            aria-activedescendant={picker !== null && options.length > 0 ? `nt-pick-${picker.index}` : undefined}
+            aria-activedescendant={picker !== null && options.length > 0 ? `nt-pick-${Math.min(picker.index, options.length - 1)}` : undefined}
             onInput={event => {
               change({ body: (event.target as HTMLTextAreaElement).value })
               lookAtCaret()
@@ -348,120 +471,143 @@ export const NoteWorkspace = ({ engine, realm, note, notes, quests, isNew, held,
             onBlur={() => setPicker(null)}
           />
           {picker !== null && (
-            <ul class="nt-picker panel" id="nt-picker" role="listbox" aria-label={t.notebook.linkPicker}>
-              {options.length === 0 && <li class="nt-picker-none">{t.notebook.noLinkMatch(picker.query)}</li>}
-              {options.map((option, i) => (
-                <li
-                  key={option.id}
-                  id={`nt-pick-${i}`}
-                  role="option"
-                  aria-selected={i === picker.index}
-                  class={i === picker.index ? 'on' : undefined}
-                  onMouseDown={event => {
-                    event.preventDefault()
-                    link(option.title)
-                  }}
-                >
-                  {option.title}
-                  <span class="sub"> · {option.folder}</span>
-                </li>
-              ))}
-            </ul>
+            <div class="nt-picker panel" style={{ top: `${picker.top}px`, left: `${picker.left}px` }}>
+              <p class="nt-picker-head sub">
+                <span>{t.notebook.pickerHead(picker.query)}</span>
+                <span>{t.notebook.pickerCount(options.length)}</span>
+              </p>
+              <ul id="nt-picker" role="listbox" aria-label={t.notebook.linkPicker}>
+                {options.length === 0 && <li class="nt-picker-none">{t.notebook.noLinkMatch(picker.query)}</li>}
+                {options.map((option, i) => (
+                  <li
+                    key={option.id}
+                    id={`nt-pick-${i}`}
+                    role="option"
+                    aria-selected={i === Math.min(picker.index, options.length - 1)}
+                    class={i === Math.min(picker.index, options.length - 1) ? 'on' : undefined}
+                    onMouseDown={event => {
+                      event.preventDefault()
+                      link(option.title)
+                    }}
+                  >
+                    <span>{option.title}</span>
+                    <span class="sub">{option.folder}</span>
+                  </li>
+                ))}
+              </ul>
+              <p class="nt-picker-keys sub" aria-hidden="true">
+                {t.notebook.pickerKeys}
+              </p>
+            </div>
           )}
         </div>
-        <div class="nt-foot">
-          <SaveLine save={save} onRetry={() => void flush()} />
-          {isLive && <BrewQuestCard onBrew={() => void brew()} />}
-        </div>
-      </section>
-      <aside class="nt-inspector panel" aria-label={t.notebook.inspector}>
-        {isLive ? (
-          <>
-            <Field label={t.notebook.folder} value={folderText} error={errors.folder} onInput={setFolderText} onBlur={commitFolder} onEnter={commitFolder} />
-            <Field label={t.notebook.tags} value={tagsText} error={errors.tags} onInput={setTagsText} onBlur={commitTags} onEnter={commitTags} />
-            <p class="hint">{t.notebook.tagsHint}</p>
-          </>
-        ) : (
-          <p class="sub">
-            {note.folder}
-            {note.tags.length > 0 && ` · ${note.tags.map(tag => `#${tag}`).join(' ')}`}
-          </p>
+        {isLive && (
+          <footer class="nt-foot">
+            <BrewQuestCard line={brewLine} onBrew={() => void brew()} />
+          </footer>
         )}
-        <h3>{t.notebook.quests}</h3>
-        {note.quests.length === 0 && <p class="hint">{t.notebook.noQuests}</p>}
-        <ul class="nt-links">
-          {note.quests.map(quest => {
-            const line = questLineOf(quests, quest.id)
-
-            return (
-              <li key={quest.id}>
-                {line.title === null ? (
-                  <span class="sub">{t.notebook.goneQuest}</span>
-                ) : (
-                  <button type="button" class="nt-link" aria-label={t.notebook.openQuest(line.title)} onClick={() => actions.onOpenQuest(quest.id)}>
-                    {line.title}
-                  </button>
-                )}
-                <span class={`nt-state ${line.state}`}>{t.notebook.questState[line.state]}</span>
-              </li>
-            )
-          })}
-        </ul>
-        <h3>{t.notebook.links}</h3>
-        {linksOf(draft.body).length === 0 && <p class="hint">{t.notebook.noLinks}</p>}
-        <ul class="nt-links">
-          {linksOf(draft.body).map(title => {
-            const target = noteTitled(notes, title)
-
-            return (
-              <li key={title}>
-                {target === undefined ? (
-                  <>
-                    <span class="nt-broken">{t.notebook.broken(title)}</span>
-                    {isLive && (
-                      <button type="button" class="chip-btn" onClick={() => actions.onMake(title, draft.folder)}>
-                        {t.notebook.makeIt}
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <button type="button" class="nt-link" onClick={() => actions.onOpen(target.id)}>
-                    {target.title}
-                  </button>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-        <h3>{t.notebook.backlinks}</h3>
-        {backlinks.length === 0 && <p class="hint">{t.notebook.noBacklinks}</p>}
-        <ul class="nt-links">
-          {backlinks.map(other => (
-            <li key={other.id}>
-              <button type="button" class="nt-link" onClick={() => actions.onOpen(other.id)}>
-                {other.title}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div class="nt-inspector-actions">
+      </section>
+      {(!isFloating || isDetailsOpen) && (
+        <aside
+          id="nt-inspector"
+          class={isFloating ? 'nt-inspector panel floating' : 'nt-inspector panel'}
+          aria-label={t.notebook.inspector}
+        >
           {isLive ? (
-            <button type="button" class="btn" onClick={() => void flush().then(isSaved => isSaved && actions.onArchive(note, true))}>
-              {t.notebook.archive}
-            </button>
-          ) : (
             <>
-              <button type="button" class="btn" onClick={() => actions.onArchive(note, false)}>
-                {t.notebook.restore}
-              </button>
-              <button type="button" class="btn" onClick={() => actions.onDelete(note)}>
-                {t.notebook.deleteForever}
-              </button>
+              <Field label={t.notebook.folder} value={folderText} error={errors.folder} list="nt-folders" onInput={setFolderText} onBlur={commitFolder} onEnter={commitFolder} />
+              <datalist id="nt-folders">
+                {folders.map(folder => (
+                  <option key={folder} value={folder} />
+                ))}
+              </datalist>
+              <Field label={t.notebook.tags} value={tagsText} error={errors.tags} onInput={setTagsText} onBlur={commitTags} onEnter={commitTags} />
+              <p class="hint">{t.notebook.tagsHint}</p>
             </>
+          ) : (
+            <p class="sub">
+              {note.folder}
+              {note.tags.length > 0 && ` · ${note.tags.map(tag => `#${tag}`).join(' ')}`}
+            </p>
           )}
-        </div>
-      </aside>
-      {isBrewing && <BrewSheet engine={engine} realm={realm} note={shown} quests={quests} onFiled={actions.onFiled} onRefresh={actions.onRefresh} onClose={() => setBrewing(false)} />}
+          <h3>
+            {t.notebook.quests} {note.quests.length > 0 && <span class="sub">{note.quests.length}</span>}
+          </h3>
+          {note.quests.length === 0 && <p class="hint">{t.notebook.noQuests}</p>}
+          <QuestList note={note} quests={quests} onOpen={actions.onOpenQuest} />
+          <h3>
+            {t.notebook.links} {links.length > 0 && <span class="sub">{links.length}</span>}
+          </h3>
+          {links.length === 0 && <p class="hint">{t.notebook.noLinks}</p>}
+          <ul class="nt-links">
+            {links.map(title => {
+              const target = noteTitled(notes, title)
+
+              return (
+                <li key={title} class="nt-linked">
+                  {target === undefined ? (
+                    <>
+                      <span class="nt-broken">
+                        <span aria-hidden="true">? </span>
+                        {title}
+                      </span>
+                      <span class="sub">
+                        <span class="sr">{t.notebook.broken(title)}</span>{' '}
+                        <span aria-hidden="true">{t.notebook.noLinkWithTitle} </span>
+                        {isLive && (
+                          <button type="button" class="nt-link" onClick={() => actions.onMake(title, draft.folder)}>
+                            {t.notebook.makeIt}
+                          </button>
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <button type="button" class="nt-link" onClick={() => actions.onOpen(target.id)}>
+                      <span aria-hidden="true">▤ </span>
+                      {target.title}
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          <h3>
+            {t.notebook.backlinks} {backlinks.length > 0 && <span class="sub">{backlinks.length}</span>}
+          </h3>
+          {backlinks.length === 0 && <p class="hint">{t.notebook.noBacklinks}</p>}
+          <ul class="nt-links">
+            {backlinks.map(other => (
+              <li key={other.id} class="nt-linked">
+                <button type="button" class="nt-link" onClick={() => actions.onOpen(other.id)}>
+                  <span aria-hidden="true">↳ </span>
+                  {other.title}
+                </button>
+                {linkLineOf(other.body, shown.title) !== null && <span class="sub nt-excerpt">{linkLineOf(other.body, shown.title)}</span>}
+              </li>
+            ))}
+          </ul>
+          <div class="nt-inspector-foot">
+            <p class="sub">{t.notebook.dates(dayOf(note.created), whenOf(note.updated, today, yesterday))}</p>
+            <div class="nt-inspector-actions">
+              {isLive ? (
+                <button type="button" class="btn" onClick={() => void flush().then(isSaved => isSaved && actions.onArchive(note, true))}>
+                  {t.notebook.archiveNote}
+                </button>
+              ) : (
+                <>
+                  <button type="button" class="btn" onClick={() => actions.onArchive(note, false)}>
+                    {t.notebook.restore}
+                  </button>
+                  <button type="button" class="btn" onClick={() => actions.onDelete(note)}>
+                    {t.notebook.deleteForever}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </aside>
+      )}
+      {isBrewing && <BrewSheet engine={engine} realm={realm} realmName={realmName} note={shown} quests={quests} onFiled={actions.onFiled} onRefresh={actions.onRefresh} onClose={() => setBrewing(false)} />}
     </div>
   )
 }

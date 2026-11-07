@@ -16,7 +16,7 @@ import { t } from '../../../../l10n/en'
 import type { ReadableView } from '../../../workspace/state_management/workspace_store'
 import { captureOf, folderNameError, foldersOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
 import type { FolderGroup } from '../../domain/notes_view'
-import { useNewNoteAsks } from '../state_management/new_note'
+import { useNotesAsks } from '../state_management/notes_asks'
 import { Robot } from '../widgets/brew_quest'
 import { NoteWorkspace } from '../widgets/note_workspace'
 import type { Held, Layout, NoteActions } from '../widgets/note_workspace'
@@ -174,7 +174,6 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
 
   // An "Untitled" note in Inbox; main numbers it when the name is taken.
   const newNote = () => void create({ title: t.notebook.untitled, folder: INBOX, body: '' })
-  useNewNoteAsks(newNote)
 
   // ↩ adds the idea and stays in the line; ⌘↩ adds it and opens it.
   const jot = (isOpening: boolean) => {
@@ -189,6 +188,18 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     // Picked from the keyboard, the cursor goes on to the note's text.
     if (isFromKeys) requestAnimationFrame(() => document.getElementById('nt-body')?.focus())
   }
+  // From ⇧⌘N and the palette, on any screen. A note that has gone by now
+  // leaves the first one open, as a deleted note does.
+  useNotesAsks(asked => {
+    if (asked.kind === 'new') newNote()
+    else if (asked.kind === 'open') {
+      setArchivedView(false)
+      pick(asked.id, true)
+    } else {
+      const input = captureOf(asked.text)
+      if (input !== null) void create(input, asked.isOpening)
+    }
+  })
   const closeDrawer = () => {
     setDrawerOpen(false)
     requestAnimationFrame(() => document.getElementById('nt-show-list')?.focus())

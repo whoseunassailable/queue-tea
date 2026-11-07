@@ -745,6 +745,18 @@ body,
   font-weight: 400;
 }
 
+.rm .palette-detail {
+  display: block;
+  font-weight: 400;
+  color: var(--ink2);
+}
+
+.rm .palette-item .spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
 .rm .palette-item kbd {
   flex: none;
   font: inherit;

@@ -19,10 +19,11 @@ import { HoardPage } from '../features/hoard/presentation/pages/hoard_page'
 import { HomePage } from '../features/home/presentation/pages/home_page'
 import { LibraryPage } from '../features/library/presentation/pages/library_page'
 import { ManaPage } from '../features/mana/presentation/pages/mana_page'
-import { paletteEntries } from '../features/palette/domain/palette'
+import type { PaletteInput } from '../features/palette/domain/palette'
 import { PaletteDialog } from '../features/palette/presentation/widgets/palette_dialog'
 import { NotesPage } from '../features/notes/presentation/pages/notes_page'
-import { askForNewNote } from '../features/notes/presentation/state_management/new_note'
+import { askNotes } from '../features/notes/presentation/state_management/notes_asks'
+import { jotIdea } from '../features/notes/presentation/state_management/note_flows'
 import { BranchesPage } from '../features/branches/presentation/pages/branches_page'
 import { QuestsPage } from '../features/quests/presentation/pages/quests_page'
 import type { Sheet } from '../features/quests/presentation/pages/quests_page'
@@ -290,8 +291,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
       // Notes page's own sheets cover it, as the app's do.
       event.preventDefault()
       if (document.querySelector('[role="dialog"]') !== null) return
-      askForNewNote()
-      go(ROUTES.notes)
+      newNote()
     } else if (event.key === 'n' && readable !== null) {
       event.preventDefault()
       setSheet({ kind: 'new', parentId: null })
@@ -324,26 +324,52 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
     setSideOpen(false)
     void workspace.pick(key)
   }
-  const entries = isPaletteOpen
-    ? paletteEntries({
-        view: readable,
-        realms: state.projects.status === 'ready' ? state.projects.data : [],
-        selected: state.selected,
-        onStart: quest => readable !== null && void flows.start(readable.key, quest),
-        onOpenQuest: id => {
-          if (readable === null) return
-          workspace.openQuest(readable.key, id)
-          go(ROUTES.quests)
-        },
-        onFinish: () => readable?.active != null && setSheet({ kind: 'finish', quest: readable.active }),
-        onBack: () => readable?.active != null && void flows.back(readable.key, readable.active),
-        onOpenClaude: () => readable?.active != null && void flows.openClaude(readable.key, readable.active),
-        onNewQuest: title => setSheet({ kind: 'new', parentId: null, ...(title === '' ? {} : { title }) }),
-        onGo: go,
-        onPickRealm: pickRealm,
-        onOpenFolder: () => void openFolder(),
-      })
-    : []
+  const newNote = () => {
+    askNotes({ kind: 'new' })
+    go(ROUTES.notes)
+  }
+  const openNote = (id: string) => {
+    if (readable === null) return
+    const show = () => {
+      askNotes({ kind: 'open', id })
+      go(ROUTES.notes)
+    }
+    // A Jot toast can outlive a realm switch; its note still belongs there.
+    if (workspace.getState().selected !== readable.key) void workspace.pick(readable.key).then(show)
+    else show()
+  }
+  // With Notes on screen, or about to be, the page makes the note so its list
+  // stays true; elsewhere the app makes it and you stay where you are.
+  const jot = (words: string, isOpening: boolean) => {
+    if (readable === null) return
+    if (!isOpening && route !== ROUTES.notes) {
+      void jotIdea(engine, workspace, readable.key, words, openNote)
+      return
+    }
+    askNotes({ kind: 'jot', text: words, isOpening })
+    go(ROUTES.notes)
+  }
+  const paletteInput: Omit<PaletteInput, 'notes'> = {
+    view: readable,
+    realms: state.projects.status === 'ready' ? state.projects.data : [],
+    selected: state.selected,
+    onStart: quest => readable !== null && void flows.start(readable.key, quest),
+    onOpenQuest: id => {
+      if (readable === null) return
+      workspace.openQuest(readable.key, id)
+      go(ROUTES.quests)
+    },
+    onFinish: () => readable?.active != null && setSheet({ kind: 'finish', quest: readable.active }),
+    onBack: () => readable?.active != null && void flows.back(readable.key, readable.active),
+    onOpenClaude: () => readable?.active != null && void flows.openClaude(readable.key, readable.active),
+    onNewQuest: title => setSheet({ kind: 'new', parentId: null, ...(title === '' ? {} : { title }) }),
+    onNewNote: newNote,
+    onOpenNote: openNote,
+    onJot: jot,
+    onGo: go,
+    onPickRealm: pickRealm,
+    onOpenFolder: () => void openFolder(),
+  }
 
   const classes = ['rm', `t-${skyOf(state.settings.sky, hour)}`, state.won === null ? moodOf(session) : 'm-cheer', isPetted ? 'pet' : '', state.settings.isCalm ? 'calm' : '', isSideOpen ? 'side-open' : ''].filter(c => c !== '')
 
@@ -396,7 +422,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
         <Content state={state} workspace={workspace} engine={engine} route={route} edits={edits} flows={flows} actionsFor={actionsFor} sheet={sheet} isPaletteOpen={isPaletteOpen} onSheet={setSheet} onCopy={text => void flows.copy(text)} onPet={() => setPetted(true)} realms={realms} onOpenFolder={() => void openFolder()} onConnect={setConnecting} />
       </div>
       {sheet !== null && readable !== null && <SheetView sheet={sheet} view={readable} engine={engine} edits={edits} flows={flows} onClose={() => setSheet(null)} />}
-      {isPaletteOpen && <PaletteDialog entries={entries} onClose={() => setPaletteOpen(false)} />}
+      {isPaletteOpen && <PaletteDialog key={state.selected} engine={engine} input={paletteInput} onClose={() => setPaletteOpen(false)} />}
       {adding !== null && <AddRealmDialog engine={engine} pick={adding.pick} isDetected={adding.isDetected} flows={realms} onAccount={(key, login) => void workspace.setRealmAccount(key, login)} onCopy={text => void flows.copy(text)} onClose={() => setAdding(null)} />}
       {connecting !== null && <ConnectDialog engine={engine} realm={connecting.name} connected={state.settings.realmAccounts[connecting.key] ?? null} onSave={login => connect(connecting.key, connecting.name, login)} onCopy={text => void flows.copy(text)} onClose={() => setConnecting(null)} />}
       {state.won !== null && <VictoryPanel won={state.won} isCalm={state.settings.isCalm} onClose={closeWon} />}

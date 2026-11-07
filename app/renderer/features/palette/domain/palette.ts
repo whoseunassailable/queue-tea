@@ -1,10 +1,14 @@
 import type { ProjectRow, ProjectView, QuestRow } from '../../../../shared/engine_api'
+import type { Note, NotesView } from '../../../../shared/notes'
 import { ROUTES } from '../../../config/routing/routes'
 import type { Route } from '../../../config/routing/routes'
+import { PALETTE_NOTE_ROWS, PALETTE_SNIPPET } from '../../../core/constants/constants'
 import { t } from '../../../l10n/en'
+import { matches } from '../../notes/domain/notes_view'
 import { rowsOf } from '../../quests/domain/board'
+import type { Load } from '../../workspace/state_management/workspace_store'
 
-export type PaletteSection = 'suggested' | 'quests' | 'actions' | 'goto' | 'realms' | 'create'
+export type PaletteSection = 'suggested' | 'quests' | 'actions' | 'goto' | 'realms' | 'notes' | 'create'
 
 export type PaletteEntry = {
   id: string
@@ -16,16 +20,26 @@ export type PaletteEntry = {
   // Why it can't run now; it shows dim and Return does nothing.
   reason: string | null
   run: () => void
-  // ⌘↩ on a quest. Null when it can't start.
+  // ⌘↩ starts a quest or opens a note. Null when unavailable.
   start: (() => void) | null
-  // Create only: what to do with the words typed.
-  fill: ((words: string) => void) | null
+  // Create only: its label and what ↩ and ⌘↩ do with the words typed.
+  fill: { label: (words: string) => string; run: (words: string) => void; start: ((words: string) => void) | null } | null
+  // Notes only: the note it's matched on. Null on the reading and failed rows.
+  note: Note | null
+  // The note's line that holds the words, shown under its title.
+  detail: string | null
+  // Still reading: it shows a spinner and can't run.
+  isBusy: boolean
 }
 
 type Readable = Extract<ProjectView, { kind: 'readable' }>
 
 export type PaletteInput = {
   view: Readable | null
+  // The selected realm's notes, read when the palette opens.
+  notes: Load<NotesView>
+  isRefreshingNotes?: boolean
+  notesProblem?: boolean
   realms: ProjectRow[]
   selected: string | null
   onStart: (quest: QuestRow) => void
@@ -34,12 +48,15 @@ export type PaletteInput = {
   onBack: () => void
   onOpenClaude: () => void
   onNewQuest: (title: string) => void
+  onNewNote: () => void
+  onOpenNote: (id: string) => void
+  onJot: (words: string, isOpening: boolean) => void
   onGo: (route: Route) => void
   onPickRealm: (key: string) => void
   onOpenFolder: () => void
 }
 
-const entry = (over: Pick<PaletteEntry, 'id' | 'section' | 'label' | 'run'> & Partial<PaletteEntry>): PaletteEntry => ({ also: '', keys: null, reason: null, start: null, fill: null, ...over })
+const entry = (over: Pick<PaletteEntry, 'id' | 'section' | 'label' | 'run'> & Partial<PaletteEntry>): PaletteEntry => ({ also: '', keys: null, reason: null, start: null, fill: null, note: null, detail: null, isBusy: false, ...over })
 
 const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
   { route: ROUTES.home, label: t.nav.home, keys: '⌘1' },
@@ -105,15 +122,40 @@ const actions = (view: Readable, input: PaletteInput): PaletteEntry[] => {
     entry({ id: 'action:open', section: 'actions', label: t.actions.openClaude, keys: '⌘↩', reason: noActive, run: input.onOpenClaude }),
     entry({ id: 'action:finish', section: 'actions', label: t.actions.finish, keys: 'd', reason: noActive, run: input.onFinish }),
     entry({ id: 'action:back', section: 'actions', label: t.actions.back, keys: 'b', reason: noActive, run: input.onBack }),
+    entry({ id: 'action:new-note', section: 'actions', label: t.notebook.newNote, keys: t.notebook.newNoteKeys, run: input.onNewNote }),
   ]
 }
+
+// The live notes, newest first, so equal matches keep that order; or one row
+// saying they're still being read or couldn't be.
+const noteEntries = (input: PaletteInput): PaletteEntry[] => {
+  const { notes } = input
+  if (notes.status === 'loading') return [entry({ id: 'notes:reading', section: 'notes', label: t.palette.readingNotes, isBusy: true, run: () => {} })]
+  if (notes.status === 'failed') return [entry({ id: 'notes:failed', section: 'notes', label: t.palette.notesFailed, run: () => input.onGo(ROUTES.notes) })]
+
+  const found = notes.data.notes
+    .filter(note => !note.isArchived)
+    .sort((a, b) => b.updated.localeCompare(a.updated))
+    .map(note => entry({ id: `note:${note.id}`, section: 'notes', label: note.title, note, run: () => input.onOpenNote(note.id), start: () => input.onOpenNote(note.id) }))
+
+  if (input.isRefreshingNotes) found.push(entry({ id: 'notes:refreshing', section: 'notes', label: t.palette.readingNotes, isBusy: true, run: () => {} }))
+  if (input.notesProblem) found.push(entry({ id: 'notes:refresh-failed', section: 'notes', label: t.palette.notesRefreshFailed, run: () => input.onGo(ROUTES.notes) }))
+  if (notes.data.unreadable.length > 0) found.push(entry({ id: 'notes:unreadable', section: 'notes', label: t.palette.notesUnreadable, run: () => input.onGo(ROUTES.notes) }))
+
+  return found
+}
+
+const creates = (input: PaletteInput): PaletteEntry[] => [
+  entry({ id: 'create', section: 'create', label: '', run: () => {}, keys: '⌘N', fill: { label: t.palette.create, run: input.onNewQuest, start: null } }),
+  entry({ id: 'create:jot', section: 'create', label: '', run: () => {}, fill: { label: t.palette.jot, run: words => input.onJot(words, false), start: words => input.onJot(words, true) } }),
+]
 
 export const paletteEntries = (input: PaletteInput): PaletteEntry[] => {
   const { view, realms, selected } = input
   const others = realms.filter(row => row.key !== selected)
 
   return [
-    ...(view === null ? [] : [...suggestions(view, input), ...questEntries(view, input), ...actions(view, input), entry({ id: 'create', section: 'create', label: '', run: () => {}, fill: input.onNewQuest, keys: '⌘N' })]),
+    ...(view === null ? [] : [...suggestions(view, input), ...questEntries(view, input), ...actions(view, input), ...noteEntries(input), ...creates(input)]),
     ...GO_TO.map(place => entry({ id: `go:${place.route}`, section: 'goto', label: place.label, keys: place.keys, run: () => input.onGo(place.route) })),
     ...others.map(row => entry({ id: `realm:${row.key}`, section: 'realms', label: row.name, run: () => input.onPickRealm(row.key) })),
     entry({ id: 'file:open', section: 'actions', label: t.firstRun.open, keys: '⌘O', run: input.onOpenFolder }),
@@ -121,9 +163,9 @@ export const paletteEntries = (input: PaletteInput): PaletteEntry[] => {
 }
 
 // A quest's reason is about starting it, and opening it is always fine.
-export const canRun = (item: PaletteEntry): boolean => item.reason === null || item.section === 'quests'
+export const canRun = (item: PaletteEntry): boolean => !item.isBusy && (item.reason === null || item.section === 'quests')
 
-const SECTION_ORDER: readonly PaletteSection[] = ['quests', 'actions', 'goto', 'realms']
+const SECTION_ORDER: readonly PaletteSection[] = ['quests', 'actions', 'goto', 'realms', 'notes']
 
 // How well the words fit: from the start, then whole inside it, then letters in
 // order. 0 is no match.
@@ -142,15 +184,49 @@ export const matchScore = (text: string, query: string): number => {
   return 1
 }
 
-const scoreOf = (item: PaletteEntry, words: string): number => Math.max(matchScore(item.label, words), item.also === '' ? 0 : matchScore(item.also, words))
+// A note matches as Notes search does, every word in it, never by letters in
+// order; its title fitting the words ranks it higher.
+// shortcut: lower-cases every note on each key; keep a lower-cased copy per read if typing lags on a large vault.
+const noteScore = (note: Note, words: string): number => {
+  if (!matches(note, words)) return 0
+  const title = note.title.toLowerCase()
+  const needle = words.toLowerCase()
 
-// With nothing typed, the shortcuts; with words, what fits them, then Create.
+  return title.startsWith(needle) ? 3 : title.includes(needle) ? 2 : 1
+}
+
+const scoreOf = (item: PaletteEntry, words: string): number =>
+  item.note !== null ? noteScore(item.note, words) : Math.max(matchScore(item.label, words), item.also === '' ? 0 : matchScore(item.also, words))
+
+// The line of a note's text holding the first word its title lacks, cut to
+// PALETTE_SNIPPET letters around that word. Null when the title holds them all.
+export const snippetOf = (note: Note, query: string): string | null => {
+  const title = note.title.toLowerCase()
+  const word = query
+    .toLowerCase()
+    .split(/\s+/)
+    .find(word => word !== '' && !word.startsWith('#') && !title.includes(word))
+  if (word === undefined) return null
+  const line = note.body
+    .split('\n')
+    .map(line => line.trim())
+    .find(line => line.toLowerCase().includes(word))
+  if (line === undefined || line.length <= PALETTE_SNIPPET) return line ?? null
+  const from = Math.max(0, Math.min(line.toLowerCase().indexOf(word) - 20, line.length - PALETTE_SNIPPET))
+
+  return `${from > 0 ? '…' : ''}${line.slice(from, from + PALETTE_SNIPPET)}${from + PALETTE_SNIPPET < line.length ? '…' : ''}`
+}
+
+const isStatus = (item: PaletteEntry) => item.section === 'notes' && item.note === null
+
+// With nothing typed, the shortcuts; with words, what fits them, then whether
+// the notes are still being read, then Create.
 export const filterPalette = (entries: PaletteEntry[], query: string): PaletteEntry[] => {
   const words = query.trim()
   if (words === '') return entries.filter(item => item.section === 'suggested' || item.section === 'goto' || item.section === 'realms')
 
   const ranked = entries
-    .filter(item => item.section !== 'suggested' && item.section !== 'create')
+    .filter(item => item.section !== 'suggested' && item.section !== 'create' && !isStatus(item))
     .map(item => ({ item, score: scoreOf(item, words) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
@@ -158,8 +234,18 @@ export const filterPalette = (entries: PaletteEntry[], query: string): PaletteEn
   // wherever it is, and ties keep the order sections are listed in.
   const bestIn = (section: PaletteSection) => ranked.find(({ item }) => item.section === section)?.score ?? 0
   const order = [...SECTION_ORDER].sort((a, b) => bestIn(b) - bestIn(a))
-  const found = order.flatMap(section => ranked.filter(({ item }) => item.section === section).map(({ item }) => item))
-  const create = entries.find(item => item.section === 'create')
+  const found = order.flatMap(section => {
+    const inSection = ranked.filter(({ item }) => item.section === section).map(({ item }) => item)
 
-  return create === undefined ? found : [...found, { ...create, label: t.palette.create(words), run: () => create.fill?.(words) }]
+    return section === 'notes' ? inSection.slice(0, PALETTE_NOTE_ROWS).map(item => ({ ...item, detail: item.note === null ? null : snippetOf(item.note, words) })) : inSection
+  })
+  const made = entries.flatMap(item => {
+    const fill = item.fill
+    if (item.section !== 'create' || fill === null) return []
+    const { start } = fill
+
+    return [{ ...item, label: fill.label(words), run: () => fill.run(words), start: start === null ? null : () => start(words) }]
+  })
+
+  return [...found, ...entries.filter(isStatus), ...made]
 }

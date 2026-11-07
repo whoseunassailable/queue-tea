@@ -15,6 +15,8 @@ export type Toast = {
   tone: 'info' | 'success' | 'warning' | 'error'
   text: string
   action?: { label: string; run: () => void }
+  // Work still on its way stays visible until its caller dismisses it.
+  isBusy?: boolean
   // A badge: it stays longer, and Esc closes it.
   isLong?: boolean
 }

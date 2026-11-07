@@ -57,3 +57,6 @@ export const UPDATE_POLL_MS = 2_000
 export const NOTE_AUTOSAVE_MS = 800
 // How many notes the [[ link picker offers at once.
 export const NOTE_PICKER_ROWS = 8
+// How many notes the ⌘K palette lists, and how long a matching line it shows.
+export const PALETTE_NOTE_ROWS = 5
+export const PALETTE_SNIPPET = 60

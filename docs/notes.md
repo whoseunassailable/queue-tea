@@ -127,6 +127,7 @@ The screens are in `docs/notes.pen`, numbered as below, at the app's window size
 | Key | Where | What it does |
 | --- | --- | --- |
 | ⌘7 | Anywhere | Opens Notes. The View menu and the palette's Go to list it |
+| ⌘K | Anywhere | Finds notes by title, text and tags; offers New note and Jot into Inbox |
 | ⇧⌘N | Anywhere | A new "Untitled" note in Inbox, title selected (File › New note) |
 | ⌘J | Notes | Puts the cursor in the capture line |
 | ⌘F | Notes | Puts the cursor in search (Edit › Find). Esc in search clears it |
@@ -159,7 +160,7 @@ Each field checks itself when it loses focus and shows its error under it. An ac
 | Sheet: quest title * | Not empty, up to 200 | "Quest title is required." / "A quest title can be 200 characters at most." |
 | Sheet: the rows | At least one ticked, at most 50 | "Pick at least one quest to file." / "You can file 50 quests at most at once.", shown above the buttons |
 
-A captured idea becomes a note's title when it fits as one: one line, 80 characters or fewer, without `[ ] | #`. Otherwise the title is its first 80 characters, cut at a word, without those characters and ending in "…", and the whole idea goes in the body. A taken title gets " 2", " 3" and so on.
+A captured idea uses its first line as the title, with `[ ] | #` replaced by spaces and repeated spaces collapsed. A title longer than 80 characters is cut at a word when possible and ends in "…". An empty cleaned title becomes **Untitled**. The whole trimmed idea goes in the body when it differs from the title. A taken title gets " 2", " 3" and so on.
 
 ## Behaviour
 
@@ -185,7 +186,7 @@ The feature follows `docs/architecture.md` and the app's layers:
 | Window rules | `app/renderer/features/notes/domain/` | The list's folders and order, search, the picker's matches, the field checks, the capture title |
 | Screens | `app/renderer/features/notes/presentation/` | The page, the list, the editor, the inspector, BrewQuest, the sheet and the dialogs |
 
-Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook`, and main's messages in `app/main/core/messages.ts`. The route `/notes` is in `app/renderer/config/routing/routes.ts`. The tab and ⌘7 are in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts`. The values are `NOTE_AUTOSAVE_MS` (800) and `NOTE_PICKER_ROWS` (8), and the widths are `DETAIL_FLOATS_BELOW` (1,180) and `DETAIL_IS_PAGE_BELOW` (900), all in `app/renderer/core/constants/constants.ts`. ⇧⌘N from any screen goes through `app/renderer/features/notes/presentation/state_management/new_note.ts`, and File › New note sends the same key.
+Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook` and `palette`, and main's messages in `app/main/core/messages.ts`. The route `/notes` is in `app/renderer/config/routing/routes.ts`. The tab and ⌘7 are in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts`. The values are `NOTE_AUTOSAVE_MS` (800), `NOTE_PICKER_ROWS` (8), `PALETTE_NOTE_ROWS` (5) and `PALETTE_SNIPPET` (60), and the widths are `DETAIL_FLOATS_BELOW` (1,180) and `DETAIL_IS_PAGE_BELOW` (900), all in `app/renderer/core/constants/constants.ts`. ⇧⌘N and the palette's new, open and jot requests go through `app/renderer/features/notes/presentation/state_management/notes_asks.ts`. File › New note sends the same key. A jot that stays on another screen is saved by `note_flows.ts` in that same folder.
 
 ## Acceptance checks
 
@@ -209,6 +210,7 @@ Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook`, and main
 18. BrewQuest's card never overlaps the text area at any window size.
 19. Window-supplied ids never become a path outside the realm's notes folder.
 20. `npm test`, `npm run typecheck` and `npm run e2e` pass in `app/`, along with the repository's checks.
+21. ⌘K finds the selected realm's live notes by title and text and opens the chosen note. New note and Jot work from another screen. Reading or failed notes leave other commands usable, and a failed jot can be retried with the same words.
 
 ## The Read view
 
@@ -219,6 +221,29 @@ Added after Notes 1, from the epic's first quest. **Write** and **Read** sit in 
 - **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). An image is a link that opens the picture in the browser until attachments come.
 - **Safety:** marked 18.1.1 only cuts the text into tokens. Every token becomes an element in the window, so nothing in a note runs as HTML: `<b>` shows as `<b>`.
 
+## Version history
+
+**History**, beside the save line, opens a 600 px sheet for the open note, including an archived note. Pending edits save before it opens; a failed save leaves the editor and its text in place. The sheet lists saved times newest first, with a read-only preview of the selected version's title, folder, tags and Markdown source. Text in a snapshot never runs as HTML. The current version is marked and cannot be restored over itself.
+
+Choose an earlier save, then **Restore this version** (or ⌘↩). This restores its title, folder, tags and text as a new save. The replaced note remains in History. Current quest links, archive status, creation time and other front-matter properties stay with the note, so restoring text cannot make already filed checklist items file again. A live note restored onto a taken title gets the next number, such as "Plan 2". A title change updates backlinks as a normal rename does.
+
+If the file changes or disappears after History opens, restore writes nothing. The sheet asks you to close History, check the current note, then open History again. Failed reads offer **Try again** where the list or preview was. A failed restore keeps the preview and lets you retry. While restoring, a spinner says "Restoring this version…" and the sheet's controls lock. Success closes the sheet and says "Version restored. The replaced note is in History."
+
+Tab and Shift-Tab stay inside the sheet. Esc and **Close history** close it and return focus to **History**, except while a restore is running. The saved times and preview scroll separately. Below 600 px they stack.
+
+Every write keeps a version, including creation, archive changes, quest links and rewritten backlinks. Before an imported or externally edited note is overwritten, its exact file is kept too. A note made outside Queue-tea has no history until its first save. An existing `.bak` joins that initial history and is removed after the live file saves successfully. Snapshots are Markdown files in `~/.queue-tea/notes/<realm key>/.history/<note id>/`, hidden from Notes and Obsidian's normal file list. Each file name holds a save time and a SHA-1 content stamp; a missing or damaged snapshot is refused when opened or restored.
+
+The limit is 100 versions per note: 50 recent saves, then up to 24 older versions from distinct hours, then up to 26 from distinct days. Extra versions are pruned after a successful write. The hour and day buckets use UTC. This preserves older recovery points through bursts of 800 ms autosaves. A failed replacement can leave a recoverable snapshot of the attempted save; the live file stays intact. **Delete forever…** removes the note's entire history too.
+
+The shared contract adds `NoteVersion` and `readNoteHistory`, `readNoteVersion`, `restoreNoteVersion` to the engine API. Reads and restores run in the same queue as saves, so the app cannot prune a version midway through reading it. Restore takes the current file stamp and returns the same saved-or-changed result as `saveNote`. Retention rules live in `app/main/features/notes/domain/note_history.ts`, the sheet in `app/renderer/features/notes/presentation/widgets/note_history.tsx`, and the policy constants in `app/shared/notes.ts`.
+
+Checks for this follow-up:
+
+1. Create and edit a note, open History, preview the earlier save and restore it. The file on disk matches the restored text, and the replaced text can still be previewed.
+2. Save repeatedly across hours and days, then in a rapid burst. At most 100 versions remain; old hourly and daily recovery points survive the burst.
+3. Restore after filing quests or archiving. Quest links and archive status stay current. A stale restore changes no file.
+4. Read history after reopening the API. Invalid realm, note or version ids cannot escape the notes folder. Damaged versions and failed writes show errors without corrupting the live note.
+5. Check loading, empty, failed, restoring and success states, keyboard focus, and the sheet at 760 px. Delete forever removes the history.
 
 ## Templates, types and pinned notes
 
@@ -240,3 +265,33 @@ Added after Notes 1, from the epic's "templates and pinned notes" quest.
 - **Pinned notes:** **Pin note** at the foot of the inspector saves at once and puts the note in a **Pinned** group at the top of the list, where its row also names its folder. A pinned note shows only there, not in its folder as well. **Unpin note** puts it back. An archived note keeps its pin for when it's restored, and the archived list shows it in its folder.
 - **Renaming a folder:** every folder but Inbox has **Rename**, which shows when you point at the folder or tab to it, including in Archived. When all its live notes are pinned, open one and use **Rename folder** under Folder in the inspector. The dialog asks for the new name, required and checked as the Folder field is, with any error under it. Every note in the folder moves, archived ones too, and a name already in use puts the two folders together. If the open note is in the folder, it saves first; if it can't, nothing is renamed and the dialog says so. A failure part way leaves the notes already moved in the new folder; pressing **Rename folder** again moves the rest. Renaming doesn't change a note's edited time.
 - **Moving a note keeps its links:** a link names a note by its title, and every file sits at the top of the realm's folder whatever its folder, so changing a note's Folder field or renaming its folder never changes a link.
+## Notes in the command palette
+
+Open ⌘K from any screen and type words from a note. The palette reads only the selected realm's notes, when it opens and when the engine announces a change. Search follows Notes search: every word must appear in the title, text or tags, ignoring case; `#word` matches tags only. Archived notes stay out. Title matches rank above text matches, with the newest edited note first among equal matches. Up to five notes appear. A text match shows its matching line, cut to 60 characters with ellipses when needed.
+
+↑ and ↓ choose a result. Return or ⌘Return opens that note on **Notes**, including when another note is already open. Type **New note** to make an **Untitled** note in Inbox with its title selected. Its ⇧⌘N shortcut works from every screen too. These actions use the selected realm; without one, the palette still offers navigation.
+
+With words typed, the **Create** section offers both **New quest** and **Jot into Inbox**. Return on Jot saves the idea into Inbox and stays on the current screen. ⌘Return saves it and opens it on Notes. The title and body follow the capture line's rules. From another screen, a spinner and **Jotting your idea into Inbox…** stay visible until the save answers. Success offers **Open**; failure offers **Try again** with the same words and realm. Open returns to the note's realm even if you have switched realms since saving it.
+
+While notes load, the palette shows **Reading your notes…** and leaves its other commands usable. A failed read offers to open Notes to try again. If a refresh fails, the last results stay with a warning. If only some files fail, readable notes stay available and a row opens Notes to see which files need attention. A search without note matches suggests other words or jotting the idea into Inbox.
+
+## Not in Notes 1
+
+The calendar, meetings, ICS or Google sync, reminders, attachments and images, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+
+## Answered
+
+Mocha Mockup's four open questions, as Notes 1 settles them:
+
+1. **Titles are unique** among notes that aren't archived, ignoring case. The title field says so under it on blur, and main refuses a rename onto a taken title. A new note, a captured idea, Make it and Save as new note take the next number ("Plan 2"), and so does a note restored onto a taken title. Files made outside the app can still share a title; then a link means the newest, and renaming leaves those links alone.
+2. **Queue-tea writes `aliases`**, with the title first, so Obsidian follows `[[Title]]` to the `n-…` files.
+3. **A parent that's done or gone takes no more quests.** New lines go under a new parent named after the note (or make one quest, for one line). Main checks the record too: a `new` parent becomes the note's own quest while that quest is open.
+4. **The file name is the id.** There is no `id` field.
+
+## What Notes 1 builds
+
+Everything in the screens and the acceptance checks above, with these small differences:
+
+- **Filing that stops part way** shows main's message in the sheet's banner, locks the rows that went in ("Filed already. Try again files only the rest.") and turns the button into **Try again**. It doesn't count "2 of 3 quests are filed" in the banner itself.
+- **The empty page** names the notes folder by its full path, not from `~`.
+- **Loading** shows straight away, without the 150 ms wait.

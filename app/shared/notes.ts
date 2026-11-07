@@ -6,16 +6,20 @@ import type { ProjectView } from './engine_api'
 export const NOTES_FOLDER = '.queue-tea/notes'
 export const INBOX = 'Inbox'
 export const NOTE_LIMITS = { title: 200, folder: 60, tag: 40, tags: 20, item: 500, body: 1_000_000, notes: 5000, quests: 50 } as const
+// What a note is, apart from where it's kept: each has a template.
+export const NOTE_TYPES = ['idea', 'feature', 'bug', 'meeting', 'research', 'decision', 'daily'] as const
+export type NoteType = (typeof NOTE_TYPES)[number]
+export const noteTypeOf = (value: unknown): NoteType | null => NOTE_TYPES.find(type => typeof value === 'string' && type === value.trim().toLowerCase()) ?? null
 
 // item is the checklist line a quest was filed from; null for the note's own
 // quest, which is the parent of the rest or the only one.
 export type NoteQuest = { id: string; item: string | null }
 // id is the file's name without .md. stamp is the file as it was read.
-export type Note = { id: string; title: string; folder: string; tags: string[]; created: string; updated: string; isArchived: boolean; quests: NoteQuest[]; body: string; stamp: string }
+export type Note = { id: string; title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; created: string; updated: string; isArchived: boolean; quests: NoteQuest[]; body: string; stamp: string }
 // unreadable: the files in the folder that couldn't be read, by name.
 export type NotesView = { notes: Note[]; unreadable: string[]; folder: string }
-export type NoteInput = { title: string; folder: string; body: string }
-export type NoteChange = { title: string; folder: string; tags: string[]; body: string }
+export type NoteInput = { title: string; folder: string; body: string; type?: NoteType | null }
+export type NoteChange = { title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; body: string }
 // changed: the file isn't the one the editor read; note is the file now, or null when it's gone.
 // relinked: how many other notes had their links to it rewritten by a rename.
 export type NoteSave = { kind: 'saved'; view: NotesView; note: Note; relinked: number } | { kind: 'changed'; note: Note | null }

@@ -3,8 +3,27 @@ import type { Token, Tokens } from 'marked'
 import { describe, expect, it } from 'vitest'
 
 import type { ReadableView } from '../../workspace/state_management/workspace_store'
+import { NOTE_TYPES } from '../../../../shared/notes'
+import { t } from '../../../l10n/en'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
-import { captureOf, folderError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, titleError, toggleTaskAt, withLink } from './notes_view'
+import { captureOf, folderError, folderNameError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink } from './notes_view'
+
+describe('note templates', () => {
+  it.each(NOTE_TYPES)('starts a %s note with its own text and leaves the folder alone', type => {
+    const patch = templateChange(type, 'My note', [], 'me', '2026-11-07')
+
+    expect(patch).toEqual({ type, body: t.notebook.templates[type] })
+    expect(patch.body!.length).toBeGreaterThan(20)
+  })
+
+  it('gives an untitled daily note today’s next free title, leaving a chosen title alone', () => {
+    const notes = [note({ title: '2026-11-07' }), note({ id: 'next', title: '2026-11-07 2' })]
+
+    expect(templateChange('daily', 'Untitled 2', notes, 'me', '2026-11-07').title).toBe('2026-11-07 3')
+    expect(templateChange('daily', 'My journal', notes, 'me', '2026-11-07').title).toBeUndefined()
+    expect(templateChange('idea', 'Untitled', notes, 'me', '2026-11-07').title).toBeUndefined()
+  })
+})
 
 describe('quick capture', () => {
   it('makes the line the title when it fits, with no body', () => {
@@ -31,6 +50,13 @@ describe('checks', () => {
   it('a folder is one level', () => {
     expect(folderError('a/b')).toBe('A folder is one level, so leave out /.')
     expect(folderError('Research')).toBeUndefined()
+  })
+
+  it('a renamed folder must have a name within the folder limits', () => {
+    expect(folderNameError('  ')).toBe(t.notebook.folderRequired)
+    expect(folderNameError('a/b')).toBe(t.notebook.folderSlash)
+    expect(folderNameError('x'.repeat(61))).toBe(t.notebook.folderLong)
+    expect(folderNameError('Plans')).toBeUndefined()
   })
 
   it('tags come from commas, without # or repeats, with spaces as -', () => {
@@ -86,6 +112,20 @@ describe('the picker’s order', () => {
 })
 
 describe('the list', () => {
+  it('shows pins once at the top, newest first, with a real folder named Pinned kept separate', () => {
+    const notes = [note({ id: 'old', isPinned: true, updated: '1' }), note({ id: 'new', folder: 'Inbox', isPinned: true, updated: '2' }), note({ id: 'inbox', folder: 'Inbox' }), note({ id: 'named', folder: 'Pinned' })]
+
+    expect(foldersOf(notes, '', false).map(g => [g.folder, g.notes.map(n => n.id)])).toEqual([[null, ['new', 'old']], ['Inbox', ['inbox']], ['Pinned', ['named']]])
+  })
+
+  it('searches pinned notes too, and archived pins show in their own folder', () => {
+    const notes = [note({ id: 'pin', isPinned: true, tags: ['special'] }), note({ id: 'archive', isPinned: true, isArchived: true, folder: 'Old' })]
+
+    expect(foldersOf(notes, '#special', false).map(g => [g.folder, g.notes.map(n => n.id)])).toEqual([[null, ['pin']]])
+    expect(foldersOf(notes, 'missing', false)).toEqual([])
+    expect(foldersOf(notes, '', true).map(g => [g.folder, g.notes.map(n => n.id)])).toEqual([['Old', ['archive']]])
+  })
+
   it('a #word in search matches tags only', () => {
     expect(matches(note({ body: '#security in text', tags: [] }), '#security')).toBe(false)
     expect(matches(note({ tags: ['security'] }), '#sec')).toBe(true)

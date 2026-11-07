@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emptyRecord, parseRecord } from '../../../../../hooks/shared/records/data/datasources/record_source'
 import type { Reply } from '../../../../shared/engine_api'
@@ -10,6 +10,7 @@ import type { NoteChange, NotesView } from '../../../../shared/notes'
 import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import { notesApi } from './notes_api'
+import type { NotesDeps } from './notes_api'
 
 const KEY = 'demo-abc123'
 const NOW = Date.parse('2026-11-07T12:00:00Z')
@@ -30,9 +31,15 @@ const refused = <T>(answer: Reply<T>): string => {
 
   return answer.error.message
 }
-const change = (over: Partial<NoteChange> = {}): NoteChange => ({ title: 'Plan', folder: 'Ideas', tags: [], body: 'Body', ...over })
+const change = (over: Partial<NoteChange> = {}): NoteChange => ({ title: 'Plan', folder: 'Ideas', type: null, isPinned: false, tags: [], body: 'Body', ...over })
 const created = async (over: Partial<NoteChange> = {}) => data(await api.createNote(KEY, change(over)))
 const only = (view: NotesView, id: string) => view.notes.find(n => n.id === id)!
+const makeApi = (over: Partial<NotesDeps> = {}) => {
+  const log = createLogger('dev', () => {})
+  const host = nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' }))
+
+  return notesApi({ host, home, now: () => NOW, offsetMinutes: () => 60, log, newId: () => `t-${(ids += 1)}`, newNoteId: () => `n-${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {}, prepareCodex: async () => [], reveal: path => void revealed.push(path), ...over })
+}
 
 beforeEach(async () => {
   home = await realpath(await mkdtemp(join(tmpdir(), 'queue-tea-notes-')))
@@ -40,12 +47,102 @@ beforeEach(async () => {
   ids = 0
   await mkdir(join(home, '.queue-tea/projects'), { recursive: true })
   await writeFile(join(home, '.queue-tea/projects', `${KEY}.json`), JSON.stringify(emptyRecord('demo', '/p/demo')))
-  const log = createLogger('dev', () => {})
-  const host = nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' }))
-  api = notesApi({ host, home, now: () => NOW, offsetMinutes: () => 60, log, newId: () => `t-${(ids += 1)}`, newNoteId: () => `n-${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {}, prepareCodex: async () => [], reveal: path => void revealed.push(path) })
+  api = makeApi()
 })
 
 afterEach(() => rm(home, { recursive: true, force: true }))
+
+describe('types, pins and folders on disk', () => {
+  it('keeps a type and pin across reopening, archiving, restoring and unpinning', async () => {
+    const { id, view } = await created({ type: 'bug' })
+    expect(only(view, id)).toMatchObject({ folder: 'Ideas', type: 'bug', isPinned: false })
+    data(await api.saveNote(KEY, id, change({ type: 'bug', isPinned: true }), only(view, id).stamp))
+    api = makeApi()
+    expect(only(data(await api.readNotes(KEY)), id)).toMatchObject({ type: 'bug', isPinned: true })
+    expect(only(data(await api.archiveNote(KEY, id, true)), id).isPinned).toBe(true)
+    const restored = only(data(await api.archiveNote(KEY, id, false)), id)
+    data(await api.saveNote(KEY, id, change({ type: 'bug', isPinned: false }), restored.stamp))
+
+    expect(await readFile(join(dir, `${id}.md`), 'utf8')).not.toMatch(/^pinned:/m)
+    expect(only(data(await makeApi().readNotes(KEY)), id)).toMatchObject({ type: 'bug', isPinned: false, body: 'Body' })
+  })
+
+  it('refuses an unknown type and a pin that is not a boolean before writing', async () => {
+    for (const over of [{ type: 'book' }, { type: {} }, { isPinned: 'true' }, { isPinned: 1 }]) {
+      expect((await api.createNote(KEY, { ...change(), ...over })).ok).toBe(false)
+    }
+    expect(data(await api.readNotes(KEY)).notes).toEqual([])
+  })
+
+  it('moves a note by folder while its title, links, aliases and pin stay the same', async () => {
+    const target = await created({ type: 'research', isPinned: true })
+    const source = await created({ title: 'Index', body: '[[Plan]] [[Plan#Risks|risks]]' })
+    const result = data(await api.saveNote(KEY, target.id, change({ folder: 'Research', type: 'research', isPinned: true }), only(target.view, target.id).stamp))
+    if (result.kind !== 'saved') throw new Error('should save')
+
+    expect(result.relinked).toBe(0)
+    expect(result.note).toMatchObject({ id: target.id, title: 'Plan', folder: 'Research', type: 'research', isPinned: true })
+    expect(only(result.view, source.id).body).toBe('[[Plan]] [[Plan#Risks|risks]]')
+    expect(await readFile(join(dir, `${target.id}.md`), 'utf8')).toContain('aliases: ["Plan"]')
+  })
+
+  it('renames every note in a folder, including archived pins, and merges into an existing folder', async () => {
+    const first = await created({ title: 'One', type: 'idea', isPinned: true })
+    const second = await created({ title: 'Two' })
+    await api.archiveNote(KEY, second.id, true)
+    const index = await created({ title: 'Index', folder: 'Plans', body: '[[One]] [[Two#Heading|two]]' })
+    const before = await readFile(join(dir, `${index.id}.md`), 'utf8')
+    const renamed = data(await api.renameFolder(KEY, 'Ideas', ' Plans '))
+
+    expect(only(renamed, first.id)).toMatchObject({ folder: 'Plans', type: 'idea', isPinned: true, updated: only(first.view, first.id).updated })
+    expect(only(renamed, second.id)).toMatchObject({ folder: 'Plans', isArchived: true })
+    expect(await readFile(join(dir, `${index.id}.md`), 'utf8')).toBe(before)
+    expect((await readdir(dir)).filter(name => name.endsWith('.md')).sort()).toEqual([`${first.id}.md`, `${second.id}.md`, `${index.id}.md`].sort())
+    expect(data(await makeApi().readNotes(KEY)).notes.every(note => note.folder === 'Plans')).toBe(true)
+  })
+
+  it('rejects empty, nested and overlong folder names, and keeps Inbox fixed', async () => {
+    await created()
+    for (const to of ['', '  ', 'a/b', 'x'.repeat(61), 4]) expect((await api.renameFolder(KEY, 'Ideas', to)).ok).toBe(false)
+    expect((await api.renameFolder(KEY, 'Inbox', 'Other')).ok).toBe(false)
+    expect((await api.renameFolder('../outside', 'Ideas', 'Plans')).ok).toBe(false)
+    expect(data(await api.readNotes(KEY)).notes[0]!.folder).toBe('Ideas')
+  })
+
+  it('does not let an editor with a stale stamp undo a folder rename', async () => {
+    const { id, view } = await created()
+    await api.renameFolder(KEY, 'Ideas', 'Plans')
+    const result = data(await api.saveNote(KEY, id, change({ body: 'Stale' }), only(view, id).stamp))
+
+    expect(result).toMatchObject({ kind: 'changed', note: { folder: 'Plans', body: 'Body' } })
+  })
+
+  it('serializes a pin save and folder rename without losing either change', async () => {
+    const { id, view } = await created()
+    const [saved, renamed] = await Promise.all([api.saveNote(KEY, id, change({ isPinned: true }), only(view, id).stamp), api.renameFolder(KEY, 'Ideas', 'Plans')])
+
+    expect(data(saved).kind).toBe('saved')
+    expect(only(data(renamed), id)).toMatchObject({ folder: 'Plans', isPinned: true })
+  })
+
+  it('reports a partial rename and retries the remaining notes without rewriting moved ones', async () => {
+    const first = await created({ title: 'One' })
+    const second = await created({ title: 'Two' })
+    const log = createLogger('dev', () => {})
+    const host = nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' }))
+    const write = vi.spyOn(host, 'write').mockImplementation(async (path, text) => {
+      if (path === join(dir, `${second.id}.md.tmp`)) throw new Error('disk full')
+      await writeFile(path, text)
+    })
+    api = makeApi({ host })
+    expect(refused(await api.renameFolder(KEY, 'Ideas', 'Plans'))).toContain('Any notes already moved')
+    expect(only(data(await api.readNotes(KEY)), first.id).folder).toBe('Plans')
+    expect(only(data(await api.readNotes(KEY)), second.id).folder).toBe('Ideas')
+    write.mockRestore()
+
+    expect(data(await api.renameFolder(KEY, 'Ideas', 'Plans')).notes.every(note => note.folder === 'Plans')).toBe(true)
+  })
+})
 
 describe('reading notes', () => {
   it('a realm with no notes yet has none, and says where they will live', async () => {

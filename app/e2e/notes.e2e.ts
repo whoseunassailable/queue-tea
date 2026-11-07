@@ -151,3 +151,48 @@ test('⌘E reads the note, and ticking a box there writes [x] into the file', as
   await expect(page.getByRole('combobox', { name: 'Note' })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('a template, folder move, rename and pin survive reopening, with links still opening', async () => {
+  await page.getByRole('button', { name: 'New note', exact: true }).click()
+  const templates = page.getByRole('group', { name: 'Start from a template' })
+  await templates.getByRole('button', { name: 'Bug', exact: true }).click()
+  const body = page.getByRole('combobox', { name: 'Note' })
+  await expect(body).toHaveValue(/## Steps to reproduce/)
+  await expect(page.getByLabel('Type', { exact: true })).toHaveValue('bug')
+  await page.getByLabel('Title *').fill('Incident review')
+  await page.getByLabel('Title *').press('Tab')
+  await body.fill('## Steps to reproduce\n\nSee [[Threat model]].\n\n- [ ] Reproduce')
+  await page.getByLabel('Folder', { exact: true }).fill('Incidents')
+  await page.getByLabel('Folder', { exact: true }).press('Tab')
+  await expect(page.getByRole('region', { name: 'Incidents' })).toBeVisible()
+  await page.getByRole('button', { name: 'Rename the folder Incidents' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Rename Incidents' })
+  await dialog.getByLabel('Folder name *').fill('Casebook')
+  await dialog.getByRole('button', { name: 'Rename folder', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('Casebook')
+  await page.getByRole('button', { name: 'Pin note', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Pinned', exact: true }).getByRole('button', { name: /^Incident review/ })).toBeVisible()
+
+  const saved = async () => {
+    const files = await Promise.all((await noteFiles()).map(name => readFile(join(notesDir(), name), 'utf8')))
+
+    return files.find(text => text.includes('title: "Incident review"')) ?? ''
+  }
+  expect(await saved()).toContain('type: "bug"')
+  expect(await saved()).toContain('folder: "Casebook"')
+  expect(await saved()).toContain('pinned: true')
+  expect(await saved()).toContain('[[Threat model]]')
+
+  await page.reload()
+  await expect(page.getByLabel('Title *')).toHaveValue('Incident review')
+  await expect(page.getByLabel('Type', { exact: true })).toHaveValue('bug')
+  await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('Casebook')
+  await page.getByRole('button', { name: 'Unpin note', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Casebook' }).getByRole('button', { name: /^Incident review/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
+  await page.locator('.nt-read').getByRole('button', { name: 'Threat model', exact: true }).click()
+  await expect(page.getByLabel('Title *')).toHaveValue('Threat model')
+  await expect(page.getByRole('complementary', { name: 'About this note' }).getByRole('button', { name: 'Incident review', exact: true })).toBeVisible()
+  expect(errors).toEqual([])
+})

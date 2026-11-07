@@ -383,6 +383,7 @@ export type EngineApi = {
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
   saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
+  renameFolder: (key: string, from: string, to: string) => Promise<Reply<NotesView>>
   deleteNote: (key: string, id: string) => Promise<Reply<NotesView>>
   fileNoteQuests: (key: string, id: string, proposal: QuestProposal) => Promise<Reply<NoteFiled>>
   // What arrived before the window was listening.
@@ -480,6 +481,7 @@ export const CHANNELS = {
   createNote: 'engine:create-note',
   saveNote: 'engine:save-note',
   archiveNote: 'engine:archive-note',
+  renameFolder: 'engine:rename-folder',
   deleteNote: 'engine:delete-note',
   fileNoteQuests: 'engine:file-note-quests',
   takeOpened: 'engine:take-opened',

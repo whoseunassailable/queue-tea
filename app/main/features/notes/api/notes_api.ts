@@ -4,8 +4,8 @@ import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usec
 import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { ParentPick } from '../../../../../types'
 import type { Reply } from '../../../../shared/engine_api'
-import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, NOTES_FOLDER, renameLinks } from '../../../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesView, ProposedQuest } from '../../../../shared/notes'
+import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, NOTES_FOLDER, noteTypeOf, renameLinks } from '../../../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesView, NoteType, ProposedQuest } from '../../../../shared/notes'
 import { projectsFolder } from '../../../core/constants'
 import { inGameWords, MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
@@ -23,15 +23,25 @@ const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 
 // Everything from the window is checked again here: the editor's checks are
 // for the person writing, these are for the file.
+const folderNameOf = (value: unknown): string => {
+  const folder = typeof value === 'string' ? value.trim().replace(/[\r\n]/g, ' ') : ''
+  if (folder.length > NOTE_LIMITS.folder) throw new Refusal(MESSAGES.noteFolderLong)
+  if (NOTE_FOLDER_BAD.test(folder)) throw new Refusal(MESSAGES.noteFolderBad)
+
+  return folder
+}
+
 const changeOf = (value: unknown): NoteChange => {
   const v = (value ?? {}) as Record<string, unknown>
   const title = typeof v.title === 'string' ? v.title.trim() : ''
   if (title === '') throw new Refusal(MESSAGES.noteTitleRequired)
   if (title.length > NOTE_LIMITS.title) throw new Refusal(MESSAGES.noteTitleLong)
   if (NOTE_TITLE_BAD.test(title)) throw new Refusal(MESSAGES.noteTitleBad)
-  const folder = typeof v.folder === 'string' ? v.folder.trim().replace(/[\r\n]/g, ' ') : ''
-  if (folder.length > NOTE_LIMITS.folder) throw new Refusal(MESSAGES.noteFolderLong)
-  if (NOTE_FOLDER_BAD.test(folder)) throw new Refusal(MESSAGES.noteFolderBad)
+  const folder = folderNameOf(v.folder)
+  const type = v.type ?? null
+  if (type !== null && noteTypeOf(type) !== type) throw new Refusal(MESSAGES.badValue)
+  const isPinned = v.isPinned ?? false
+  if (typeof isPinned !== 'boolean') throw new Refusal(MESSAGES.badValue)
   if (typeof v.body !== 'string') throw new Refusal(MESSAGES.badValue)
   if (v.body.length > NOTE_LIMITS.body) throw new Refusal(MESSAGES.noteTooLong)
   const given = v.tags ?? []
@@ -40,7 +50,7 @@ const changeOf = (value: unknown): NoteChange => {
   if (tags.some(tag => tag.length > NOTE_LIMITS.tag)) throw new Refusal(MESSAGES.noteTagLong)
   if (tags.length > NOTE_LIMITS.tags) throw new Refusal(MESSAGES.noteTooManyTags)
 
-  return { title, folder: folder === '' ? INBOX : folder, tags, body: v.body }
+  return { title, folder: folder === '' ? INBOX : folder, type: type as NoteType | null, isPinned, tags, body: v.body }
 }
 
 const proposedOf = (value: unknown): ProposedQuest[] => {
@@ -120,7 +130,7 @@ export const notesApi = (d: NotesDeps) => {
     return { loaded, unreadable }
   }
 
-  const noteOf = ({ id, file, text }: Loaded): Note => ({ id, title: file.title, folder: file.folder, tags: file.tags, created: file.created, updated: file.updated, isArchived: file.isArchived, quests: file.quests, body: file.body, stamp: stampOf(text) })
+  const noteOf = ({ id, file, text }: Loaded): Note => ({ id, title: file.title, folder: file.folder, type: file.type, isPinned: file.isPinned, tags: file.tags, created: file.created, updated: file.updated, isArchived: file.isArchived, quests: file.quests, body: file.body, stamp: stampOf(text) })
 
   const titlesOf = async (key: string) => (await loadAll(key)).loaded.map(one => ({ id: one.id, title: one.file.title, isArchived: one.file.isArchived }))
 
@@ -243,6 +253,22 @@ export const notesApi = (d: NotesDeps) => {
         // A note restored while another has its title comes back numbered.
         const title = isArchived ? one.file.title : freeTitle(await titlesOf(realm), one.file.title, one.id)
         await write(realm, one.id, { ...one.file, title, isArchived })
+
+        return viewOf(realm)
+      }),
+
+    // Moves every note in a folder, archived ones too, to another; onto one
+    // that's there already, the two become one. Links name a note by title and
+    // the files stay where they are, so every link still works.
+    renameFolder: (key: unknown, from: unknown, to: unknown): Promise<Reply<NotesView>> =>
+      inTurn(MESSAGES.renameFolder, async () => {
+        const realm = await realmOf(key)
+        // Inbox keeps its name: new notes land there.
+        if (typeof from !== 'string' || from === '' || from === INBOX) throw new Refusal(MESSAGES.badValue)
+        const name = folderNameOf(to)
+        if (name === '') throw new Refusal(MESSAGES.noteFolderRequired)
+        for (const one of (await loadAll(realm)).loaded.filter(one => one.file.folder === from)) await write(realm, one.id, { ...one.file, folder: name })
+        d.log.debug(`notes folder renamed: ${from} → ${name}`)
 
         return viewOf(realm)
       }),

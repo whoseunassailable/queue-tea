@@ -82,6 +82,8 @@ See [[Sensor sampling rates]] for why 100 Hz misses the short lifts.
 | --- | --- |
 | `title` | The note's name, up to 200 characters, without `[`, `]`, `|` or `#`. Without it, the title is the file name |
 | `folder` | One level of free text, up to 60 characters. `Inbox` when missing |
+| `type` | `idea`, `feature`, `bug`, `meeting`, `research`, `decision` or `daily`, written only when set. Any other value, such as `type: book` from Obsidian, is kept as it was until a type is picked here |
+| `pinned` | `true` when the note is pinned, and written only then |
 | `tags` | Up to 20 tags of up to 40 characters, without `#`. A comma-separated string reads too |
 | `created`, `updated` | ISO times. Without them, the file's time is used |
 | `archived` | `true` or `false`. Missing reads as `false` |
@@ -215,6 +217,27 @@ Added after Notes 1, from the epic's first quest. **Write** and **Read** sit in 
 - **Boxes:** ticking a box writes `[x]` into that line of the Markdown, or `[ ]` back, and saves as typing does. A box in an archived note can't be ticked. The boxes are counted in the order they're drawn, leaving out lines in fenced code, so the right line changes.
 - **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). An image is a link that opens the picture in the browser until attachments come.
 - **Safety:** marked 18.1.1 only cuts the text into tokens. Every token becomes an element in the window, so nothing in a note runs as HTML: `<b>` shows as `<b>`.
+
+## Templates, types and pinned notes
+
+Added after Notes 1, from the epic's "templates and pinned notes" quest.
+
+- **Types:** a note can be an Idea, Feature, Bug, Meeting, Research, Decision or Daily note, or none. The type is its own setting, apart from the folder, so a Bug note can sit in any folder. The inspector's **Type** list changes it and never touches the text. The editor's head shows it after the folder.
+- **Templates:** a note with no text and no type shows **Start from a template** under the editor, with a button for each type. A button sets the type, fills in the template's headings and puts the cursor under the first. A Daily note still called Untitled takes today's date as its title ("2026-11-07"), numbered when that's taken. Once the note has text, the row goes. The templates' text is in `app/renderer/l10n/en.ts`.
+
+| Type | The template's headings |
+| --- | --- |
+| Idea | The idea, Why it matters, Next steps (a checklist) |
+| Feature | Goal, What it does (a checklist), Open questions |
+| Bug | Steps to reproduce, Expected, Actual, Fix (a checklist) |
+| Meeting | Attendees, Notes, Actions (a checklist) |
+| Research | Question, Sources, Findings, Still open |
+| Decision | Context, Options, Decision, Consequences |
+| Daily | Today (a checklist), Notes, Done |
+
+- **Pinned notes:** **Pin note** at the foot of the inspector saves at once and puts the note in a **Pinned** group at the top of the list, where its row also names its folder. A pinned note shows only there, not in its folder as well. **Unpin note** puts it back. An archived note keeps its pin for when it's restored, and the archived list shows it in its folder.
+- **Renaming a folder:** every folder but Inbox has **Rename**, which shows when you point at the folder or tab to it, including in Archived. When all its live notes are pinned, open one and use **Rename folder** under Folder in the inspector. The dialog asks for the new name, required and checked as the Folder field is, with any error under it. Every note in the folder moves, archived ones too, and a name already in use puts the two folders together. If the open note is in the folder, it saves first; if it can't, nothing is renamed and the dialog says so. A failure part way leaves the notes already moved in the new folder; pressing **Rename folder** again moves the rest. Renaming doesn't change a note's edited time.
+- **Moving a note keeps its links:** a link names a note by its title, and every file sits at the top of the realm's folder whatever its folder, so changing a note's Folder field or renaming its folder never changes a link.
 
 ## Not in Notes 1
 

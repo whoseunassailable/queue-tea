@@ -213,12 +213,38 @@ Added after Notes 1, from the epic's first quest. **Write** and **Read** sit in 
 
 - **What it draws:** headings, paragraphs, bold, italic, struck text, inline code, lists (nested and numbered), checklists, quotes, Obsidian callouts (`> [!warning] Title`), tables with their alignment, fenced code and rules.
 - **Boxes:** ticking a box writes `[x]` into that line of the Markdown, or `[ ]` back, and saves as typing does. A box in an archived note can't be ticked. The boxes are counted in the order they're drawn, leaving out lines in fenced code, so the right line changes.
-- **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). An image is a link that opens the picture in the browser until attachments come.
+- **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). Local files follow the attachment rules below. A remote image remains a link that opens in the browser.
 - **Safety:** marked 18.1.1 only cuts the text into tokens. Every token becomes an element in the window, so nothing in a note runs as HTML: `<b>` shows as `<b>`.
+
+## Attachments
+
+**Attach file…** sits between the title and body in a live note, in both Write and Read. Pick one or more files, drop them on the body, or paste a file from the clipboard. Ordinary text paste still writes text. The line beside the button says "Drop, paste or pick an image or PDF under 10 MB." An archived note can show and download files; restore it to attach another.
+
+The window checks the file before reading it, and main checks its bytes before storing it. Accepted image formats are PNG, JPEG, GIF, WebP, BMP, ICO, AVIF and SVG, plus PDF. When a name has an extension, it must match the content. A pasted image or picked PDF without an extension uses its file type and detected content. Each file must be less than 10,485,760 bytes. Rejected types show "Only image or PDF files are accepted." Sizes at or above the limit show "File must be under 10 MB." Errors appear beside the attachment control.
+
+Files live in `~/.queue-tea/notes/<realm key>/attachments/`. The name is the SHA-256 hash of the bytes, with the detected extension, so identical imports share one file. Main writes a temporary file, then publishes it without overwriting another writer's file. The body gets portable Markdown such as `![Diagram](<attachments/hash.png>)` or `[Report](<attachments/hash.pdf>)`; the label keeps the picked name. Write inserts it at the text selection, or at the end when the note is in Read, and saves it through the note's usual conflict checks. These links work in an Obsidian vault too.
+
+Read shows embedded images inline. A PDF has **Preview PDF**, which opens Electron's PDF viewer within the writing column, and **Close preview**. **Download** opens a save dialog for a copy. Existing files in the vault root or its `attachments` folder can be linked too, including other file types such as `[Table](table.csv)`, which offer Download. Such files also have the 10 MB read limit. Obsidian's `![[attachments/photo.png]]`, `[[attachments/report.pdf]]` and aliases after `|` are supported. Code spans and fenced code remain text.
+
+Attaching and reading show a spinner and the file name. Images and PDF previews show "Loading preview…" until they load. A file that cannot be read is named and has **Try again**. Upload errors appear under the picker. When a batch stops, retry starts at the failed file; another drop or paste during an import joins the batch. A failed note save keeps the inserted Markdown and offers the existing save or conflict choices.
+
+**Delete forever** removes only the note and its `.bak`. Every attachment stays, including files shared with another live or archived note, links in a backup, and files imported before a save failed. Remove unused files in the vault yourself when you no longer need them.
+
+The controls wrap at narrower widths. The image fits the writing column and the PDF frame fills its width. Tab reaches Attach file, then the body and its file controls; Enter or Space activates buttons. Progress uses status announcements and errors use alerts. No new keyboard shortcut or motion is introduced.
+
+### Attachment boundaries and design choice
+
+Embedding file bytes as data URLs would keep the API smaller but repeat the bytes in the window and complicate PDF previews. Opening every file in another app would lose inline previews. A private `note-file:` protocol keeps previews inside Notes and lets main check every file request. The window's sandbox and context isolation stay enabled; Electron's plugin setting enables its built-in PDF viewer.
+
+The shared contract is in `app/shared/note_attachments.ts`. The engine adds `attachNoteFile` (realm, live note id and file bytes), `readNoteFile` (realm and relative link, returning its path and detected kind) and `downloadNoteFile` (realm and link, returning false if the save dialog is cancelled). Replies use the existing engine error shape. Attachment import does not edit the note itself; its Markdown goes through `saveNote`, preserving the stamp and conflict flow.
+
+Binary storage lives in `app/main/features/notes/data/note_files.ts`. Main accepts only relative file names at the vault root or one level under `attachments`, excluding Markdown, hidden names and traversal. Resolved paths must stay within the vault, so a symlink cannot redirect a preview or import outside it. The private protocol serves detected images and PDFs only, with the detected MIME type, no caching and a content security policy. Other files reach only the download API. The window's policy admits this protocol for images and frames, and disables object embeds. No absolute file path is accepted from the window.
+
+Attachment checks cover validation, concurrent writers, reopening the API, shared-file retention and symlink escapes in the Notes API tests; drop, paste, retries and previews in component tests; and pick, paste, drop, rendered image pixels and the actual PDF viewer in `app/e2e/note_attachments.e2e.ts`. Run `npm test`, `npm run typecheck` and `npm run e2e` inside `app/`.
 
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, attachments and images, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates, version history and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates, version history and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

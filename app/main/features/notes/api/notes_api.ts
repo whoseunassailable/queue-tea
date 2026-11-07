@@ -15,8 +15,10 @@ import type { TasksDeps } from '../../tasks/api/scope'
 import { newQuestOf, parentOf } from '../../tasks/domain/task_input'
 import { noteText, parseNote } from '../domain/note_file'
 import type { NoteFile } from '../domain/note_file'
+import { filePathOf, noteFiles } from '../data/note_files'
+import type { NoteAttachment } from '../../../../shared/note_attachments'
 
-export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void }
+export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void; saveNoteFile?: (name: string, bytes: Uint8Array) => Promise<boolean> }
 
 const stampOf = (text: string) => createHash('sha1').update(text).digest('hex')
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
@@ -76,6 +78,7 @@ type Loaded = { id: string; file: NoteFile; text: string }
 // one there would hold Start until committed, and notes change all the time.
 // The folder opens as an Obsidian vault as it is.
 export const notesApi = (d: NotesDeps) => {
+  const files = noteFiles(d.home)
   const folderOf = (key: string) => `${d.home}/${NOTES_FOLDER}/${key}`
   const pathOf = (key: string, id: string) => `${folderOf(key)}/${id}.md`
   const nowText = () => isoLocal(d.now(), d.offsetMinutes())
@@ -184,6 +187,37 @@ export const notesApi = (d: NotesDeps) => {
   }
 
   return {
+    attachNoteFile: (key: unknown, id: unknown, file: unknown): Promise<Reply<NoteAttachment>> =>
+      inTurn(MESSAGES.attachNoteFile, async () => {
+        const realm = await realmOf(key)
+        const note = await known(realm, idOf(id))
+        if (note.file.isArchived) throw new Refusal(MESSAGES.archivedNoteFile)
+
+        return files.import(realm, file)
+      }),
+
+    readNoteFile: (key: unknown, href: unknown): Promise<Reply<NoteAttachment>> =>
+      reply(d.log, MESSAGES.readNoteFile, async () => {
+        const realm = await realmOf(key)
+        const path = filePathOf(href)
+        const file = await files.read(realm, path)
+
+        return { path, kind: file.kind }
+      }),
+
+    // Only main's private protocol uses the bytes; the window gets metadata.
+    serveNoteFile: (key: unknown, href: unknown) => reply(d.log, MESSAGES.readNoteFile, async () => files.read(await realmOf(key), filePathOf(href))),
+
+    downloadNoteFile: (key: unknown, href: unknown): Promise<Reply<boolean>> =>
+      reply(d.log, MESSAGES.downloadNoteFile, async () => {
+        const realm = await realmOf(key)
+        const path = filePathOf(href)
+        const file = await files.read(realm, path)
+        if (d.saveNoteFile === undefined) throw new Error('saveNoteFile is unavailable')
+
+        return d.saveNoteFile(path.split('/').at(-1)!, file.bytes)
+      }),
+
     readNotes: (key: unknown): Promise<Reply<NotesView>> => reply(d.log, MESSAGES.readNotes, async () => viewOf(await realmOf(key))),
 
     openLink: (url: unknown): Promise<Reply<null>> =>

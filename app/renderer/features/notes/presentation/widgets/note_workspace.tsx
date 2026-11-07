@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 
 import type { EngineApi } from '../../../../../shared/engine_api'
+import { noteFilePath } from '../../../../../shared/note_attachments'
 import { backlinksOf, INBOX, linksOf, noteTitled, proposalOf } from '../../../../../shared/notes'
 import type { Note, NoteChange, NoteFiled, NoteQuest, NotesView } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
@@ -14,6 +15,7 @@ import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkOption
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
+import { AttachmentInput } from './attachment_input'
 
 type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
@@ -351,10 +353,21 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
 
   const shown: Note = { ...note, ...draft }
   const backlinks = backlinksOf(notes, shown)
-  const links = linksOf(draft.body)
+  const links = linksOf(draft.body).filter(title => noteFilePath(title) === null || noteTitled(notes, title) !== undefined)
   const today = localDay(new Date())
   const yesterday = localDay(new Date(Date.now() - 86_400_000))
   const brewLine = brewLineOf(shown, proposalOf(shown, id => isInPlay(quests, id)))
+
+  const insertFile = async (markdown: string): Promise<void> => {
+    const body = latest.current.body
+    const from = area.current?.selectionStart ?? body.length
+    const to = area.current?.selectionEnd ?? from
+    const insert = `${from > 0 && body[from - 1] !== '\n' ? '\n\n' : ''}${markdown}\n\n`
+    change({ body: body.slice(0, from) + insert + body.slice(to) })
+    caret.current = from + insert.length
+    const saved = await flush()
+    if (!saved) actions.onHeld(note.id, { change: latest.current, stamp: stamp.current })
+  }
 
   return (
     <div class={isFloating ? 'nt-open floats' : 'nt-open'}>
@@ -462,8 +475,9 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             </p>
           )}
         </div>
+        <AttachmentInput engine={engine} realm={realm} id={note.id} isLive={isLive} onInsert={insertFile}>
         {isShowingRead ? (
-          <ReadView body={draft.body} notes={notes} isLive={isLive} onToggle={index => change({ body: toggleTaskAt(latest.current.body, index) })} onOpenNote={actions.onOpen} onOpenLink={actions.onOpenLink} />
+          <ReadView engine={engine} realm={realm} body={draft.body} notes={notes} isLive={isLive} onToggle={index => change({ body: toggleTaskAt(latest.current.body, index) })} onOpenNote={actions.onOpen} onOpenLink={actions.onOpenLink} />
         ) : (
           <div class="nt-body" ref={bodyBox}>
             <label for="nt-body" class="sr">
@@ -524,6 +538,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             )}
           </div>
         )}
+        </AttachmentInput>
         {isLive && (
           <footer class="nt-foot">
             <BrewQuestCard line={brewLine} onBrew={() => void brew()} />

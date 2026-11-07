@@ -1,19 +1,31 @@
 import type { ComponentChildren } from 'preact'
-import { lexer } from 'marked'
+import { Marked } from 'marked'
 import type { Token, Tokens } from 'marked'
 
 import { linkPartsOf, noteTitled } from '../../../../../shared/notes'
 import type { Note } from '../../../../../shared/notes'
+import type { EngineApi } from '../../../../../shared/engine_api'
+import { noteFilePath } from '../../../../../shared/note_attachments'
 import { t } from '../../../../l10n/en'
+import { NoteAttachment } from './note_attachment'
 
-type Props = { body: string; notes: readonly Note[]; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenLink: (url: string) => void }
+type Props = { engine: EngineApi; realm: string; body: string; notes: readonly Note[]; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenLink: (url: string) => void }
+
+// A tokenizer leaves file-looking text inside code alone. Normal [[note]]
+// links still follow the existing note-link renderer.
+const markdown = new Marked({ extensions: [{ name: 'noteFile', level: 'inline', start: text => text.search(/!?\[\[/), tokenizer(text) {
+  const found = /^(!?)\[\[([^\[\]|\n]+)(?:\|([^\]\n]*))?\]\]/.exec(text)
+  if (found === null || noteFilePath(found[2]!) === null) return undefined
+
+  return { type: 'noteFile', raw: found[0], href: found[2]!, text: found[3] || found[2]!.split('/').at(-1)!, embedded: found[1] === '!' }
+} }] })
 
 const CALLOUT = /^\[!(\w+)\][+-]?[ \t]*(.*)$/
 
 // A note as it reads. marked only cuts the Markdown into tokens; every token
 // becomes an element here, so nothing in a note is ever run as HTML: a tag in
 // the text shows as the text it is.
-export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink }: Props) => {
+export const ReadView = ({ engine, realm, body, notes, isLive, onToggle, onOpenNote, onOpenLink }: Props) => {
   // The boxes are numbered in the order they're drawn, which is the order
   // toggleTaskAt counts the lines in.
   let box = -1
@@ -67,10 +79,14 @@ export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink
         case 'br':
           return <br key={i} />
         case 'link':
+          if (noteFilePath(token.href) !== null) return <NoteAttachment key={`${realm}:${token.href}:${i}`} engine={engine} realm={realm} path={token.href} name={token.text} embedded={false} />
           return external(token.href, inline(token.tokens), i)
-        // Images wait for attachments: for now the picture opens in the browser.
         case 'image':
-          return external(token.href, `🖼 ${token.text === '' ? t.notebook.image : token.text}`, i, t.notebook.imageTitle)
+          if (noteFilePath(token.href) !== null) return <NoteAttachment key={`${realm}:${token.href}:${i}`} engine={engine} realm={realm} path={token.href} name={token.text || t.notebook.image} embedded />
+          return external(token.href, `🖼 ${token.text === '' ? t.notebook.image : token.text}`, i)
+        case 'noteFile':
+          if (!token.embedded && noteTitled(notes, token.href.split('#')[0]) !== undefined) return wiki(token.raw)
+          return <NoteAttachment key={`${realm}:${token.href}:${i}`} engine={engine} realm={realm} path={token.href} name={token.text} embedded={token.embedded} />
         case 'checkbox':
           return null
         default:
@@ -100,7 +116,7 @@ export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink
     return (
       <aside key={i} class={`nt-md-callout ${kind}`} aria-label={found[2] || kind}>
         <p class="nt-md-callout-title">{found[2] === '' ? kind.charAt(0).toUpperCase() + kind.slice(1) : wiki(found[2]!)}</p>
-        {blocks(lexer(rest.join('\n')))}
+        {blocks(markdown.lexer(rest.join('\n')))}
       </aside>
     )
   }
@@ -189,7 +205,7 @@ export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink
       }
     })
 
-  const tokens = lexer(body)
+  const tokens = markdown.lexer(body)
 
   return <article class="nt-read">{body.trim() === '' ? <p class="hint">{t.notebook.readEmpty}</p> : blocks(tokens)}</article>
 }

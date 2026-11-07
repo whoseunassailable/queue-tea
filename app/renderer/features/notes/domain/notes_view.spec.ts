@@ -1,8 +1,10 @@
+import { lexer } from 'marked'
+import type { Token, Tokens } from 'marked'
 import { describe, expect, it } from 'vitest'
 
 import type { ReadableView } from '../../workspace/state_management/workspace_store'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
-import { captureOf, folderError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, titleError, withLink } from './notes_view'
+import { captureOf, folderError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, titleError, toggleTaskAt, withLink } from './notes_view'
 
 describe('quick capture', () => {
   it('makes the line the title when it fits, with no body', () => {
@@ -48,6 +50,30 @@ describe('the link picker', () => {
   it('puts the title in and closes the link, over a ]] already there', () => {
     expect(withLink('See [[Pl and', 6, 8, 'Plan')).toEqual({ body: 'See [[Plan]] and', caret: 12 })
     expect(withLink('See [[]]', 6, 6, 'Plan')).toEqual({ body: 'See [[Plan]]', caret: 12 })
+  })
+})
+
+describe('ticking a box in the Read view', () => {
+  const body = ['- [ ] one', '- [x] two', '  - [ ] nested', '', '1. [ ] ordered', '', '> [!warning] Careful', '> - [ ] quoted', '', '```', '- [ ] not a task, in code', '```', '- [ ]', '* [ ] star'].join('\n')
+  // The boxes marked draws, in the order it draws them.
+  const boxes = (tokens: Token[]): Tokens.ListItem[] =>
+    tokens.flatMap(token => [...(token.type === 'list_item' && (token as Tokens.ListItem).task ? [token as Tokens.ListItem] : []), ...boxes([...('items' in token ? (token.items as Token[]) : []), ...('tokens' in token && token.type !== 'list_item' ? (token.tokens as Token[]) : []), ...(token.type === 'list_item' ? ((token as Tokens.ListItem).tokens ?? []) : [])])])
+
+  it('counts the lines in the order marked draws the boxes, leaving out code and empty boxes', () => {
+    const drawn = boxes(lexer(body)).map(item => item.text.split('\n')[0])
+
+    expect(drawn).toEqual(['one', 'two', 'nested', 'ordered', 'quoted', 'star'])
+    drawn.forEach((text, i) => {
+      const changed = toggleTaskAt(body, i).split('\n').filter((line, n) => line !== body.split('\n')[n])
+      expect(changed).toHaveLength(1)
+      expect(changed[0]).toContain(text)
+    })
+  })
+
+  it('ticks an open box and opens a ticked one, keeping the rest of the line', () => {
+    expect(toggleTaskAt('- [ ] one', 0)).toBe('- [x] one')
+    expect(toggleTaskAt('  - [X] two', 0)).toBe('  - [ ] two')
+    expect(toggleTaskAt('- [ ] one', 3)).toBe('- [ ] one')
   })
 })
 

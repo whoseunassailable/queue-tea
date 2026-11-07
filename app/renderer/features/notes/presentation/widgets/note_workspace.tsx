@@ -10,9 +10,10 @@ import { Field } from '../../../../core/widgets/field'
 import { Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { t } from '../../../../l10n/en'
-import { brewLineOf, folderError, isInPlay, linkLineOf, linkOptionsOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, titleError, whenOf, withLink } from '../../domain/notes_view'
+import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkOptionsOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, titleError, whenOf, withLink } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
+import { ReadView } from './read_view'
 
 type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
@@ -29,6 +30,7 @@ export type NoteActions = {
   onDelete: (note: Note) => void
   onFiled: (filed: NoteFiled, count: number) => void
   onOpenQuest: (id: string) => void
+  onOpenLink: (url: string) => void
   onRefresh: () => void
 }
 
@@ -36,7 +38,7 @@ export type NoteActions = {
 // list is a drawer too, behind Notes.
 export type Layout = 'wide' | 'mid' | 'narrow'
 
-type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; onShowList: () => void; actions: NoteActions }
+type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; isReading: boolean; onReading: (isReading: boolean) => void; onShowList: () => void; actions: NoteActions }
 
 const PICKER_WIDTH = 320
 
@@ -145,7 +147,7 @@ const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, Q
 // One note, open: its editor, what it links to and from, and BrewQuest. Every
 // change saves itself a moment after typing stops, over the file it was read
 // from; a file changed meanwhile stops the saving and asks what to keep.
-export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, onShowList, actions }: Props) => {
+export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, isReading, onReading, onShowList, actions }: Props) => {
   const start = held?.change ?? changeOf(note)
   const [draft, setDraft] = useState<NoteChange>(start)
   const [titleText, setTitleText] = useState(start.title)
@@ -172,6 +174,8 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const caret = useRef<number | null>(null)
   const isLive = !note.isArchived
   const isFloating = layout !== 'wide'
+  // An archived note can't be edited, so it always reads.
+  const isShowingRead = isReading || !isLive
 
   const flush = async (): Promise<boolean> => {
     if (timer.current !== null) clearTimeout(timer.current)
@@ -334,10 +338,15 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     detailsButton.current?.focus()
   }
   // Esc puts the floating inspector away, wherever the focus is; fields that
-  // use Esc themselves keep it from coming here.
+  // use Esc themselves keep it from coming here. ⌘E turns Write and Read over.
   useWindowKeys(event => {
-    if (event.key !== 'Escape' || !isDetailsOpen || document.querySelector('[role="dialog"]') !== null) return
-    closeDetails()
+    if (document.querySelector('[role="dialog"]') !== null) return
+    if (event.key === 'Escape' && isDetailsOpen) closeDetails()
+    else if (event.key === 'e' && event.metaKey && isLive) {
+      event.preventDefault()
+      setPicker(null)
+      onReading(!isReading)
+    }
   })
 
   const shown: Note = { ...note, ...draft }
@@ -360,6 +369,16 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             <span aria-hidden="true">▭ </span>
             {draft.folder}
           </span>
+          {isLive && (
+            <span class="nt-mode" role="group" aria-label={t.notebook.viewAs}>
+              <button type="button" class={isReading ? 'nt-mode-btn' : 'nt-mode-btn on'} aria-pressed={!isReading} title={t.notebook.modeKeys} onClick={() => onReading(false)}>
+                {t.notebook.write}
+              </button>
+              <button type="button" class={isReading ? 'nt-mode-btn on' : 'nt-mode-btn'} aria-pressed={isReading} title={t.notebook.modeKeys} onClick={() => onReading(true)}>
+                {t.notebook.read}
+              </button>
+            </span>
+          )}
           <SaveLine save={save} onRetry={() => void flush()} />
           {isFloating && (
             <button ref={detailsButton} type="button" class="chip-btn" aria-expanded={isDetailsOpen} aria-controls="nt-inspector" onClick={() => (isDetailsOpen ? closeDetails() : setDetailsOpen(true))}>
@@ -443,64 +462,68 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             </p>
           )}
         </div>
-        <div class="nt-body" ref={bodyBox}>
-          <label for="nt-body" class="sr">
-            {t.notebook.body}
-          </label>
-          <textarea
-            ref={area}
-            id="nt-body"
-            class="nt-text"
-            value={draft.body}
-            readOnly={!isLive}
-            placeholder={t.notebook.bodyPlaceholder}
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={picker !== null}
-            aria-controls="nt-picker"
-            aria-activedescendant={picker !== null && options.length > 0 ? `nt-pick-${Math.min(picker.index, options.length - 1)}` : undefined}
-            onInput={event => {
-              change({ body: (event.target as HTMLTextAreaElement).value })
-              lookAtCaret()
-            }}
-            onKeyDown={pickerKeys}
-            onClick={lookAtCaret}
-            onKeyUp={event => {
-              if (event.key.startsWith('Arrow') && picker === null) lookAtCaret()
-            }}
-            onBlur={() => setPicker(null)}
-          />
-          {picker !== null && (
-            <div class="nt-picker panel" style={{ top: `${picker.top}px`, left: `${picker.left}px` }}>
-              <p class="nt-picker-head sub">
-                <span>{t.notebook.pickerHead(picker.query)}</span>
-                <span>{t.notebook.pickerCount(options.length)}</span>
-              </p>
-              <ul id="nt-picker" role="listbox" aria-label={t.notebook.linkPicker}>
-                {options.length === 0 && <li class="nt-picker-none">{t.notebook.noLinkMatch(picker.query)}</li>}
-                {options.map((option, i) => (
-                  <li
-                    key={option.id}
-                    id={`nt-pick-${i}`}
-                    role="option"
-                    aria-selected={i === Math.min(picker.index, options.length - 1)}
-                    class={i === Math.min(picker.index, options.length - 1) ? 'on' : undefined}
-                    onMouseDown={event => {
-                      event.preventDefault()
-                      link(option.title)
-                    }}
-                  >
-                    <span>{option.title}</span>
-                    <span class="sub">{option.folder}</span>
-                  </li>
-                ))}
-              </ul>
-              <p class="nt-picker-keys sub" aria-hidden="true">
-                {t.notebook.pickerKeys}
-              </p>
-            </div>
-          )}
-        </div>
+        {isShowingRead ? (
+          <ReadView body={draft.body} notes={notes} isLive={isLive} onToggle={index => change({ body: toggleTaskAt(latest.current.body, index) })} onOpenNote={actions.onOpen} onOpenLink={actions.onOpenLink} />
+        ) : (
+          <div class="nt-body" ref={bodyBox}>
+            <label for="nt-body" class="sr">
+              {t.notebook.body}
+            </label>
+            <textarea
+              ref={area}
+              id="nt-body"
+              class="nt-text"
+              value={draft.body}
+              readOnly={!isLive}
+              placeholder={t.notebook.bodyPlaceholder}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={picker !== null}
+              aria-controls="nt-picker"
+              aria-activedescendant={picker !== null && options.length > 0 ? `nt-pick-${Math.min(picker.index, options.length - 1)}` : undefined}
+              onInput={event => {
+                change({ body: (event.target as HTMLTextAreaElement).value })
+                lookAtCaret()
+              }}
+              onKeyDown={pickerKeys}
+              onClick={lookAtCaret}
+              onKeyUp={event => {
+                if (event.key.startsWith('Arrow') && picker === null) lookAtCaret()
+              }}
+              onBlur={() => setPicker(null)}
+            />
+            {picker !== null && (
+              <div class="nt-picker panel" style={{ top: `${picker.top}px`, left: `${picker.left}px` }}>
+                <p class="nt-picker-head sub">
+                  <span>{t.notebook.pickerHead(picker.query)}</span>
+                  <span>{t.notebook.pickerCount(options.length)}</span>
+                </p>
+                <ul id="nt-picker" role="listbox" aria-label={t.notebook.linkPicker}>
+                  {options.length === 0 && <li class="nt-picker-none">{t.notebook.noLinkMatch(picker.query)}</li>}
+                  {options.map((option, i) => (
+                    <li
+                      key={option.id}
+                      id={`nt-pick-${i}`}
+                      role="option"
+                      aria-selected={i === Math.min(picker.index, options.length - 1)}
+                      class={i === Math.min(picker.index, options.length - 1) ? 'on' : undefined}
+                      onMouseDown={event => {
+                        event.preventDefault()
+                        link(option.title)
+                      }}
+                    >
+                      <span>{option.title}</span>
+                      <span class="sub">{option.folder}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p class="nt-picker-keys sub" aria-hidden="true">
+                  {t.notebook.pickerKeys}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         {isLive && (
           <footer class="nt-foot">
             <BrewQuestCard line={brewLine} onBrew={() => void brew()} />

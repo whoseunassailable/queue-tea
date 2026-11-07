@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linksOf, openItemsOf, proposalOf, renameLinks } from '../../../../shared/notes'
+import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, openItemsOf, proposalOf, renameLinks } from '../../../../shared/notes'
 import type { Note } from '../../../../shared/notes'
 import { noteText, parseNote } from './note_file'
 
@@ -52,6 +52,18 @@ describe('note ids', () => {
 describe('links', () => {
   it('finds each linked title once, with or without an alias or heading', () => {
     expect(linksOf('See [[Plan]], [[plan|the plan]], [[Risks#Top]] and [[ ]].')).toEqual(['Plan', 'Risks'])
+  })
+
+  it('cuts text into plain runs and links, showing an alias where one is given', () => {
+    expect(linkPartsOf('See [[Plan|the plan]], [[Risks#Top]] and [[ ]].')).toEqual([
+      { kind: 'text', text: 'See ' },
+      { kind: 'link', title: 'Plan', shown: 'the plan' },
+      { kind: 'text', text: ', ' },
+      { kind: 'link', title: 'Risks', shown: 'Risks' },
+      { kind: 'text', text: ' and ' },
+      { kind: 'text', text: '[[ ]]' },
+      { kind: 'text', text: '.' },
+    ])
   })
 
   it('renames every form of a link and leaves the others', () => {

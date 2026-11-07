@@ -47,6 +47,23 @@ export const linksOf = (body: string): string[] => {
   return titles.filter((title, i) => titles.findIndex(other => same(other, title)) === i)
 }
 
+// A run of text cut into plain text and [[links]], for the Read view.
+export type LinkPart = { kind: 'text'; text: string } | { kind: 'link'; title: string; shown: string }
+export const linkPartsOf = (text: string): LinkPart[] => {
+  const parts: LinkPart[] = []
+  let at = 0
+  for (const m of text.matchAll(LINK)) {
+    if (m.index > at) parts.push({ kind: 'text', text: text.slice(at, m.index) })
+    const title = m[1]!.trim()
+    const rest = m[2] ?? ''
+    parts.push(title === '' ? { kind: 'text', text: m[0] } : { kind: 'link', title, shown: rest.startsWith('|') && rest.length > 1 ? rest.slice(1) : title })
+    at = m.index + m[0].length
+  }
+  if (at < text.length) parts.push({ kind: 'text', text: text.slice(at) })
+
+  return parts
+}
+
 export const renameLinks = (body: string, from: string, to: string): string => body.replace(LINK, (link, title: string, rest: string) => (same(title.trim(), from) ? `[[${to}${rest}]]` : link))
 
 export const backlinksOf = (notes: readonly Note[], note: Note): Note[] => notes.filter(other => other.id !== note.id && !other.isArchived && linksOf(other.body).some(title => same(title, note.title)))

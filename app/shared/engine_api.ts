@@ -379,6 +379,7 @@ export type EngineApi = {
   removeBook: (id: string) => Promise<Reply<LibraryView>>
   readNotes: (key: string) => Promise<Reply<NotesView>>
   showNotes: (key: string) => Promise<Reply<null>>
+  openLink: (url: string) => Promise<Reply<null>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
   saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
@@ -475,6 +476,7 @@ export const CHANNELS = {
   removeBook: 'engine:remove-book',
   readNotes: 'engine:read-notes',
   showNotes: 'engine:show-notes',
+  openLink: 'engine:open-link',
   createNote: 'engine:create-note',
   saveNote: 'engine:save-note',
   archiveNote: 'engine:archive-note',

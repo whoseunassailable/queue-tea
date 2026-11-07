@@ -100,6 +100,33 @@ export const tickedItemsOf = (body: string): string[] =>
     .map(line => /^\s*[-*+] \[[xX]\] (.+)$/.exec(line)?.[1]?.trim() ?? '')
     .filter(item => item !== '')
 
+const TASK_LINE = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\]\s+\S)/
+const FENCE = /^\s*(?:>\s*)*(```|~~~)/
+
+// Ticks or unticks the index-th checklist line, counted as the Read view
+// shows the boxes: in order, leaving out lines inside fenced code.
+// shortcut: counts lines by pattern, so a task-like line in indented (4-space) code shifts the count; upgrade to the lexer's positions if that bites.
+export const toggleTaskAt = (body: string, index: number): string => {
+  const lines = body.split('\n')
+  let fence: string | null = null
+  let n = -1
+  for (const [i, line] of lines.entries()) {
+    const opened = FENCE.exec(line)
+    if (opened !== null) {
+      fence = fence === null ? opened[1]! : fence === opened[1] ? null : fence
+      continue
+    }
+    if (fence !== null || !TASK_LINE.test(line)) continue
+    n += 1
+    if (n !== index) continue
+    lines[i] = line.replace(TASK_LINE, (_, before: string, mark: string, after: string) => `${before}${mark === ' ' ? 'x' : ' '}${after}`)
+
+    return lines.join('\n')
+  }
+
+  return body
+}
+
 // What BrewQuest's card says about the note.
 export const brewLineOf = (note: Pick<Note, 'body' | 'quests'>, proposal: QuestProposal): string => {
   const waiting = proposal.quests.length

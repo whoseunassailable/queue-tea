@@ -53,7 +53,7 @@ const DeleteNote = ({ note, linkedFrom, onDelete, onClose }: { note: Note; linke
   )
 }
 
-type Props = { engine: EngineApi; realm: ReadableView; isCovered: boolean; onProject: (view: ProjectView) => void; onOpenQuest: (id: string) => void; onSay: (text: string) => void }
+type Props = { engine: EngineApi; realm: ReadableView; isCovered: boolean; onProject: (view: ProjectView) => void; onOpenQuest: (id: string) => void; onSay: (text: string, tone?: 'success' | 'error') => void }
 
 const layoutOf = (width: number): Layout => (width < DETAIL_IS_PAGE_BELOW ? 'narrow' : width < DETAIL_FLOATS_BELOW ? 'mid' : 'wide')
 
@@ -80,6 +80,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
   const [isDrawerOpen, setDrawerOpen] = useState(false)
   const [showFailure, setShowFailure] = useState<string | null>(null)
+  // Write or Read, kept as you move between notes.
+  const [isReading, setReading] = useState(false)
   // Edits that couldn't be saved yet, by note, kept while another note is open.
   const [held, setHeld] = useState<Record<string, Held>>({})
   const search = useRef<HTMLInputElement>(null)
@@ -188,6 +190,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
       onSay(t.notebook.brew.filed(count))
     },
     onOpenQuest,
+    onOpenLink: url => void ask(engine, () => engine.openLink(url)).then(answer => !answer.ok && onSay(answer.message, 'error')),
     onRefresh: read.refresh,
   }
 
@@ -435,7 +438,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           empty
         ) : open !== undefined ? (
           <div class="nt-main">
-            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} onShowList={() => setDrawerOpen(true)} actions={actions} />
+            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} isReading={isReading} onReading={setReading} onShowList={() => setDrawerOpen(true)} actions={actions} />
           </div>
         ) : (
           <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />

@@ -72,6 +72,15 @@ describe('reading notes', () => {
   })
 })
 
+describe('opening a link', () => {
+  it('opens web and email links, and refuses every other kind', async () => {
+    expect(data(await api.openLink('https://example.com/a?b=1'))).toBeNull()
+    expect(data(await api.openLink('mailto:rohan@example.com'))).toBeNull()
+
+    for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'not a url', 7, 'https://x/' + 'a'.repeat(2050)]) expect(refused(await api.openLink(url))).toBe('Queue-tea opens only web and email links from a note.')
+  })
+})
+
 describe('showing the folder', () => {
   it('makes the realm’s notes folder if needed, and shows it in Finder', async () => {
     expect(data(await api.showNotes(KEY))).toBeNull()

@@ -216,6 +216,7 @@ const serveEngine = () => {
   handle(CHANNELS.removeBook, (_, id: unknown) => library.removeBook(id))
   handle(CHANNELS.readNotes, (_, key: unknown) => notes.readNotes(key))
   handle(CHANNELS.showNotes, (_, key: unknown) => notes.showNotes(key))
+  handle(CHANNELS.openLink, (_, url: unknown) => notes.openLink(url))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
   handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
   handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))

@@ -98,3 +98,41 @@
 .rm .nt-empty-actions { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .rm .nt-fail-mark { margin: 0; font-size: 28px; color: var(--urg-t); }
 .rm .nt-fail-actions { display: flex; align-items: center; justify-content: center; gap: 16px; }
+
+/* Write or Read, in the editor's head */
+.rm .nt-mode { display: inline-flex; padding: 2px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--card); }
+.rm .nt-mode-btn { height: 24px; padding: 0 10px; border: none; border-radius: 999px; background: transparent; color: var(--ink2); font: inherit; font-size: 12px; font-weight: 700; }
+.rm .nt-mode-btn.on { background: linear-gradient(180deg, #F8E7B4, #E2BC66); color: #3A2C14; }
+
+/* The Read view: the same column and type as the text it reads */
+.rm .nt-read { flex: 1; width: 100%; max-width: 640px; min-height: 48vh; font-size: 15px; line-height: 1.7; color: var(--ink); overflow-wrap: anywhere; }
+.rm .nt-read > :first-child { margin-top: 0; }
+.rm .nt-read p, .rm .nt-read ul, .rm .nt-read ol, .rm .nt-read pre, .rm .nt-read blockquote, .rm .nt-read .nt-md-table, .rm .nt-read .nt-md-callout { margin: 0 0 10px; }
+.rm .nt-read ul, .rm .nt-read ol { padding-left: 22px; }
+.rm .nt-read li > div > :last-child, .rm .nt-read li > :last-child { margin-bottom: 0; }
+.rm .nt-md-h { margin: 18px 0 6px; font-family: 'Marcellus', Georgia, serif; font-weight: 400; line-height: 1.3; letter-spacing: normal; text-transform: none; color: var(--ink); }
+.rm .nt-md-h[data-depth='1'] { font-size: 22px; }
+.rm .nt-md-h[data-depth='2'] { font-size: 19px; }
+.rm .nt-md-h[data-depth='3'] { font-size: 17px; }
+.rm .nt-md-h[data-depth='4'], .rm .nt-md-h[data-depth='5'], .rm .nt-md-h[data-depth='6'] { font-family: 'Nunito Sans', sans-serif; font-size: 15px; font-weight: 800; }
+.rm .nt-md-task { list-style: none; display: flex; align-items: flex-start; gap: 8px; margin-left: -22px; }
+.rm .nt-md-task > input { margin-top: 6px; flex: none; }
+.rm .nt-read code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 13px; padding: 1px 5px; border-radius: 4px; background: var(--hov); }
+.rm .nt-md-code { padding: 10px 12px; border-radius: 8px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-soft); overflow-x: auto; }
+.rm .nt-md-code code { padding: 0; background: none; white-space: pre; }
+.rm .nt-read blockquote { margin-left: 0; padding-left: 12px; border-left: 3px solid var(--line-soft); color: var(--ink2); }
+.rm .nt-md-callout { padding: 10px 12px; border-radius: 8px; background: var(--card); box-shadow: inset 3px 0 0 var(--mp); }
+.rm .nt-md-callout > :last-child { margin-bottom: 0; }
+.rm .nt-md-callout-title { margin: 0 0 4px; font-weight: 800; }
+.rm .nt-md-callout.tip, .rm .nt-md-callout.success, .rm .nt-md-callout.done { background: var(--xp-b); color: var(--xp-t); box-shadow: none; }
+.rm .nt-md-callout.warning, .rm .nt-md-callout.caution, .rm .nt-md-callout.important { background: var(--hi-b); color: var(--hi-t); box-shadow: none; }
+.rm .nt-md-callout.danger, .rm .nt-md-callout.bug, .rm .nt-md-callout.failure, .rm .nt-md-callout.error { background: var(--urg-b); color: var(--urg-t); box-shadow: none; }
+.rm .nt-md-table { overflow-x: auto; }
+.rm .nt-md-table table { border-collapse: collapse; font-size: 14px; }
+.rm .nt-md-table th, .rm .nt-md-table td { padding: 4px 10px; border: 1px solid var(--line-soft); }
+.rm .nt-md-table th { background: var(--card); }
+.rm .nt-md-link { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.rm .nt-md-wiki { font-weight: 600; text-decoration: underline dotted; text-underline-offset: 3px; }
+.rm .nt-md-broken { color: var(--ink3); text-decoration: underline dashed; text-underline-offset: 3px; }
+.rm .nt-md-raw { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--ink3); }
+.rm .nt-read hr { margin: 14px 0; border: none; border-top: 1px solid var(--line-soft); }

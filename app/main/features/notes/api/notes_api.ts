@@ -58,6 +58,18 @@ const proposedOf = (value: unknown): ProposedQuest[] => {
   })
 }
 
+// A link from a note opens in the browser or mail app, and nothing else does.
+const LINK_KINDS = ['http:', 'https:', 'mailto:']
+const linkOf = (value: unknown): string => {
+  if (typeof value !== 'string' || value.length > 2048) throw new Refusal(MESSAGES.badNoteLink)
+  try {
+    if (LINK_KINDS.includes(new URL(value).protocol)) return value
+  } catch {
+    // Not a URL at all: refused below, as any other kind is.
+  }
+  throw new Refusal(MESSAGES.badNoteLink)
+}
+
 type Loaded = { id: string; file: NoteFile; text: string }
 
 // A realm's notes keep to a folder of Markdown files outside its repository:
@@ -173,6 +185,14 @@ export const notesApi = (d: NotesDeps) => {
 
   return {
     readNotes: (key: unknown): Promise<Reply<NotesView>> => reply(d.log, MESSAGES.readNotes, async () => viewOf(await realmOf(key))),
+
+    openLink: (url: unknown): Promise<Reply<null>> =>
+      reply(d.log, MESSAGES.openLink, async () => {
+        const opened = await d.host.open(linkOf(url))
+        if (opened.exitCode !== 0) throw new Error(opened.stderr)
+
+        return null
+      }),
 
     // Shows the realm's notes folder in Finder, made first if it isn't there yet.
     showNotes: (key: unknown): Promise<Reply<null>> =>

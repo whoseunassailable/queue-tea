@@ -49,6 +49,8 @@ export const MESSAGES = {
   noteTitleBad: "A note title can't have [ ] | or # in it, because links are made of them.",
   noteFolderLong: 'A folder name can be 60 characters at most.',
   noteFolderBad: 'A folder is one level, so leave out /.',
+  badNoteLink: 'Queue-tea opens only web and email links from a note.',
+  openLink: "Couldn't open that link. Try again.",
   noteTitleTaken: (title: string) => `A note called “${title}” already exists. Pick another title.`,
   noteTagLong: 'A tag can be 40 characters at most.',
   noteTooManyTags: 'A note can have 20 tags at most.',

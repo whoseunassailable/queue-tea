@@ -311,6 +311,46 @@ describe('the Notes page', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
+  it('⌘E turns the note over to Read: Markdown drawn, HTML shown as text, and a box ticked saves the Markdown', async () => {
+    const md = ['# Plan', '', 'See [[Other|the other]], [[Missing]] and [site](https://example.com). <img src=x onerror=alert(1)>', '', '- [ ] Scan', '- [x] Done', '', '> [!warning] Careful', '> Mind the gap', '', '| a | b |', '|---|---|', '| 1 | 2 |', '', '```', '<b>code</b>', '```', '', '![pic](https://example.com/p.png)'].join('\n')
+    const notes = memoryNotes([note({ id: 'here', title: 'Here', body: md, updated: '2026-11-08' }), note({ id: 'other', title: 'Other' })])
+    const openLink = vi.fn(async () => ok(null))
+    await open({ ...notes, openLink })
+    await screen.findByDisplayValue('Here')
+
+    fireEvent.keyDown(window, { key: 'e', metaKey: true })
+    const read = document.querySelector('.nt-read')!
+    expect(screen.queryByRole('combobox', { name: t.notebook.body })).toBeNull()
+    expect(within(read as HTMLElement).getByRole('heading', { name: 'Plan' })).toBeTruthy()
+    expect(read.querySelector('table td')?.textContent).toBe('1')
+    expect(within(read as HTMLElement).getByText('Careful')).toBeTruthy()
+    expect(read.querySelector('pre code')?.textContent).toBe('<b>code</b>')
+    expect(read.querySelector('img, b')).toBeNull()
+    expect(read.textContent).toContain('<img src=x onerror=alert(1)>')
+
+    await act(async () => void fireEvent.click(within(read as HTMLElement).getByRole('link', { name: 'site' })))
+    expect(openLink).toHaveBeenCalledWith('https://example.com')
+    await act(async () => void fireEvent.click(within(read as HTMLElement).getByRole('link', { name: /pic/ })))
+    expect(openLink).toHaveBeenLastCalledWith('https://example.com/p.png')
+
+    fireEvent.click(within(read as HTMLElement).getByLabelText(t.notebook.taskBox('Scan')))
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalled(), { timeout: 2000 })
+    expect(notes.saveNote.mock.calls[0]![2].body).toContain('- [x] Scan')
+
+    await press('the other')
+    expect(await screen.findByDisplayValue('Other')).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.notebook.read }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('an archived note reads, with its boxes not tickable and no Write', async () => {
+    await open(memoryNotes([note({ body: '- [ ] Scan', isArchived: true })]))
+    await press(await screen.findByRole('button', { name: t.notebook.archived(1) }).then(b => b.textContent!))
+    await press(/^Bug Bounty Helper/)
+
+    expect((screen.getByLabelText(t.notebook.taskBox('Scan')) as HTMLInputElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: t.notebook.write })).toBeNull()
+  })
+
   it('search narrows the list, and says what to try when nothing matches', async () => {
     await open(memoryNotes([note({ id: 'a', title: 'Alpha', tags: ['security'] }), note({ id: 'b', title: 'Beta' })]))
     await screen.findByRole('button', { name: /Beta/ })

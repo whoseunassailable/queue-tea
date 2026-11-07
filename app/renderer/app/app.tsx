@@ -140,7 +140,7 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
           workspace.openQuest(view.key, id)
           window.location.hash = hrefOf(ROUTES.quests)
         }}
-        onSay={text => workspace.say({ tone: 'success', text })}
+        onSay={(text, tone = 'success') => workspace.say({ tone, text })}
       />
     )
   }

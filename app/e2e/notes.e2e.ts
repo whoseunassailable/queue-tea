@@ -133,3 +133,21 @@ test('narrower windows float the inspector behind Details, then put the list in 
   await page.setViewportSize({ width: 1440, height: 900 })
   expect(errors).toEqual([])
 })
+
+test('⌘E reads the note, and ticking a box there writes [x] into the file', async () => {
+  await page.getByRole('navigation', { name: 'Notes' }).getByRole('button', { name: /^Bug Bounty Helper/ }).click()
+  await page.keyboard.press('Meta+e')
+
+  await expect(page.getByRole('button', { name: 'Read', pressed: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Threat model' }).first()).toBeVisible()
+  await page.getByLabel('Done: Scan dependencies').check()
+  await expect(page.getByText(/^Saved \d\d:\d\d$/)).toBeVisible()
+
+  const made = (await noteFiles()).find(name => name.startsWith('n-') && name !== 'Threat model.md')!
+  const files = await Promise.all((await noteFiles()).map(name => readFile(join(notesDir(), name), 'utf8')))
+  expect(files.some(text => text.includes('- [x] Scan dependencies'))).toBe(true)
+  expect(made).toBeTruthy()
+  await page.keyboard.press('Meta+e')
+  await expect(page.getByRole('combobox', { name: 'Note' })).toBeVisible()
+  expect(errors).toEqual([])
+})

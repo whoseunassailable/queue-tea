@@ -21,7 +21,7 @@ Settled before the design:
 
 - **One Notes tab per realm**, after Mana & time, at `/notes`, opened with ⌘7. Notes belong to the selected realm only.
 - **One Markdown file per note**, in `~/.queue-tea/notes/<realm key>/`, outside the realm's repository. An uncommitted file in the realm holds Start, and notes change all the time. The folder opens in Obsidian as a vault, as it is.
-- **Three panes:** the note list, the editor and the inspector. The editor is a Markdown source editor (a text area). There is no rendered view in Notes 1.
+- **Three panes:** the note list, the editor and the inspector. The editor is a Markdown source editor (a text area), with a Read view beside it (see [The Read view](#the-read-view)).
 - **Links are Obsidian's**: `[[Note title]]`, `[[Note title|shown text]]` and `[[Note title#heading]]`. Typing `[[` opens a picker. Renaming a note rewrites the links to it in the realm's other notes.
 - **Autosave**, with a save line that says what is happening. If the file changes in another app while it's open, Queue-tea asks which version to keep.
 - **Archive, not delete.** Delete forever is offered only for archived notes, behind a confirm dialog.
@@ -127,6 +127,7 @@ The screens are in `docs/notes.pen`, numbered as below, at the app's window size
 | ⇧⌘N | Anywhere | A new "Untitled" note in Inbox, title selected (File › New note) |
 | ⌘J | Notes | Puts the cursor in the capture line |
 | ⌘F | Notes | Puts the cursor in search (Edit › Find). Esc in search clears it |
+| ⌘E | A note | Turns Write into Read and back |
 | ↩ / ⌘↩ | Capture line | Adds the idea to Inbox and stays in the line / adds it and opens it |
 | ↑ ↓, ↩, ← → | Note list | Move between notes, open one (the cursor goes to the body), fold or unfold a folder |
 | ↩, Esc | Title | Moves to the body / puts the saved title back |
@@ -206,9 +207,18 @@ Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook`, and main
 19. Window-supplied ids never become a path outside the realm's notes folder.
 20. `npm test`, `npm run typecheck` and `npm run e2e` pass in `app/`, along with the repository's checks.
 
+## The Read view
+
+Added after Notes 1, from the epic's first quest. **Write** and **Read** sit in the editor's head, and ⌘E turns one into the other. The choice stays as you move between notes. An archived note always reads.
+
+- **What it draws:** headings, paragraphs, bold, italic, struck text, inline code, lists (nested and numbered), checklists, quotes, Obsidian callouts (`> [!warning] Title`), tables with their alignment, fenced code and rules.
+- **Boxes:** ticking a box writes `[x]` into that line of the Markdown, or `[ ]` back, and saves as typing does. A box in an archived note can't be ticked. The boxes are counted in the order they're drawn, leaving out lines in fenced code, so the right line changes.
+- **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). An image is a link that opens the picture in the browser until attachments come.
+- **Safety:** marked 18.1.1 only cuts the text into tokens. Every token becomes an element in the window, so nothing in a note runs as HTML: `<b>` shows as `<b>`.
+
 ## Not in Notes 1
 
-A rendered Read view, the calendar, meetings, ICS or Google sync, reminders, attachments and images, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates, version history and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, attachments and images, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates, version history and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

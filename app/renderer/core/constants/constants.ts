@@ -57,3 +57,5 @@ export const UPDATE_POLL_MS = 2_000
 export const NOTE_AUTOSAVE_MS = 800
 // How many notes the [[ link picker offers at once.
 export const NOTE_PICKER_ROWS = 8
+// Rows of the 8 kept for quests, when that many match.
+export const NOTE_PICKER_QUEST_ROWS = 3

@@ -50,6 +50,10 @@
 .rm .nt-picker li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
 .rm .nt-picker li.on, .rm .nt-picker li:hover { background: var(--sel); }
 .rm .nt-picker-none { color: var(--ink3); cursor: default; }
+.rm .nt-picker li:not(.quest) + li.quest { position: relative; margin-top: 9px; }
+.rm .nt-picker li:not(.quest) + li.quest::before { content: ''; position: absolute; left: 8px; right: 8px; top: -5px; border-top: 1px solid var(--line-soft); }
+.rm .nt-picker .nt-state, .rm .nt-md-quest .nt-state { flex: none; align-self: flex-start; }
+.rm .nt-md-quest .nt-state { margin-left: 4px; vertical-align: 1px; }
 .rm .nt-foot { display: flex; justify-content: flex-end; margin-top: auto; }
 .rm .nt-brew { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--card); }
 .rm .nt-brew-text { display: flex; flex-direction: column; min-width: 0; max-width: 240px; }

@@ -488,8 +488,14 @@ export const t = {
     noLinkWithTitle: 'No note with this title.',
     saga: (done: number, total: number) => `◆ Saga · ${done}/${total} done`,
     questMeta: (priority: string, difficulty: string) => `${priority} · ${difficulty}`,
-    pickerHead: (query: string) => `Notes to link “${query}”`,
-    pickerCount: (count: number) => (count === 1 ? '1 note' : `${count} notes`),
+    pickerHead: (query: string) => (query === '' ? 'Link to a note or a quest' : `Link to “${query}”`),
+    pickerCount: (notes: number, quests: number) => {
+      const said = notes === 1 ? '1 note' : `${notes} notes`
+      if (quests === 0) return said
+      const questsSaid = quests === 1 ? '1 quest' : `${quests} quests`
+
+      return notes === 0 ? questsSaid : `${said} · ${questsSaid}`
+    },
     pickerKeys: '↩ or Tab links it · ↑↓ move · Esc',
     write: 'Write',
     read: 'Read',
@@ -507,7 +513,7 @@ export const t = {
     unreadable: (names: string[]) => (names.length === 1 ? `${names[0]} couldn't be read, so it's left as it is.` : `${names.length} files couldn't be read, so they're left as they are: ${names.join(', ')}.`),
     noteTitle: 'Title',
     body: 'Note',
-    bodyPlaceholder: 'Write in Markdown. Type [[ to link another note, and - [ ] for a line BrewQuest can turn into a quest.',
+    bodyPlaceholder: 'Write in Markdown. Type [[ to link a note or a quest, and - [ ] for a line BrewQuest can turn into a quest.',
     saved: 'Saved',
     saving: 'Saving…',
     unsaved: 'Not saved yet',
@@ -526,7 +532,7 @@ export const t = {
     quests: 'Quests',
     noQuests: 'None filed from this note yet. BrewQuest can turn its checklist into quests.',
     links: 'Links',
-    noLinks: 'Type [[ in the note to link another one.',
+    noLinks: 'Type [[ in the note to link another note or a quest.',
     broken: (title: string) => `No note called ${title}`,
     makeIt: 'Make it',
     backlinks: 'Backlinks',
@@ -539,8 +545,11 @@ export const t = {
     questState: { waiting: '○ Waiting', sealed: 'Sealed', active: '▶ In progress', done: '✓ Done', gone: 'Not in the queue' },
     goneQuest: 'A quest no longer in the queue',
     openQuest: (title: string) => `Open ${title} in Quests`,
-    linkPicker: 'Notes to link',
-    noLinkMatch: (query: string) => `No note called “${query}” yet. Finish the name and close it with ]].`,
+    linkPicker: 'Notes and quests to link',
+    noLinkMatch: (query: string) => `No note or quest called “${query}” yet. Finish the name and close it with ]].`,
+    pickQuest: (title: string, state: string) => `${title}, quest, ${state}`,
+    openQuestLink: (title: string, state: string) => `Open ${title} in Quests, ${state}`,
+    questStateSaid: { waiting: 'waiting', sealed: 'sealed', active: 'in progress', done: 'done', gone: 'not in the queue' },
     titleRequired: 'Title is required.',
     titleLong: 'A note title can be 200 characters at most.',
     titleBad: "A note title can't have [ ] | or # in it, because links are made of them.",

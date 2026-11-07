@@ -232,6 +232,84 @@ describe('the Notes page', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
+  it('offers notes then quests with their states, and the keyboard inserts a quest id and title', async () => {
+    await open({
+      ...memoryNotes([note({ id: 'here', title: 'Here', updated: '2026-11-08' }), note({ id: 'plan', title: 'Plan' })]),
+      readProject: async key => ok(projectView(key, {
+        ready: [{ kind: 'quest', quest: quest({ id: 't-abc', title: 'Plan' }) }],
+        victories: [{ id: 't-def', title: 'Plan done', finished: '', minutes: 1, xp: 1 }],
+      })),
+    })
+    await screen.findByDisplayValue('Here')
+    write('See [[pl')
+    const options = within(screen.getByRole('listbox')).getAllByRole('option')
+    expect(options.map(option => option.textContent)).toEqual(['PlanIdeas', `Plan${t.notebook.questState.waiting}`])
+    expect(options[1]!.getAttribute('aria-label')).toBe(t.notebook.pickQuest('Plan', 'waiting'))
+    fireEvent.keyDown(body(), { key: 'ArrowDown' })
+    expect(body().getAttribute('aria-activedescendant')).toBe(options[1]!.id)
+    fireEvent.keyDown(body(), { key: 'Tab' })
+    expect(body().value).toBe('See [[quest:t-abc|Plan]]')
+    expect(screen.queryByRole('listbox')).toBeNull()
+    const about = screen.getByRole('complementary', { name: t.notebook.inspector })
+    expect(within(about).getByRole('button', { name: t.notebook.openQuest('Plan') })).toBeTruthy()
+    expect(within(about).queryByRole('button', { name: t.notebook.makeIt })).toBeNull()
+    await act(async () => void fireEvent.click(within(about).getByRole('button', { name: t.notebook.openQuest('Plan') })))
+    expect(window.location.hash).toBe('#/quests')
+    expect((await screen.findByRole('complementary', { name: t.detail.label })).textContent).toContain('Plan')
+  })
+
+  it('clicking a quest in the picker inserts it, and Escape leaves the typed text', async () => {
+    await open({
+      ...memoryNotes([note()]),
+      readProject: async key => ok(projectView(key, { ready: [{ kind: 'quest', quest: quest({ id: 't-abc', title: 'Write parser' }) }] })),
+    })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    write('[[Write')
+    fireEvent.keyDown(body(), { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(body().value).toBe('[[Write')
+    write('[[Write ')
+    fireEvent.mouseDown(screen.getByRole('option', { name: t.notebook.pickQuest('Write parser', 'waiting') }))
+    expect(body().value).toBe('[[quest:t-abc|Write parser]]')
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('updates quest links in the inspector and Read when the queue changes, and never makes a missing quest into a note', async () => {
+    window.location.hash = '#/notes'
+    let view = projectView(KEY, { ready: [{ kind: 'quest', quest: quest({ id: 't-abc', title: 'Current title' }) }] })
+    const { engine, fire } = fakeEngine({ ...memoryNotes([note({ body: '[[quest:t-abc|Written title]]' })]), readProject: async () => ok(view) })
+    const workspace = createWorkspace(engine)
+    await act(async () => {
+      render(<App workspace={workspace} engine={engine} />)
+      await workspace.start()
+    })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(t.notebook.read)
+    const about = screen.getByRole('complementary', { name: t.notebook.inspector })
+    const read = screen.getByRole('article')
+    expect(within(about).getByRole('button', { name: t.notebook.openQuest('Current title') })).toBeTruthy()
+    expect(within(read).getByRole('button', { name: t.notebook.openQuestLink('Current title', 'waiting') })).toBeTruthy()
+
+    view = projectView(KEY, { sealed: [{ kind: 'quest', quest: quest({ id: 't-abc', title: 'Renamed title' }) }] })
+    await act(async () => void fire())
+    expect(await within(about).findByRole('button', { name: t.notebook.openQuest('Renamed title') })).toBeTruthy()
+    expect(within(read).getByRole('button', { name: t.notebook.openQuestLink('Renamed title', 'sealed') })).toBeTruthy()
+
+    view = projectView(KEY, { victories: [{ id: 't-abc', title: 'Finished title', finished: '', minutes: 1, xp: 1 }] })
+    await act(async () => void fire())
+    expect(await within(read).findByText('Finished title')).toBeTruthy()
+    expect(within(read).queryByRole('button')).toBeNull()
+    expect(within(about).queryByRole('button', { name: /in Quests/ })).toBeNull()
+    expect(within(about).getByText(t.notebook.questState.done)).toBeTruthy()
+
+    view = projectView(KEY)
+    await act(async () => void fire())
+    expect(await within(read).findByText('Written title')).toBeTruthy()
+    expect(within(about).getByText(t.notebook.goneQuest)).toBeTruthy()
+    expect(within(about).queryByRole('button', { name: t.notebook.makeIt })).toBeNull()
+    expect(within(read).queryByRole('button')).toBeNull()
+  })
+
   it('shows links, broken links with a way to make the note, and backlinks', async () => {
     const notes = memoryNotes([note({ id: 'here', title: 'Here', body: '[[Plan]] and [[Missing]]', updated: '2026-11-08' }), note({ id: 'plan', title: 'Plan' }), note({ id: 'fan', title: 'Fan', body: 'I like [[here]]' })])
     await open(notes)

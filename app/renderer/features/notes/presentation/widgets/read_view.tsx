@@ -1,26 +1,70 @@
 import type { ComponentChildren } from 'preact'
-import { lexer } from 'marked'
+import { Marked } from 'marked'
 import type { Token, Tokens } from 'marked'
 
 import { linkPartsOf, noteTitled } from '../../../../../shared/notes'
 import type { Note } from '../../../../../shared/notes'
 import { t } from '../../../../l10n/en'
+import { isInPlay, questLineOf } from '../../domain/notes_view'
+import type { QuestLine } from '../../domain/notes_view'
 
-type Props = { body: string; notes: readonly Note[]; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenLink: (url: string) => void }
+type Props = { body: string; notes: readonly Note[]; quests: Map<string, QuestLine>; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenQuest: (id: string) => void; onOpenLink: (url: string) => void }
 
 const CALLOUT = /^\[!(\w+)\][+-]?[ \t]*(.*)$/
+
+// Read a whole quest link before Markdown splits the written title into tokens.
+// This lexer belongs to Notes; the shared Markdown renderer keeps its defaults.
+const markdown = new Marked({ extensions: [{
+  name: 'quest',
+  level: 'inline',
+  start: text => text.indexOf('[['),
+  tokenizer: text => {
+    const raw = /^\[\[[^\]\n]+\]\]/.exec(text)?.[0]
+    if (raw === undefined || linkPartsOf(raw)[0]?.kind !== 'quest') return undefined
+
+    return { type: 'quest', raw }
+  },
+}] })
 
 // A note as it reads. marked only cuts the Markdown into tokens; every token
 // becomes an element here, so nothing in a note is ever run as HTML: a tag in
 // the text shows as the text it is.
-export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink }: Props) => {
+export const ReadView = ({ body, notes, quests, isLive, onToggle, onOpenNote, onOpenQuest, onOpenLink }: Props) => {
   // The boxes are numbered in the order they're drawn, which is the order
   // toggleTaskAt counts the lines in.
   let box = -1
 
+  // A quest link shows the quest as it is now. Only one in play opens, since
+  // Quests can't open a done one.
+  const quest = (id: string, written: string, key: number) => {
+    const line = questLineOf(quests, id)
+    const said = t.notebook.questStateSaid[line.state]
+    const chip = (
+      <span class={`nt-state ${line.state}`} aria-hidden="true">
+        {t.notebook.questState[line.state]}
+      </span>
+    )
+
+    return line.title !== null && isInPlay(quests, id) ? (
+      <span key={key} class="nt-md-quest">
+        <button type="button" class="nt-link nt-md-wiki" aria-label={t.notebook.openQuestLink(line.title, said)} onClick={() => onOpenQuest(id)}>
+          {line.title}
+        </button>
+        {chip}
+      </span>
+    ) : (
+      <span key={key} class="nt-md-quest">
+        <span class={line.title === null ? 'nt-md-broken' : undefined}>{line.title ?? written}</span>
+        {chip}
+        <span class="sr">, {said}</span>
+      </span>
+    )
+  }
+
   const wiki = (text: string): ComponentChildren =>
     linkPartsOf(text).map((part, i) => {
       if (part.kind === 'text') return part.text
+      if (part.kind === 'quest') return quest(part.id, part.shown, i)
       const target = noteTitled(notes, part.title)
 
       return target === undefined ? (
@@ -52,6 +96,8 @@ export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink
   const inline = (tokens: Token[] | undefined): ComponentChildren =>
     (tokens ?? []).map((token, i) => {
       switch (token.type) {
+        case 'quest':
+          return wiki(token.raw)
         case 'text':
           return 'tokens' in token && token.tokens !== undefined ? inline(token.tokens) : wiki(token.text)
         case 'escape':
@@ -100,7 +146,7 @@ export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink
     return (
       <aside key={i} class={`nt-md-callout ${kind}`} aria-label={found[2] || kind}>
         <p class="nt-md-callout-title">{found[2] === '' ? kind.charAt(0).toUpperCase() + kind.slice(1) : wiki(found[2]!)}</p>
-        {blocks(lexer(rest.join('\n')))}
+        {blocks(markdown.lexer(rest.join('\n')))}
       </aside>
     )
   }
@@ -189,7 +235,7 @@ export const ReadView = ({ body, notes, isLive, onToggle, onOpenNote, onOpenLink
       }
     })
 
-  const tokens = lexer(body)
+  const tokens = markdown.lexer(body)
 
   return <article class="nt-read">{body.trim() === '' ? <p class="hint">{t.notebook.readEmpty}</p> : blocks(tokens)}</article>
 }

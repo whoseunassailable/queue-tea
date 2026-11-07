@@ -159,3 +159,14 @@
 .rm .nt-md-broken { color: var(--ink3); text-decoration: underline dashed; text-underline-offset: 3px; }
 .rm .nt-md-raw { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--ink3); }
 .rm .nt-read hr { margin: 14px 0; border: none; border-top: 1px solid var(--line-soft); }
+
+/* Attachments stay in the writing column, with the same controls in Read. */
+.rm .nt-dropzone { display: flex; flex: 1; flex-direction: column; gap: 10px; min-width: 0; }
+.rm .nt-dropzone.over { outline: 2px dashed var(--link); outline-offset: 4px; border-radius: 8px; }
+.rm .nt-attach-bar, .rm .nt-file-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.rm .nt-attach-bar .hint { margin: 0; }
+.rm .nt-file { display: block; max-width: 100%; padding: 8px 0; }
+.rm .nt-file-actions > :first-child { overflow-wrap: anywhere; }
+.rm .nt-file-status { display: flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 12px; color: var(--ink2); }
+.rm .nt-file-image { display: block; max-width: 100%; height: auto; margin-top: 8px; border-radius: 6px; }
+.rm .nt-file-pdf { display: block; box-sizing: border-box; width: 100%; height: min(65vh, 640px); min-height: 300px; margin-top: 8px; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--card); }

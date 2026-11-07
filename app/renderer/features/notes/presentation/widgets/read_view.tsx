@@ -4,11 +4,14 @@ import type { Token, Tokens } from 'marked'
 
 import { linkPartsOf, noteTitled } from '../../../../../shared/notes'
 import type { Note } from '../../../../../shared/notes'
+import type { EngineApi } from '../../../../../shared/engine_api'
+import { noteFilePath } from '../../../../../shared/note_attachments'
 import { t } from '../../../../l10n/en'
 import { isInPlay, questLineOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 
-type Props = { body: string; notes: readonly Note[]; quests: Map<string, QuestLine>; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenQuest: (id: string) => void; onOpenLink: (url: string) => void }
+type Props = { engine: EngineApi; realm: string; body: string; notes: readonly Note[]; quests: Map<string, QuestLine>; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenQuest: (id: string) => void; onOpenLink: (url: string) => void }
+import { NoteAttachment } from './note_attachment'
 
 const CALLOUT = /^\[!(\w+)\][+-]?[ \t]*(.*)$/
 
@@ -26,10 +29,17 @@ const markdown = new Marked({ extensions: [{
   },
 }] })
 
+markdown.use({ extensions: [{ name: 'noteFile', level: 'inline', start: text => text.search(/!?\[\[/), tokenizer(text) {
+  const found = /^(!?)\[\[([^\[\]|\n]+)(?:\|([^\]\n]*))?\]\]/.exec(text)
+  if (found === null || noteFilePath(found[2]!) === null) return undefined
+
+  return { type: 'noteFile', raw: found[0], href: found[2]!, text: found[3] || found[2]!.split('/').at(-1)!, embedded: found[1] === '!' }
+} }] })
+
 // A note as it reads. marked only cuts the Markdown into tokens; every token
 // becomes an element here, so nothing in a note is ever run as HTML: a tag in
 // the text shows as the text it is.
-export const ReadView = ({ body, notes, quests, isLive, onToggle, onOpenNote, onOpenQuest, onOpenLink }: Props) => {
+export const ReadView = ({ engine, realm, body, notes, quests, isLive, onToggle, onOpenNote, onOpenQuest, onOpenLink }: Props) => {
   // The boxes are numbered in the order they're drawn, which is the order
   // toggleTaskAt counts the lines in.
   let box = -1
@@ -113,10 +123,14 @@ export const ReadView = ({ body, notes, quests, isLive, onToggle, onOpenNote, on
         case 'br':
           return <br key={i} />
         case 'link':
+          if (noteFilePath(token.href) !== null) return <NoteAttachment key={`${realm}:${token.href}:${i}`} engine={engine} realm={realm} path={token.href} name={token.text} embedded={false} />
           return external(token.href, inline(token.tokens), i)
-        // Images wait for attachments: for now the picture opens in the browser.
         case 'image':
-          return external(token.href, `🖼 ${token.text === '' ? t.notebook.image : token.text}`, i, t.notebook.imageTitle)
+          if (noteFilePath(token.href) !== null) return <NoteAttachment key={`${realm}:${token.href}:${i}`} engine={engine} realm={realm} path={token.href} name={token.text || t.notebook.image} embedded />
+          return external(token.href, `🖼 ${token.text === '' ? t.notebook.image : token.text}`, i)
+        case 'noteFile':
+          if (!token.embedded && noteTitled(notes, token.href.split('#')[0]) !== undefined) return wiki(token.raw)
+          return <NoteAttachment key={`${realm}:${token.href}:${i}`} engine={engine} realm={realm} path={token.href} name={token.text} embedded={token.embedded} />
         case 'checkbox':
           return null
         default:

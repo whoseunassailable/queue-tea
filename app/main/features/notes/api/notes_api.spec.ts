@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -12,6 +12,7 @@ import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import { notesApi } from './notes_api'
 import type { NotesDeps } from './notes_api'
+import { noteFileResponse } from './note_protocol'
 
 const KEY = 'demo-abc123'
 const NOW = Date.parse('2026-11-07T12:00:00Z')
@@ -19,8 +20,9 @@ const NOW = Date.parse('2026-11-07T12:00:00Z')
 let home: string
 let dir: string
 let api: ReturnType<typeof notesApi>
-let deps: NotesDeps
 let ids: number
+let deps: NotesDeps
+let downloads: { name: string; bytes: Uint8Array }[]
 const revealed: string[] = []
 
 const data = <T>(answer: Reply<T>): T => {
@@ -47,11 +49,12 @@ beforeEach(async () => {
   home = await realpath(await mkdtemp(join(tmpdir(), 'queue-tea-notes-')))
   dir = join(home, '.queue-tea/notes', KEY)
   ids = 0
+  downloads = []
   await mkdir(join(home, '.queue-tea/projects'), { recursive: true })
   await writeFile(join(home, '.queue-tea/projects', `${KEY}.json`), JSON.stringify(emptyRecord('demo', '/p/demo')))
   const log = createLogger('dev', () => {})
   const host = nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' }))
-  deps = { host, home, now: () => NOW, offsetMinutes: () => 60, log, newId: () => `t-${(ids += 1)}`, newNoteId: () => `n-${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {}, prepareCodex: async () => [], reveal: path => void revealed.push(path) }
+  deps = { host, home, now: () => NOW, offsetMinutes: () => 60, log, newId: () => `t-${(ids += 1)}`, newNoteId: () => `n-${(ids += 1)}`, terminal: async () => 'terminal', copy: () => {}, prepareCodex: async () => [], reveal: path => void revealed.push(path), saveNoteFile: async (name, bytes) => { downloads.push({ name, bytes }); return true } }
   api = notesApi(deps)
 })
 
@@ -146,6 +149,91 @@ describe('types, pins and folders on disk', () => {
     write.mockRestore()
 
     expect(data(await api.renameFolder(KEY, 'Ideas', 'Plans')).notes.every(note => note.folder === 'Plans')).toBe(true)
+  })
+})
+
+describe('note files', () => {
+  const png = () => new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==', 'base64'))
+  const upload = () => ({ name: 'diagram.png', type: 'image/png', bytes: png() })
+
+  it('keeps the bytes beside notes, deduplicates simultaneous imports, and reads them after reopening', async () => {
+    const { id } = await created()
+    const secondWriter = notesApi(deps)
+    const [one, two] = await Promise.all([api.attachNoteFile(KEY, id, upload()), secondWriter.attachNoteFile(KEY, id, upload())])
+    const file = data(one)
+    expect(data(two)).toEqual(file)
+    expect(file).toMatchObject({ kind: 'image' })
+    expect(file.path).toMatch(/^attachments\/[a-f0-9]+\.png$/)
+    expect(new Uint8Array(await readFile(join(dir, file.path)))).toEqual(png())
+    expect(await readdir(join(dir, 'attachments'))).toHaveLength(1)
+    expect(data(await notesApi(deps).readNoteFile(KEY, file.path))).toEqual(file)
+    expect(data(await api.readNotes(KEY)).notes).toHaveLength(1)
+  })
+
+  it('checks bytes as well as names, refuses other types and the exact size limit, and writes nothing', async () => {
+    const { id } = await created()
+    expect(refused(await api.attachNoteFile(KEY, id, { name: 'fake.png', type: 'image/png', bytes: new Uint8Array([1, 2]) }))).toBe('Only image or PDF files are accepted.')
+    expect(refused(await api.attachNoteFile(KEY, id, { ...upload(), name: '../../x.png' }))).toBe('Only image or PDF files are accepted.')
+    expect(refused(await api.attachNoteFile(KEY, id, { ...upload(), bytes: new Uint8Array(10 * 1024 * 1024) }))).toBe('File must be under 10 MB.')
+    expect(refused(await api.attachNoteFile(KEY, id, { ...upload(), bytes: [1, 2] }))).toBe('Only image or PDF files are accepted.')
+    expect(await readdir(dir)).not.toContain('attachments')
+  })
+
+  it('requires a known realm and a live note', async () => {
+    const { id } = await created()
+    expect((await api.attachNoteFile('../x', id, upload())).ok).toBe(false)
+    expect((await api.attachNoteFile(KEY, 'missing', upload())).ok).toBe(false)
+    await api.archiveNote(KEY, id, true)
+    expect((await api.attachNoteFile(KEY, id, upload())).ok).toBe(false)
+  })
+
+  it('retains shared files when either note is permanently deleted', async () => {
+    const first = await created()
+    const file = data(await api.attachNoteFile(KEY, first.id, upload()))
+    const second = await created({ title: 'Shared', body: `![Shared](<${file.path}>)` })
+    await api.archiveNote(KEY, first.id, true)
+    await api.deleteNote(KEY, first.id)
+    expect(new Uint8Array(await readFile(join(dir, file.path)))).toEqual(png())
+    expect(only(data(await api.readNotes(KEY)), second.id).body).toContain(file.path)
+  })
+
+  it('refuses traversals and symlinks, and describes other local files as downloads', async () => {
+    await created()
+    await mkdir(join(dir, 'attachments'))
+    await writeFile(join(home, 'private.png'), png())
+    await symlink(join(home, 'private.png'), join(dir, 'attachments', 'escape.png'))
+    for (const file of ['../private.png', 'attachments/escape.png', '/etc/passwd', 'file:///etc/passwd']) expect((await api.readNoteFile(KEY, file)).ok).toBe(false)
+    await writeFile(join(dir, 'table.csv'), 'a,b\n1,2')
+    expect(data(await api.readNoteFile(KEY, 'table.csv'))).toEqual({ path: 'table.csv', kind: 'other' })
+    expect(data(await api.downloadNoteFile(KEY, 'table.csv'))).toBe(true)
+    expect(downloads).toEqual([{ name: 'table.csv', bytes: Buffer.from('a,b\n1,2') }])
+    expect(data(await notesApi({ ...deps, saveNoteFile: async () => false }).downloadNoteFile(KEY, 'table.csv'))).toBe(false)
+  })
+
+  it('refuses an attachments folder redirected outside the vault', async () => {
+    const { id } = await created()
+    await mkdir(join(home, 'outside'))
+    await symlink(join(home, 'outside'), join(dir, 'attachments'))
+    expect((await api.attachNoteFile(KEY, id, upload())).ok).toBe(false)
+    expect(await readdir(join(home, 'outside'))).toEqual([])
+  })
+
+  it('serves detected preview types only, and refuses malformed URLs and files outside the vault', async () => {
+    const { id } = await created()
+    const image = data(await api.attachNoteFile(KEY, id, upload()))
+    const response = await noteFileResponse(`note-file://realm/${KEY}/${image.path}`, api)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('image/png')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(png())
+
+    const pdf = new Uint8Array(Buffer.from('%PDF-1.4\n%%EOF'))
+    const report = data(await api.attachNoteFile(KEY, id, { name: 'report.pdf', type: 'application/pdf', bytes: pdf }))
+    expect(data(await api.attachNoteFile(KEY, id, { name: 'Report', type: 'application/pdf', bytes: pdf }))).toEqual(report)
+    expect((await noteFileResponse(`note-file://realm/${KEY}/${report.path}`, api)).headers.get('content-type')).toBe('application/pdf')
+    await writeFile(join(dir, 'unsafe.html'), '<script>alert(1)</script>')
+    expect((await noteFileResponse(`note-file://realm/${KEY}/unsafe.html`, api)).status).toBe(415)
+    for (const url of ['bad URL', `file://realm/${KEY}/${image.path}`, `note-file://other/${KEY}/${image.path}`, `note-file://realm/${KEY}/attachments/%2e%2e%2fsecret.png`, `note-file://realm/${KEY}/${image.path}?extra=1`, `note-file://realm/unknown-abc123/${image.path}`]) expect((await noteFileResponse(url, api)).status).toBeGreaterThanOrEqual(400)
   })
 })
 
@@ -334,12 +422,12 @@ describe('note history', () => {
   it('restores editable fields, keeps quest links and archive status, and can recover the replaced text', async () => {
     const { view, id } = await created({ body: 'Original', tags: [] })
     const first = data(await api.readNoteHistory(KEY, id))[0]!
-    await api.saveNote(KEY, id, change({ title: 'Renamed', folder: 'Later', tags: ['later'], body: 'Latest' }), only(view, id).stamp)
+    await api.saveNote(KEY, id, change({ title: 'Renamed', folder: 'Later', type: 'research', isPinned: true, tags: ['later'], body: 'Latest' }), only(view, id).stamp)
     await api.fileNoteQuests(KEY, id, { parent: { kind: 'none' }, quests: [{ title: 'Do it', priority: 'mid', difficulty: 'medium', item: 'Do it' }] })
     const archived = only(data(await api.archiveNote(KEY, id, true)), id)
     const restored = data(await api.restoreNoteVersion(KEY, id, first.id, archived.stamp))
     if (restored.kind !== 'saved') throw new Error('should restore')
-    expect(restored.note).toMatchObject({ title: 'Plan', folder: 'Ideas', tags: [], body: 'Original', isArchived: true, quests: archived.quests, created: archived.created })
+    expect(restored.note).toMatchObject({ title: 'Plan', folder: 'Ideas', tags: [], body: 'Original', type: 'research', isPinned: true, isArchived: true, quests: archived.quests, created: archived.created })
     const history = data(await api.readNoteHistory(KEY, id))
     expect(data(await api.readNoteVersion(KEY, id, history[1]!.id))).toMatchObject({ body: 'Latest', quests: archived.quests, isArchived: true })
   })

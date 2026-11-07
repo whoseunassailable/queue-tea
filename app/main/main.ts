@@ -1,14 +1,15 @@
 import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
-import { readdir } from 'node:fs/promises'
+import { readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, protocol, shell } from 'electron'
 import type { IpcMainInvokeEvent } from 'electron'
 
 import { CHANNELS } from '../shared/engine_api'
 import type { MenuItem, Opened } from '../shared/engine_api'
+import { NOTE_FILE_SCHEME } from '../shared/note_attachments'
 import { appMenu } from './core/app_menu'
 import { BUSY_PROBE, GH_CODE_WAIT_MS, GH_LOGIN_WAIT_MS, GH_PATHS, LOG_FILE, projectsFolder, RESTART_FILE, SETTINGS_FILE, UPDATE_CHECK_MS, WATCH_SETTLE_MS, WINDOW } from './core/constants'
 import { appIdOf, flavorOf } from './core/flavor'
@@ -26,6 +27,7 @@ import { readMana } from './features/mana/api/mana_api'
 import { githubApi } from './features/github/api/github_api'
 import { libraryApi } from './features/library/api/library_api'
 import { notesApi } from './features/notes/api/notes_api'
+import { noteFileResponse } from './features/notes/api/note_protocol'
 import { designsApi } from './features/designs/api/designs_api'
 import { helpersApi } from './features/helpers/api/helpers_api'
 import { judgementWatch } from './features/notify/domain/judgements'
@@ -63,6 +65,7 @@ declare const QUEUE_TEA_BUILT_FLAVOR: string
 declare const QUEUE_TEA_SOURCE: Provenance
 
 const flavor = flavorOf(process.env.QUEUE_TEA_FLAVOR ?? (QUEUE_TEA_BUILT_FLAVOR || undefined), app.isPackaged)
+protocol.registerSchemesAsPrivileged([{ scheme: NOTE_FILE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.on('before-quit', stopProcesses)
 app.setAppUserModelId(appIdOf(flavor))
 app.setName(flavor === 'prod' ? 'Queue-tea' : `Queue-tea ${flavor}`)
@@ -131,7 +134,17 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
-const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path) })
+const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path),
+  saveNoteFile: async (name, bytes) => {
+    const window = BrowserWindow.getFocusedWindow()
+    const options = { defaultPath: name }
+    const picked = window === null ? await dialog.showSaveDialog(options) : await dialog.showSaveDialog(window, options)
+    if (picked.canceled || picked.filePath === undefined) return false
+    await writeFile(picked.filePath, bytes)
+
+    return true
+  },
+})
 // Each change to a helper's work goes to every window as it happens.
 const helpers = helpersApi({
   ...quests,
@@ -218,6 +231,9 @@ const serveEngine = () => {
   handle(CHANNELS.readNoteHistory, (_, key: unknown, id: unknown) => notes.readNoteHistory(key, id))
   handle(CHANNELS.readNoteVersion, (_, key: unknown, id: unknown, version: unknown) => notes.readNoteVersion(key, id, version))
   handle(CHANNELS.restoreNoteVersion, (_, key: unknown, id: unknown, version: unknown, stamp: unknown) => notes.restoreNoteVersion(key, id, version, stamp))
+  handle(CHANNELS.attachNoteFile, (_, key: unknown, id: unknown, file: unknown) => notes.attachNoteFile(key, id, file))
+  handle(CHANNELS.readNoteFile, (_, key: unknown, path: unknown) => notes.readNoteFile(key, path))
+  handle(CHANNELS.downloadNoteFile, (_, key: unknown, path: unknown) => notes.downloadNoteFile(key, path))
   handle(CHANNELS.showNotes, (_, key: unknown) => notes.showNotes(key))
   handle(CHANNELS.openLink, (_, url: unknown) => notes.openLink(url))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
@@ -285,7 +301,7 @@ const openWindow = async (restored?: Restored): Promise<BrowserWindow> => {
     ...windowChrome,
     show: false,
     title: 'Queue-tea',
-    webPreferences: { preload: join(__dirname, '../preload/preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false },
+    webPreferences: { preload: join(__dirname, '../preload/preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, plugins: true },
   })
   window.once('ready-to-show', () => (restored?.isInFront === false ? window.showInactive() : window.show()))
   window.once('closed', () => {
@@ -427,6 +443,7 @@ const takeRestored = async (): Promise<Restored | undefined> => {
 }
 
 const start = async () => {
+  protocol.handle(NOTE_FILE_SCHEME, request => noteFileResponse(request.url, notes))
   serveEngine()
   Menu.setApplicationMenu(Menu.buildFromTemplate(appMenu(app.getName(), flavor === 'dev', sendMenu)))
   const restored = await takeRestored()

@@ -5,12 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { questLinkOf } from '../../../../../shared/notes'
 import { t } from '../../../../l10n/en'
 import type { QuestLine } from '../../domain/notes_view'
+import { fakeEngine } from '../../../../test_support'
 import { ReadView } from './read_view'
 
 afterEach(cleanup)
 
 const line = (title: string, state: QuestLine['state']): QuestLine => ({ title, state, priority: 'mid', difficulty: 'medium' })
-const callbacks = () => ({ isLive: true, notes: [], onToggle: vi.fn(), onOpenNote: vi.fn(), onOpenQuest: vi.fn(), onOpenLink: vi.fn() })
+const callbacks = () => ({ engine: fakeEngine().engine, realm: 'demo-abc123', isLive: true, notes: [], onToggle: vi.fn(), onOpenNote: vi.fn(), onOpenQuest: vi.fn(), onOpenLink: vi.fn() })
 
 describe('quest links in Read', () => {
   it('opens the linked id and redraws the title and state when the quest changes', () => {
@@ -52,4 +53,13 @@ describe('quest links in Read', () => {
     expect(screen.queryByRole('button')).toBeNull()
     expect([...container.querySelectorAll('code')].map(code => code.textContent)).toEqual(['[[quest:t-abc|Example]]', '[[quest:t-abc|Example]]'])
   })
+})
+
+it('renders a quest link beside image and PDF attachments in the same note', async () => {
+  const props = { ...callbacks(), body: '[[quest:t-abc|Fix **image**]]\n\n![[attachments/photo.png|Screenshot]]\n\n[Report](attachments/report.pdf)\n\n`[[quest:t-abc|Example]]`' }
+  render(<ReadView {...props} quests={new Map([['t-abc', line('Fix image', 'active')]])} />)
+  expect(screen.getByRole('button', { name: t.notebook.openQuestLink('Fix image', 'in progress') })).toBeTruthy()
+  expect(await screen.findByAltText('Screenshot')).toBeTruthy()
+  expect(await screen.findByRole('button', { name: 'Preview PDF: Report' })).toBeTruthy()
+  expect(screen.getByText('[[quest:t-abc|Example]]').tagName).toBe('CODE')
 })

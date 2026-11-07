@@ -2,6 +2,7 @@
 // the window shows and edits them. docs/notes.md has the file format.
 import type { Difficulty, ParentPick, Priority } from '../../types'
 import type { ProjectView } from './engine_api'
+import { NOTE_ATTACHMENTS, noteFilePath } from './note_attachments'
 
 export const NOTES_FOLDER = '.queue-tea/notes'
 export const NOTE_HISTORY_FOLDER = '.history'
@@ -61,7 +62,11 @@ export const questLinkOf = (id: string, title: string): string => {
   return shown === '' ? `quest:${id}` : `quest:${id}|${shown}`
 }
 
-const targetsOf = (body: string): string[] => [...body.matchAll(LINK)].map(m => m[1]!.trim()).filter(target => target !== '')
+const targetsOf = (body: string): string[] => [...body.matchAll(LINK)].filter(m => {
+  const path = noteFilePath(m[1]!.trim())
+
+  return path === null || (!path.startsWith(`${NOTE_ATTACHMENTS}/`) && body[m.index - 1] !== '!')
+}).map(m => m[1]!.trim()).filter(target => target !== '')
 const once = (values: string[]): string[] => values.filter((value, i) => values.findIndex(other => same(other, value)) === i)
 
 // The notes a body links to, as written in [[Title]], [[Title|shown]] or [[Title#heading]].
@@ -89,7 +94,12 @@ export const linkPartsOf = (text: string): LinkPart[] => {
   return parts
 }
 
-export const renameLinks = (body: string, from: string, to: string): string => body.replace(LINK, (link, title: string, rest: string) => (same(title.trim(), from) && questIdOf(title) === null ? `[[${to}${rest}]]` : link))
+export const renameLinks = (body: string, from: string, to: string): string => body.replace(LINK, (link, title: string, rest: string, at: number) => {
+  const path = noteFilePath(title.trim())
+  if (path !== null && (path.startsWith(`${NOTE_ATTACHMENTS}/`) || body[at - 1] === '!')) return link
+
+  return same(title.trim(), from) && questIdOf(title) === null ? `[[${to}${rest}]]` : link
+})
 
 export const backlinksOf = (notes: readonly Note[], note: Note): Note[] => notes.filter(other => other.id !== note.id && !other.isArchived && linksOf(other.body).some(title => same(title, note.title)))
 

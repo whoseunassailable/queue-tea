@@ -67,7 +67,7 @@ const open = async (over: Partial<EngineApi> = {}) => {
   return engine
 }
 
-const press = (name: string | RegExp) => act(() => void fireEvent.click(screen.getByRole('button', { name })))
+const press = (name: string | RegExp) => act(async () => void fireEvent.click(screen.getByRole('button', { name })))
 const body = () => screen.getByLabelText(t.notebook.body, { selector: 'textarea' }) as HTMLTextAreaElement
 const write = (text: string) => {
   const box = body()
@@ -81,6 +81,83 @@ afterEach(() => {
 })
 
 describe('the Notes page', () => {
+  it('History shows loading, an empty history, and returns focus when closed with Esc', async () => {
+    const readNoteHistory = vi.fn().mockImplementationOnce(never).mockResolvedValue(ok([]))
+    await open({ ...memoryNotes([note()]), readNoteHistory })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.history.open })))
+    expect((await screen.findByText(t.notebook.history.loading)).closest('[role="status"]')).toBeTruthy()
+    await act(async () => void fireEvent.keyDown(window, { key: 'Escape' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: t.notebook.history.open }))
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.history.open })))
+    await waitFor(() => expect(readNoteHistory).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText(t.notebook.history.empty)).toBeTruthy()
+    expect(readNoteHistory).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('button', { name: t.notebook.history.restore })).toBeNull()
+  })
+
+  it('saves pending edits before History opens, previews safely, and restores an older version', async () => {
+    const notes = memoryNotes([note({ body: 'Before typing', stamp: 'initial' })])
+    const older = note({ body: '<img src=x onerror=alert(1)>\nEarlier words', stamp: 'earlier' })
+    const version = { id: 'old', savedAt: '2026-11-06T10:00:00Z' }
+    const readNoteHistory = vi.fn(async () => ok([version]))
+    const restoreNoteVersion = vi.fn(async () => {
+      const saved = await notes.saveNote(KEY, older.id, older)
+      return saved
+    })
+    await open({ ...notes, readNoteHistory, readNoteVersion: async () => ok(older), restoreNoteVersion })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    write('Pending words')
+    await press(t.notebook.history.open)
+    expect(notes.saveNote).toHaveBeenCalledWith(KEY, older.id, expect.objectContaining({ body: 'Pending words' }), 'initial')
+    const sheet = within(await screen.findByRole('dialog'))
+    const preview = await sheet.findByLabelText(t.notebook.history.preview)
+    expect(preview.textContent).toBe(older.body)
+    expect(preview.querySelector('img')).toBeNull()
+    await press(t.notebook.history.restore)
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(restoreNoteVersion).toHaveBeenCalledWith(KEY, older.id, 'old', 's-1')
+    expect(body().value).toBe(older.body)
+    expect(screen.getByText(t.notebook.history.restored)).toBeTruthy()
+  })
+
+  it('retries a failed history read and a failed preview, then reports a failed restore and retries it', async () => {
+    const older = note({ body: 'Older', stamp: 'old' })
+    const version = { id: 'old', savedAt: '2026-11-06T10:00:00Z' }
+    const readNoteHistory = vi.fn().mockResolvedValueOnce({ ok: false, error: { message: 'History could not be read.' } }).mockResolvedValue(ok([version]))
+    const readNoteVersion = vi.fn().mockResolvedValueOnce({ ok: false, error: { message: 'Preview could not be read.' } }).mockResolvedValue(ok(older))
+    const restoreNoteVersion = vi.fn().mockResolvedValueOnce({ ok: false, error: { message: 'Restore failed.' } }).mockImplementation(never)
+    await open({ ...memoryNotes([note()]), readNoteHistory, readNoteVersion, restoreNoteVersion })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(t.notebook.history.open)
+    expect((await screen.findByRole('alert')).textContent).toContain('History could not be read.')
+    await press(t.failed.tryAgain)
+    expect((await screen.findByRole('alert')).textContent).toContain('Preview could not be read.')
+    await press(t.failed.tryAgain)
+    await screen.findByLabelText(t.notebook.history.preview)
+    await press(t.notebook.history.restore)
+    expect((await screen.findByRole('alert')).textContent).toContain('Restore failed.')
+    await press(t.notebook.history.restore)
+    expect(screen.getByText(t.notebook.history.restoring).closest('[role="status"]')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+
+  it('a restore conflict keeps the current text and asks for another review before restoring', async () => {
+    const older = note({ body: 'Older', stamp: 'old' })
+    const restoreNoteVersion = vi.fn(async () => ok({ kind: 'changed' as const, note: note({ body: 'Changed outside', stamp: 'outside' }) }))
+    await open({ ...memoryNotes([note({ body: 'Current' })]), readNoteHistory: async () => ok([{ id: 'old', savedAt: '2026-11-06T10:00:00Z' }]), readNoteVersion: async () => ok(older), restoreNoteVersion })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(t.notebook.history.open)
+    const sheet = within(await screen.findByRole('dialog'))
+    await sheet.findByLabelText(t.notebook.history.preview)
+    await press(t.notebook.history.restore)
+    expect((await screen.findByRole('alert')).textContent).toContain(t.notebook.history.changed)
+    expect(body().value).toBe('Current')
+    expect((screen.getByRole('button', { name: t.notebook.history.restore }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('is the seventh tab, and says what it is reading while the notes load', async () => {
     await open({ readNotes: never })
 

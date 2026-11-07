@@ -14,6 +14,7 @@ import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkOption
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
+import { NoteHistory } from './note_history'
 
 type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
@@ -158,6 +159,9 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const [save, setSave] = useState<SaveState>(held === null ? { kind: 'saved', at: note.updated.slice(11, 16) } : { kind: 'dirty' })
   const [picker, setPicker] = useState<{ start: number; query: string; index: number; top: number; left: number } | null>(null)
   const [isBrewing, setBrewing] = useState(false)
+  const [historyNote, setHistoryNote] = useState<Note | null>(null)
+  const [isOpeningHistory, setOpeningHistory] = useState(false)
+  const [isRestored, setRestored] = useState(false)
   const [isDetailsOpen, setDetailsOpen] = useState(false)
   const stamp = useRef(held?.stamp ?? note.stamp)
   // Kept edits aren't on disk yet, so the first save writes them.
@@ -171,6 +175,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const bodyBox = useRef<HTMLDivElement>(null)
   const titleBox = useRef<HTMLInputElement>(null)
   const detailsButton = useRef<HTMLButtonElement>(null)
+  const historyButton = useRef<HTMLButtonElement>(null)
   const caret = useRef<number | null>(null)
   const isLive = !note.isArchived
   const isFloating = layout !== 'wide'
@@ -226,6 +231,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   }
 
   const change = (patch: Partial<NoteChange>) => {
+    setRestored(false)
     latest.current = { ...latest.current, ...patch }
     setDraft(latest.current)
     schedule()
@@ -333,6 +339,19 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const brew = async () => {
     if (await flush()) setBrewing(true)
   }
+  const openHistory = async () => {
+    setOpeningHistory(true)
+    // Typing while a save is pending can schedule another one. Drain it before
+    // taking the stamp against which a later restore will be checked.
+    let isSaved = await flush()
+    while (isSaved && !isSame(latest.current, onDisk.current)) isSaved = await flush()
+    if (isSaved) setHistoryNote({ ...note, ...latest.current, stamp: stamp.current })
+    setOpeningHistory(false)
+  }
+  const closeHistory = () => {
+    setHistoryNote(null)
+    historyButton.current?.focus()
+  }
   const closeDetails = () => {
     setDetailsOpen(false)
     detailsButton.current?.focus()
@@ -380,12 +399,14 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             </span>
           )}
           <SaveLine save={save} onRetry={() => void flush()} />
+          <button ref={historyButton} type="button" class="chip-btn" disabled={isOpeningHistory} onClick={() => void openHistory()}>{t.notebook.history.open}</button>
           {isFloating && (
             <button ref={detailsButton} type="button" class="chip-btn" aria-expanded={isDetailsOpen} aria-controls="nt-inspector" onClick={() => (isDetailsOpen ? closeDetails() : setDetailsOpen(true))}>
               {t.notebook.details}
             </button>
           )}
         </header>
+        {isRestored && <p class="hint" role="status">{t.notebook.history.restored}</p>}
         {!isLive && <p class="nt-banner">{t.notebook.archivedLine}</p>}
         {save.kind === 'changed' && (
           <div class="nt-banner" role="alert">
@@ -631,6 +652,13 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
         </aside>
       )}
       {isBrewing && <BrewSheet engine={engine} realm={realm} realmName={realmName} note={shown} quests={quests} onFiled={actions.onFiled} onRefresh={actions.onRefresh} onClose={() => setBrewing(false)} />}
+      {historyNote !== null && <NoteHistory engine={engine} realm={realm} note={historyNote} onClose={closeHistory} onRefresh={actions.onRefresh} onRestored={saved => {
+        adopt(saved.note)
+        actions.onSaved(saved.view)
+        actions.onHeld(note.id, null)
+        setRestored(true)
+        closeHistory()
+      }} />}
     </div>
   )
 }

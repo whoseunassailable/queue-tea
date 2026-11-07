@@ -151,3 +151,43 @@ test('⌘E reads the note, and ticking a box there writes [x] into the file', as
   await expect(page.getByRole('combobox', { name: 'Note' })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('History previews an earlier save, restores it on disk, and keeps the replaced text recoverable', async () => {
+  const body = page.getByRole('combobox', { name: 'Note' })
+  const original = await body.inputValue()
+  const changed = original + '\n\nA history recovery checkpoint.'
+  // Find this note by its front matter, leaving the other test notes alone.
+  let file = ''
+  for (const name of await noteFiles()) {
+    if ((await readFile(join(notesDir(), name), 'utf8')).includes('title: "Bug Bounty Helper"')) file = name
+  }
+  expect(file).not.toBe('')
+  const quests = (await readFile(join(notesDir(), file), 'utf8')).split('\n').find(line => line.startsWith('quests:'))
+  await body.fill(changed)
+  // Opening History immediately flushes the pending autosave through IPC.
+  await page.getByRole('button', { name: 'History', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: 'History of Bug Bounty Helper' })
+  const versions = sheet.getByRole('list', { name: 'Saved versions' }).getByRole('button')
+  await expect(sheet.getByText('This is the current version.')).toBeVisible()
+  await versions.nth(1).click()
+  await expect(sheet.getByLabel('Saved note text')).toHaveText(original)
+  await page.setViewportSize({ width: 760, height: 900 })
+  expect(await sheet.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await page.screenshot({ path: '/private/tmp/queue-tea-notes-history-760.png' })
+  await sheet.getByRole('button', { name: 'Restore this version' }).click()
+  await expect(sheet).toBeHidden()
+  await expect(body).toHaveValue(original)
+  await expect(page.getByText('Version restored. The replaced note is in History.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'History', exact: true })).toBeFocused()
+  const text = await readFile(join(notesDir(), file), 'utf8')
+  expect(text).toContain('\n---\n' + original)
+  expect(text.split('\n').find(line => line.startsWith('quests:'))).toBe(quests)
+  await page.getByRole('button', { name: 'History', exact: true }).click()
+  await versions.nth(1).click()
+  await expect(sheet.getByLabel('Saved note text')).toHaveText(changed)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.screenshot({ path: '/private/tmp/queue-tea-notes-history-1440.png' })
+  await page.keyboard.press('Escape')
+  await expect(sheet).toBeHidden()
+  expect(errors).toEqual([])
+})

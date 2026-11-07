@@ -1,5 +1,5 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
-import type { NoteChange, NoteFiled, NoteInput, NoteSave, NotesView, QuestProposal } from './notes'
+import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
@@ -378,6 +378,9 @@ export type EngineApi = {
   finishBook: (id: string) => Promise<Reply<LibraryView>>
   removeBook: (id: string) => Promise<Reply<LibraryView>>
   readNotes: (key: string) => Promise<Reply<NotesView>>
+  readNoteHistory: (key: string, id: string) => Promise<Reply<NoteVersion[]>>
+  readNoteVersion: (key: string, id: string, version: string) => Promise<Reply<Note>>
+  restoreNoteVersion: (key: string, id: string, version: string, stamp: string) => Promise<Reply<NoteSave>>
   showNotes: (key: string) => Promise<Reply<null>>
   openLink: (url: string) => Promise<Reply<null>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
@@ -475,6 +478,9 @@ export const CHANNELS = {
   finishBook: 'engine:finish-book',
   removeBook: 'engine:remove-book',
   readNotes: 'engine:read-notes',
+  readNoteHistory: 'engine:read-note-history',
+  readNoteVersion: 'engine:read-note-version',
+  restoreNoteVersion: 'engine:restore-note-version',
   showNotes: 'engine:show-notes',
   openLink: 'engine:open-link',
   createNote: 'engine:create-note',

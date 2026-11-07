@@ -4,6 +4,9 @@ import type { Difficulty, ParentPick, Priority } from '../../types'
 import type { ProjectView } from './engine_api'
 
 export const NOTES_FOLDER = '.queue-tea/notes'
+export const NOTE_HISTORY_FOLDER = '.history'
+export const NOTE_HISTORY_LIMITS = { recent: 50, hourly: 24, daily: 26 } as const
+export const NOTE_VERSION_ID = /^v-(\d{13})-([a-f0-9]{40})$/
 export const INBOX = 'Inbox'
 export const NOTE_LIMITS = { title: 200, folder: 60, tag: 40, tags: 20, item: 500, body: 1_000_000, notes: 5000, quests: 50 } as const
 
@@ -19,6 +22,8 @@ export type NoteChange = { title: string; folder: string; tags: string[]; body: 
 // changed: the file isn't the one the editor read; note is the file now, or null when it's gone.
 // relinked: how many other notes had their links to it rewritten by a rename.
 export type NoteSave = { kind: 'saved'; view: NotesView; note: Note; relinked: number } | { kind: 'changed'; note: Note | null }
+// History lists only times; the full snapshot is read when selected.
+export type NoteVersion = { id: string; savedAt: string }
 export type ProposedQuest = { title: string; priority: Priority; difficulty: Difficulty; item: string | null }
 export type QuestProposal = { parent: ParentPick; quests: ProposedQuest[] }
 // project: the realm's quests once the new ones are in.

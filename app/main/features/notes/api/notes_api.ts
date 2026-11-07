@@ -4,8 +4,8 @@ import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usec
 import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { ParentPick } from '../../../../../types'
 import type { Reply } from '../../../../shared/engine_api'
-import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, NOTES_FOLDER, renameLinks } from '../../../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesView, ProposedQuest } from '../../../../shared/notes'
+import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_HISTORY_FOLDER, NOTE_LIMITS, NOTE_TITLE_BAD, NOTE_VERSION_ID, NOTES_FOLDER, renameLinks } from '../../../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesView, NoteVersion, ProposedQuest } from '../../../../shared/notes'
 import { projectsFolder } from '../../../core/constants'
 import { inGameWords, MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
@@ -15,6 +15,7 @@ import type { TasksDeps } from '../../tasks/api/scope'
 import { newQuestOf, parentOf } from '../../tasks/domain/task_input'
 import { noteText, parseNote } from '../domain/note_file'
 import type { NoteFile } from '../domain/note_file'
+import { versionsToKeep } from '../domain/note_history'
 
 export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void }
 
@@ -78,6 +79,7 @@ type Loaded = { id: string; file: NoteFile; text: string }
 export const notesApi = (d: NotesDeps) => {
   const folderOf = (key: string) => `${d.home}/${NOTES_FOLDER}/${key}`
   const pathOf = (key: string, id: string) => `${folderOf(key)}/${id}.md`
+  const historyOf = (key: string, id: string) => `${folderOf(key)}/${NOTE_HISTORY_FOLDER}/${id}`
   const nowText = () => isoLocal(d.now(), d.offsetMinutes())
 
   const realmOf = async (key: unknown): Promise<string> => {
@@ -130,17 +132,63 @@ export const notesApi = (d: NotesDeps) => {
     return { notes: loaded.map(noteOf).sort((a, b) => b.updated.localeCompare(a.updated)), unreadable, folder: folderOf(key) }
   }
 
-  // The new text goes beside the file and is moved over it, so a failed write
-  // never leaves half a note. The note before it is kept as .bak.
+  const history = async (key: string, id: string): Promise<NoteVersion[]> =>
+    (await d.host.list(historyOf(key, id)))
+      .filter(name => name.endsWith('.md') && NOTE_VERSION_ID.test(name.slice(0, -3)))
+      .map(name => ({ id: name.slice(0, -3), savedAt: new Date(Number(NOTE_VERSION_ID.exec(name.slice(0, -3))![1])).toISOString() }))
+      .sort((a, b) => b.id.localeCompare(a.id))
+
+  const snapshot = async (key: string, id: string, text: string, isSave = false): Promise<void> => {
+    const latest = (await history(key, id))[0]
+    const hash = stampOf(text)
+    // Before overwriting, also keep an imported or externally edited file.
+    if (!isSave && latest?.id.endsWith(hash) && await d.host.read(`${historyOf(key, id)}/${latest.id}.md`) === text) return
+    const at = Math.max(d.now(), latest === undefined ? 0 : Number(NOTE_VERSION_ID.exec(latest.id)![1]) + 1)
+    const version = `v-${String(at).padStart(13, '0')}-${hash}`
+    const path = `${historyOf(key, id)}/${version}.md`
+    const made = await d.host.makeDirs(historyOf(key, id))
+    if (made.exitCode !== 0) throw new Error(made.stderr)
+    await d.host.write(`${path}.tmp`, text)
+    const moved = await d.host.move(`${path}.tmp`, path)
+    if (moved.exitCode !== 0) throw new Error(moved.stderr)
+    d.log.debug(`note version kept: ${path}`)
+  }
+
+  const readVersion = async (key: string, id: string, version: unknown): Promise<Loaded> => {
+    if (typeof version !== 'string' || !NOTE_VERSION_ID.test(version)) throw new Refusal(MESSAGES.unknownNoteVersion)
+    const path = `${historyOf(key, id)}/${version}.md`
+    if (!(await d.host.exists(path))) throw new Refusal(MESSAGES.unknownNoteVersion)
+    const text = await d.host.read(path)
+    if (!version.endsWith(stampOf(text))) throw new Refusal(MESSAGES.unknownNoteVersion)
+    d.log.debug(`note version read: ${path}`)
+
+    return { id, text, file: parseNote(text, id, new Date(Number(NOTE_VERSION_ID.exec(version)![1])).toISOString()) }
+  }
+
+  const remove = async (path: string) => {
+    const gone = await d.host.remove(path)
+    if (gone.exitCode !== 0) throw new Error(gone.stderr)
+  }
+
+  // Snapshots are durable before the new text replaces the live file. A failed
+  // snapshot/write never leaves half a note. Legacy backups join the history.
   const write = async (key: string, id: string, file: NoteFile): Promise<Loaded> => {
     const made = await d.host.makeDirs(folderOf(key))
     if (made.exitCode !== 0) throw new Error(made.stderr)
     const path = pathOf(key, id)
     const text = noteText(file)
     await d.host.write(`${path}.tmp`, text)
-    if (await d.host.exists(path)) await d.host.write(`${path}.bak`, await d.host.read(path))
+    if (await d.host.exists(`${path}.bak`)) {
+      if ((await history(key, id)).length === 0) await snapshot(key, id, await d.host.read(`${path}.bak`))
+    }
+    if (await d.host.exists(path)) await snapshot(key, id, await d.host.read(path))
+    await snapshot(key, id, text, true)
     const moved = await d.host.move(`${path}.tmp`, path)
     if (moved.exitCode !== 0) throw new Error(moved.stderr)
+    await remove(`${path}.bak`)
+    const versions = await history(key, id)
+    const keep = new Set(versionsToKeep(versions).map(version => version.id))
+    for (const version of versions) if (!keep.has(version.id)) await remove(`${historyOf(key, id)}/${version.id}.md`)
     d.log.debug(`note written: ${path}`)
 
     return { id, file, text }
@@ -185,6 +233,40 @@ export const notesApi = (d: NotesDeps) => {
 
   return {
     readNotes: (key: unknown): Promise<Reply<NotesView>> => reply(d.log, MESSAGES.readNotes, async () => viewOf(await realmOf(key))),
+
+    readNoteHistory: (key: unknown, id: unknown): Promise<Reply<NoteVersion[]>> =>
+      inTurn(MESSAGES.readNoteHistory, async () => {
+        const realm = await realmOf(key)
+        const one = await known(realm, idOf(id))
+
+        return history(realm, one.id)
+      }),
+
+    readNoteVersion: (key: unknown, id: unknown, version: unknown): Promise<Reply<Note>> =>
+      inTurn(MESSAGES.readNoteHistory, async () => {
+        const realm = await realmOf(key)
+        const one = await known(realm, idOf(id))
+
+        return noteOf(await readVersion(realm, one.id, version))
+      }),
+
+    restoreNoteVersion: (key: unknown, id: unknown, version: unknown, stamp: unknown): Promise<Reply<NoteSave>> =>
+      inTurn(MESSAGES.restoreNoteVersion, async (): Promise<NoteSave> => {
+        const realm = await realmOf(key)
+        const noteId = idOf(id)
+        const previous = await readVersion(realm, noteId, version)
+        const now = await readOne(realm, noteId)
+        if (now === null) return { kind: 'changed', note: null }
+        if (stampOf(now.text) !== stamp) return { kind: 'changed', note: noteOf(now) }
+        const next = changeOf(previous.file)
+        const title = now.file.isArchived ? next.title : freeTitle(await titlesOf(realm), next.title, noteId)
+        // Filing quests and archiving are separate actions: restoring text must
+        // not detach quests or make an archived note live again.
+        const saved = await write(realm, noteId, { ...now.file, ...next, title, updated: nowText() })
+        const relinked = same(now.file.title, title) ? 0 : await relink(realm, noteId, now.file.title, title)
+
+        return { kind: 'saved', view: await viewOf(realm), note: noteOf(saved), relinked }
+      }),
 
     openLink: (url: unknown): Promise<Reply<null>> =>
       reply(d.log, MESSAGES.openLink, async () => {
@@ -252,10 +334,13 @@ export const notesApi = (d: NotesDeps) => {
         const realm = await realmOf(key)
         const one = await known(realm, idOf(id))
         if (!one.file.isArchived) throw new Refusal(MESSAGES.deleteNotArchived)
-        for (const path of [pathOf(realm, one.id), `${pathOf(realm, one.id)}.bak`]) {
-          const gone = await d.host.remove(path)
+        const versions = historyOf(realm, one.id)
+        for (const name of await d.host.list(versions)) await remove(`${versions}/${name}`)
+        if (await d.host.exists(versions)) {
+          const gone = await d.host.removeDir(versions)
           if (gone.exitCode !== 0) throw new Error(gone.stderr)
         }
+        for (const path of [pathOf(realm, one.id), `${pathOf(realm, one.id)}.bak`, `${pathOf(realm, one.id)}.tmp`]) await remove(path)
         d.log.debug(`note deleted: ${pathOf(realm, one.id)}`)
 
         return viewOf(realm)

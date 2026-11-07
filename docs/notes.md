@@ -51,7 +51,8 @@ Decided while drawing:
     n-3f9a2b7e.md
     n-51c0e8d2.md
     Clinic visit 12 Nov.md        made in Obsidian
-    n-3f9a2b7e.md.bak             last good copy, never listed
+    .history/
+      n-3f9a2b7e/                 saved versions, never listed
 ```
 
 Queue-tea reads the `.md` files at the top of the realm's folder. It skips subfolders, hidden files (`.obsidian/` among them) and any name holding `/`, `\` or `..`. A file starts with front matter between two `---` lines, then the Markdown body.
@@ -114,7 +115,7 @@ The screens are in `docs/notes.pen`, numbered as below, at the app's window size
 - **4b · Form error.** A cleared title shows a red field and "Quest title is required." under it. See Fields below.
 - **4c · Filing failed part way.** A banner in the sheet: "2 of 3 quests are filed. “Log raw pressure at 200 Hz for one walk” isn't: Gait-feedback's queue couldn't be saved. Try again files only that one." The filed rows show "Filed · Waiting" and lock. The button reads **Try again**. When nothing was filed, the banner says so and the rows stay as they were.
 - **4d · After filing.** The sheet closes, and a toast says "Filed 3 quests. They wait on the quest board." The inspector's Quests list shows the parent with "◆ Saga · 0/2 done" and the quests under it, each with its state (○ Waiting, Sealed, ▶ In progress, ✓ Done, or Not in the queue) and its priority and difficulty. The states update when the queue changes. Clicking a quest opens it on Quests. BrewQuest now says "Filed 3 quests. 1 line isn't a quest yet." Each quest's description starts "From the note "False steps in the March recordings" in Notes." The note's own quest adds the note's first paragraph.
-- **5 · Archived and Delete forever.** **Archived (2)** turns the list into the archived notes. The header then reads "Archived 2", and the foot has **Back to notes**. Capture and New note are hidden. An archived note opens read-only, with "This note is archived. Restore it to edit it.", **Restore** and **Delete forever…**, and without BrewQuest. **Delete forever…** asks "Delete “Old sensor list” forever?" and says "Its file is removed and can't be brought back. Quests filed from it stay in the queue." When other notes link to it, a note in the dialog names them and says the links will show as not found. Focus starts on **Cancel**. **Delete note** removes the file and its last good copy. With no archived notes, the list says "No archived notes. An archived note waits here until you restore it or delete it."
+- **5 · Archived and Delete forever.** **Archived (2)** turns the list into the archived notes. The header then reads "Archived 2", and the foot has **Back to notes**. Capture and New note are hidden. An archived note opens read-only, with "This note is archived. Restore it to edit it.", **Restore** and **Delete forever…**, and without BrewQuest. **Delete forever…** asks "Delete “Old sensor list” forever?" and says "Its file and saved history are removed and can't be brought back. Quests filed from it stay in the queue." When other notes link to it, a note in the dialog names them and says the links will show as not found. Focus starts on **Cancel**. **Delete note** removes the file and its saved history. With no archived notes, the list says "No archived notes. An archived note waits here until you restore it or delete it."
 - **6 · Narrow window.** Below 900 px the editor fills the page. Its head has **Notes** on the left, which opens the list as a drawer over the page with the page dimmed behind it, and **Details** on the right, which floats the inspector. Esc, ✕ or picking a note closes the drawer, and focus returns to **Notes**.
 
 **Other states.** A search with no match says "Nothing has “sensor drift” in it. Try fewer words, or clear the search.", with **Clear search**. When notes exist but none is open, the editor says "Pick a note" and "Choose one from the list, or make a new one." The night sky uses the same theme tokens as every page, so it has no screen of its own.
@@ -161,7 +162,7 @@ A captured idea becomes a note's title when it fits as one: one line, 80 charact
 ## Behaviour
 
 - **When it reads.** The page reads the realm's notes when it opens, when the realm changes, when the window regains focus and after each change it makes. It keeps the open note's text while it reads again.
-- **Saving.** The editor saves 800 ms after typing stops, when it leaves the note, and when the window closes. The save line reads "Not saved yet" while it waits, then "Saving…" and then "Saved 14:02". One change runs at a time per realm. Every write goes to a temporary file that is then moved into place, and the last good copy is kept beside it as `<id>.md.bak`. Obsidian ignores that file and the list never shows it. A body over 1,000,000 characters isn't saved: "This note is too long to save. Split it into two notes."
+- **Saving.** The editor saves 800 ms after typing stops, when it leaves the note, and when the window closes. The save line reads "Not saved yet" while it waits, then "Saving…" and then "Saved 14:02". One change runs at a time. Every write goes to a temporary file that is then moved into place, with a snapshot in `.history/<id>/` (see [Version history](#version-history)). A body over 1,000,000 characters isn't saved: "This note is too long to save. Split it into two notes."
 - **Changed on disk.** The editor sends main the stamp of the file as it read it. If the file is different when a save comes, main writes nothing and returns the file as it is now, and the editor shows 2e. When the window regains focus, a note with no unsaved edits simply loads the newer file.
 - **Renaming.** When a new title is saved, main rewrites `[[Old]]`, `[[Old|…]]` and `[[Old#…]]` in the realm's other notes, archived ones included. It skips this when another note still has the old title, because those links could mean that note. The save line then says "Saved 14:05 · links updated in 2 notes".
 - **Search** ignores case. Every word you type must appear in the title, the body or a tag. A word starting with `#` matches tags only. Folders with no match hide.
@@ -196,7 +197,7 @@ Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook`, and main
 8. Renaming a note rewrites `[[Old]]`, `[[Old|x]]` and `[[Old#h]]` in the realm's other notes. It doesn't when another note has the old title.
 9. When a note's file changes on disk while it has unsaved edits, the next save writes nothing and shows the banner. Each of its three choices does what it says.
 10. A save that fails shows "Couldn't save. Your text is still here." and keeps the text. Try again saves it.
-11. Archive hides the note from the list and the picker. Archived shows it read-only. Restore brings it back, as "Title 2" when the title is taken. Delete forever is offered only there, asks first, and removes the file and its `.bak`. Main refuses to delete a note that isn't archived.
+11. Archive hides the note from the list and the picker. Archived shows it read-only. Restore brings it back, as "Title 2" when the title is taken. Delete forever is offered only there, asks first, and removes the file, its saved history and any legacy `.bak`. Main refuses to delete a note that isn't archived.
 12. Turn into quests… proposes a parent named after the note, with one quest per unticked line not yet filed. One line gives one quest, and no lines give the note itself as one quest. Nothing is written before File.
 13. An empty title in the sheet shows "Quest title is required." under it on blur and on File, and files nothing.
 14. File puts the quests in the realm's queue, in order, under the parent. Their descriptions name the note, and the note's `quests` lists them with their lines. Filing again proposes only lines not yet filed.
@@ -216,9 +217,33 @@ Added after Notes 1, from the epic's first quest. **Write** and **Read** sit in 
 - **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). An image is a link that opens the picture in the browser until attachments come.
 - **Safety:** marked 18.1.1 only cuts the text into tokens. Every token becomes an element in the window, so nothing in a note runs as HTML: `<b>` shows as `<b>`.
 
+## Version history
+
+**History**, beside the save line, opens a 600 px sheet for the open note, including an archived note. Pending edits save before it opens; a failed save leaves the editor and its text in place. The sheet lists saved times newest first, with a read-only preview of the selected version's title, folder, tags and Markdown source. Text in a snapshot never runs as HTML. The current version is marked and cannot be restored over itself.
+
+Choose an earlier save, then **Restore this version** (or ⌘↩). This restores its title, folder, tags and text as a new save. The replaced note remains in History. Current quest links, archive status, creation time and other front-matter properties stay with the note, so restoring text cannot make already filed checklist items file again. A live note restored onto a taken title gets the next number, such as "Plan 2". A title change updates backlinks as a normal rename does.
+
+If the file changes or disappears after History opens, restore writes nothing. The sheet asks you to close History, check the current note, then open History again. Failed reads offer **Try again** where the list or preview was. A failed restore keeps the preview and lets you retry. While restoring, a spinner says "Restoring this version…" and the sheet's controls lock. Success closes the sheet and says "Version restored. The replaced note is in History."
+
+Tab and Shift-Tab stay inside the sheet. Esc and **Close history** close it and return focus to **History**, except while a restore is running. The saved times and preview scroll separately. Below 600 px they stack.
+
+Every write keeps a version, including creation, archive changes, quest links and rewritten backlinks. Before an imported or externally edited note is overwritten, its exact file is kept too. A note made outside Queue-tea has no history until its first save. An existing `.bak` joins that initial history and is removed after the live file saves successfully. Snapshots are Markdown files in `~/.queue-tea/notes/<realm key>/.history/<note id>/`, hidden from Notes and Obsidian's normal file list. Each file name holds a save time and a SHA-1 content stamp; a missing or damaged snapshot is refused when opened or restored.
+
+The limit is 100 versions per note: 50 recent saves, then up to 24 older versions from distinct hours, then up to 26 from distinct days. Extra versions are pruned after a successful write. The hour and day buckets use UTC. This preserves older recovery points through bursts of 800 ms autosaves. A failed replacement can leave a recoverable snapshot of the attempted save; the live file stays intact. **Delete forever…** removes the note's entire history too.
+
+The shared contract adds `NoteVersion` and `readNoteHistory`, `readNoteVersion`, `restoreNoteVersion` to the engine API. Reads and restores run in the same queue as saves, so the app cannot prune a version midway through reading it. Restore takes the current file stamp and returns the same saved-or-changed result as `saveNote`. Retention rules live in `app/main/features/notes/domain/note_history.ts`, the sheet in `app/renderer/features/notes/presentation/widgets/note_history.tsx`, and the policy constants in `app/shared/notes.ts`.
+
+Checks for this follow-up:
+
+1. Create and edit a note, open History, preview the earlier save and restore it. The file on disk matches the restored text, and the replaced text can still be previewed.
+2. Save repeatedly across hours and days, then in a rapid burst. At most 100 versions remain; old hourly and daily recovery points survive the burst.
+3. Restore after filing quests or archiving. Quest links and archive status stay current. A stale restore changes no file.
+4. Read history after reopening the API. Invalid realm, note or version ids cannot escape the notes folder. Damaged versions and failed writes show errors without corrupting the live note.
+5. Check loading, empty, failed, restoring and success states, keyboard focus, and the sheet at 760 px. Delete forever removes the history.
+
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, attachments and images, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates, version history and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, attachments and images, bookmarks, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis, templates and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

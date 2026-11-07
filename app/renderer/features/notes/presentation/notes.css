@@ -35,6 +35,20 @@
 .rm .nt-save { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink3); min-height: 22px; }
 .rm .nt-save.saved::before { content: '✓'; }
 .rm .nt-save.failed { color: var(--urg-t); font-weight: 700; }
+/* History fits the existing 600 px sheet; each pane scrolls independently. */
+.rm .nt-history { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.rm .nt-history > p { margin: 0; }
+.rm .nt-history-grid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; }
+.rm .nt-versions { list-style: none; margin: 0; padding: 0; max-height: 42vh; overflow-y: auto; }
+.rm .nt-versions .nt-item { font-size: 12px; padding: 8px; }
+.rm .nt-version-preview { min-width: 0; max-height: 42vh; overflow-y: auto; }
+.rm .nt-version-preview h3 { margin: 0; font-size: 18px; text-transform: none; letter-spacing: normal; }
+.rm .nt-version-preview .sub { margin: 4px 0; }
+.rm .nt-history-text { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; }
+@media (max-width: 600px) {
+  .rm .nt-history-grid { grid-template-columns: minmax(0, 1fr); }
+  .rm .nt-versions { max-height: 18vh; }
+}
 .rm .nt-banner { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 12px; border-radius: 8px; background: var(--au-b); color: var(--au-t); }
 .rm .nt-banner-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
 .rm .nt-title, .rm .nt-body { width: 100%; max-width: 640px; }

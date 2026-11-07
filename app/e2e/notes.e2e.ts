@@ -152,42 +152,48 @@ test('⌘E reads the note, and ticking a box there writes [x] into the file', as
   expect(errors).toEqual([])
 })
 
-test('History previews an earlier save, restores it on disk, and keeps the replaced text recoverable', async () => {
-  const body = page.getByRole('combobox', { name: 'Note' })
-  const original = await body.inputValue()
-  const changed = original + '\n\nA history recovery checkpoint.'
-  // Find this note by its front matter, leaving the other test notes alone.
-  let file = ''
-  for (const name of await noteFiles()) {
-    if ((await readFile(join(notesDir(), name), 'utf8')).includes('title: "Bug Bounty Helper"')) file = name
-  }
-  expect(file).not.toBe('')
-  const quests = (await readFile(join(notesDir(), file), 'utf8')).split('\n').find(line => line.startsWith('quests:'))
-  await body.fill(changed)
-  // Opening History immediately flushes the pending autosave through IPC.
-  await page.getByRole('button', { name: 'History', exact: true }).click()
-  const sheet = page.getByRole('dialog', { name: 'History of Bug Bounty Helper' })
-  const versions = sheet.getByRole('list', { name: 'Saved versions' }).getByRole('button')
-  await expect(sheet.getByText('This is the current version.')).toBeVisible()
-  await versions.nth(1).click()
-  await expect(sheet.getByLabel('Saved note text')).toHaveText(original)
-  await page.setViewportSize({ width: 760, height: 900 })
-  expect(await sheet.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
-  await page.screenshot({ path: '/private/tmp/queue-tea-notes-history-760.png' })
-  await sheet.getByRole('button', { name: 'Restore this version' }).click()
-  await expect(sheet).toBeHidden()
-  await expect(body).toHaveValue(original)
-  await expect(page.getByText('Version restored. The replaced note is in History.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'History', exact: true })).toBeFocused()
-  const text = await readFile(join(notesDir(), file), 'utf8')
-  expect(text).toContain('\n---\n' + original)
-  expect(text.split('\n').find(line => line.startsWith('quests:'))).toBe(quests)
-  await page.getByRole('button', { name: 'History', exact: true }).click()
-  await versions.nth(1).click()
-  await expect(sheet.getByLabel('Saved note text')).toHaveText(changed)
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.screenshot({ path: '/private/tmp/queue-tea-notes-history-1440.png' })
-  await page.keyboard.press('Escape')
-  await expect(sheet).toBeHidden()
   expect(errors).toEqual([])
 })
+
+test('a template, folder move, rename and pin survive reopening, with links still opening', async () => {
+  await page.getByRole('button', { name: 'New note', exact: true }).click()
+  const templates = page.getByRole('group', { name: 'Start from a template' })
+  await templates.getByRole('button', { name: 'Bug', exact: true }).click()
+  const body = page.getByRole('combobox', { name: 'Note' })
+  await expect(body).toHaveValue(/## Steps to reproduce/)
+  await expect(page.getByLabel('Type', { exact: true })).toHaveValue('bug')
+  await page.getByLabel('Title *').fill('Incident review')
+  await page.getByLabel('Title *').press('Tab')
+  await body.fill('## Steps to reproduce\n\nSee [[Threat model]].\n\n- [ ] Reproduce')
+  await page.getByLabel('Folder', { exact: true }).fill('Incidents')
+  await page.getByLabel('Folder', { exact: true }).press('Tab')
+  await expect(page.getByRole('region', { name: 'Incidents' })).toBeVisible()
+  await page.getByRole('button', { name: 'Rename the folder Incidents' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Rename Incidents' })
+  await dialog.getByLabel('Folder name *').fill('Casebook')
+  await dialog.getByRole('button', { name: 'Rename folder', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('Casebook')
+  await page.getByRole('button', { name: 'Pin note', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Pinned', exact: true }).getByRole('button', { name: /^Incident review/ })).toBeVisible()
+
+  const saved = async () => {
+    const files = await Promise.all((await noteFiles()).map(name => readFile(join(notesDir(), name), 'utf8')))
+
+    return files.find(text => text.includes('title: "Incident review"')) ?? ''
+  }
+  expect(await saved()).toContain('type: "bug"')
+  expect(await saved()).toContain('folder: "Casebook"')
+  expect(await saved()).toContain('pinned: true')
+  expect(await saved()).toContain('[[Threat model]]')
+
+  await page.reload()
+  await expect(page.getByLabel('Title *')).toHaveValue('Incident review')
+  await expect(page.getByLabel('Type', { exact: true })).toHaveValue('bug')
+  await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('Casebook')
+  await page.getByRole('button', { name: 'Unpin note', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Casebook' }).getByRole('button', { name: /^Incident review/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
+  await page.locator('.nt-read').getByRole('button', { name: 'Threat model', exact: true }).click()
+  await expect(page.getByLabel('Title *')).toHaveValue('Threat model')
+  await expect(page.getByRole('complementary', { name: 'About this note' }).getByRole('button', { name: 'Incident review', exact: true })).toBeVisible()

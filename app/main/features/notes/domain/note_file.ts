@@ -1,15 +1,16 @@
-import { cleanTag, INBOX, NOTE_LIMITS } from '../../../../shared/notes'
-import type { NoteQuest } from '../../../../shared/notes'
+import { cleanTag, INBOX, NOTE_LIMITS, noteTypeOf } from '../../../../shared/notes'
+import type { NoteQuest, NoteType } from '../../../../shared/notes'
 
 // A note on disk: front matter between --- lines, then the Markdown body.
 // Queue-tea writes its values as JSON, which YAML reads too, so Obsidian shows
 // them as properties. The title goes in aliases too, since Obsidian follows
 // [[Title]] by file name or alias and the files are named by id; aliases holds
 // the others, which are kept. rest is every front-matter line Queue-tea
-// doesn't own, written back as it was read.
-export type NoteFile = { title: string; folder: string; tags: string[]; created: string; updated: string; isArchived: boolean; quests: NoteQuest[]; aliases: string[]; body: string; rest: string[] }
+// doesn't own, written back as it was read. A type Queue-tea doesn't know
+// (type: book) is one of those; type and pinned are written only when set.
+export type NoteFile = { title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; created: string; updated: string; isArchived: boolean; quests: NoteQuest[]; aliases: string[]; body: string; rest: string[] }
 
-const OWNED = ['title', 'folder', 'tags', 'created', 'updated', 'archived', 'quests', 'aliases'] as const
+const OWNED = ['title', 'folder', 'type', 'pinned', 'tags', 'created', 'updated', 'archived', 'quests', 'aliases'] as const
 type Owned = (typeof OWNED)[number]
 
 const jsonOr = (text: string): unknown => {
@@ -46,7 +47,7 @@ export const parseNote = (raw: string, name: string, fileTime: string): NoteFile
     const line = lines[i]!
     const m = /^([A-Za-z_][\w-]*):\s?(.*)$/.exec(line)
     const key = m?.[1] as Owned | undefined
-    if (m === null || key === undefined || !OWNED.includes(key)) {
+    if (m === null || key === undefined || !OWNED.includes(key) || (key === 'type' && noteTypeOf(jsonOr(m[2]!.trim())) === null)) {
       rest.push(line)
       continue
     }
@@ -64,6 +65,8 @@ export const parseNote = (raw: string, name: string, fileTime: string): NoteFile
   return {
     title,
     folder: textOf(found.folder, NOTE_LIMITS.folder) || INBOX,
+    type: noteTypeOf(found.type),
+    isPinned: found.pinned === true || found.pinned === 'true',
     tags: tagsOf(found.tags),
     created: textOf(found.created, 40) || fileTime,
     updated: textOf(found.updated, 40) || fileTime,
@@ -75,18 +78,31 @@ export const parseNote = (raw: string, name: string, fileTime: string): NoteFile
   }
 }
 
+// The rest without a type line, and the list under it, once Queue-tea writes its own.
+const withoutType = (rest: readonly string[]): string[] => {
+  let isType = false
+
+  return rest.filter(line => {
+    isType = /^type:/.test(line) || (isType && /^\s/.test(line))
+
+    return !isType
+  })
+}
+
 export const noteText = (note: NoteFile): string =>
   [
     '---',
     `title: ${JSON.stringify(note.title)}`,
     `folder: ${JSON.stringify(note.folder)}`,
+    ...(note.type === null ? [] : [`type: ${JSON.stringify(note.type)}`]),
+    ...(note.isPinned ? ['pinned: true'] : []),
     `tags: ${JSON.stringify(note.tags)}`,
     `created: ${JSON.stringify(note.created)}`,
     `updated: ${JSON.stringify(note.updated)}`,
     `archived: ${note.isArchived}`,
     `quests: ${JSON.stringify(note.quests)}`,
     `aliases: ${JSON.stringify([note.title, ...note.aliases.filter(alias => alias !== note.title)])}`,
-    ...note.rest,
+    ...(note.type === null ? note.rest : withoutType(note.rest)),
     '---',
     note.body,
   ].join('\n')

@@ -1,17 +1,52 @@
 import { describe, expect, it } from 'vitest'
 
-import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, openItemsOf, proposalOf, renameLinks } from '../../../../shared/notes'
+import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, NOTE_TYPES, openItemsOf, proposalOf, renameLinks } from '../../../../shared/notes'
 import type { Note } from '../../../../shared/notes'
 import { noteText, parseNote } from './note_file'
 
-const note = (over: Partial<Note> = {}): Note => ({ id: 'n-1', title: 'Bug Bounty Helper', folder: 'Ideas', tags: [], created: '', updated: '', isArchived: false, quests: [], body: '', stamp: '', ...over })
+const note = (over: Partial<Note> = {}): Note => ({ id: 'n-1', title: 'Bug Bounty Helper', folder: 'Ideas', type: null, isPinned: false, tags: [], created: '', updated: '', isArchived: false, quests: [], body: '', stamp: '', ...over })
 
 describe('a note file', () => {
+  it.each(NOTE_TYPES)('reads and writes a %s type apart from the folder and pin', type => {
+    const read = parseNote(`---\nfolder: Plans\ntype: ${type.toUpperCase()}\npinned: true\n---\nKeep this text`, 'Plan', 'file-time')
+
+    expect(read).toMatchObject({ folder: 'Plans', type, isPinned: true, body: 'Keep this text' })
+    expect(parseNote(noteText(read), 'Plan', 'file-time')).toEqual(read)
+  })
+
+  it('keeps old files free of unset type and pin properties', () => {
+    const read = parseNote('Body', 'Old', 'file-time')
+
+    expect(read).toMatchObject({ type: null, isPinned: false })
+    expect(noteText(read)).not.toMatch(/^(type|pinned):/m)
+  })
+
+  it.each(['book', '\n  - book\n  - journal'])('keeps an unknown type until a known one replaces it: %s', value => {
+    const read = parseNote(`---\ntype: ${value}\ncssclass: wide\n---\nBody`, 'Old', 'file-time')
+    const kept = noteText(read)
+
+    expect(read.type).toBeNull()
+    expect(kept).toContain(`type: ${value}`)
+    const replaced = noteText({ ...read, type: 'idea' })
+    expect(replaced.match(/^type:/gm)).toHaveLength(1)
+    expect(replaced).not.toContain('book')
+    expect(replaced).toContain('cssclass: wide')
+    expect(parseNote(replaced, 'Old', 'file-time').type).toBe('idea')
+  })
+
+  it('removes the pin property when unpinned without changing the type or body', () => {
+    const read = parseNote('---\ntype: bug\npinned: true\n---\nBody', 'Bug', 'file-time')
+    const text = noteText({ ...read, isPinned: false })
+
+    expect(text).not.toMatch(/^pinned:/m)
+    expect(parseNote(text, 'Bug', 'file-time')).toMatchObject({ type: 'bug', isPinned: false, body: 'Body' })
+  })
+
   it('reads what it writes, and keeps front matter it does not own', () => {
-    const text = noteText({ title: 'Bug "Bounty"', folder: 'Ideas', tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
+    const text = noteText({ title: 'Bug "Bounty"', folder: 'Ideas', type: null, isPinned: false, tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
     const read = parseNote(text, 'n-1', 'file-time')
 
-    expect(read).toEqual({ title: 'Bug "Bounty"', folder: 'Ideas', tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
+    expect(read).toEqual({ title: 'Bug "Bounty"', folder: 'Ideas', type: null, isPinned: false, tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
     expect(noteText(read)).toBe(text)
   })
 

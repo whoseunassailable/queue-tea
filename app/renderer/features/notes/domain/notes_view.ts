@@ -1,11 +1,12 @@
 import type { Difficulty, Priority } from '../../../../../types'
-import { cleanTag, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, openItemsOf } from '../../../../shared/notes'
-import type { Note, NoteInput, QuestProposal } from '../../../../shared/notes'
+import { cleanTag, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, openItemsOf } from '../../../../shared/notes'
+import type { Note, NoteChange, NoteInput, NoteType, QuestProposal } from '../../../../shared/notes'
 import { dayOf } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
 import type { ReadableView } from '../../workspace/state_management/workspace_store'
 
-export type FolderGroup = { folder: string; notes: Note[] }
+// folder is null for the Pinned group.
+export type FolderGroup = { folder: string | null; notes: Note[] }
 
 const words = (query: string) => query.toLowerCase().split(/\s+/).filter(word => word !== '')
 
@@ -18,12 +19,16 @@ export const matches = (note: Note, query: string): boolean => {
   return words(query).every(word => (word.startsWith('#') ? tags.some(tag => tag.startsWith(word.slice(1))) : text.includes(word)))
 }
 
-// Inbox first, then the rest A to Z; newest note first in each.
+// Pinned notes first, in their own group and not in their folder too; then
+// Inbox, then the rest A to Z; newest note first in each. Archived notes
+// show in their folders.
 export const foldersOf = (notes: readonly Note[], query: string, isArchived: boolean): FolderGroup[] => {
-  const shown = notes.filter(note => note.isArchived === isArchived && matches(note, query))
-  const names = [...new Set(shown.map(note => note.folder))].sort((a, b) => (a === INBOX ? -1 : b === INBOX ? 1 : a.localeCompare(b)))
+  const shown = notes.filter(note => note.isArchived === isArchived && matches(note, query)).sort((a, b) => b.updated.localeCompare(a.updated))
+  const pinned = isArchived ? [] : shown.filter(note => note.isPinned)
+  const filed = shown.filter(note => !pinned.includes(note))
+  const names = [...new Set(filed.map(note => note.folder))].sort((a, b) => (a === INBOX ? -1 : b === INBOX ? 1 : a.localeCompare(b)))
 
-  return names.map(folder => ({ folder, notes: shown.filter(note => note.folder === folder).sort((a, b) => b.updated.localeCompare(a.updated)) }))
+  return [...(pinned.length > 0 ? [{ folder: null, notes: pinned }] : []), ...names.map(folder => ({ folder, notes: filed.filter(note => note.folder === folder) }))]
 }
 
 // notes and id, when given, check the title is free among the live notes.
@@ -43,6 +48,24 @@ export const folderError = (folder: string): string | undefined => {
 
   return undefined
 }
+
+// A folder's new name, which can't be empty.
+export const folderNameError = (folder: string): string | undefined => (folder.trim() === '' ? t.notebook.folderRequired : folderError(folder))
+
+// "Untitled", or "Untitled 2" when that was taken.
+export const isUntitled = (title: string): boolean => {
+  const name = t.notebook.untitled
+
+  return title === name || (title.startsWith(`${name} `) && /^\d+$/.test(title.slice(name.length + 1)))
+}
+
+// Picking a template gives a note its type and starting text. A Daily note
+// still called Untitled takes today's date as its title.
+export const templateChange = (type: NoteType, title: string, notes: readonly Note[], id: string, today: string): Partial<NoteChange> => ({
+  type,
+  body: t.notebook.templates[type],
+  ...(type === 'daily' && isUntitled(title) ? { title: freeTitle(notes, today, id) } : {}),
+})
 
 export const tagsOf = (text: string): string[] => [...new Set(text.split(',').map(cleanTag).filter(tag => tag !== ''))]
 

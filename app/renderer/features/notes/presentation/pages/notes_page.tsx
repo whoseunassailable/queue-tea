@@ -8,12 +8,14 @@ import type { Answer } from '../../../../core/api/engine_client'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { DETAIL_FLOATS_BELOW, DETAIL_IS_PAGE_BELOW } from '../../../../core/constants/constants'
 import { Dialog } from '../../../../core/widgets/dialog'
+import { Field } from '../../../../core/widgets/field'
 import { Empty, Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { useWindowWidth } from '../../../../core/widgets/window_width'
 import { t } from '../../../../l10n/en'
 import type { ReadableView } from '../../../workspace/state_management/workspace_store'
-import { captureOf, foldersOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
+import { captureOf, folderNameError, foldersOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
+import type { FolderGroup } from '../../domain/notes_view'
 import { useNewNoteAsks } from '../state_management/new_note'
 import { Robot } from '../widgets/brew_quest'
 import { NoteWorkspace } from '../widgets/note_workspace'
@@ -53,6 +55,59 @@ const DeleteNote = ({ note, linkedFrom, onDelete, onClose }: { note: Note; linke
   )
 }
 
+// Gives every note in a folder a new name. onRename says why it failed, or null.
+const RenameFolder = ({ folder, onRename, onClose }: { folder: string; onRename: (to: string) => Promise<string | null>; onClose: () => void }) => {
+  const [name, setName] = useState(folder)
+  const [error, setError] = useState<string | undefined>(undefined)
+  const [failure, setFailure] = useState<string | null>(null)
+  const [isSending, setSending] = useState(false)
+  const check = () => {
+    const found = folderNameError(name)
+    setError(found)
+
+    return found === undefined
+  }
+  const submit = async () => {
+    if (isSending || !check()) return
+    if (name.trim() === folder) return onClose()
+    setSending(true)
+    const failed = await onRename(name.trim())
+    setSending(false)
+    if (failed === null) onClose()
+    else setFailure(failed)
+  }
+
+  return (
+    <Dialog title={t.notebook.renameTitle(folder)} onCancel={onClose} onSubmit={() => void submit()}>
+      <p class="form-line">{t.notebook.renameLine}</p>
+      <Field label={t.notebook.folderName} isRequired value={name} error={error} onInput={setName} onBlur={check} />
+      {failure !== null && (
+        <p class="form-banner" role="alert">
+          {failure}
+        </p>
+      )}
+      <div class="sheet-actions">
+        <button type="button" class="btn" onClick={onClose}>
+          {t.actions.cancel}
+        </button>
+        <button type="submit" class="btn primary">
+          {isSending ? (
+            <>
+              <Spinner /> {t.notebook.renaming}
+            </>
+          ) : (
+            t.notebook.renameIt
+          )}
+        </button>
+      </div>
+    </Dialog>
+  )
+}
+
+// A folder can't start with a space, so the Pinned group's fold never meets one.
+const PINNED = ' pinned'
+const keyOf = (group: FolderGroup) => group.folder ?? PINNED
+
 type Props = { engine: EngineApi; realm: ReadableView; isCovered: boolean; onProject: (view: ProjectView) => void; onOpenQuest: (id: string) => void; onSay: (text: string, tone?: 'success' | 'error') => void }
 
 const layoutOf = (width: number): Layout => (width < DETAIL_IS_PAGE_BELOW ? 'narrow' : width < DETAIL_FLOATS_BELOW ? 'mid' : 'wide')
@@ -76,6 +131,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [isArchivedView, setArchivedView] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Note | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
   const [isDrawerOpen, setDrawerOpen] = useState(false)
@@ -89,6 +145,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const list = useRef<HTMLElement>(null)
   // Which field the drawer puts the cursor in when it opens.
   const drawerFocus = useRef<'capture' | 'search'>('capture')
+  const saveOpen = useRef<(() => Promise<boolean>) | null>(null)
   const layout = layoutOf(useWindowWidth())
   const quests = useMemo(() => questLinesOf(realm), [realm])
   const where = `~/${NOTES_FOLDER}/${realm.key}/`
@@ -176,7 +233,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     onHeld: (id, edits) => setHeld(was => (edits === null && !(id in was) ? was : Object.fromEntries([...Object.entries(was).filter(([key]) => key !== id), ...(edits === null ? [] : [[id, edits]])]))),
     onOpen: id => setOpenId(id),
     onMake: (title, folder) => void create({ title, folder, body: '' }).then(isMade => isMade && onSay(t.notebook.made(title))),
-    onSaveAsNew: (change: NoteChange) => void create({ title: change.title, folder: change.folder, body: change.body }),
+    onSaveAsNew: (change: NoteChange) => void create({ title: change.title, folder: change.folder, body: change.body, type: change.type }),
+    onRenameFolder: setRenaming,
     onArchive: (note, isArchived) =>
       void act(() => engine.archiveNote(realm.key, note.id, isArchived), view => view).then(answer => {
         if (!answer.ok) return
@@ -232,7 +290,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const live = view.notes.filter(note => !note.isArchived)
   const archivedCount = view.notes.length - live.length
   const groups = foldersOf(view.notes, query, isArchivedView)
-  const first = groups.find(group => !folded.has(group.folder))?.notes[0] ?? groups[0]?.notes[0]
+  const first = groups.find(group => !folded.has(keyOf(group)))?.notes[0] ?? groups[0]?.notes[0]
   const open = view.notes.find(note => note.id === openId) ?? first
   const isEmpty = live.length === 0 && !isArchivedView
   const today = localDay(new Date())
@@ -349,15 +407,22 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
         }}
       >
         {groups.map(group => {
-          const isFolded = folded.has(group.folder)
+          const key = keyOf(group)
+          const isFolded = folded.has(key)
+          const name = group.folder ?? t.notebook.pinned
 
           return (
-            <section key={group.folder} class="nt-folder" aria-label={group.folder}>
+            <section key={key} class="nt-folder" aria-label={name}>
               <h3>
-                <button type="button" class="nt-fold" aria-expanded={!isFolded} onClick={() => toggleFold(group.folder)}>
+                <button type="button" class="nt-fold" aria-expanded={!isFolded} onClick={() => toggleFold(key)}>
                   <span aria-hidden="true">{isFolded ? '▸' : '▾'} </span>
-                  {group.folder} <span class="sub">{group.notes.length}</span>
+                  {name} <span class="sub">{group.notes.length}</span>
                 </button>
+                {group.folder !== null && group.folder !== INBOX && (
+                  <button type="button" class="nt-link nt-rename" aria-label={t.notebook.renameFolderLabel(group.folder)} onClick={() => setRenaming(group.folder)}>
+                    {t.notebook.rename}
+                  </button>
+                )}
               </h3>
               {!isFolded && (
                 <ul>
@@ -366,7 +431,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
                       <button
                         type="button"
                         class={note.id === open?.id ? 'nt-item on' : 'nt-item'}
-                        data-folder={group.folder}
+                        data-folder={key}
                         tabIndex={note.id === focusId ? 0 : -1}
                         aria-current={note.id === open?.id ? 'true' : undefined}
                         onClick={event => pick(note.id, event.detail === 0)}
@@ -374,6 +439,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
                         <span class="nt-item-title">{note.title}</span>
                         <span class="sub">
                           {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : whenOf(note.updated, today, yesterday)}
+                          {group.folder === null && ` · ${note.folder}`}
                           {note.tags.length > 0 && ` · #${note.tags[0]}`}
                         </span>
                       </button>
@@ -438,12 +504,29 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           empty
         ) : open !== undefined ? (
           <div class="nt-main">
-            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} isReading={isReading} onReading={setReading} onShowList={() => setDrawerOpen(true)} actions={actions} />
+            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} isReading={isReading} onReading={setReading} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} />
           </div>
         ) : (
           <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />
         )}
       </div>
+      {renaming !== null && (
+        <RenameFolder
+          folder={renaming}
+          onRename={async to => {
+            // The open note saves first, so moving it can't clash with its own edits.
+            if (open?.folder === renaming && saveOpen.current !== null && !(await saveOpen.current())) return t.notebook.openNotSaved
+            const answer = await ask(engine, () => engine.renameFolder(realm.key, renaming, to))
+            if (!answer.ok) return answer.message
+            read.adopt(answer.data)
+            setFolded(was => (was.has(renaming) ? new Set([...was].filter(name => name !== renaming).concat(to)) : was))
+            onSay(t.notebook.renamed(renaming, to))
+
+            return null
+          }}
+          onClose={() => setRenaming(null)}
+        />
+      )}
       {deleting !== null && (
         <DeleteNote
           note={deleting}

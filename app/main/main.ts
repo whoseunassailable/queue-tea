@@ -223,6 +223,7 @@ const serveEngine = () => {
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
   handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
   handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))
+  handle(CHANNELS.renameFolder, (_, key: unknown, from: unknown, to: unknown) => notes.renameFolder(key, from, to))
   handle(CHANNELS.deleteNote, (_, key: unknown, id: unknown) => notes.deleteNote(key, id))
   handle(CHANNELS.fileNoteQuests, (_, key: unknown, id: unknown, proposal: unknown) => notes.fileNoteQuests(key, id, proposal))
   handle(CHANNELS.takeOpened, () => reply(log, MESSAGES.openFolder, async () => takeOpened()))

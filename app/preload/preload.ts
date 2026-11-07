@@ -51,6 +51,7 @@ const engine: EngineApi = {
   createNote: (key, note) => ipcRenderer.invoke(CHANNELS.createNote, key, note),
   saveNote: (key, id, change, stamp) => ipcRenderer.invoke(CHANNELS.saveNote, key, id, change, stamp),
   archiveNote: (key, id, isArchived) => ipcRenderer.invoke(CHANNELS.archiveNote, key, id, isArchived),
+  renameFolder: (key, from, to) => ipcRenderer.invoke(CHANNELS.renameFolder, key, from, to),
   deleteNote: (key, id) => ipcRenderer.invoke(CHANNELS.deleteNote, key, id),
   fileNoteQuests: (key, id, proposal) => ipcRenderer.invoke(CHANNELS.fileNoteQuests, key, id, proposal),
   takeOpened: () => ipcRenderer.invoke(CHANNELS.takeOpened),

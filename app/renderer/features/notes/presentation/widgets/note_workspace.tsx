@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import type { MutableRef } from 'preact/hooks'
 
 import type { EngineApi } from '../../../../../shared/engine_api'
-import { backlinksOf, INBOX, linksOf, noteTitled, proposalOf } from '../../../../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteQuest, NotesView } from '../../../../../shared/notes'
+import { backlinksOf, INBOX, linksOf, NOTE_TYPES, noteTitled, noteTypeOf, proposalOf } from '../../../../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteQuest, NotesView, NoteType } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
 import { NOTE_AUTOSAVE_MS, NOTE_PICKER_ROWS } from '../../../../core/constants/constants'
 import { dayOf } from '../../../../core/domain/format'
@@ -10,7 +11,7 @@ import { Field } from '../../../../core/widgets/field'
 import { Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { t } from '../../../../l10n/en'
-import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkOptionsOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, titleError, whenOf, withLink } from '../../domain/notes_view'
+import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkOptionsOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, templateChange, titleError, whenOf, withLink } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
@@ -28,6 +29,7 @@ export type NoteActions = {
   onMake: (title: string, folder: string) => void
   onSaveAsNew: (change: NoteChange) => void
   onArchive: (note: Note, isArchived: boolean) => void
+  onRenameFolder: (folder: string) => void
   onDelete: (note: Note) => void
   onFiled: (filed: NoteFiled, count: number) => void
   onOpenQuest: (id: string) => void
@@ -39,12 +41,13 @@ export type NoteActions = {
 // list is a drawer too, behind Notes.
 export type Layout = 'wide' | 'mid' | 'narrow'
 
-type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; isReading: boolean; onReading: (isReading: boolean) => void; onShowList: () => void; actions: NoteActions }
+// saveRef: how the page saves the open note before it moves notes itself.
+type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; isReading: boolean; onReading: (isReading: boolean) => void; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions }
 
 const PICKER_WIDTH = 320
 
-const changeOf = (note: Note): NoteChange => ({ title: note.title, folder: note.folder, tags: note.tags, body: note.body })
-const isSame = (a: NoteChange, b: NoteChange | null) => b !== null && a.title === b.title && a.folder === b.folder && a.body === b.body && a.tags.join('\n') === b.tags.join('\n')
+const changeOf = (note: Note): NoteChange => ({ title: note.title, folder: note.folder, type: note.type, isPinned: note.isPinned, tags: note.tags, body: note.body })
+const isSame = (a: NoteChange, b: NoteChange | null) => b !== null && a.title === b.title && a.folder === b.folder && a.type === b.type && a.isPinned === b.isPinned && a.body === b.body && a.tags.join('\n') === b.tags.join('\n')
 
 // Where the caret sits in a text area, from its top-left: the text up to it is
 // laid out in a hidden copy with the same box and type, and a mark measured.
@@ -148,7 +151,7 @@ const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, Q
 // One note, open: its editor, what it links to and from, and BrewQuest. Every
 // change saves itself a moment after typing stops, over the file it was read
 // from; a file changed meanwhile stops the saving and asks what to keep.
-export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, isReading, onReading, onShowList, actions }: Props) => {
+export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, isReading, onReading, onShowList, saveRef, actions }: Props) => {
   const start = held?.change ?? changeOf(note)
   const [draft, setDraft] = useState<NoteChange>(start)
   const [titleText, setTitleText] = useState(start.title)
@@ -251,6 +254,13 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     setSave({ kind: 'saved', at: from.updated.slice(11, 16) })
   }
 
+  useEffect(() => {
+    saveRef.current = flush
+
+    return () => {
+      saveRef.current = null
+    }
+  })
   // Closing the window saves too: the save is sent before the page goes.
   useEffect(() => {
     const closing = () => void flush()
@@ -336,6 +346,19 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     }
   }
 
+  // The template's text goes in, and the cursor under its first line.
+  const startFrom = (type: NoteType) => {
+    const patch = templateChange(type, latest.current.title, notes, note.id, localDay(new Date()))
+    if (patch.title !== undefined) setTitleText(patch.title)
+    caret.current = (patch.body ?? '').indexOf('\n') + 1
+    change(patch)
+    requestAnimationFrame(() => area.current?.focus())
+  }
+  const togglePin = () => {
+    change({ isPinned: !latest.current.isPinned })
+    void flush()
+  }
+
   const brew = async () => {
     if (await flush()) setBrewing(true)
   }
@@ -387,6 +410,8 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           <span class="nt-head-folder sub">
             <span aria-hidden="true">▭ </span>
             {draft.folder}
+            {draft.type !== null && ` · ${t.notebook.types[draft.type]}`}
+            {draft.isPinned && ` · ${t.notebook.pinned}`}
           </span>
           {isLive && (
             <span class="nt-mode" role="group" aria-label={t.notebook.viewAs}>
@@ -545,6 +570,16 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             )}
           </div>
         )}
+        {isLive && !isShowingRead && draft.body === '' && draft.type === null && (
+          <div class="nt-templates" role="group" aria-label={t.notebook.templatesLabel}>
+            <span class="sub">{t.notebook.templatesLabel}</span>
+            {NOTE_TYPES.map(type => (
+              <button key={type} type="button" class="chip-btn" onClick={() => startFrom(type)}>
+                {t.notebook.types[type]}
+              </button>
+            ))}
+          </div>
+        )}
         {isLive && (
           <footer class="nt-foot">
             <BrewQuestCard line={brewLine} onBrew={() => void brew()} />
@@ -560,17 +595,34 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           {isLive ? (
             <>
               <Field label={t.notebook.folder} value={folderText} error={errors.folder} list="nt-folders" onInput={setFolderText} onBlur={commitFolder} onEnter={commitFolder} />
+              {note.isPinned && note.folder !== INBOX && !notes.some(other => !other.isArchived && !other.isPinned && other.folder === note.folder) && (
+                <button type="button" class="nt-link" aria-label={t.notebook.renameFolderLabel(note.folder)} onClick={() => actions.onRenameFolder(note.folder)}>
+                  {t.notebook.renameIt}
+                </button>
+              )}
               <datalist id="nt-folders">
                 {folders.map(folder => (
                   <option key={folder} value={folder} />
                 ))}
               </datalist>
+              <div class="form-field">
+                <label for="nt-type">{t.notebook.type}</label>
+                <select id="nt-type" class="input" value={draft.type ?? ''} onChange={event => change({ type: noteTypeOf((event.target as HTMLSelectElement).value) })}>
+                  <option value="">{t.notebook.noType}</option>
+                  {NOTE_TYPES.map(type => (
+                    <option key={type} value={type}>
+                      {t.notebook.types[type]}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Field label={t.notebook.tags} value={tagsText} error={errors.tags} onInput={setTagsText} onBlur={commitTags} onEnter={commitTags} />
               <p class="hint">{t.notebook.tagsHint}</p>
             </>
           ) : (
             <p class="sub">
               {note.folder}
+              {note.type !== null && ` · ${t.notebook.types[note.type]}`}
               {note.tags.length > 0 && ` · ${note.tags.map(tag => `#${tag}`).join(' ')}`}
             </p>
           )}
@@ -634,9 +686,14 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             <p class="sub">{t.notebook.dates(dayOf(note.created), whenOf(note.updated, today, yesterday))}</p>
             <div class="nt-inspector-actions">
               {isLive ? (
-                <button type="button" class="btn" onClick={() => void flush().then(isSaved => isSaved && actions.onArchive(note, true))}>
-                  {t.notebook.archiveNote}
-                </button>
+                <>
+                  <button type="button" class="btn" onClick={togglePin}>
+                    {draft.isPinned ? t.notebook.unpin : t.notebook.pin}
+                  </button>
+                  <button type="button" class="btn" onClick={() => void flush().then(isSaved => isSaved && actions.onArchive(note, true))}>
+                    {t.notebook.archiveNote}
+                  </button>
+                </>
               ) : (
                 <>
                   <button type="button" class="btn" onClick={() => actions.onArchive(note, false)}>

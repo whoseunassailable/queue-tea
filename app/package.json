@@ -1,7 +1,7 @@
 {
   "name": "queue-tea-app",
   "productName": "Queue-tea",
-  "version": "1.10.1",
+  "version": "1.10.2",
   "private": true,
   "description": "The Queue-tea workspace app: every project's queue, beside Claude Code.",
   "author": "Rohan Bhande",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@fontsource/marcellus": "5.3.0",
     "@fontsource/nunito-sans": "5.3.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@playwright/test": "1.64.1",
     "@preact/preset-vite": "2.10.6",
     "@testing-library/preact": "3.2.6",
@@ -35,10 +36,7 @@
     "preact": "10.29.8",
     "typescript": "5.9.3",
     "vite": "7.3.7",
-    "vitest": "3.2.7"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.2",
+    "vitest": "3.2.7",
     "zod": "4.6.7"
   }
 }

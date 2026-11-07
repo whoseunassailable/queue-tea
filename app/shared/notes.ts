@@ -49,15 +49,29 @@ const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 
 const LINK = /\[\[([^[\]|#\n]+)((?:[#|][^\]\n]*)?)\]\]/g
 
-// The notes a body links to, as written in [[Title]], [[Title|shown]] or [[Title#heading]].
-export const linksOf = (body: string): string[] => {
-  const titles = [...body.matchAll(LINK)].map(m => m[1]!.trim()).filter(title => title !== '')
+// [[quest:t-e84dd5ab|Write the parser]] links a quest by its id, so renaming
+// the quest can't break it, and Obsidian still shows the title.
+const QUEST_TARGET = /^quest:(t-[0-9a-f-]+)$/i
+export const questIdOf = (target: string): string | null => QUEST_TARGET.exec(target.trim())?.[1]?.toLowerCase() ?? null
 
-  return titles.filter((title, i) => titles.findIndex(other => same(other, title)) === i)
+// What goes between [[ and ]] for a quest. A title can hold what a link is made of, so that turns into spaces.
+export const questLinkOf = (id: string, title: string): string => {
+  const shown = title.replace(/[[\]|\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  return shown === '' ? `quest:${id}` : `quest:${id}|${shown}`
 }
 
+const targetsOf = (body: string): string[] => [...body.matchAll(LINK)].map(m => m[1]!.trim()).filter(target => target !== '')
+const once = (values: string[]): string[] => values.filter((value, i) => values.findIndex(other => same(other, value)) === i)
+
+// The notes a body links to, as written in [[Title]], [[Title|shown]] or [[Title#heading]].
+export const linksOf = (body: string): string[] => once(targetsOf(body).filter(target => questIdOf(target) === null))
+
+// The quests a body links to, by id.
+export const questLinksOf = (body: string): string[] => once(targetsOf(body).flatMap(target => questIdOf(target) ?? []))
+
 // A run of text cut into plain text and [[links]], for the Read view.
-export type LinkPart = { kind: 'text'; text: string } | { kind: 'link'; title: string; shown: string }
+export type LinkPart = { kind: 'text'; text: string } | { kind: 'link'; title: string; shown: string } | { kind: 'quest'; id: string; shown: string }
 export const linkPartsOf = (text: string): LinkPart[] => {
   const parts: LinkPart[] = []
   let at = 0
@@ -65,7 +79,9 @@ export const linkPartsOf = (text: string): LinkPart[] => {
     if (m.index > at) parts.push({ kind: 'text', text: text.slice(at, m.index) })
     const title = m[1]!.trim()
     const rest = m[2] ?? ''
-    parts.push(title === '' ? { kind: 'text', text: m[0] } : { kind: 'link', title, shown: rest.startsWith('|') && rest.length > 1 ? rest.slice(1) : title })
+    const shown = rest.startsWith('|') && rest.length > 1 ? rest.slice(1) : null
+    const quest = questIdOf(title)
+    parts.push(title === '' ? { kind: 'text', text: m[0] } : quest !== null ? { kind: 'quest', id: quest, shown: shown ?? quest } : { kind: 'link', title, shown: shown ?? title })
     at = m.index + m[0].length
   }
   if (at < text.length) parts.push({ kind: 'text', text: text.slice(at) })
@@ -73,7 +89,7 @@ export const linkPartsOf = (text: string): LinkPart[] => {
   return parts
 }
 
-export const renameLinks = (body: string, from: string, to: string): string => body.replace(LINK, (link, title: string, rest: string) => (same(title.trim(), from) ? `[[${to}${rest}]]` : link))
+export const renameLinks = (body: string, from: string, to: string): string => body.replace(LINK, (link, title: string, rest: string) => (same(title.trim(), from) && questIdOf(title) === null ? `[[${to}${rest}]]` : link))
 
 export const backlinksOf = (notes: readonly Note[], note: Note): Note[] => notes.filter(other => other.id !== note.id && !other.isArchived && linksOf(other.body).some(title => same(title, note.title)))
 

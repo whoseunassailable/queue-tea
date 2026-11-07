@@ -60,3 +60,5 @@ export const NOTE_PICKER_ROWS = 8
 // How many notes the ⌘K palette lists, and how long a matching line it shows.
 export const PALETTE_NOTE_ROWS = 5
 export const PALETTE_SNIPPET = 60
+// Rows of the 8 kept for quests, when that many match.
+export const NOTE_PICKER_QUEST_ROWS = 3

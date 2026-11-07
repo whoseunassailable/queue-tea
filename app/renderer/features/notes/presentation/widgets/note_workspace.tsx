@@ -2,16 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { MutableRef } from 'preact/hooks'
 
 import type { EngineApi } from '../../../../../shared/engine_api'
-import { backlinksOf, INBOX, linksOf, NOTE_TYPES, noteTitled, noteTypeOf, proposalOf } from '../../../../../shared/notes'
+import { backlinksOf, INBOX, linksOf, NOTE_TYPES, noteTitled, noteTypeOf, proposalOf, questLinkOf, questLinksOf } from '../../../../../shared/notes'
 import type { Note, NoteChange, NoteFiled, NoteQuest, NotesView, NoteType } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
-import { NOTE_AUTOSAVE_MS, NOTE_PICKER_ROWS } from '../../../../core/constants/constants'
+import { NOTE_AUTOSAVE_MS, NOTE_PICKER_QUEST_ROWS, NOTE_PICKER_ROWS } from '../../../../core/constants/constants'
 import { dayOf } from '../../../../core/domain/format'
 import { Field } from '../../../../core/widgets/field'
 import { Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { t } from '../../../../l10n/en'
-import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkOptionsOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, templateChange, titleError, whenOf, withLink } from '../../domain/notes_view'
+import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, templateChange, titleError, whenOf, withLink, linkPicksOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
@@ -113,6 +113,9 @@ const QuestItem = ({ id, quests, onOpen }: { id: string; quests: Map<string, Que
     <li class="nt-quest">
       {line.title === null ? (
         <span class="sub">{t.notebook.goneQuest}</span>
+      ) : !isInPlay(quests, id) ? (
+        // Quests can't open a done quest, so it's not a button.
+        <span>{line.title}</span>
       ) : (
         <button type="button" class="nt-link" aria-label={t.notebook.openQuest(line.title)} onClick={() => onOpen(id)}>
           {line.title}
@@ -311,7 +314,12 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     if (error === undefined && tagsOf(tagsText).join('\n') !== latest.current.tags.join('\n')) change({ tags: tagsOf(tagsText) })
   }
 
-  const options = picker === null ? [] : linkOptionsOf(notes, picker.query, note.id, NOTE_PICKER_ROWS)
+  const picks = picker === null ? { notes: [], quests: [] } : linkPicksOf(notes, quests, picker.query, note.id, NOTE_PICKER_ROWS, NOTE_PICKER_QUEST_ROWS)
+  // One list, notes then quests; link is what goes after the [[.
+  const options = [
+    ...picks.notes.map(option => ({ key: option.id, link: option.title, title: option.title, folder: option.folder, state: null, label: undefined })),
+    ...picks.quests.map(option => ({ key: option.id, link: questLinkOf(option.id, option.title), title: option.title, folder: null, state: option.state, label: t.notebook.pickQuest(option.title, t.notebook.questStateSaid[option.state]) })),
+  ]
   const lookAtCaret = () => {
     const box = area.current
     if (box === null || box.selectionStart !== box.selectionEnd) return setPicker(null)
@@ -342,7 +350,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
       setPicker({ ...picker, index: (picker.index + step) % options.length })
     } else if (options.length > 0 && (event.key === 'Enter' || event.key === 'Tab')) {
       event.preventDefault()
-      link(options[Math.min(picker.index, options.length - 1)]!.title)
+      link(options[Math.min(picker.index, options.length - 1)]!.link)
     }
   }
 
@@ -394,6 +402,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const shown: Note = { ...note, ...draft }
   const backlinks = backlinksOf(notes, shown)
   const links = linksOf(draft.body)
+  const questLinks = questLinksOf(draft.body)
   const today = localDay(new Date())
   const yesterday = localDay(new Date(Date.now() - 86_400_000))
   const brewLine = brewLineOf(shown, proposalOf(shown, id => isInPlay(quests, id)))
@@ -509,7 +518,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           )}
         </div>
         {isShowingRead ? (
-          <ReadView body={draft.body} notes={notes} isLive={isLive} onToggle={index => change({ body: toggleTaskAt(latest.current.body, index) })} onOpenNote={actions.onOpen} onOpenLink={actions.onOpenLink} />
+          <ReadView body={draft.body} notes={notes} quests={quests} isLive={isLive} onToggle={index => change({ body: toggleTaskAt(latest.current.body, index) })} onOpenNote={actions.onOpen} onOpenQuest={actions.onOpenQuest} onOpenLink={actions.onOpenLink} />
         ) : (
           <div class="nt-body" ref={bodyBox}>
             <label for="nt-body" class="sr">
@@ -542,24 +551,25 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
               <div class="nt-picker panel" style={{ top: `${picker.top}px`, left: `${picker.left}px` }}>
                 <p class="nt-picker-head sub">
                   <span>{t.notebook.pickerHead(picker.query)}</span>
-                  <span>{t.notebook.pickerCount(options.length)}</span>
+                  <span>{t.notebook.pickerCount(picks.notes.length, picks.quests.length)}</span>
                 </p>
                 <ul id="nt-picker" role="listbox" aria-label={t.notebook.linkPicker}>
                   {options.length === 0 && <li class="nt-picker-none">{t.notebook.noLinkMatch(picker.query)}</li>}
                   {options.map((option, i) => (
                     <li
-                      key={option.id}
+                      key={option.key}
                       id={`nt-pick-${i}`}
                       role="option"
                       aria-selected={i === Math.min(picker.index, options.length - 1)}
-                      class={i === Math.min(picker.index, options.length - 1) ? 'on' : undefined}
+                      aria-label={option.label}
+                      class={[option.state !== null && 'quest', i === Math.min(picker.index, options.length - 1) && 'on'].filter(Boolean).join(' ') || undefined}
                       onMouseDown={event => {
                         event.preventDefault()
-                        link(option.title)
+                        link(option.link)
                       }}
                     >
                       <span>{option.title}</span>
-                      <span class="sub">{option.folder}</span>
+                      {option.state === null ? <span class="sub">{option.folder}</span> : <span class={`nt-state ${option.state}`}>{t.notebook.questState[option.state]}</span>}
                     </li>
                   ))}
                 </ul>
@@ -632,9 +642,9 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           {note.quests.length === 0 && <p class="hint">{t.notebook.noQuests}</p>}
           <QuestList note={note} quests={quests} onOpen={actions.onOpenQuest} />
           <h3>
-            {t.notebook.links} {links.length > 0 && <span class="sub">{links.length}</span>}
+            {t.notebook.links} {links.length + questLinks.length > 0 && <span class="sub">{links.length + questLinks.length}</span>}
           </h3>
-          {links.length === 0 && <p class="hint">{t.notebook.noLinks}</p>}
+          {links.length + questLinks.length === 0 && <p class="hint">{t.notebook.noLinks}</p>}
           <ul class="nt-links">
             {links.map(title => {
               const target = noteTitled(notes, title)
@@ -666,6 +676,9 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
                 </li>
               )
             })}
+            {questLinks.map(id => (
+              <QuestItem key={id} id={id} quests={quests} onOpen={actions.onOpenQuest} />
+            ))}
           </ul>
           <h3>
             {t.notebook.backlinks} {backlinks.length > 0 && <span class="sub">{backlinks.length}</span>}

@@ -288,3 +288,27 @@ test('the palette offers New note from Quests and opens a title match with ⌘Re
   await page.setViewportSize({ width: 1440, height: 900 })
   expect(errors).toEqual([])
 })
+
+test('the picker links a quest by id, saves it in Markdown and opens that quest from Read', async () => {
+  const linked = (await record()).tasks.find((task: { title: string }) => task.title === 'Write the report') as { id: string; title: string }
+  const body = page.getByRole('combobox', { name: 'Note' })
+  const original = await body.inputValue()
+  await body.fill(`${original}\n\nSee [[Write`)
+  await expect(page.getByRole('option', { name: 'Write the report, quest, waiting' })).toBeVisible()
+  await body.press('Enter')
+  await expect(body).toHaveValue(`${original}\n\nSee [[quest:${linked.id}|Write the report]]`)
+  await expect(page.getByText(/^Saved \d\d:\d\d$/)).toBeVisible()
+  const files = await Promise.all((await noteFiles()).map(name => readFile(join(notesDir(), name), 'utf8')))
+  expect(files.some(text => text.includes(`[[quest:${linked.id}|Write the report]]`))).toBe(true)
+
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
+  const read = page.getByRole('article')
+  const link = read.getByRole('button', { name: 'Open Write the report in Quests, waiting' })
+  await expect(link).toBeVisible()
+  await expect(read.getByText('○ Waiting')).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath('quest-links.png') })
+  await link.click()
+  expect(page.url()).toContain('#/quests')
+  await expect(page.getByRole('complementary', { name: 'Quest details' }).getByRole('heading', { name: 'Write the report' })).toBeVisible()
+  expect(errors).toEqual([])
+})

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, NOTE_TYPES, openItemsOf, proposalOf, renameLinks } from '../../../../shared/notes'
+import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, NOTE_TYPES, openItemsOf, proposalOf, renameLinks, questIdOf, questLinkOf, questLinksOf } from '../../../../shared/notes'
 import type { Note } from '../../../../shared/notes'
 import { noteText, parseNote } from './note_file'
 
@@ -110,6 +110,36 @@ describe('links', () => {
     const notes = [here, note({ id: 'a', body: '[[bug bounty helper]]' }), note({ id: 'b', body: '[[Bug Bounty Helper]]', isArchived: true }), note({ id: 'c', body: 'none' })]
 
     expect(backlinksOf(notes, here).map(n => n.id)).toEqual(['a'])
+  })
+})
+
+describe('quest links', () => {
+  it('recognises generated quest ids, ignoring case, while ordinary note titles stay notes', () => {
+    expect(questIdOf(' QUEST:T-A1B2C3D4 ')).toBe('t-a1b2c3d4')
+    expect(questIdOf('quest:t-12345678-abcd-4321-abcd-123456789abc')).toBe('t-12345678-abcd-4321-abcd-123456789abc')
+    for (const title of ['Quest plan', 'quest:', 'quest:t-plan', 'quest:t-abc/def']) expect(questIdOf(title)).toBeNull()
+  })
+
+  it('writes an alias that cannot close or split the link, preserving unicode', () => {
+    const written = questLinkOf('t-abc123', 'Fix [[input]] | café\r\nnext')
+    expect(written).toBe('quest:t-abc123|Fix input café next')
+    expect(linkPartsOf(`[[${written}]]`)).toEqual([{ kind: 'quest', id: 't-abc123', shown: 'Fix input café next' }])
+    expect(questLinkOf('t-abc123', ' []|\n ')).toBe('quest:t-abc123')
+  })
+
+  it('keeps quest ids separate from note links and deduplicates their aliases', () => {
+    const body = '[[Plan]] [[quest:t-abc|Old]] [[QUEST:T-ABC|New]] [[quest:t-def]] [[quest:t-plan]]'
+    expect(questLinksOf(body)).toEqual(['t-abc', 't-def'])
+    expect(linksOf(body)).toEqual(['Plan', 'quest:t-plan'])
+    expect(linkPartsOf('[[quest:t-def]]')).toEqual([{ kind: 'quest', id: 't-def', shown: 't-def' }])
+  })
+
+  it('never rewrites a quest link or counts it as a backlink to a same-named note', () => {
+    const body = '[[quest:t-abc|Plan]] [[Plan]]'
+    expect(renameLinks(body, 'quest:t-abc', 'Roadmap')).toBe(body)
+    expect(renameLinks(body, 'Plan', 'Roadmap')).toBe('[[quest:t-abc|Plan]] [[Roadmap]]')
+    const here = note({ title: 'quest:t-abc' })
+    expect(backlinksOf([here, note({ id: 'other', body })], here)).toEqual([])
   })
 })
 

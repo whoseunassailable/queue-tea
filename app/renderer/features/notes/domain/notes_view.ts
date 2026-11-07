@@ -1,5 +1,5 @@
 import type { Difficulty, Priority } from '../../../../../types'
-import { cleanTag, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, openItemsOf } from '../../../../shared/notes'
+import { cleanTag, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, openItemsOf, questIdOf } from '../../../../shared/notes'
 import type { Note, NoteChange, NoteInput, NoteType, QuestProposal } from '../../../../shared/notes'
 import { dayOf } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
@@ -158,22 +158,44 @@ export const brewLineOf = (note: Pick<Note, 'body' | 'quests'>, proposal: QuestP
   return waiting === 0 ? t.notebook.brew.allFiled(note.quests.length) : t.notebook.brew.someLeft(note.quests.length, waiting)
 }
 
-// The notes the [[ picker offers: titles starting with what's typed first,
-// then a word starting with it, then holding it anywhere; newest first in each.
-export const linkOptionsOf = (notes: readonly Note[], query: string, exceptId: string, most: number): Note[] => {
+// How well a title fits what's typed: starting with it, then a word starting
+// with it, then holding it anywhere; 3 is no match.
+const rankOf = (query: string) => {
   const q = query.trim().toLowerCase()
-  const rank = (title: string) => {
+
+  return (title: string): number => {
     const low = title.toLowerCase()
     if (low.startsWith(q)) return 0
     if (low.split(/\s+/).some(word => word.startsWith(q))) return 1
 
     return low.includes(q) ? 2 : 3
   }
+}
+
+// The notes the [[ picker offers, best fit first, newest first in each. A note
+// titled like a quest link isn't one, since linking it would link the quest.
+export const linkOptionsOf = (notes: readonly Note[], query: string, exceptId: string, most: number): Note[] => {
+  const rank = rankOf(query)
 
   return notes
-    .filter(note => !note.isArchived && note.id !== exceptId && rank(note.title) < 3)
+    .filter(note => !note.isArchived && note.id !== exceptId && questIdOf(note.title) === null && rank(note.title) < 3)
     .sort((a, b) => rank(a.title) - rank(b.title) || b.updated.localeCompare(a.updated))
     .slice(0, most)
+}
+
+export type QuestPick = { id: string; title: string; state: QuestState }
+
+// What the [[ picker offers: notes, then the quests in play, which are the ones
+// Quests can open. Up to questRows rows are kept for quests, and each side
+// fills what the other leaves. Quests in progress come first in each fit.
+export const linkPicksOf = (notes: readonly Note[], quests: Map<string, QuestLine>, query: string, exceptId: string, rows: number, questRows: number): { notes: Note[]; quests: QuestPick[] } => {
+  const rank = rankOf(query)
+  const found = [...quests]
+    .flatMap(([id, line]) => (line.title !== null && IN_PLAY.includes(line.state) && rank(line.title) < 3 ? [{ id, title: line.title, state: line.state }] : []))
+    .sort((a, b) => rank(a.title) - rank(b.title) || IN_PLAY.indexOf(a.state) - IN_PLAY.indexOf(b.state))
+  const picked = linkOptionsOf(notes, query, exceptId, rows - Math.min(found.length, questRows))
+
+  return { notes: picked, quests: found.slice(0, rows - picked.length) }
 }
 
 // The [[ being typed at the caret, and what follows it so far, on one line.
@@ -218,7 +240,8 @@ export const questLinesOf = (view: ReadableView): Map<string, QuestLine> => {
 
 export const questLineOf = (lines: Map<string, QuestLine>, id: string): QuestLine => lines.get(id) ?? { title: null, state: 'gone', priority: null, difficulty: null }
 
-const IN_PLAY: readonly QuestState[] = ['waiting', 'sealed', 'active']
+// In the order the [[ picker offers them.
+const IN_PLAY: readonly QuestState[] = ['active', 'waiting', 'sealed']
 
 // Whether a quest can still take more under it.
 export const isInPlay = (lines: Map<string, QuestLine>, id: string): boolean => IN_PLAY.includes(questLineOf(lines, id).state)

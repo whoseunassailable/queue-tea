@@ -6,7 +6,8 @@ import type { ReadableView } from '../../workspace/state_management/workspace_st
 import { NOTE_TYPES } from '../../../../shared/notes'
 import { t } from '../../../l10n/en'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
-import { captureOf, folderError, folderNameError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink } from './notes_view'
+import type { QuestLine } from './notes_view'
+import { captureOf, folderError, folderNameError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf } from './notes_view'
 
 describe('note templates', () => {
   it.each(NOTE_TYPES)('starts a %s note with its own text and leaves the folder alone', type => {
@@ -108,6 +109,42 @@ describe('the picker’s order', () => {
     const notes = [note({ id: '1', title: 'Misplan' }), note({ id: '2', title: 'The plan' }), note({ id: '3', title: 'Plan B' }), note({ id: '4', title: 'Planet', isArchived: true }), note({ id: 'me', title: 'Plan me' })]
 
     expect(linkOptionsOf(notes, 'pla', 'me', 8).map(n => n.title)).toEqual(['Plan B', 'The plan', 'Misplan'])
+  })
+})
+
+describe('quests in the link picker', () => {
+  const line = (title: string | null, state: QuestLine['state']): QuestLine => ({ title, state, priority: 'mid', difficulty: 'medium' })
+
+  it('keeps three of eight rows for quests, then fills unused space from either side', () => {
+    const notes = Array.from({ length: 10 }, (_, i) => note({ id: `n-${i}`, title: `Plan ${i}` }))
+    const quests = new Map(Array.from({ length: 10 }, (_, i) => [`t-${i}`, line(`Plan quest ${i}`, 'waiting')]))
+    const picks = linkPicksOf(notes, quests, '', 'here', 8, 3)
+    expect([picks.notes.length, picks.quests.length]).toEqual([5, 3])
+    const fewNotes = linkPicksOf(notes.slice(0, 1), quests, '', 'here', 8, 3)
+    expect([fewNotes.notes.length, fewNotes.quests.length]).toEqual([1, 7])
+    const fewQuests = linkPicksOf(notes, new Map([...quests].slice(0, 1)), '', 'here', 8, 3)
+    expect([fewQuests.notes.length, fewQuests.quests.length]).toEqual([7, 1])
+    expect(linkPicksOf([], quests, '', 'here', 8, 3).quests).toHaveLength(8)
+    expect(linkPicksOf(notes, new Map(), '', 'here', 8, 3).notes).toHaveLength(8)
+  })
+
+  it('ranks matching titles before state, then active, waiting and sealed, excluding done and gone', () => {
+    const quests = new Map([
+      ['t-1', line('Misplan', 'active')], ['t-2', line('The plan', 'active')],
+      ['t-3', line('Plan sealed', 'sealed')], ['t-4', line('Plan waiting', 'waiting')],
+      ['t-5', line('Plan active', 'active')], ['t-6', line('Plan done', 'done')],
+      ['t-7', line(null, 'gone')], ['t-8', line('Other', 'waiting')],
+    ])
+    expect(linkPicksOf([], quests, ' PLA ', 'here', 8, 3).quests.map(q => q.id)).toEqual(['t-5', 't-4', 't-3', 't-2', 't-1'])
+    expect(linkPicksOf([], quests, 'no match', 'here', 8, 3)).toEqual({ notes: [], quests: [] })
+  })
+
+  it('offers a same-titled note and quest, while omitting archived, current and reserved note titles', () => {
+    const notes = [note({ id: 'here' }), note({ id: 'old', isArchived: true }), note({ id: 'reserved', title: 'quest:t-abc' }), note({ id: 'plan', title: 'Plan' })]
+    const picks = linkPicksOf(notes, new Map([['t-abc', line('Plan', 'waiting')]]), '', 'here', 8, 3)
+    expect(picks.notes.map(n => n.id)).toEqual(['plan'])
+    expect(picks.quests.map(q => q.id)).toEqual(['t-abc'])
+    expect(withLink('See [[pl]] after', 6, 8, 'quest:t-abc|Plan')).toEqual({ body: 'See [[quest:t-abc|Plan]] after', caret: 24 })
   })
 })
 

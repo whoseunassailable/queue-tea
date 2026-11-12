@@ -14,7 +14,7 @@ export type MergeOperation = {
 }
 export type ConflictFile = { path: string; base: string | null; target: string | null; source: string | null; result: string | null; editable: boolean }
 export type CheckChoice = { id: string; name: string; folder: string; command: string }
-export type CheckRun = { id: string; checkId: string; name: string; command: string; tree: string; at: number; finished: number | null; owner: number; status: 'running' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted'; output: string; exitCode: number | null; truncated: boolean }
+export type CheckRun = { id: string; checkId: string; name: string; command: string; tree: string; at: number; finished: number | null; owner: number; status: 'running' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted' | 'setupRequired'; output: string; exitCode: number | null; truncated: boolean }
 export type CommitProgress = { command: string; message: string; at: number; finished: number | null; status: 'running' | 'succeeded' | 'failed' | 'interrupted'; output: string; exitCode: number | null; truncated: boolean }
 export type RunChecksRequest = { operationId: string; approval: string; checkIds: string[] }
 export type MergeWorkspace = { availableChecks?: CheckChoice[]; checks?: CheckRun[]; checksCurrent?: boolean; operation: MergeOperation; conflicts: ConflictFile[]; diff: string; truncated: boolean; approval: string | null }

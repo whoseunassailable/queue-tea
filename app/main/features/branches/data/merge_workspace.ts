@@ -73,7 +73,15 @@ export const workspaceOf = async (d: TasksDeps, root: string, saved: MergeOperat
   }
   const diff = await git(['diff', '--no-ext-diff', '--no-textconv', op.targetHead, '--'])
   const unstaged = await git(['diff', '--no-ext-diff', '--no-textconv', '--'])
-  let untracked = (await git(['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter(Boolean)
+  let untracked = (await git(['ls-files', '--others', '--exclude-standard', '--directory', '-z'])).split('\0').filter(Boolean)
+  // An explicitly prepared local installation is check input, not a source
+  // edit. Tracked changes still invalidate approval; shared links do not get
+  // this exception. Every run verifies the installation against the lock.
+  for (const name of [...untracked]) {
+    if (!/(^|\/)node_modules\/$/.test(name) || !isFile(name.slice(0, -1))) continue
+    const file = resolve(path, name)
+    if ((await lstat(file)).isDirectory() && (await realpath(file)).startsWith((await realpath(path)) + '/')) untracked = untracked.filter(p => p !== name)
+  }
   const metadata = `${operationPath(d, op.key, op.id)}/dependencies.json`
   if (await d.host.exists(metadata)) {
     const links = JSON.parse(await d.host.read(metadata)) as { path: string; target: string }[]

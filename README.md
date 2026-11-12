@@ -84,6 +84,8 @@ node tools/check_layers.mjs
 
 The design is in [docs/spec.md](docs/spec.md), the code's shape in [docs/architecture.md](docs/architecture.md) and the build plan in [docs/plan.md](docs/plan.md).
 
+For dependency setup in the app's isolated merge checks, see [Merge-check dependency setup](docs/merge-check-dependencies.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

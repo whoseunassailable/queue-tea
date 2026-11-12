@@ -1,6 +1,6 @@
 export const CHECK_BIN_DIRS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'] as const
 export const checkPath = (home: string, inherited: string | undefined) => [inherited ?? '', `${home}/.local/bin`, `${home}/.volta/bin`, `${home}/.asdf/shims`, ...CHECK_BIN_DIRS].filter(Boolean).join(':')
-export const BRANCH_LIMITS = { graph: 160, diff: 120_000, conflict: 120_000, output: 8_000, message: 2_000, recentMs: 90_000, codexDays: 14, streamMs: 120, checksMs: 900_000, checkChoices: 64 } as const
+export const BRANCH_LIMITS = { graph: 160, graphWorkers: 4, diff: 120_000, conflict: 120_000, output: 8_000, message: 2_000, recentMs: 90_000, codexDays: 14, streamMs: 120, checksMs: 900_000, checkChoices: 64 } as const
 export const operationsFolder = (home: string, key: string) => `${home}/.queue-tea/integrations/${key}`
 export const BRANCH_TEXT = {
   read: 'The branch history could not be read. Check that the project folder is available, then try again.',
@@ -24,5 +24,15 @@ export const BRANCH_TEXT = {
   checkSelection: 'Choose at least one check from this prepared result.',
   checksRequired: 'Run checks on the current prepared result before merging. Failed or cancelled checks must pass when retried.',
   checkChanged: 'The check changed prepared files. Review those files and prepare the result again before approving it.',
+  checkCancelled: 'Dependency inspection was cancelled. Run the check again when ready.',
+  checkTimeout: 'The check exceeded its 15-minute limit. Inspect the output before retrying.',
+  checkPreparationFailed: 'The check could not start. Check access to the integration folder, then retry.',
+  dependencyMissing: 'This package has no installed dependencies in the integration folder.',
+  dependencyMismatch: 'The manifest, lockfile and installed dependencies do not match.',
+  dependencyLockMissing: 'Commit an npm lockfile for this package before preparing the merge again.',
+  dependencyLockUnsupported: 'This package needs an npm lockfile with lockfileVersion 2 or 3. Update and commit it before preparing the merge again.',
+  dependencyUnsafe: 'A dependency path points outside this integration folder or uses a shared node_modules link. Prepare a local installation; do not run npm ci through that link.',
+  dependencyUnreadable: 'Dependency files are missing, unreadable or incomplete. Check folder permissions and the last installation result.',
+  dependencySetup: (reason: string, folder: string, command: string | null) => `Dependency setup required. ${reason}\nPackage folder: ${folder}\n${command ? `After approving dependency installation, use the locked setup command in this integration folder:\n${command}\nThis command can run package install scripts. Review them and any network access they need before approving.` : 'Resolve the lockfile or shared-path problem above before installing dependencies.'}\nIf the offline cache is incomplete, setup has failed; approve network access separately before retrying npm ci without --offline. Queue-tea does not install packages or retry online automatically. Leave other worktrees alone. After successful setup, refresh the review and run the check again.`,
   noMerge: 'There are no new commits to merge into this destination.',
 } as const

@@ -9,7 +9,7 @@ it('requires a current passing check and treats a later failure or cancellation 
   expect(checksPassed([run()], 'tree-two', [choice])).toBe(false)
   expect(checksPassed([run({ checkId: 'obsolete-definition' })], 'tree-one', [choice])).toBe(false)
   expect(checksPassed([run()], 'tree-one', [choice])).toBe(true)
-  for (const status of ['failed', 'cancelled', 'running', 'interrupted'] as const) expect(checksPassed([run(), run({ status })], 'tree-one', [choice])).toBe(false)
+  for (const status of ['failed', 'cancelled', 'running', 'interrupted', 'setupRequired'] as const) expect(checksPassed([run(), run({ status })], 'tree-one', [choice])).toBe(false)
   expect(checksPassed([run({ status: 'failed' }), run()], 'tree-one', [choice])).toBe(true)
 })
 it('permits review when the project has no configured checks', () => {

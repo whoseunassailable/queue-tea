@@ -14,6 +14,7 @@ import { loadOperation, operationsOf, saveOperation, withBranchLock } from '../d
 import { argvOf } from '../data/user_git'
 import { readCommitProgress } from '../data/commit_progress'
 import { liveOutput } from '../data/live_output'
+import { pendingRead } from '../data/pending_reads'
 import type { UserGit, UserGitAction } from '../data/user_git'
 
 export type BranchDeps = TasksDeps & { userGit: UserGit; reveal?: (path: string) => void; published?: (repo: string, remote: string, branch: string, commit: string) => Promise<void> }
@@ -56,8 +57,8 @@ export const runStep = async (d: BranchDeps, op: MergeOperation, cwd: string, ac
   await saveOperation(d, op)
   return result
 }
-export const readBranches = (d: TasksDeps, key: unknown): Promise<Reply<BranchGraph>> => reply(d.log, BRANCH_TEXT.read, async () => graphOf(d, await scopeOf(d, key)))
-export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unknown): Promise<Reply<BranchReview>> => reply(d.log, BRANCH_TEXT.read, async () => {
+export const readBranches = (d: TasksDeps, key: unknown): Promise<Reply<BranchGraph>> => pendingRead(d, ['graph', key], () => reply(d.log, BRANCH_TEXT.read, async () => graphOf(d, await scopeOf(d, key))))
+export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unknown): Promise<Reply<BranchReview>> => pendingRead(d, ['branch', key, id, target], () => reply(d.log, BRANCH_TEXT.read, async () => {
   const scope = await scopeOf(d, key); const task = taskOf(scope, id)
   const selected = target === null || target === undefined ? task.baseBranch ?? 'main' : target
   if (!isBranch(selected)) throw new Refusal(BRANCH_TEXT.invalid)
@@ -66,11 +67,11 @@ export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unkn
   const ops = await operationsOf(d, scope.key)
   review.operation = ops.find(o => o.taskId === task.id && o.target === selected && o.stage !== 'abandoned') ?? null
   return review
-})
-export const readMergeWorkspace = (d: TasksDeps, key: unknown, id: unknown): Promise<Reply<MergeWorkspace>> => reply(d.log, BRANCH_TEXT.read, async () => {
+}))
+export const readMergeWorkspace = (d: TasksDeps, key: unknown, id: unknown): Promise<Reply<MergeWorkspace>> => pendingRead(d, ['merge', key, id], () => reply(d.log, BRANCH_TEXT.read, async () => {
   const scope = await scopeOf(d, key)
   return workspaceOf(d, scope.ctx.projectPath, await loadOperation(d, scope.key, id))
-})
+}))
 
 export const prepareMerge = (d: BranchDeps, key: unknown, input: unknown): Promise<Reply<MergeWorkspace>> => reply(d.log, BRANCH_TEXT.action, async () => {
   const initial = await scopeOf(d, key); const request = requestOf(input)

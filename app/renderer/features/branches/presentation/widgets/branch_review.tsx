@@ -103,10 +103,10 @@ export const BranchReview = ({ engine, realm, id, onClose }: { engine: EngineApi
   const [target, setTarget] = useState<string | null>(null)
   const read = useEngineRead(engine, () => engine.readBranch(realm, id, target), [realm, id, target])
   useEffect(() => { const timer = window.setInterval(read.refresh, BRANCH_POLL_MS); return () => window.clearInterval(timer) }, [read.refresh])
-  return <Dialog title={t.branches.review} isSheet onCancel={onClose} onSubmit={() => { /* Only a named action button may mutate Git. */ }}>
+  return <Dialog title={t.branches.review} isSheet closeLabel={t.branches.close} onCancel={onClose} onSubmit={() => { /* Only a named action button may mutate Git. */ }}>
     <div class="branch-review">
       <ReadView read={read} line={t.branches.checking}>{review => <ReviewContents key={`${id}:${review.target}`} engine={engine} realm={realm} review={review} onTarget={setTarget} onRefresh={read.refresh} onAdopt={read.adopt} />}</ReadView>
     </div>
-    <div class="sheet-actions"><button type="button" class="btn" onClick={read.refresh}>{t.branches.refresh}</button><button type="button" class="btn" onClick={onClose}>{t.branches.close}</button></div>
+    <div class="sheet-actions"><button type="button" class="btn" onClick={read.refresh}>{t.branches.refresh}</button></div>
   </Dialog>
 }

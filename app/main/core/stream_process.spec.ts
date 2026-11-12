@@ -14,7 +14,15 @@ it('delivers stdout before exit and returns the real exit code', async () => {
 it('cancels a running process group and reports cancellation', async () => {
   const controller = new AbortController()
   const result = streamProcess(log, { argv: [process.execPath, '-e', "console.log('ready');setInterval(()=>{},1000)"], cwd: process.cwd(), signal: controller.signal }, () => controller.abort())
-  expect((await result).exitCode).toBe(130)
+  expect(await result).toMatchObject({ exitCode: 130 })
+  expect((await result).timedOut).not.toBe(true)
+})
+it('identifies a timeout separately from a script that exits with code 130', async () => {
+  const timedOut = await streamProcess(log, { argv: [process.execPath, '-e', 'setInterval(()=>{},1000)'], cwd: process.cwd(), timeoutMs: 50 })
+  expect(timedOut).toMatchObject({ exitCode: 130, timedOut: true })
+  const exited = await streamProcess(log, { argv: [process.execPath, '-e', 'process.exit(130)'], cwd: process.cwd() })
+  expect(exited.exitCode).toBe(130)
+  expect(exited.timedOut).not.toBe(true)
 })
 it('bounds output and reports startup errors without hanging', async () => {
   const big = await streamProcess(log, { argv: [process.execPath, '-e', "process.stdout.write('a'.repeat(100000))"], cwd: process.cwd() })

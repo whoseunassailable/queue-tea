@@ -5,7 +5,7 @@ import { useWindowKeys } from './window_keys'
 
 // A sheet (600 px) or a confirmation (480 px). Esc cancels; ⌘↩ confirms, which
 // is the form's own submit, so the same checks run.
-export const Dialog = ({ title, isSheet, onCancel, onSubmit, children }: { title: string; isSheet?: boolean; onCancel: () => void; onSubmit: () => void; children: ComponentChildren }) => {
+export const Dialog = ({ title, isSheet, closeLabel, onCancel, onSubmit, children }: { title: string; isSheet?: boolean; closeLabel?: string; onCancel: () => void; onSubmit: () => void; children: ComponentChildren }) => {
   const box = useRef<HTMLFormElement>(null)
   useLayoutEffect(() => {
     const first = box.current?.querySelector<HTMLElement>('input, textarea, button')
@@ -42,7 +42,7 @@ export const Dialog = ({ title, isSheet, onCancel, onSubmit, children }: { title
           onSubmit()
         }}
       >
-        <h2 class="sheet-title">{title}</h2>
+        {closeLabel ? <div class="sheet-heading"><h2 class="sheet-title">{title}</h2><button type="button" class="btn" onClick={onCancel}>{closeLabel}</button></div> : <h2 class="sheet-title">{title}</h2>}
         {children}
       </form>
     </div>

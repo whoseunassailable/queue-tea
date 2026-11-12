@@ -1226,7 +1226,10 @@ body,
 .branch-card.review { border-color: #b38a3e; }
 .branch-latest { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .branch-filter { display: flex; align-items: center; gap: 12px; }
-.sheet:has(.branch-review) { width: min(1000px, calc(100vw - 48px)); max-width: none; }
+.sheet:has(.branch-review) { width: min(1000px, calc(100vw - 48px)); max-width: none; max-height: calc(100dvh - 88px); }
+.rm .sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.rm .sheet:has(.branch-review) > .sheet-actions { flex-shrink: 0; }
+.rm .sheet > .branch-review { min-height: 0; overflow-y: auto; }
 .branch-review { display: grid; gap: 16px; }
 .branch-review label { display: grid; gap: 6px; }
 .branch-review select, .branch-review textarea { width: 100%; }

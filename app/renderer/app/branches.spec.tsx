@@ -32,6 +32,18 @@ const click = async (button: HTMLElement) => act(() => void fireEvent.click(butt
 beforeEach(() => { window.location.hash = '#/branches' })
 afterEach(cleanup)
 
+it('places an enabled close control in the dialog header', async () => {
+  const close = vi.fn()
+  const { engine } = fakeEngine({ readBranch: async () => ({ ok: true, data: branchReview({ operation: mergeOperation() }) }), runMergeChecks: () => new Promise(() => {}) })
+  await act(async () => { render(<BranchReview engine={engine} realm={KEY} id="one" onClose={close} />) })
+  const dialog = await screen.findByRole('dialog', { name: 'Review work' })
+  const header = dialog.querySelector('.sheet-heading')!
+  expect(header).toBeTruthy()
+  await click(within(header as HTMLElement).getByRole('button', { name: 'Close' }))
+  expect(close).toHaveBeenCalledTimes(1)
+  expect(engine.cancelMergeChecks).not.toHaveBeenCalled()
+})
+
 it('draws real history and pulses only observed working tasks, while both terminals remain usable', async () => {
   const { engine } = await open()
   expect(await screen.findByRole('img', { name: /actual commit parents/ })).toBeTruthy()
@@ -92,6 +104,21 @@ it('renders observed check output without treating missing checks as passing', a
   expect(screen.getByText('1 test failed')).toBeTruthy()
   expect(screen.getByText('Failed')).toBeTruthy()
   expect(screen.getByText(/not certified against the current commit/)).toBeTruthy()
+})
+
+it('shows dependency setup instructions, keeps merging blocked, and lets the user retry checks', async () => {
+  const workspace = mergeWorkspace({ availableChecks: [{ id: 'build', name: 'docs: build', folder: 'docs', command: 'npm run build' }], checksCurrent: false,
+    checks: [{ id: 'setup', checkId: 'build', name: 'docs: build', command: 'npm run build', tree: mergeOperation().tree!, at: 1, finished: 2, owner: 1, status: 'setupRequired', output: 'Package folder: /integration/docs\nnpm ci --offline', exitCode: null, truncated: false }] })
+  const { engine } = fakeEngine({ readMergeWorkspace: async () => ({ ok: true, data: workspace }) })
+  await act(async () => { render(<MergeReview engine={engine} realm={KEY} id="operation" remotes={[]} onChanged={() => {}} />) })
+  expect(await screen.findByText('Dependency setup required')).toBeTruthy()
+  expect(screen.getByRole('log', { name: 'Live output: docs: build' }).textContent).toContain('npm ci --offline')
+  await click(screen.getByRole('checkbox', { name: /I have stopped/ }))
+  expect((screen.getByRole('button', { name: 'Merge task/first into main' }) as HTMLButtonElement).disabled).toBe(true)
+  await click(screen.getByRole('checkbox', { name: /docs: build/ }))
+  await click(screen.getByRole('button', { name: 'Run selected checks' }))
+  expect(engine.runMergeChecks).toHaveBeenCalledWith(KEY, { operationId: workspace.operation.id, approval: workspace.approval, checkIds: ['build'] })
+  expect(engine.completeMerge).not.toHaveBeenCalled()
 })
 
 it('selects only user-chosen files and validates the commit message', async () => {

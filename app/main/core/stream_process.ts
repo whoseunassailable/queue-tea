@@ -3,6 +3,7 @@ import type { RunResult } from '../../../hooks/core/host/host'
 import type { Logger } from './logger'
 
 export type ProcessRequest = { argv: string[]; cwd: string; env?: NodeJS.ProcessEnv; signal?: AbortSignal; timeoutMs?: number }
+export type ProcessResult = RunResult & { timedOut?: boolean }
 export type OutputSink = (chunk: string) => void
 const OUTPUT_LIMIT = 64_000
 const KILL_GRACE_MS = 2_000
@@ -10,8 +11,8 @@ const running = new Set<() => void>()
 export const stopProcesses = () => { for (const stop of running) stop() }
 // One process group per user action. Stream before exit; stop children too on
 // cancellation/timeouts. Output stays bounded even for a very noisy command.
-export const streamProcess = (log: Logger, request: ProcessRequest, output?: OutputSink): Promise<RunResult> => new Promise(resolve => {
-  let stdout = ''; let stderr = ''; let stopped = false; let settled = false
+export const streamProcess = (log: Logger, request: ProcessRequest, output?: OutputSink): Promise<ProcessResult> => new Promise(resolve => {
+  let stdout = ''; let stderr = ''; let stopped = false; let settled = false; let timedOut = false
   const child = spawn(request.argv[0]!, request.argv.slice(1), { cwd: request.cwd, env: { ...process.env, ...request.env }, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] })
   let force: ReturnType<typeof setTimeout> | undefined
   const kill = (signal: NodeJS.Signals) => {
@@ -24,11 +25,14 @@ export const streamProcess = (log: Logger, request: ProcessRequest, output?: Out
     stopped = true; kill('SIGTERM'); force = setTimeout(() => kill('SIGKILL'), KILL_GRACE_MS)
   }
   running.add(stop)
-  const timeout = request.timeoutMs ? setTimeout(stop, request.timeoutMs) : undefined
+  const timeout = request.timeoutMs ? setTimeout(() => {
+    if (stopped || settled) return
+    timedOut = true; stop()
+  }, request.timeoutMs) : undefined
   const finish = (exitCode: number) => {
     if (settled) return
     settled = true; running.delete(stop); clearTimeout(timeout); clearTimeout(force); request.signal?.removeEventListener('abort', stop)
-    resolve({ exitCode: stopped ? 130 : exitCode, stdout, stderr })
+    resolve({ exitCode: stopped ? 130 : exitCode, stdout, stderr, ...(timedOut ? { timedOut: true } : {}) })
   }
   const chunk = (text: string, isError: boolean) => {
     if (isError) stderr = (stderr + text).slice(-OUTPUT_LIMIT); else stdout = (stdout + text).slice(-OUTPUT_LIMIT)

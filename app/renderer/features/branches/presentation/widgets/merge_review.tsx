@@ -76,6 +76,7 @@ export const MergeReview = ({ engine, realm, id, remotes, onChanged }: { engine:
     onDrop={event => { setDropping(false); const helper = helperDropped(event); if (!canSendHelper || helper === null) return; event.preventDefault(); void sendHelper(helper) }}>
     {error && <p class="note" role="alert">{error}</p>}
     {busy && <Loading line={busy} />}
+    {(hasRunningChecks || busy === t.branches.runningChecks) && <p class="hint">{t.branches.checksContinue}</p>}
     <ReadView read={read} line={t.branches.workspace}>{workspace => {
       const op = workspace.operation
       const commitMessage = message ?? op.message ?? t.branches.mergeMessage(op.source, op.target)

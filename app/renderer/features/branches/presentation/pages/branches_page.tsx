@@ -16,7 +16,7 @@ export const BranchesPage = ({ view, actions, engine, flow, onOpen }: { view: Re
   const [selected, setSelected] = useState<string | null>(null)
   const [filter, setFilter] = useState<BranchState | 'all'>('all')
   const read = useEngineRead(engine, () => engine.readBranches(view.key), [view.key])
-  useEffect(() => { const timer = window.setInterval(read.refresh, BRANCH_POLL_MS); return () => window.clearInterval(timer) }, [read.refresh])
+  useEffect(() => { if (selected) return; const timer = window.setInterval(read.refresh, BRANCH_POLL_MS); return () => window.clearInterval(timer) }, [read.refresh, selected])
   useEffect(() => setSelected(null), [view.key])
   return <main class="branch-page">
     <header class="panel branch-heading">

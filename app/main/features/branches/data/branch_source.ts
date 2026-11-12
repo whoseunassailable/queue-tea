@@ -38,6 +38,20 @@ export const pendingGit = async (d: TasksDeps, path: string) => {
   }
   return false
 }
+// A graph can span hundreds of retained tasks. Bound the disk/Git work while
+// keeping result order stable. A failure stops workers from taking more tasks.
+const taskReads = async <T, R>(items: T[], read: (item: T) => Promise<R>): Promise<R[]> => {
+  const result: R[] = []; let next = 0; let stopped = false
+  const workers = await Promise.allSettled(Array.from({ length: Math.min(items.length, BRANCH_LIMITS.graphWorkers) }, async () => {
+    while (!stopped && next < items.length) {
+      const index = next++
+      try { result[index] = await read(items[index]!) }
+      catch (err) { stopped = true; throw err }
+    }
+  }))
+  for (const worker of workers) if (worker.status === 'rejected') throw worker.reason
+  return result
+}
 export const graphOf = async (d: TasksDeps, scope: Scope): Promise<BranchGraph> => {
   const root = scope.ctx.projectPath; const git = gitIn(d, root)
   const allHeads = await headsOf(d, root)
@@ -46,7 +60,7 @@ export const graphOf = async (d: TasksDeps, scope: Scope): Promise<BranchGraph> 
   const heads = allHeads.filter(h => relevant.has(h.branch))
   const commits = heads.length ? parseLog(await git(['log', '--topo-order', `--max-count=${BRANCH_LIMITS.graph}`, '--format=%H%x00%P%x00%s', ...heads.map(h => `refs/heads/${h.branch}`), '--'])) : []
   const checkouts = await worktreesRepositoryImpl(d.host, root).list()
-  const tasks = await Promise.all(scope.record.tasks.filter(t => t.branch && t.state !== 'removed').map(async task => {
+  const tasks = await taskReads(scope.record.tasks.filter(t => t.branch && t.state !== 'removed'), async task => {
     const head = heads.find(h => h.branch === task.branch)?.head ?? null
     const base = heads.find(h => h.branch === task.baseBranch)?.head ?? null
     const observation = await observeTask(d, root, task)
@@ -57,7 +71,7 @@ export const graphOf = async (d: TasksDeps, scope: Scope): Promise<BranchGraph> 
     return { id: task.id, title: task.title, branch: task.branch!, base: task.baseBranch, head, fork: forkResult?.exitCode === 0 ? forkResult.stdout.trim() : null,
       merged, state: merged ? 'merged' as const : observation.state, latest: observation.steps.at(-1)?.subject ?? null, seenAt: observation.seenAt,
       changed, commits: head && base ? Number((await git(['rev-list', '--count', `${base}..${head}`])).trim()) : null }
-  }))
+  })
   return { at: d.now(), integration, heads, commits, tasks, limited: commits.length === BRANCH_LIMITS.graph }
 }
 

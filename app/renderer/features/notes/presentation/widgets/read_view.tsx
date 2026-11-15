@@ -12,7 +12,7 @@ import { isInPlay, questLineOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 
 type Props = { engine: EngineApi; realm: string; body: string; notes: readonly Note[]; quests: Map<string, QuestLine>; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenQuest: (id: string) => void; onOpenLink: (url: string) => void }
-import { NoteAttachment } from './note_attachment'
+import { NoteAttachment } from '../../../../core/widgets/note_attachment'
 import { NoteBookmark } from './note_bookmark'
 
 const CALLOUT = /^\[!(\w+)\][+-]?[ \t]*(.*)$/

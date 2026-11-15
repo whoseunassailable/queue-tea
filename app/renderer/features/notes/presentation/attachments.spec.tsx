@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/pr
 import { afterEach, expect, it, vi } from 'vitest'
 
 import { fakeEngine, note } from '../../../test_support'
-import { AttachmentInput } from './widgets/attachment_input'
+import { AttachmentInput } from '../../../core/widgets/attachment_input'
 import { ReadView } from './widgets/read_view'
 
 afterEach(cleanup)

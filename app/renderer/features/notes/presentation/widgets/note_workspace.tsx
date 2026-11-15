@@ -16,7 +16,7 @@ import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkQueryA
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
-import { AttachmentInput } from './attachment_input'
+import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { NoteHistory } from './note_history'
 
 type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }

@@ -1,12 +1,12 @@
 import type { ComponentChildren } from 'preact'
 import { useRef, useState } from 'preact/hooks'
 
-import type { EngineApi } from '../../../../../shared/engine_api'
-import { attachmentError, attachmentMarkdown, NOTE_FILE_ACCEPT } from '../../../../../shared/note_attachments'
-import { bookmarkUrlOf } from '../../../../../shared/note_bookmarks'
-import { ask } from '../../../../core/api/engine_client'
-import { Spinner } from '../../../../core/widgets/states'
-import { t } from '../../../../l10n/en'
+import type { EngineApi } from '../../../shared/engine_api'
+import { attachmentError, attachmentMarkdown, NOTE_FILE_ACCEPT } from '../../../shared/note_attachments'
+import { bookmarkUrlOf } from '../../../shared/note_bookmarks'
+import { ask } from '../api/engine_client'
+import { Spinner } from './states'
+import { t } from '../../l10n/en'
 
 type Props = { engine: EngineApi; realm: string; id: string; isLive?: boolean; children: ComponentChildren; onInsert: (markdown: string) => Promise<void> }
 type State = { kind: 'idle' } | { kind: 'busy'; name: string } | { kind: 'done' } | { kind: 'failed'; message: string }
@@ -34,7 +34,7 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
       const error = attachmentError(file)
       if (error === undefined) continue
       if (!isBusy.current) retry.current = []
-      setState({ kind: 'failed', message: error === 'type' ? t.notebook.fileType : t.notebook.fileSize })
+      setState({ kind: 'failed', message: error === 'type' ? t.files.fileType : t.files.fileSize })
 
       return
     }
@@ -63,7 +63,7 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
       setState({ kind: 'done' })
     } catch (err) {
       engine.log('error', `attaching a note file failed: ${err instanceof Error ? err.stack : String(err)}`)
-      setState({ kind: 'failed', message: t.notebook.attachFailed })
+      setState({ kind: 'failed', message: t.files.attachFailed })
     } finally {
       isBusy.current = false
     }
@@ -101,13 +101,13 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
       void onInsert(url)
     }}>
     <div class="nt-attach-bar">
-      <button type="button" class="chip-btn" disabled={state.kind === 'busy'} onClick={() => input.current?.click()}>{t.notebook.attachFile}</button>
-      <input ref={input} type="file" class="sr" tabIndex={-1} aria-label={t.notebook.attachFile} accept={NOTE_FILE_ACCEPT} multiple
+      <button type="button" class="chip-btn" disabled={state.kind === 'busy'} onClick={() => input.current?.click()}>{t.files.attachFile}</button>
+      <input ref={input} type="file" class="sr" tabIndex={-1} aria-label={t.files.attachFile} accept={NOTE_FILE_ACCEPT} multiple
         onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ''; void attach(files) }} />
-      <span class="hint">{isOver ? t.notebook.dropFile : t.notebook.attachHint}</span>
+      <span class="hint">{isOver ? t.files.dropFile : t.files.attachHint}</span>
     </div>
-    {state.kind === 'busy' && <p class="nt-file-status" role="status"><Spinner /> {t.notebook.attaching(state.name)}</p>}
-    {state.kind === 'done' && <p class="nt-file-status" role="status">{t.notebook.attached}</p>}
+    {state.kind === 'busy' && <p class="nt-file-status" role="status"><Spinner /> {t.files.attaching(state.name)}</p>}
+    {state.kind === 'done' && <p class="nt-file-status" role="status">{t.files.attached}</p>}
     {state.kind === 'failed' && <p class="field-error" role="alert">{state.message}{' '}{retry.current.length > 0 && <button type="button" class="chip-btn" onClick={() => void attach(retry.current)}>{t.failed.tryAgain}</button>}</p>}
     {children}
   </div>

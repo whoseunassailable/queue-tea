@@ -1,5 +1,6 @@
 import type { Checkpoint, CommandRun, GitFacts, Task } from '../../../../../types'
 import { CODEX_RULES, FIRST_MESSAGE_LABELS } from '../constants/checkpoints_text'
+import { descriptionFiles, withFilePaths } from '../../../records/domain/services/description_files'
 import { firstObject } from './first_object'
 
 // A task's checkpoint: what Claude writes at a handoff, beside what
@@ -187,13 +188,16 @@ export const latestNote = (task: Task): 'checkpoint' | 'handoff' | null => {
 
 // The first message of a task's fresh conversation. A task that has been
 // worked on brings its checkpoint, what Queue-tea checked just now, and the
-// order to compare before trusting either.
-export const firstMessage = (task: Task, checked: string[] | null = null): string => {
+// order to compare before trusting either. Files the description links get
+// paths in the realm's notes folder, so Claude can open them.
+export const firstMessage = (task: Task, checked: string[] | null = null, files: string | null = null): string => {
   const c = task.checkpoint
   const hasNote = task.handoff !== null || (c !== null && (c.written !== null || c.seen !== null))
+  const hasFiles = files !== null && descriptionFiles(task.description).length > 0
   const parts = [
     `${FIRST_MESSAGE_LABELS.task} ${task.title}`,
-    ...(task.description === null ? [] : [`${FIRST_MESSAGE_LABELS.description} ${task.description}`]),
+    ...(task.description === null ? [] : [`${FIRST_MESSAGE_LABELS.description} ${hasFiles ? withFilePaths(task.description, files) : task.description}`]),
+    ...(hasFiles ? [FIRST_MESSAGE_LABELS.files] : []),
     ...(task.criteria.length === 0 ? [] : [[FIRST_MESSAGE_LABELS.criteria, ...list(task.criteria)].join('\n')]),
     ...task.messages,
   ]
@@ -231,5 +235,5 @@ export const firstMessage = (task: Task, checked: string[] | null = null): strin
 }
 
 // Codex's first prompt: Queue-tea's rules, then what Claude would get.
-export const codexBrief = (task: Task, folder: string, checked: string[] | null): string =>
-  `${CODEX_RULES(folder, task.branch)}\n\n${firstMessage(task, checked)}`
+export const codexBrief = (task: Task, folder: string, checked: string[] | null, files: string | null = null): string =>
+  `${CODEX_RULES(folder, task.branch)}\n\n${firstMessage(task, checked, files)}`

@@ -46,6 +46,7 @@ export const MESSAGES = {
   restoreNoteVersion: "Couldn't restore this version. Reopen History to check the note, then try again.",
   unknownNoteVersion: "That saved version is missing or damaged. Choose another version, or reopen History.",
   attachNoteFile: "Couldn't attach this file. Your note is still here. Try again.",
+  attachQuestFile: "Couldn't attach this file. Your quest is unchanged. Try again.",
   readNoteFile: "Couldn't read this file. Check that it is still in the notes folder, then try again.",
   downloadNoteFile: "Couldn't download this file. Pick a folder you can write to, then try again.",
   noteFileType: 'Only image or PDF files are accepted.',

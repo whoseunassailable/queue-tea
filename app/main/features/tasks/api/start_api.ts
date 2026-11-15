@@ -8,6 +8,7 @@ import { sessionsRepositoryImpl } from '../../../../../hooks/shared/sessions/dat
 import { isFresh } from '../../../../../hooks/shared/sessions/domain/services/session_rules'
 import { blockedText, isBlocked } from '../../../../../hooks/shared/backlog/domain/services/ranking'
 import { codexBrief } from '../../../../../hooks/shared/checkpoints/domain/services/checkpoints'
+import { notesFolderOf } from '../../../../../hooks/shared/records/domain/services/description_files'
 import { checkNowUseCase } from '../../../../../hooks/shared/checkpoints/domain/usecases/check_now'
 import type { GitState } from '../../../../../hooks/shared/git/domain/entities/git_state'
 import { holdReason, slugBranch } from '../../../../../hooks/shared/git/domain/services/branch_rules'
@@ -91,7 +92,7 @@ const handOver = async (d: TasksDeps, scope: Scope, taskId: string, started: Pro
 const toCodex = async (d: TasksDeps, scope: Scope, task: Task): Promise<Handover> => {
   const checked = await checkNowUseCase(scope.deps.git, text => d.log.debug(text), task)
 
-  return openCodex(d, scope.ctx.cwd, task.id, codexBrief(task, scope.ctx.cwd, checked))
+  return openCodex(d, scope.ctx.cwd, task.id, codexBrief(task, scope.ctx.cwd, checked, notesFolderOf(scope.ctx)))
 }
 
 export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform: unknown): Promise<Reply<StartOutcome>> =>
@@ -135,7 +136,7 @@ export const openClaude = (d: TasksDeps, key: unknown, taskId?: unknown): Promis
     const selected = await scopeOf(d, key, task?.id)
     await needFolder(d, selected)
     const { ctx } = selected
-    if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.cwd, codexBrief(task, ctx.cwd, null))
+    if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.cwd, codexBrief(task, ctx.cwd, null, notesFolderOf(ctx)))
 
     return openClaudeCode(d, ctx.cwd, await isSessionOpen(d, ctx.cwd))
   })

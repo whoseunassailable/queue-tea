@@ -665,6 +665,7 @@ This is the right pane in 4.2, shown for a feature.
 - **Lines.** The app measures them itself: `diffSince(startCommit)` when the pane opens, then every 30 s while it is visible.
 - **"Branch when it starts"** comes from `slugBranch(title, listBranches())`. The name shown is real: the engine gives `task/fix-cut-off-text`.
 - **File a follow-up…** opens New task with "Follow up: <title>", since a finished task can't be reopened.
+- **Files in the description** (added 2026-11-15). **Attach file…** sits above the description box, with "Drop, paste or pick an image or PDF under 10 MB." beside it. Each file the description links shows under the box: an image inline, a PDF with **Preview PDF**, each with **Download**. Deleting the link removes the preview. The rules are in [Files in a quest's description](workspace-app.md#files-in-a-quests-description).
 
 ### 4.5 New task, and Add child task inline
 
@@ -718,6 +719,7 @@ A Helpers line sits between Difficulty and Part of, with Tea-DD pressed:
 - Afterwards, the toast "Queued: Rebuild the iPhone apps (mid) · part of Finish Insole Bridge…".
 - On failure: "Couldn't save the task. Try Save again." The sheet stays open.
 - A refusal from `parentRefusal` shows in red under Part of.
+- The description takes files as in 4.4, each link on a line of its own at the end. While a file is still attaching, **Add to the board** files nothing and "Wait for the file to finish attaching." shows under Description.
 
 ### 4.6 The Start flow and the git hold
 

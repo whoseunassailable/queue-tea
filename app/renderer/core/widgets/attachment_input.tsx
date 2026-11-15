@@ -8,7 +8,8 @@ import { ask } from '../api/engine_client'
 import { Spinner } from './states'
 import { t } from '../../l10n/en'
 
-type Props = { engine: EngineApi; realm: string; id: string; isLive?: boolean; children: ComponentChildren; onInsert: (markdown: string) => Promise<void> }
+// A null id attaches to the realm, for a quest's description.
+type Props = { engine: EngineApi; realm: string; id: string | null; isLive?: boolean; children: ComponentChildren; onInsert: (markdown: string) => Promise<void>; onBusy?: (isBusy: boolean) => void }
 type State = { kind: 'idle' } | { kind: 'busy'; name: string } | { kind: 'done' } | { kind: 'failed'; message: string }
 
 // FileReader works in both the sandboxed window and the component tests.
@@ -20,7 +21,7 @@ const bytesOf = (file: File): Promise<Uint8Array> => new Promise((done, fail) =>
   reader.readAsArrayBuffer(file)
 })
 
-export const AttachmentInput = ({ engine, realm, id, isLive = true, children, onInsert }: Props) => {
+export const AttachmentInput = ({ engine, realm, id, isLive = true, children, onInsert, onBusy }: Props) => {
   const [state, setState] = useState<State>({ kind: 'idle' })
   const [isOver, setOver] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -44,6 +45,7 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
       return
     }
     isBusy.current = true
+    onBusy?.(true)
     retry.current = files
     try {
       while (retry.current.length > 0) {
@@ -66,6 +68,7 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
       setState({ kind: 'failed', message: t.files.attachFailed })
     } finally {
       isBusy.current = false
+      onBusy?.(false)
     }
   }
 
@@ -94,9 +97,10 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
         return
       }
       // Write pastes text as it is; a link pasted on a line of its own is a
-      // bookmark already. In Read a pasted link goes in as one.
+      // bookmark already. In Read a pasted link goes in as one. A quest's
+      // description has no bookmarks, so a link pasted beside it stays out.
       const url = bookmarkUrlOf(event.clipboardData?.getData('text/plain') ?? '')
-      if (url === null || event.target instanceof HTMLTextAreaElement) return
+      if (url === null || id === null || event.target instanceof HTMLTextAreaElement) return
       event.preventDefault()
       void onInsert(url)
     }}>

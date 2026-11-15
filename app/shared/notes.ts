@@ -4,7 +4,7 @@ import type { Difficulty, ParentPick, Priority } from '../../types'
 import type { ProjectView } from './engine_api'
 import { NOTE_ATTACHMENTS, noteFilePath } from './note_attachments'
 
-export const NOTES_FOLDER = '.queue-tea/notes'
+export { NOTES_FOLDER } from '../../hooks/shared/records/domain/services/description_files'
 export const NOTE_HISTORY_FOLDER = '.history'
 export const NOTE_HISTORY_LIMITS = { recent: 50, hourly: 24, daily: 26 } as const
 export const NOTE_VERSION_ID = /^v-(\d{13})-([a-f0-9]{40})$/

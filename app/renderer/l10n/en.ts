@@ -462,7 +462,7 @@ export const t = {
     commentsButton: (n: number) => `Comments · ${n} open`,
     close: 'Close',
   },
-  // Files attached to a note.
+  // Files attached to a note or a quest's description.
   files: {
     attachFile: 'Attach file…',
     attachHint: 'Drop, paste or pick an image or PDF under 10 MB.',
@@ -986,6 +986,7 @@ export const t = {
     removeIt: 'Remove',
   },
   form: {
+    stillAttaching: 'Wait for the file to finish attaching.',
     title: 'Title',
     titleRequired: 'Title is required.',
     titleLong: 'Title must be 200 characters or fewer.',

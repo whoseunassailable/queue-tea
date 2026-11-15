@@ -189,6 +189,33 @@ describe('note files', () => {
     expect((await api.attachNoteFile(KEY, id, upload())).ok).toBe(false)
   })
 
+  it("keeps a quest's file in the realm's vault with no note, under its content hash", async () => {
+    const file = data(await api.attachNoteFile(KEY, null, upload()))
+
+    expect(file).toEqual({ path: `attachments/${createHash('sha256').update(png()).digest('hex')}.png`, kind: 'image' })
+    expect(new Uint8Array(await readFile(join(dir, file.path)))).toEqual(png())
+    expect(await readdir(dir)).toEqual(['attachments'])
+    expect(data(await api.readNotes(KEY)).notes).toEqual([])
+    expect(data(await notesApi(deps).readNoteFile(KEY, file.path))).toEqual(file)
+  })
+
+  it("refuses a quest's file for an unknown realm, of another type, or 10 MB, with the notes' sentences, and writes nothing", async () => {
+    expect(refused(await api.attachNoteFile('../x', null, upload()))).toBe(MESSAGES.unknownProject)
+    expect(refused(await api.attachNoteFile('unknown-abc123', null, upload()))).toBe(MESSAGES.unknownProject)
+    expect(refused(await api.attachNoteFile(KEY, null, { name: 'notes.txt', type: 'text/plain', bytes: new Uint8Array([1, 2]) }))).toBe('Only image or PDF files are accepted.')
+    expect(refused(await api.attachNoteFile(KEY, null, { name: 'fake.png', type: 'image/png', bytes: new Uint8Array([1, 2]) }))).toBe('Only image or PDF files are accepted.')
+    expect(refused(await api.attachNoteFile(KEY, null, { ...upload(), bytes: new Uint8Array(10 * 1024 * 1024) }))).toBe('File must be under 10 MB.')
+    expect(await readdir(join(home, '.queue-tea/notes')).catch(() => [])).toEqual([])
+  })
+
+  it("a quest's file that can't be written says the quest is unchanged; a note's still says the note is there", async () => {
+    const { id } = await created()
+    await writeFile(join(dir, 'attachments'), 'not a folder')
+
+    expect(refused(await api.attachNoteFile(KEY, null, upload()))).toBe(MESSAGES.attachQuestFile)
+    expect(refused(await api.attachNoteFile(KEY, id, upload()))).toBe(MESSAGES.attachNoteFile)
+  })
+
   it('retains shared files when either note is permanently deleted', async () => {
     const first = await created()
     const file = data(await api.attachNoteFile(KEY, first.id, upload()))

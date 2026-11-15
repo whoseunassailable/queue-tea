@@ -1,7 +1,7 @@
 # Queue-tea: workspace app
 
 - **Date:** 2026-10-27
-- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)). Updated 2026-11-05: a Designs tab after Quests, for a realm's design versions and comments ([The Designs tab](#the-designs-tab), [design-tab.md](design-tab.md)). Updated 2026-11-06: each helper in the Guild Hall takes an order ([The Guild Hall's helpers](#the-guild-halls-helpers)).
+- **State:** being built. Parts 1 to 5 are done on `task/workspace-app`: the mod's side, every screen, every edit, a quest from Start to Finish, and an app you can install ([plan-workspace-app.md](plan-workspace-app.md), [plan-workspace-app-2.md](plan-workspace-app-2.md)). Windows is next, once there's a Windows machine. Updated 2026-10-28: the look is now Jade Peaks, with a game layer (sections 2.1 and 2.2 of the design). Updated 2026-11-02: Rohan wants Windows too, after the Mac. Updated 2026-11-03: any quest can run on OpenAI's Codex CLI in place of Claude Code ([Codex](#codex-a-quest-without-claude-code)), phase 1 of Multiple tasks; phase 2 adds parallel worktrees and Branches ([details](plan-parallel-quests.md)). Updated 2026-11-05: a Designs tab after Quests, for a realm's design versions and comments ([The Designs tab](#the-designs-tab), [design-tab.md](design-tab.md)). Updated 2026-11-06: each helper in the Guild Hall takes an order ([The Guild Hall's helpers](#the-guild-halls-helpers)). Updated 2026-11-15: a quest's description takes images and PDFs ([Files in a quest's description](#files-in-a-quests-description)).
 - **Where it came from:** sub-project 1 of the Queue-tea 2.0 plan (the workspace app, phases 1–2 of the pasted 2.0 plan). The screens, components and look are in [workspace-app-design.md](workspace-app-design.md), decided on 2026-10-27. Mockups: https://claude.ai/artifact/H8HpWsfTcZYz5Y1kJBQtUB (private).
 
 ## What it is
@@ -193,6 +193,19 @@ Added 2026-11-06. Each helper's card takes an order for the realm picked in the 
 - **`readHelpers()`** returns each helper's latest order, read when the Guild Hall opens.
 
 When an order fails, the card says why: the queue-tea plugin isn't installed in Claude Code, `claude` can't be found, the order ran 30 minutes and was stopped, or anything else, which asks Rohan to check that Claude Code is signed in. Main keeps the orders in memory only, so a restart forgets them, and an update waits while any helper is at work.
+
+### Files in a quest's description
+
+Added 2026-11-15. A quest's description takes images and PDFs under 10 MB, in the quest's detail pane and in the New quest sheet, under **Description and completion criteria (optional)**. Press **Attach file…**, drop files on the description, or paste one. The checks, formats and messages are the ones Notes uses ([Attachments](notes.md#attachments)).
+
+- **In the detail pane,** the link goes in on a line of its own: at the caret while the description box has focus, as it does when you paste, and at the end otherwise. The description is saved at once.
+- **In the New quest sheet,** each link goes at the end, and is saved with the quest when you press **Add to the board**. Pressed while a file is still attaching, it files nothing and shows "Wait for the file to finish attaching." under Description.
+
+Each file the description links shows under the box: an image inline, at most 120 px tall; a PDF with **Preview PDF**; and every file with **Download**. Delete the link and its preview goes. The file itself stays in the vault, as a note's files do.
+
+The files go in the realm's notes vault, `~/.queue-tea/notes/<realm key>/attachments/<sha256>.<ext>`, through the same engine call and checks as a note's, and the description holds the link Notes writes, such as `![shot.png](<attachments/hash.png>)`. In the first message Claude Code gets for the quest, and in the Codex brief, each such link becomes an absolute path in that folder, and a line after the description says "The description links files Queue-tea saved. Look at each one before you start: they are part of the task." Only links to `attachments/<sha256>.<ext>`, the names Queue-tea gives files, change; any other link stays as written, and gets no preview. A description without such a link is sent as it is, with no extra line. The folder is outside the quest's worktree, so Claude Code may ask once for permission to read it.
+
+For developers: the window uses the same attach control and preview as Notes, from `app/renderer/core/widgets/` ([Attachment boundaries](notes.md#attachment-boundaries-and-design-choice)). `attachNoteFile` with `null` for the note id stores a file for a quest's description. A refused file gets the Notes messages; any other failure says "Couldn't attach this file. Your quest is unchanged. Try again." Finding and rewriting the links is in `hooks/shared/records/domain/services/description_files.ts`, which also holds `NOTES_FOLDER`; `app/shared/notes.ts` re-exports it.
 
 ## Data
 

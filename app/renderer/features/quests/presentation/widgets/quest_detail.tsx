@@ -1,9 +1,10 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 
 import type { Allowance, Difficulty, Platform } from '../../../../../../types'
 import type { EngineApi } from '../../../../../shared/engine_api'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { dayOf, formatSpan } from '../../../../core/domain/format'
+import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { Field } from '../../../../core/widgets/field'
 import { GoldReward, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
@@ -12,6 +13,7 @@ import type { Row } from '../../domain/board'
 import { titleError } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
 import { ClaudeOut } from './claude_out'
+import { DescriptionFiles, withFileLink } from './description_files'
 import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
@@ -73,24 +75,64 @@ const EditableTitle = ({ title, onSave }: { title: string; onSave: (title: strin
 }
 
 // Keyed by quest, so a draft belongs to one quest and a change on disk leaves
-// what's being typed alone.
-const Description = ({ value, onSave }: { value: string | null; onSave: (description: string) => void }) => {
+// what's being typed alone. A file goes in at the caret while the box has
+// focus, else at the end, and is saved at once.
+const Description = ({ engine, realm, value, onSave }: { engine: EngineApi; realm: string; value: string | null; onSave: (description: string) => Promise<unknown> }) => {
   const [draft, setDraft] = useState<string | null>(null)
+  const area = useRef<HTMLTextAreaElement>(null)
+  // The newest text, typed or sent, so a file landing before the save comes
+  // back keeps it, and a batch of files keeps every link. An older save's
+  // reply can land after a newer save went out, so the saved text only
+  // replaces it once no save is still on its way.
+  const latest = useRef(value ?? '')
+  const saving = useRef(0)
+  useEffect(() => {
+    if (draft === null && saving.current === 0) latest.current = value ?? ''
+  }, [value])
+  const save = (text: string) => {
+    latest.current = text
+    saving.current += 1
+    void onSave(text).finally(() => { saving.current -= 1 })
+  }
+  const insert = async (markdown: string) => {
+    const text = latest.current
+    const box = area.current
+    if (box === null || document.activeElement !== box) {
+      save(withFileLink(text, markdown))
+      setDraft(null)
+
+      return
+    }
+    const from = Math.min(box.selectionStart, text.length)
+    const link = `${from > 0 && text[from - 1] !== '\n' ? '\n' : ''}${markdown}\n`
+    const next = text.slice(0, from) + link + text.slice(Math.max(from, box.selectionEnd))
+    save(next)
+    setDraft(next)
+    requestAnimationFrame(() => box.setSelectionRange(from + link.length, from + link.length))
+  }
+  const shown = draft ?? value ?? ''
 
   return (
-    <textarea
-      class="input"
-      rows={3}
-      aria-label={t.detail.description}
-      placeholder={t.detail.descriptionPlaceholder}
-      value={draft ?? value ?? ''}
-      onInput={event => setDraft((event.target as HTMLTextAreaElement).value)}
-      onBlur={event => {
-        const text = (event.target as HTMLTextAreaElement).value
-        if (text.trim() !== (value ?? '')) onSave(text)
-        setDraft(null)
-      }}
-    />
+    <AttachmentInput engine={engine} realm={realm} id={null} onInsert={insert}>
+      <textarea
+        ref={area}
+        class="input"
+        rows={3}
+        aria-label={t.detail.description}
+        placeholder={t.detail.descriptionPlaceholder}
+        value={shown}
+        onInput={event => {
+          latest.current = (event.target as HTMLTextAreaElement).value
+          setDraft(latest.current)
+        }}
+        onBlur={event => {
+          const text = (event.target as HTMLTextAreaElement).value
+          if (text.trim() !== (value ?? '')) save(text)
+          setDraft(null)
+        }}
+      />
+      <DescriptionFiles engine={engine} realm={realm} text={shown} />
+    </AttachmentInput>
   )
 }
 
@@ -234,7 +276,7 @@ export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved,
       {quest.why !== null && <p class="d-star">{t.detail.main(quest.why)}</p>}
       {isSealed && <p class="d-star">⊘ {quest.sealedBecause}</p>}
       <h3>{t.detail.description}</h3>
-      <Description key={quest.id} value={quest.description} onSave={description => void edits.edit(realm, quest, { description })} />
+      <Description key={quest.id} engine={engine} realm={realm} value={quest.description} onSave={description => edits.edit(realm, quest, { description })} />
       {quest.description === null && quest.goal !== null && (
         <button type="button" class="link-btn" onClick={() => void edits.edit(realm, quest, { description: quest.goal })}>
           {t.detail.useGoal}

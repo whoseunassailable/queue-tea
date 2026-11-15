@@ -4,6 +4,7 @@ import type { Task } from '../../../../../types'
 import { firstMessage } from '../../../checkpoints/domain/services/checkpoints'
 import { checkNowUseCase } from '../../../checkpoints/domain/usecases/check_now'
 import { gitRepositoryOf } from '../../../git/git_providers'
+import { notesFolderOf } from '../../../records/domain/services/description_files'
 import { recordsRepositoryOf } from '../../../records/records_providers'
 import { markUnreadable } from '../../../records/presentation/state_management/records_controller'
 import { assistantRepositoryOf } from '../../assistant_providers'
@@ -30,7 +31,7 @@ export const freshConversation = async (p: Ports, ctx: Ctx, task: Task): Promise
     const checked = await checkNowUseCase(gitRepositoryOf(p, ctx), p.log, task)
     const assistant = assistantRepositoryOf(p)
     await assistant.clear()
-    await assistant.submit(firstMessage(task, checked))
+    await assistant.submit(firstMessage(task, checked, notesFolderOf(ctx)))
   } catch (err) {
     p.log(`starting the conversation for ${task.id} failed: ${err instanceof Error ? err.message : String(err)}`)
     await p.set('notice', `Couldn't open the conversation for ${task.title}. Press Continue to try again.`)

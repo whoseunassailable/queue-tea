@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import type { Difficulty, Priority } from '../../../../../../types'
 import type { Choices, EngineApi } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
+import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { Field, Group, Pick } from '../../../../core/widgets/field'
 import { Failed, Loading } from '../../../../core/widgets/states'
@@ -11,6 +12,7 @@ import type { Load, ReadableView } from '../../../workspace/state_management/wor
 import { emptyQuestForm, questOf, validateQuest } from '../../domain/quest_form'
 import type { QuestErrors, QuestField, QuestForm } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
+import { DescriptionFiles, withFileLink } from './description_files'
 import { HelperToggles } from './helper_toggles'
 
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
@@ -32,6 +34,9 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
   const [choices, setChoices] = useState<Load<Choices>>({ status: 'loading' })
   const [failure, setFailure] = useState<string | null>(null)
   const [isSaving, setSaving] = useState(false)
+  // A quest filed mid-upload would lose the file's link, so filing waits.
+  const [isAttaching, setAttaching] = useState(false)
+  const [isWaitShown, setWaitShown] = useState(false)
 
   const load = async () => {
     setChoices({ status: 'loading' })
@@ -56,7 +61,8 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
   const submit = async () => {
     setTouched(['title', 'part', 'sagaTitle'])
     setFailure(null)
-    if (isSaving || Object.keys(validateQuest(form)).length > 0) return
+    setWaitShown(isAttaching)
+    if (isSaving || isAttaching || Object.keys(validateQuest(form)).length > 0) return
     setSaving(true)
     const saga = titleOfPart(parentChoices, form.part, form.sagaTitle)
     const answer = await edits.file(view.key, questOf(form), saga)
@@ -115,7 +121,19 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
       )}
       <details class="form-more">
         <summary>{t.form.optional}</summary>
-        <Field label={t.form.description} isLong value={form.description} onInput={description => set({ description })} />
+        <AttachmentInput
+          engine={engine}
+          realm={view.key}
+          id={null}
+          onBusy={busy => {
+            setAttaching(busy)
+            if (!busy) setWaitShown(false)
+          }}
+          onInsert={async markdown => setForm(now => ({ ...now, description: withFileLink(now.description, markdown) }))}
+        >
+          <Field label={t.form.description} isLong value={form.description} error={isAttaching && isWaitShown ? t.form.stillAttaching : undefined} onInput={description => set({ description })} />
+          <DescriptionFiles engine={engine} realm={view.key} text={form.description} />
+        </AttachmentInput>
         <Field label={t.form.criteria} isLong value={form.criteria} onInput={criteria => set({ criteria })} />
       </details>
       <p class="hint">{t.form.waits}</p>

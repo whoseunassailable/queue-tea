@@ -1,4 +1,5 @@
-export const FIRST_MESSAGE_LABELS = { task: 'Task:', description: 'Description:', criteria: 'Acceptance criteria:' }
+export const FIRST_MESSAGE_LABELS = { task: 'Task:', description: 'Description:', criteria: 'Acceptance criteria:',
+  files: 'The description links files Queue-tea saved. Look at each one before you start: they are part of the task.' }
 
 // What Codex is told before the task. Codex runs without Queue-tea's git
 // guard, so the rules come first; its sandbox and approvals back them up.

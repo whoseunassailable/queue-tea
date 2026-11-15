@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { checkLines, checkpointPrompt, codexBrief, commandRun, emptyCheckpoint, firstMessage, latestNote, noteSeen, parseCheckpoint } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
+import { FIRST_MESSAGE_LABELS } from '../../../hooks/shared/checkpoints/domain/constants/checkpoints_text'
 import { checkNowUseCase } from '../../../hooks/shared/checkpoints/domain/usecases/check_now'
 import type { GitRepository } from '../../../hooks/shared/git/domain/repositories/git_repository'
 import { parseStatusPaths } from '../../../hooks/shared/git/domain/services/branch_rules'
@@ -110,6 +111,39 @@ test('firstMessage carries the description and criteria', () => {
   expect(firstMessage(makeTask({ title: 'New', messages: ['do it'], description: 'Why', criteria: ['One', 'Two'] }))).toBe(
     'Task: New\n\nDescription: Why\n\nAcceptance criteria:\n- One\n- Two\n\ndo it',
   )
+})
+
+const IMAGE = `attachments/${'a1'.repeat(32)}.png`
+const PDF = `attachments/${'b2'.repeat(32)}.pdf`
+const NOTES = '/h/.queue-tea/notes/p-000000'
+
+test('the first message points every file the description links at the notes folder, and says so once', () => {
+  const task = makeTask({ title: 'New', messages: ['do it'], description: `Like this:\n![mock.png](<${IMAGE}>)\nand [spec.pdf](${PDF})`, criteria: ['One'] })
+
+  expect(firstMessage(task, null, NOTES)).toBe(
+    `Task: New\n\nDescription: Like this:\n![mock.png](<${NOTES}/${IMAGE}>)\nand [spec.pdf](<${NOTES}/${PDF}>)\n\n${FIRST_MESSAGE_LABELS.files}\n\nAcceptance criteria:\n- One\n\ndo it`,
+  )
+})
+
+test('a description that links no saved file reads as before, notes folder or not', () => {
+  const task = makeTask({ title: 'New', messages: ['do it'], description: 'Why [site](https://example.com) [named](attachments/photo.png)' })
+
+  expect(firstMessage(task, null, NOTES)).toBe('Task: New\n\nDescription: Why [site](https://example.com) [named](attachments/photo.png)\n\ndo it')
+  expect(firstMessage(makeTask({ title: 'New', messages: ['do it'] }), null, NOTES)).toBe('Task: New\n\ndo it')
+})
+
+test('with no notes folder given, a linked file stays as written and nothing is added', () => {
+  const task = makeTask({ title: 'New', messages: ['do it'], description: `![mock.png](<${IMAGE}>)` })
+
+  expect(firstMessage(task)).toBe(`Task: New\n\nDescription: ![mock.png](<${IMAGE}>)\n\ndo it`)
+})
+
+test("Codex's brief carries the description with its files' paths", () => {
+  const task = makeTask({ title: 'Retry', messages: ['add a retry button'], description: `![mock.png](<${IMAGE}>)` })
+  const brief = codexBrief(task, '/p/app', null, NOTES)
+
+  expect(brief).toContain(`Description: ![mock.png](<${NOTES}/${IMAGE}>)\n\n${FIRST_MESSAGE_LABELS.files}`)
+  expect(brief).toEndWith(`\n\n${firstMessage(task, null, NOTES)}`)
 })
 
 test('a plain note written after the checkpoint is the one the first message carries', () => {

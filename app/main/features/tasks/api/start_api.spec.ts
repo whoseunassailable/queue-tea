@@ -360,6 +360,15 @@ describe('Start in Codex', () => {
     expect(outcome.view.active).toMatchObject({ id: 'one', codexSince: '2026-10-27T18:50:00+01:00', asking: null })
   })
 
+  it("points the brief at the files the description links, in the realm's notes folder", async () => {
+    const image = `attachments/${'a1'.repeat(32)}.png`
+    await seed({ tasks: [makeTask({ id: 'one', title: 'Fix the documentation', description: `Like this:\n![mock.png](<${image}>)` })] })
+
+    started(data(await startQuest(deps, KEY, 'one', 'codex')))
+
+    expect(await brief('one')).toContain(`Description: Like this:\n![mock.png](<${join(home, '.queue-tea/notes', KEY, image)}>)\n\nThe description links files Queue-tea saved.`)
+  })
+
   it('refuses a platform it does not know, and changes nothing', async () => {
     await seed({ tasks: [makeTask({ id: 'one' })] })
 
@@ -440,6 +449,17 @@ describe('Open for a quest with Codex', () => {
     expect(handover.command).not.toContain('&& claude')
     expect((await onDisk()).tasks[0]!.codexSince).toBe(CODEX_SINCE)
     expect((await onDisk()).requests).toEqual([])
+  })
+
+  it("the recovery command's brief points at the files the description links", async () => {
+    terminalExit = 1
+    const image = `attachments/${'a1'.repeat(32)}.png`
+    await seed({ tasks: [makeTask({ id: 'one', title: 'Keep working', state: 'current', codexSince: CODEX_SINCE, description: `![mock.png](<${image}>)` })] })
+
+    const handover = data(await openClaude(deps, KEY))
+
+    if (handover.kind !== 'failed') throw new Error('should fail')
+    expect(handover.command).toContain(`![mock.png](<${join(home, '.queue-tea/notes', KEY, image)}>)`)
   })
 
   it('only brings the terminal forward, so a second Codex or a Claude Code session is not started', async () => {

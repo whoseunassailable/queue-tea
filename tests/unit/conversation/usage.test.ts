@@ -3,6 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { afterTurn } from '../../../hooks/features/conversation/presentation/state_management/conversation_turn_controller'
 import { emptyRecord } from '../../../hooks/shared/records/data/datasources/record_source'
 import { formatAllowance, readAllowance, shouldFresh, shouldHandoff } from '../../../hooks/features/conversation/domain/services/allowance'
+import { FIRST_MESSAGE_LABELS } from '../../../hooks/shared/checkpoints/domain/constants/checkpoints_text'
 import type { ProjectRecord } from '../../../types'
 import { CTX, fakePorts, makeTask, memoryHost } from '../../helpers'
 
@@ -57,6 +58,19 @@ test('over 100,000 tokens: handoff, then clear and the first message from the no
   expect(done.submits[0]).toStartWith(
     `Task: ${task.title}\n\nadd a retry button\n\nHandoff note (2026-10-21T09:12:00+02:00):\nButton done; colour left.\n\nChecked by Queue-tea just now:`,
   )
+})
+
+test("the fresh conversation opens the description's saved files from the realm's notes folder", async () => {
+  const image = `attachments/${'a1'.repeat(32)}.png`
+  const task = makeTask({ title: 'Retry button', state: 'current', messages: ['add a retry button'], description: `Like this:\n![mock.png](<${image}>)` })
+  const record = { ...emptyRecord('p', '/p'), tasks: [task] }
+  const mem = memoryHost({ files: { [CTX.file]: JSON.stringify(record) } })
+  const { ports, done, settle } = fakePorts(mem, { reply: 'Button done.', view: { record } })
+
+  await afterTurn(ports, CTX, { tokens: 120_000, allowance: null }, null)
+  await settle()
+
+  expect(done.submits[0]).toContain(`Description: Like this:\n![mock.png](</h/.queue-tea/notes/p-000000/${image}>)\n\n${FIRST_MESSAGE_LABELS.files}`)
 })
 
 test('a failed handoff note does not clear', async () => {

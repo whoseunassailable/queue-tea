@@ -250,11 +250,11 @@ export const notesApi = (d: NotesDeps) => {
   }
 
   return {
+    // No note id: a file for a quest's description, kept in the same vault.
     attachNoteFile: (key: unknown, id: unknown, file: unknown): Promise<Reply<NoteAttachment>> =>
-      inTurn(MESSAGES.attachNoteFile, async () => {
+      inTurn(id === null ? MESSAGES.attachQuestFile : MESSAGES.attachNoteFile, async () => {
         const realm = await realmOf(key)
-        const note = await known(realm, idOf(id))
-        if (note.file.isArchived) throw new Refusal(MESSAGES.archivedNoteFile)
+        if (id !== null && (await known(realm, idOf(id))).file.isArchived) throw new Refusal(MESSAGES.archivedNoteFile)
 
         return files.import(realm, file)
       }),

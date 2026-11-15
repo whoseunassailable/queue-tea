@@ -16,10 +16,14 @@ import { newQuestOf, parentOf } from '../../tasks/domain/task_input'
 import { noteText, parseNote } from '../domain/note_file'
 import type { NoteFile } from '../domain/note_file'
 import type { NoteAttachment } from '../../../../shared/note_attachments'
+import { BOOKMARK_LIMITS, bookmarkUrlOf } from '../../../../shared/note_bookmarks'
+import type { NoteBookmark } from '../../../../shared/note_bookmarks'
+import { readPage } from '../data/bookmark_page'
 import { filePathOf, noteFiles } from '../data/note_files'
+import { bookmarkOf } from '../domain/bookmark'
 import { versionsToKeep } from '../domain/note_history'
 
-export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void; saveNoteFile?: (name: string, bytes: Uint8Array) => Promise<boolean> }
+export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void; saveNoteFile?: (name: string, bytes: Uint8Array) => Promise<boolean>; readPage?: (url: string) => Promise<string> }
 
 const stampOf = (text: string) => createHash('sha1').update(text).digest('hex')
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
@@ -90,6 +94,7 @@ type Loaded = { id: string; file: NoteFile; text: string }
 // The folder opens as an Obsidian vault as it is.
 export const notesApi = (d: NotesDeps) => {
   const files = noteFiles(d.home)
+  const bookmarks = new Map<string, NoteBookmark>()
   const folderOf = (key: string) => `${d.home}/${NOTES_FOLDER}/${key}`
   const pathOf = (key: string, id: string) => `${folderOf(key)}/${id}.md`
   const historyOf = (key: string, id: string) => `${folderOf(key)}/${NOTE_HISTORY_FOLDER}/${id}`
@@ -318,6 +323,21 @@ export const notesApi = (d: NotesDeps) => {
         if (opened.exitCode !== 0) throw new Error(opened.stderr)
 
         return null
+      }),
+
+    // A preview read once stays for the session, so turning to Read doesn't
+    // fetch every page again. A failed read isn't kept, so Try again reads anew.
+    readBookmark: (url: unknown): Promise<Reply<NoteBookmark>> =>
+      reply(d.log, MESSAGES.readBookmark, async () => {
+        const link = typeof url === 'string' ? bookmarkUrlOf(url) : null
+        if (link === null) throw new Refusal(MESSAGES.badBookmark)
+        const known = bookmarks.get(link)
+        if (known !== undefined) return known
+        const bookmark = bookmarkOf(link, await (d.readPage ?? readPage)(link))
+        if (bookmarks.size >= BOOKMARK_LIMITS.cache) bookmarks.delete(bookmarks.keys().next().value!)
+        bookmarks.set(link, bookmark)
+
+        return bookmark
       }),
 
     // Shows the realm's notes folder in Finder, made first if it isn't there yet.

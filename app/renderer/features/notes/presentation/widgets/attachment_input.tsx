@@ -3,6 +3,7 @@ import { useRef, useState } from 'preact/hooks'
 
 import type { EngineApi } from '../../../../../shared/engine_api'
 import { attachmentError, attachmentMarkdown, NOTE_FILE_ACCEPT } from '../../../../../shared/note_attachments'
+import { bookmarkUrlOf } from '../../../../../shared/note_bookmarks'
 import { ask } from '../../../../core/api/engine_client'
 import { Spinner } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
@@ -86,9 +87,18 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
     }}
     onPaste={event => {
       const files = Array.from(event.clipboardData?.files ?? [])
-      if (files.length === 0) return
+      if (files.length > 0) {
+        event.preventDefault()
+        void attach(files)
+
+        return
+      }
+      // Write pastes text as it is; a link pasted on a line of its own is a
+      // bookmark already. In Read a pasted link goes in as one.
+      const url = bookmarkUrlOf(event.clipboardData?.getData('text/plain') ?? '')
+      if (url === null || event.target instanceof HTMLTextAreaElement) return
       event.preventDefault()
-      void attach(files)
+      void onInsert(url)
     }}>
     <div class="nt-attach-bar">
       <button type="button" class="chip-btn" disabled={state.kind === 'busy'} onClick={() => input.current?.click()}>{t.notebook.attachFile}</button>

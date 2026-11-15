@@ -1,5 +1,6 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
 import type { NoteAttachment, NoteUpload } from './note_attachments'
+import type { NoteBookmark } from './note_bookmarks'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
@@ -387,6 +388,7 @@ export type EngineApi = {
   downloadNoteFile: (key: string, path: string) => Promise<Reply<boolean>>
   showNotes: (key: string) => Promise<Reply<null>>
   openLink: (url: string) => Promise<Reply<null>>
+  readBookmark: (url: string) => Promise<Reply<NoteBookmark>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
   saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
@@ -491,6 +493,7 @@ export const CHANNELS = {
   downloadNoteFile: 'engine:download-note-file',
   showNotes: 'engine:show-notes',
   openLink: 'engine:open-link',
+  readBookmark: 'engine:read-bookmark',
   createNote: 'engine:create-note',
   saveNote: 'engine:save-note',
   archiveNote: 'engine:archive-note',

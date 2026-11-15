@@ -51,6 +51,7 @@ const engine: EngineApi = {
   downloadNoteFile: (key, path) => ipcRenderer.invoke(CHANNELS.downloadNoteFile, key, path),
   showNotes: key => ipcRenderer.invoke(CHANNELS.showNotes, key),
   openLink: url => ipcRenderer.invoke(CHANNELS.openLink, url),
+  readBookmark: url => ipcRenderer.invoke(CHANNELS.readBookmark, url),
   createNote: (key, note) => ipcRenderer.invoke(CHANNELS.createNote, key, note),
   saveNote: (key, id, change, stamp) => ipcRenderer.invoke(CHANNELS.saveNote, key, id, change, stamp),
   archiveNote: (key, id, isArchived) => ipcRenderer.invoke(CHANNELS.archiveNote, key, id, isArchived),

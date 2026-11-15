@@ -6,12 +6,14 @@ import { linkPartsOf, noteTitled } from '../../../../../shared/notes'
 import type { Note } from '../../../../../shared/notes'
 import type { EngineApi } from '../../../../../shared/engine_api'
 import { noteFilePath } from '../../../../../shared/note_attachments'
+import { bookmarkUrlOf } from '../../../../../shared/note_bookmarks'
 import { t } from '../../../../l10n/en'
 import { isInPlay, questLineOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 
 type Props = { engine: EngineApi; realm: string; body: string; notes: readonly Note[]; quests: Map<string, QuestLine>; isLive: boolean; onToggle: (index: number) => void; onOpenNote: (id: string) => void; onOpenQuest: (id: string) => void; onOpenLink: (url: string) => void }
 import { NoteAttachment } from './note_attachment'
+import { NoteBookmark } from './note_bookmark'
 
 const CALLOUT = /^\[!(\w+)\][+-]?[ \t]*(.*)$/
 
@@ -34,6 +36,23 @@ markdown.use({ extensions: [{ name: 'noteFile', level: 'inline', start: text => 
   if (found === null || noteFilePath(found[2]!) === null) return undefined
 
   return { type: 'noteFile', raw: found[0], href: found[2]!, text: found[3] || found[2]!.split('/').at(-1)!, embedded: found[1] === '!' }
+} }] })
+
+// A web link alone on its line is a bookmark card. start ends the paragraph
+// above at such a line, so it needn't have a blank line before it. It looks
+// only as far as the paragraph's end: scanning the whole rest of the note for
+// every paragraph made a long note read 15 times slower.
+const BOOKMARK_LINE = /^https?:\/\/[^\s<>]+[ \t]*(?:\n|$)/
+markdown.use({ extensions: [{ name: 'bookmark', level: 'block', start(text) {
+  const end = text.indexOf('\n\n')
+  const found = /(?:^|\n)https?:\/\/[^\s<>]+[ \t]*(?:\n|$)/.exec(end === -1 ? text : text.slice(0, end + 1))
+
+  return found === null ? undefined : found.index + (found[0].startsWith('\n') ? 1 : 0)
+}, tokenizer(text) {
+  const raw = BOOKMARK_LINE.exec(text)?.[0]
+  const href = raw === undefined ? null : bookmarkUrlOf(raw)
+
+  return href === null ? undefined : { type: 'bookmark', raw: raw!, href }
 } }] })
 
 // A note as it reads. marked only cuts the Markdown into tokens; every token
@@ -165,7 +184,9 @@ export const ReadView = ({ engine, realm, body, notes, quests, isLive, onToggle,
     )
   }
 
-  const blocks = (tokens: Token[] | undefined): ComponentChildren =>
+  // marked reads a list item's or a quote's contents as blocks of their own, so
+  // only the note's top level knows a lone link there is a bookmark.
+  const blocks = (tokens: Token[] | undefined, isTop = false): ComponentChildren =>
     (tokens ?? []).map((token, i) => {
       switch (token.type) {
         case 'space':
@@ -183,6 +204,8 @@ export const ReadView = ({ engine, realm, body, notes, quests, isLive, onToggle,
         }
         case 'paragraph':
           return <p key={i}>{inline(token.tokens)}</p>
+        case 'bookmark':
+          return isTop ? <NoteBookmark key={`${token.href}:${i}`} engine={engine} url={token.href} onOpenLink={onOpenLink} /> : external(token.href, token.href, i)
         case 'text':
           return 'tokens' in token && token.tokens !== undefined ? <span key={i}>{inline(token.tokens)}</span> : <span key={i}>{wiki(token.text)}</span>
         case 'code':
@@ -251,5 +274,5 @@ export const ReadView = ({ engine, realm, body, notes, quests, isLive, onToggle,
 
   const tokens = markdown.lexer(body)
 
-  return <article class="nt-read">{body.trim() === '' ? <p class="hint">{t.notebook.readEmpty}</p> : blocks(tokens)}</article>
+  return <article class="nt-read">{body.trim() === '' ? <p class="hint">{t.notebook.readEmpty}</p> : blocks(tokens, true)}</article>
 }

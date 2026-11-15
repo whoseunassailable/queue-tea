@@ -170,3 +170,10 @@
 .rm .nt-file-status { display: flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 12px; color: var(--ink2); }
 .rm .nt-file-image { display: block; max-width: 100%; height: auto; margin-top: 8px; border-radius: 6px; }
 .rm .nt-file-pdf { display: block; box-sizing: border-box; width: 100%; height: min(65vh, 640px); min-height: 300px; margin-top: 8px; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--card); }
+
+/* A bookmark is a card in the writing column; its title opens the page in the browser. */
+.rm .nt-bookmark { display: flex; flex-direction: column; gap: 4px; max-width: 100%; box-sizing: border-box; margin: 8px 0; padding: 10px 14px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--card); }
+.rm .nt-bookmark-title { font-weight: 600; color: var(--link); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.rm .nt-bookmark-text { margin: 0; font-size: 14px; color: var(--ink2); overflow-wrap: anywhere; }
+.rm .nt-bookmark-site { font-size: 12px; color: var(--ink3); overflow-wrap: anywhere; }
+.rm .nt-bookmark .nt-file-status { margin: 0; }

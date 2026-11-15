@@ -29,3 +29,6 @@ export const RESTART_FILE = 'restart.json'
 // Run in the window: true while a restart would lose something, which is a
 // dialog open or a text field holding the keyboard.
 export const BUSY_PROBE = "document.querySelector('[role=dialog]') !== null || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName ?? '') || document.activeElement?.isContentEditable === true"
+
+// Sent with a link preview's request; some sites refuse a request without one.
+export const BOOKMARK_AGENT = 'Mozilla/5.0 (compatible; Queue-tea link preview)'

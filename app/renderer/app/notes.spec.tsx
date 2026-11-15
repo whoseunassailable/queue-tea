@@ -754,4 +754,18 @@ describe('the Notes page', () => {
     await waitFor(() => expect(screen.getByText(t.notebook.brew.allFiled(3))).toBeTruthy())
     expect(screen.getByText(t.notebook.saga(0, 2))).toBeTruthy()
   })
+
+  it('a link pasted in Read goes in at the end on a line of its own, saves, and reads as a bookmark card', async () => {
+    const notes = memoryNotes([note({ body: 'Reading list' })])
+    const openLink = vi.fn(async () => ok(null))
+    await open({ ...notes, openLink })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    fireEvent.keyDown(window, { key: 'e', metaKey: true })
+
+    await act(async () => void fireEvent.paste(document.querySelector('.nt-read')!, { clipboardData: { files: [], getData: () => 'https://example.com/post' } }))
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: 'Reading list\n\nhttps://example.com/post\n\n' }), 's-1'), { timeout: 2000 })
+    const card = await screen.findByRole('link', { name: t.notebook.openBookmark('Example page', 'example.com') })
+    await act(async () => void fireEvent.click(card))
+    expect(openLink).toHaveBeenCalledWith('https://example.com/post')
+  })
 })

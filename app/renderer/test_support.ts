@@ -263,6 +263,7 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     downloadNoteFile: vi.fn(async () => ({ ok: true as const, data: true })),
     showNotes: vi.fn(async () => ({ ok: true as const, data: null })),
     openLink: vi.fn(async () => ({ ok: true as const, data: null })),
+    readBookmark: vi.fn(async (url: string) => ({ ok: true as const, data: { url, title: 'Example page', description: 'What the page is about.', site: 'Example' } })),
     createNote: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, id: 'n-00000001' } })),
     saveNote: vi.fn(async (_key: string, id: string, change: Pick<Note, 'title' | 'folder' | 'tags' | 'body'>) => ({ ok: true as const, data: { kind: 'saved' as const, view: NOTES, note: note({ id, ...change, stamp: 's-2' }), relinked: 0 } })),
     archiveNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),

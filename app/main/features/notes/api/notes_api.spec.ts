@@ -9,7 +9,9 @@ import { emptyRecord, parseRecord } from '../../../../../hooks/shared/records/da
 import type { Reply } from '../../../../shared/engine_api'
 import type { NoteChange, NotesView } from '../../../../shared/notes'
 import { createLogger } from '../../../core/logger'
+import { MESSAGES } from '../../../core/messages'
 import { nodeHost } from '../../../core/node_host'
+import { Refusal } from '../../../core/reply'
 import { notesApi } from './notes_api'
 import type { NotesDeps } from './notes_api'
 import { noteFileResponse } from './note_protocol'
@@ -583,5 +585,71 @@ describe('filing quests from a note', () => {
 
     expect(message).toMatch(/Pick again\.$/)
     expect(only(data(await api.readNotes(KEY)), id).quests).toEqual([])
+  })
+})
+
+describe('reading a bookmark', () => {
+  const PAGE = '<meta property="og:title" content="Example page"><meta property="og:description" content="What it is about."><meta property="og:site_name" content="Example">'
+
+  it('refuses anything but a web link before reading a page', async () => {
+    const readPage = vi.fn(async () => PAGE)
+    api = makeApi({ readPage })
+    for (const url of [7, null, undefined, {}, ['https://example.com'], '', 'not a url', 'example.com', 'ftp://example.com/', 'file:///etc/passwd', 'javascript:alert(1)', 'mailto:rohan@example.com', 'https://exa mple.com', 'https://x/' + 'a'.repeat(2050)]) expect(refused(await api.readBookmark(url))).toBe(MESSAGES.badBookmark)
+    expect(readPage).not.toHaveBeenCalled()
+  })
+
+  it('gives the page’s title, description and site for the trimmed link', async () => {
+    const readPage = vi.fn(async () => PAGE)
+    api = makeApi({ readPage })
+    expect(data(await api.readBookmark('  https://example.com/post\n'))).toEqual({ url: 'https://example.com/post', title: 'Example page', description: 'What it is about.', site: 'Example' })
+    expect(readPage).toHaveBeenCalledWith('https://example.com/post')
+  })
+
+  it('gives an empty preview, not an error, for a page with nothing to show', async () => {
+    api = makeApi({ readPage: async () => '' })
+    expect(data(await api.readBookmark('https://example.com/file.zip'))).toEqual({ url: 'https://example.com/file.zip', title: null, description: null, site: null })
+  })
+
+  it('reads a page once for the session, and anew in another session', async () => {
+    const readPage = vi.fn(async () => PAGE)
+    api = makeApi({ readPage })
+    const first = data(await api.readBookmark('https://example.com/post'))
+    expect(data(await api.readBookmark(' https://example.com/post '))).toEqual(first)
+    expect(readPage).toHaveBeenCalledTimes(1)
+    data(await makeApi({ readPage }).readBookmark('https://example.com/post'))
+    expect(readPage).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the 200 newest previews, dropping the oldest first', async () => {
+    const readPage = vi.fn(async () => PAGE)
+    api = makeApi({ readPage })
+    for (let i = 0; i <= 200; i += 1) data(await api.readBookmark(`https://example.com/${i}`))
+    expect(readPage).toHaveBeenCalledTimes(201)
+    data(await api.readBookmark('https://example.com/200'))
+    data(await api.readBookmark('https://example.com/1'))
+    expect(readPage).toHaveBeenCalledTimes(201)
+    data(await api.readBookmark('https://example.com/0'))
+    expect(readPage).toHaveBeenCalledTimes(202)
+  })
+
+  it('does not keep a failed read, so trying again reads the page anew', async () => {
+    const readPage = vi.fn<(url: string) => Promise<string>>().mockRejectedValueOnce(new Refusal(MESSAGES.bookmarkSlow)).mockResolvedValue(PAGE)
+    api = makeApi({ readPage })
+    expect(refused(await api.readBookmark('https://example.com/post'))).toBe(MESSAGES.bookmarkSlow)
+    expect(data(await api.readBookmark('https://example.com/post')).title).toBe('Example page')
+    expect(readPage).toHaveBeenCalledTimes(2)
+  })
+
+  it('says a plain sentence when the read fails, and logs what went wrong', async () => {
+    const lines: string[] = []
+    const log = createLogger('dev', line => void lines.push(line))
+    api = makeApi({ log, readPage: async () => { throw new Error('getaddrinfo ENOTFOUND example.invalid') } })
+    expect(refused(await api.readBookmark('https://example.invalid/'))).toBe(MESSAGES.readBookmark)
+    expect(lines.join('')).toContain('ENOTFOUND')
+  })
+
+  it('reads through the private-address guard when no reader is given', async () => {
+    expect(refused(await api.readBookmark('http://127.0.0.1:9/'))).toBe(MESSAGES.bookmarkPrivate)
+    expect(refused(await api.readBookmark('http://localhost:9/'))).toBe(MESSAGES.bookmarkPrivate)
   })
 })

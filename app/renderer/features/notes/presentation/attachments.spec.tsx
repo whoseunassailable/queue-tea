@@ -84,3 +84,41 @@ it('retries a partial batch from the failed file without inserting the first lin
   await waitFor(() => expect(insert).toHaveBeenCalledTimes(2))
   expect(insert.mock.calls.map(call => call[0])).toEqual(['![first.png](<attachments/first.png>)', '![second.png](<attachments/second.png>)'])
 })
+
+const clipboard = (text: string, files: File[] = []) => ({ clipboardData: { files, getData: (type: string) => (type === 'text/plain' ? text : '') } })
+
+it('a link pasted in Read goes in as a bookmark, trimmed, and nothing else is pasted', async () => {
+  const { engine } = fakeEngine()
+  const insert = vi.fn(async (_markdown: string) => {})
+  render(<AttachmentInput engine={engine} realm="demo-abc123" id="n-1" onInsert={insert}><article aria-label="Read">Text</article></AttachmentInput>)
+  const isUntouched = fireEvent.paste(screen.getByLabelText('Read'), clipboard('  https://example.com/post\n'))
+  expect(isUntouched).toBe(false)
+  await waitFor(() => expect(insert).toHaveBeenCalledWith('https://example.com/post'))
+  expect(engine.attachNoteFile).not.toHaveBeenCalled()
+})
+
+it('text that is not a single web link, pasted in Read, is left alone', () => {
+  const { engine } = fakeEngine()
+  const insert = vi.fn(async (_markdown: string) => {})
+  render(<AttachmentInput engine={engine} realm="demo-abc123" id="n-1" onInsert={insert}><article aria-label="Read">Text</article></AttachmentInput>)
+  for (const text of ['', 'plain words', 'see https://example.com', 'file:///etc/passwd', 'https://a.com https://b.com']) expect(fireEvent.paste(screen.getByLabelText('Read'), clipboard(text)), text).toBe(true)
+  expect(insert).not.toHaveBeenCalled()
+})
+
+it('a link pasted in Write is left to the text box', () => {
+  const { engine } = fakeEngine()
+  const insert = vi.fn(async (_markdown: string) => {})
+  render(<AttachmentInput engine={engine} realm="demo-abc123" id="n-1" onInsert={insert}><textarea aria-label="Body" /></AttachmentInput>)
+  expect(fireEvent.paste(screen.getByLabelText('Body'), clipboard('https://example.com/post'))).toBe(true)
+  expect(insert).not.toHaveBeenCalled()
+})
+
+it('a pasted file still attaches when the clipboard also holds a link', async () => {
+  const { engine } = fakeEngine()
+  const insert = vi.fn(async (_markdown: string) => {})
+  render(<AttachmentInput engine={engine} realm="demo-abc123" id="n-1" onInsert={insert}><article aria-label="Read">Text</article></AttachmentInput>)
+  fireEvent.paste(screen.getByLabelText('Read'), clipboard('https://example.com/photo.png', [new File(['image'], 'photo.png', { type: 'image/png' })]))
+  await waitFor(() => expect(insert).toHaveBeenCalledWith('![photo.png](<attachments/photo.png>)'))
+  expect(insert).toHaveBeenCalledTimes(1)
+  expect(engine.attachNoteFile).toHaveBeenCalledWith('demo-abc123', 'n-1', expect.objectContaining({ name: 'photo.png' }))
+})

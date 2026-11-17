@@ -52,8 +52,44 @@ export const noteFiles = (home: string) => {
     }
   }
 
+  // Puts bytes at a vault path (from filePathOf) without replacing a file
+  // already there. 'different': another file has that name and stays.
+  const publish = async (key: string, path: string, bytes: Uint8Array): Promise<'added' | 'same' | 'different'> => {
+    const parts = path.split('/')
+    await mkdir(join(vault(key), ...parts.slice(0, -1)), { recursive: true })
+    // A symlinked attachments folder must not redirect writes out of the vault.
+    const root = await realpath(vault(key))
+    const folder = await realpath(join(root, ...parts.slice(0, -1)))
+    if (folder !== root && !folder.startsWith(root + sep)) throw new Refusal(MESSAGES.badNoteFile)
+    const target = join(folder, parts.at(-1)!)
+    const temporary = `${target}.${randomUUID()}.tmp`
+    const output = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
+    try {
+      try {
+        await output.writeFile(bytes)
+      } finally {
+        await output.close()
+      }
+      try {
+        // A hard link publishes the complete file without replacing one a
+        // second writer published first. Neither can read half a picture.
+        await link(temporary, target)
+
+        return 'added'
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+        const existing = await read(key, path)
+
+        return existing.bytes.equals(Buffer.from(bytes)) ? 'same' : 'different'
+      }
+    } finally {
+      await unlink(temporary)
+    }
+  }
+
   return {
     read,
+    publish,
     import: async (key: string, value: unknown): Promise<NoteAttachment> => {
       const file = (value ?? {}) as Partial<NoteUpload>
       if (typeof file.name !== 'string' || typeof file.type !== 'string' || !(file.bytes instanceof Uint8Array) || /[\\/\x00-\x1f]/.test(file.name)) throw new Refusal(MESSAGES.noteFileType)
@@ -64,32 +100,7 @@ export const noteFiles = (home: string) => {
       if (format.kind === 'other' || (file.name.includes('.') && extension !== format.extension)) throw new Refusal(MESSAGES.noteFileType)
       const hash = createHash('sha256').update(file.bytes).digest('hex')
       const path = `${NOTE_ATTACHMENTS}/${hash}.${format.extension}`
-      await mkdir(join(vault(key), NOTE_ATTACHMENTS), { recursive: true })
-      // A symlinked attachments folder must not redirect writes out of the vault.
-      const root = await realpath(vault(key))
-      const folder = await realpath(join(root, NOTE_ATTACHMENTS))
-      if (!folder.startsWith(root + sep)) throw new Refusal(MESSAGES.badNoteFile)
-      const target = join(folder, `${hash}.${format.extension}`)
-      const temporary = `${target}.${randomUUID()}.tmp`
-      const output = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
-      try {
-        try {
-          await output.writeFile(file.bytes)
-        } finally {
-          await output.close()
-        }
-        try {
-          // A hard link publishes the complete file without replacing one a
-          // second writer published first. Neither can read half a picture.
-          await link(temporary, target)
-        } catch (err) {
-          if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
-          const existing = await read(key, path)
-          if (!existing.bytes.equals(Buffer.from(file.bytes))) throw err
-        }
-      } finally {
-        await unlink(temporary)
-      }
+      if ((await publish(key, path, file.bytes)) === 'different') throw new Error(`a different file is already at ${path}`)
 
       return { path, kind: format.kind }
     },

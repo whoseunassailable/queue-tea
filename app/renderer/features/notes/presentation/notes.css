@@ -6,6 +6,7 @@
 .rm .nt-folder ul, .rm .nt-links, .rm .nt-proposal, .rm .nt-picker ul { margin: 0; padding: 0; list-style: none; }
 .rm .nt-link { padding: 0; border: none; background: none; color: var(--link); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
 .rm .nt-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.rm .nt-link:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
 
 /* The list */
 .rm .nt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; max-height: calc(100vh - 190px); overflow-y: auto; box-sizing: border-box; }
@@ -23,7 +24,9 @@
 .rm .nt-item.on { background: var(--sel); box-shadow: inset 3px 0 0 var(--line); }
 .rm .nt-item-title { font-weight: 700; }
 .rm .nt-unsaved { color: var(--urg-t); }
-.rm .nt-list-foot { margin-top: auto; padding-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.rm .nt-list-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: auto; padding-top: 8px; }
+.rm .nt-list-foot .nt-file-status { flex-basis: 100%; }
+.rm .nt-skipped { max-height: 200px; overflow: auto; margin: 0 0 12px; padding-left: 20px; font-size: 13px; overflow-wrap: anywhere; }
 .rm .nt-day { display: flex; flex-direction: column; gap: 4px; }
 .rm .nt-day label { font-size: 12px; font-weight: 700; color: var(--ink2); }
 .rm .nt-day-row { display: flex; gap: 6px; align-items: center; }

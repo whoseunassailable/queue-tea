@@ -36,6 +36,16 @@ export type ProposedQuest = { title: string; priority: Priority; difficulty: Dif
 export type QuestProposal = { parent: ParentPick; quests: ProposedQuest[] }
 // project: the realm's quests once the new ones are in.
 export type NoteFiled = { view: NotesView; project: ProjectView }
+// A file left out of an export or a restore, by its path in the folder, and
+// why: 10 MB or more (or a note too long), unreadable, not matching the hash
+// in its name, or named like a different file already here.
+export type BackupSkip = { path: string; reason: 'size' | 'unreadable' | 'damaged' | 'taken' }
+// A backup Export notes wrote: its folder's name and what went in.
+export type NotesExport = { folder: string; notes: number; files: number; skipped: BackupSkip[] }
+// What a restore did. added counts renamed too: notes that came back with a
+// number because their title was taken. same: notes already here as in the
+// backup. toHistory: notes that differ, whose backup copy joined their History.
+export type NotesRestore = { view: NotesView; added: number; renamed: number; same: number; toHistory: number; files: number; skipped: BackupSkip[] }
 
 // Links are [[Title]], so a title can't hold what a link is made of.
 export const NOTE_TITLE_BAD = /[[\]|#\r\n]/

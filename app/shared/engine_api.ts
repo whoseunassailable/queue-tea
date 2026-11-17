@@ -1,7 +1,7 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
 import type { NoteAttachment, NoteUpload } from './note_attachments'
 import type { NoteBookmark } from './note_bookmarks'
-import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesView, NoteVersion, QuestProposal } from './notes'
+import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
@@ -387,6 +387,9 @@ export type EngineApi = {
   readNoteFile: (key: string, path: string) => Promise<Reply<NoteAttachment>>
   downloadNoteFile: (key: string, path: string) => Promise<Reply<boolean>>
   showNotes: (key: string) => Promise<Reply<null>>
+  // null: the folder picker was cancelled.
+  exportNotes: (key: string) => Promise<Reply<NotesExport | null>>
+  restoreNotes: (key: string) => Promise<Reply<NotesRestore | null>>
   openLink: (url: string) => Promise<Reply<null>>
   readBookmark: (url: string) => Promise<Reply<NoteBookmark>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
@@ -492,6 +495,8 @@ export const CHANNELS = {
   readNoteFile: 'engine:read-note-file',
   downloadNoteFile: 'engine:download-note-file',
   showNotes: 'engine:show-notes',
+  exportNotes: 'engine:export-notes',
+  restoreNotes: 'engine:restore-notes',
   openLink: 'engine:open-link',
   readBookmark: 'engine:read-bookmark',
   createNote: 'engine:create-note',

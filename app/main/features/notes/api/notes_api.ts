@@ -5,7 +5,7 @@ import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { ParentPick } from '../../../../../types'
 import type { Reply } from '../../../../shared/engine_api'
 import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_HISTORY_FOLDER, NOTE_LIMITS, NOTE_TITLE_BAD, NOTE_VERSION_ID, NOTES_FOLDER, noteTypeOf, renameLinks } from '../../../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesView, NoteType, NoteVersion, ProposedQuest } from '../../../../shared/notes'
+import type { BackupSkip, Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesExport, NotesRestore, NotesView, NoteType, NoteVersion, ProposedQuest } from '../../../../shared/notes'
 import { projectsFolder } from '../../../core/constants'
 import { inGameWords, MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
@@ -19,11 +19,13 @@ import type { NoteAttachment } from '../../../../shared/note_attachments'
 import { BOOKMARK_LIMITS, bookmarkUrlOf } from '../../../../shared/note_bookmarks'
 import type { NoteBookmark } from '../../../../shared/note_bookmarks'
 import { readPage } from '../data/bookmark_page'
+import { BACKUP_FORMAT, BACKUP_MANIFEST, backupEntriesOf, newBackupFolder, readBackupFile, removeBackupFolder, writeBackupFile } from '../data/note_backup'
 import { filePathOf, noteFiles } from '../data/note_files'
 import { bookmarkOf } from '../domain/bookmark'
 import { versionsToKeep } from '../domain/note_history'
 
-export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void; saveNoteFile?: (name: string, bytes: Uint8Array) => Promise<boolean>; readPage?: (url: string) => Promise<string> }
+// pickFolder: the system's folder picker, with its button named; null when cancelled.
+export type NotesDeps = TasksDeps & { newNoteId: () => string; reveal: (path: string) => void; saveNoteFile?: (name: string, bytes: Uint8Array) => Promise<boolean>; readPage?: (url: string) => Promise<string>; pickFolder?: (button: string) => Promise<string | null> }
 
 const stampOf = (text: string) => createHash('sha1').update(text).digest('hex')
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
@@ -88,6 +90,9 @@ const linkOf = (value: unknown): string => {
 }
 
 type Loaded = { id: string; file: NoteFile; text: string }
+
+// A file too large or not a plain file is refused; anything else just wouldn't read.
+const skipOf = (err: unknown): BackupSkip['reason'] => (err instanceof Refusal ? 'size' : 'unreadable')
 
 // A realm's notes keep to a folder of Markdown files outside its repository:
 // one there would hold Start until committed, and notes change all the time.
@@ -241,6 +246,18 @@ export const notesApi = (d: NotesDeps) => {
     return linking.length
   }
 
+  // The picker waits on the person, so it runs before the work joins the
+  // save queue: an open note keeps saving while it is up.
+  const picked = (key: unknown, failure: string, button: string, check: (realm: string) => Promise<void> = async () => {}) =>
+    reply(d.log, failure, async () => {
+      const realm = await realmOf(key)
+      await check(realm)
+      if (d.pickFolder === undefined) throw new Error('pickFolder is unavailable')
+      const folder = await d.pickFolder(button)
+
+      return folder === null ? null : { realm, folder }
+    })
+
   const newId = async (key: string): Promise<string> => {
     for (let tries = 0; tries < 5; tries += 1) {
       const id = d.newNoteId()
@@ -350,6 +367,135 @@ export const notesApi = (d: NotesDeps) => {
 
         return null
       }),
+
+    // A new folder holding the realm's notes byte for byte and the files they
+    // can link, as an Obsidian vault does; history stays behind. Unreadable
+    // files are left out and named. null: the picker was cancelled.
+    exportNotes: async (key: unknown): Promise<Reply<NotesExport | null>> => {
+      const asked = await picked(key, MESSAGES.exportNotes, MESSAGES.exportButton, async realm => {
+        if (!(await d.host.exists(folderOf(realm))) || (await backupEntriesOf(folderOf(realm))).notes.length === 0) throw new Refusal(MESSAGES.nothingToExport)
+      })
+      if (!asked.ok || asked.data === null) return asked as Reply<null>
+      const { realm, folder: parent } = asked.data
+
+      return inTurn(MESSAGES.exportNotes, async () => {
+        const vault = folderOf(realm)
+        const entries = await backupEntriesOf(vault)
+        const folder = await newBackupFolder(parent, `Notes backup ${realm} ${nowText().slice(0, 10)}`)
+        const copied = { notes: 0, files: 0 }
+        const skipped: BackupSkip[] = []
+        try {
+          for (const [kind, paths] of [['notes', entries.notes], ['files', entries.files]] as const) {
+            for (const path of paths) {
+              let bytes: Buffer
+              try {
+                bytes = await readBackupFile(vault, path)
+              } catch (err) {
+                // One file that won't read doesn't stop the backup; the result names it.
+                d.log.error(`exporting ${path} failed`, err)
+                skipped.push({ path, reason: skipOf(err) })
+                continue
+              }
+              await writeBackupFile(folder, path, bytes)
+              copied[kind] += 1
+            }
+          }
+          // Written last: a folder cut short never reads as a backup.
+          await writeBackupFile(folder, BACKUP_MANIFEST, `${JSON.stringify({ format: BACKUP_FORMAT, realm, exported: nowText(), ...copied }, null, 2)}\n`)
+        } catch (err) {
+          await removeBackupFolder(folder).catch(gone => d.log.error(`removing the unfinished backup ${folder} failed`, gone))
+          throw err
+        }
+        d.log.debug(`notes exported: ${folder}`)
+
+        return { folder: folder.split('/').at(-1)!, ...copied, skipped }
+      })
+    },
+
+    // Never replaces anything, so running it twice changes nothing more. A
+    // note is matched by id: a missing one comes back as it was saved; one
+    // that differs stays, and the backup's text joins its History. A file is
+    // matched by name. A backup file that is unreadable, too large, damaged
+    // or named like a different file here is left out and named.
+    restoreNotes: async (key: unknown): Promise<Reply<NotesRestore | null>> => {
+      const asked = await picked(key, MESSAGES.restoreNotes, MESSAGES.restoreButton)
+      if (!asked.ok || asked.data === null) return asked as Reply<null>
+      const { realm, folder: backup } = asked.data
+
+      return inTurn(MESSAGES.restoreNotes, async (): Promise<NotesRestore> => {
+        let format: unknown
+        try {
+          format = (JSON.parse((await readBackupFile(backup, BACKUP_MANIFEST)).toString('utf8')) as { format?: unknown } | null)?.format
+        } catch (err) {
+          // No manifest, or one that isn't JSON: refused below as not a backup.
+          d.log.debug(`no notes backup manifest in ${backup}: ${String(err)}`)
+        }
+        if (typeof format === 'number' && format > BACKUP_FORMAT) throw new Refusal(MESSAGES.backupTooNew)
+        if (format !== BACKUP_FORMAT) throw new Refusal(MESSAGES.notABackup)
+        const entries = await backupEntriesOf(backup)
+        if (entries.notes.length > NOTE_LIMITS.notes) throw new Refusal(MESSAGES.backupTooBig)
+        const done = { added: 0, renamed: 0, same: 0, toHistory: 0, files: 0 }
+        const skipped: BackupSkip[] = []
+        // A backup file that won't read is left out; a failure writing here stops the restore.
+        const fromBackup = async (path: string): Promise<Buffer | null> => {
+          try {
+            return await readBackupFile(backup, path)
+          } catch (err) {
+            d.log.error(`reading ${path} from the backup failed`, err)
+            skipped.push({ path, reason: skipOf(err) })
+
+            return null
+          }
+        }
+        // A file here by that name that won't read (too large, say) is a different file too.
+        const place = (path: string, bytes: Buffer) => files.publish(realm, path, bytes).catch(err => (err instanceof Refusal ? ('different' as const) : Promise.reject(err)))
+        // Files first, so a note's pictures are there when it is.
+        for (const path of entries.files) {
+          const bytes = await fromBackup(path)
+          if (bytes === null) continue
+          const hash = /^attachments\/([0-9a-f]{64})\./.exec(path)?.[1]
+          if (hash !== undefined && createHash('sha256').update(bytes).digest('hex') !== hash) skipped.push({ path, reason: 'damaged' })
+          else {
+            const placed = await place(path, bytes)
+            if (placed === 'different') skipped.push({ path, reason: 'taken' })
+            else if (placed === 'added') done.files += 1
+          }
+        }
+        const titles = await titlesOf(realm)
+        for (const name of entries.notes) {
+          const bytes = await fromBackup(name)
+          if (bytes === null) continue
+          const id = name.slice(0, -3)
+          const text = bytes.toString('utf8')
+          const file = parseNote(text, id, nowText())
+          const now = await readOne(realm, id)
+          if (file.body.length > NOTE_LIMITS.body) skipped.push({ path: name, reason: 'size' })
+          else if (now === null) {
+            // A live title taken since the backup gets the next number, as
+            // archive's restore does. The backup's own text goes into History
+            // first, so the next restore finds it there and adds nothing.
+            const title = file.isArchived ? file.title : freeTitle(titles, file.title)
+            if (title !== file.title) {
+              await snapshot(realm, id, text)
+              await write(realm, id, { ...file, title })
+              done.renamed += 1
+            } else if ((await place(name, bytes)) === 'different') {
+              skipped.push({ path: name, reason: 'taken' })
+              continue
+            }
+            titles.push({ id, title, isArchived: file.isArchived })
+            done.added += 1
+          } else if (now.text === text || (await history(realm, id)).some(version => version.id.endsWith(`-${stampOf(text)}`))) done.same += 1
+          else {
+            await snapshot(realm, id, text)
+            done.toHistory += 1
+          }
+        }
+        d.log.debug(`notes restored from ${backup}: ${JSON.stringify(done)}, skipped ${skipped.length}`)
+
+        return { view: await viewOf(realm), ...done, skipped }
+      })
+    },
 
     createNote: (key: unknown, input: unknown): Promise<Reply<{ view: NotesView; id: string }>> =>
       inTurn(MESSAGES.saveNote, async () => {

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EngineApi, Reply } from '../../shared/engine_api'
 import { NOTE_TYPES } from '../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteInput, NotesView, QuestProposal } from '../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteInput, NotesExport, NotesRestore, NotesView, QuestProposal } from '../../shared/notes'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
 import { fakeEngine, note, projectView, quest } from '../test_support'
@@ -927,5 +927,149 @@ describe('daily notes and the journal', () => {
     await press(t.notebook.backToNotes)
     expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.title} 2`)
     expect(list().getByLabelText(t.notebook.capture)).toBeTruthy()
+  })
+})
+
+describe('Export notes and Restore from backup', () => {
+  const b = t.notebook.backup
+  const FOLDER_NAME = 'Notes backup a-000001 2026-11-17'
+  const exportDone = (over: Partial<NotesExport> = {}) => ok<NotesExport | null>({ folder: FOLDER_NAME, notes: 3, files: 2, skipped: [], ...over })
+  const restoreDone = (over: Partial<NotesRestore> = {}) => ok<NotesRestore | null>({ view: { notes: [note()], unreadable: [], folder: FOLDER }, added: 0, renamed: 0, same: 0, toHistory: 0, files: 0, skipped: [], ...over })
+  const failure = (message: string) => ({ ok: false as const, error: { message } })
+  const link = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement
+
+  it('an export says how many notes and files went into which folder, and that History stays behind', async () => {
+    const exportNotes = vi.fn(async () => exportDone())
+    await open({ ...memoryNotes([note()]), exportNotes })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.export)
+
+    const dialog = await screen.findByRole('dialog', { name: b.exportedTitle })
+    expect(exportNotes).toHaveBeenCalledWith(KEY)
+    expect(within(dialog).getByText(b.exported(3, 2, FOLDER_NAME))).toBeTruthy()
+    expect(within(dialog).getByText(b.historyStays)).toBeTruthy()
+    expect(within(dialog).queryByText(b.leftOut(1))).toBeNull()
+    expect(within(dialog).queryByRole('listitem')).toBeNull()
+    await act(async () => void fireEvent.click(within(dialog).getByRole('button', { name: b.close })))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(link(b.export)))
+  })
+
+  it('an export that left files out lists each with why', async () => {
+    const skipped = [
+      { path: 'huge.pdf', reason: 'size' as const },
+      { path: 'Locked.md', reason: 'unreadable' as const },
+    ]
+    await open({ ...memoryNotes([note()]), exportNotes: vi.fn(async () => exportDone({ notes: 2, files: 1, skipped })) })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.export)
+
+    const dialog = await screen.findByRole('dialog', { name: b.exportedTitle })
+    expect(within(dialog).getByText(b.exported(2, 1, FOLDER_NAME))).toBeTruthy()
+    expect(within(dialog).getByText(b.leftOut(2))).toBeTruthy()
+    expect(within(dialog).getAllByRole('listitem').map(item => item.textContent)).toEqual([`huge.pdf: ${b.reasons.size}`, `Locked.md: ${b.reasons.unreadable}`])
+  })
+
+  it('a restore shows only the lines that are not zero, and the list shows the notes it brought back', async () => {
+    const back = note({ id: 'n-back', title: 'From the backup', stamp: 'b-1' })
+    const restoreNotes = vi.fn(async () => restoreDone({ view: { notes: [note(), back], unreadable: [], folder: FOLDER }, added: 2, renamed: 1, toHistory: 1, files: 3 }))
+    await open({ ...memoryNotes([note()]), restoreNotes })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.restore)
+
+    const dialog = await screen.findByRole('dialog', { name: b.restoredTitle })
+    expect(restoreNotes).toHaveBeenCalledWith(KEY)
+    expect([...dialog.querySelectorAll('p.form-line')].map(line => line.textContent)).toEqual([b.added(2, 3), b.renamed(1), b.toHistory(1)])
+    expect(within(dialog).queryByText(b.nothingNew)).toBeNull()
+    expect(screen.getByRole('button', { name: /From the backup/ })).toBeTruthy()
+  })
+
+  it('a restore of notes that are all here already says so in one line', async () => {
+    await open({ ...memoryNotes([note()]), restoreNotes: vi.fn(async () => restoreDone({ same: 4 })) })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.restore)
+
+    const dialog = await screen.findByRole('dialog', { name: b.restoredTitle })
+    expect([...dialog.querySelectorAll('p.form-line')].map(line => line.textContent)).toEqual([b.nothingNew])
+  })
+
+  it('a restore that left items out lists each with why, under what it did bring back', async () => {
+    const skipped = [
+      { path: 'attachments/abc.png', reason: 'damaged' as const },
+      { path: 'table.csv', reason: 'taken' as const },
+    ]
+    await open({ ...memoryNotes([note()]), restoreNotes: vi.fn(async () => restoreDone({ same: 2, skipped })) })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.restore)
+
+    const dialog = await screen.findByRole('dialog', { name: b.restoredTitle })
+    expect([...dialog.querySelectorAll('p.form-line')].map(line => line.textContent)).toEqual([b.same(2), b.leftOut(2)])
+    expect(within(dialog).getAllByRole('listitem').map(item => item.textContent)).toEqual([`attachments/abc.png: ${b.reasons.damaged}`, `table.csv: ${b.reasons.taken}`])
+  })
+
+  it('a cancelled folder picker opens no dialog and leaves both links ready', async () => {
+    const notes = memoryNotes([note()])
+    const exportNotes = vi.fn(async () => ok<NotesExport | null>(null))
+    const restoreNotes = vi.fn(async () => ok<NotesRestore | null>(null))
+    await open({ ...notes, exportNotes, restoreNotes })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.export)
+    await waitFor(() => expect([link(b.export).disabled, link(b.restore).disabled]).toEqual([false, false]))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByText(b.exporting)).toBeNull()
+
+    await press(b.restore)
+    await waitFor(() => expect([link(b.export).disabled, link(b.restore).disabled]).toEqual([false, false]))
+    expect(exportNotes).toHaveBeenCalledTimes(1)
+    expect(restoreNotes).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByText(b.restoring)).toBeNull()
+  })
+
+  it('while one works, a line with a spinner says so and both links wait', async () => {
+    await open({ ...memoryNotes([note()]), exportNotes: never })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.export)
+
+    expect(screen.getByText(b.exporting).closest('[role="status"]')?.querySelector('.spinner')).toBeTruthy()
+    expect([link(b.export).disabled, link(b.restore).disabled]).toEqual([true, true])
+  })
+
+  it('a failed export says why in its dialog, and Try again asks again', async () => {
+    const message = 'Nothing was saved. Check that the disk is connected, has free space and lets you save there, then try again.'
+    const exportNotes = vi.fn().mockResolvedValueOnce(failure(message)).mockResolvedValueOnce(exportDone())
+    await open({ ...memoryNotes([note()]), exportNotes })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(b.export)
+
+    const failed = await screen.findByRole('dialog', { name: b.exportFailed })
+    expect(within(failed).getByRole('alert').textContent).toBe(message)
+    await act(async () => void fireEvent.click(within(failed).getByRole('button', { name: t.failed.tryAgain })))
+    expect(exportNotes).toHaveBeenCalledTimes(2)
+    expect(await screen.findByRole('dialog', { name: b.exportedTitle })).toBeTruthy()
+  })
+
+  it('a failed restore says why, re-reads the notes it may have added, and Close puts it away', async () => {
+    const notes = memoryNotes([note()])
+    const message = 'Restoring stopped. Notes already restored are kept; trying again adds only the rest.'
+    await open({ ...notes, restoreNotes: vi.fn(async () => failure(message)) })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    const reads = notes.readNotes.mock.calls.length
+    await press(b.restore)
+
+    const failed = await screen.findByRole('dialog', { name: b.restoreFailed })
+    expect(within(failed).getByRole('alert').textContent).toBe(message)
+    expect(notes.readNotes.mock.calls.length).toBeGreaterThan(reads)
+    await act(async () => void fireEvent.click(within(failed).getByRole('button', { name: b.close })))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('a realm with no notes yet still offers both, and says there is nothing to export', async () => {
+    await open({ ...memoryNotes([]), exportNotes: vi.fn(async () => failure('This realm has no notes to export yet.')) })
+    await screen.findByText(t.notebook.emptyTitle('a'))
+
+    expect([link(b.export).disabled, link(b.restore).disabled]).toEqual([false, false])
+    await press(b.export)
+    expect(within(await screen.findByRole('dialog', { name: b.exportFailed })).getByRole('alert').textContent).toBe('This realm has no notes to export yet.')
   })
 })

@@ -182,7 +182,7 @@ The feature follows `docs/architecture.md` and the app's layers:
 | --- | --- | --- |
 | Shared | `app/shared/notes.ts` | Types and limits, the id check, links and quest links, backlinks, renaming links, checklist lines, BrewQuest's proposal |
 | Rules | `app/main/features/notes/domain/` | Reading and writing a note file: front matter in, the same front matter out |
-| Engine API | `app/main/features/notes/api/` | `readNotes`, `showNotes` (Show in Finder, making the folder first), `createNote` (a taken title gets the next number), `saveNote` (with the stamp, renaming and how many notes it relinked, and a taken title refused), `archiveNote` (a restore onto a taken title is numbered), `deleteNote`, `fileNoteQuests` (skips lines the note already lists) |
+| Engine API | `app/main/features/notes/api/` | `readNotes`, `showNotes` (Show in Finder, making the folder first), `createNote` (a taken title gets the next number), `saveNote` (with the stamp, renaming and how many notes it relinked, and a taken title refused), `archiveNote` (a restore onto a taken title is numbered), `deleteNote`, `fileNoteQuests` (skips lines the note already lists), `exportNotes` (a new backup folder, never written over another) and `restoreNotes` (adds what's missing, replaces nothing) |
 | Window rules | `app/renderer/features/notes/domain/` | The list's folders and order, search, the picker's notes and quests, the field checks, the capture title |
 | Screens | `app/renderer/features/notes/presentation/` | The page, the list, the editor, the inspector, BrewQuest, the sheet and the dialogs |
 
@@ -328,9 +328,47 @@ The engine adds `readBookmark` (a link, returning its title, description and sit
 
 Bookmark checks cover which links count and reading a page's tags in `app/main/features/notes/domain/bookmark.spec.ts`; the guard, timeouts, redirects and the size cap against local servers in `app/main/features/notes/data/bookmark_page.spec.ts`; refusals, the cache and failed reads in the Notes API tests; cards, plain links in lists, quotes and callouts, and pasting in component tests; and a real paste in the built app, with the guard refusing this Mac's address, in `app/e2e/note_bookmarks.e2e.ts`.
 
+## Export and restore
+
+**Export notes…** and **Restore from backup…** sit at the foot of the note list, beside **Journal** and, when it shows, **Archived**. They are there in the journal, the archived list and an empty realm too, so a realm with no notes can be restored.
+
+**Export notes…** opens the system's folder picker, whose button reads **Export here**. In the chosen folder Queue-tea makes a new one named after the realm and the day, such as `Notes backup gait-feedback 2026-11-17`, with " 2", " 3" and so on when that name is taken. It copies every note file into it byte for byte, archived notes included, and the files a note can link: those in `attachments/`, where a quest's description keeps its files too, and those at the top of the realm's folder. History stays behind, and so do `.tmp` and `.bak` files, hidden files and folders such as `.obsidian/`, other folders and symlinks. A file that won't read, or is 10 MB or more, is left out and named in the result. `queue-tea-notes.json` is written last and marks the folder as a backup, so a folder cut short never reads as one. If a write fails, Queue-tea removes the unfinished folder. The backup keeps the vault's layout, so it opens in Obsidian as a vault, with its links and pictures working. A realm with no notes is refused before the picker opens.
+
+**Restore from backup…** opens the picker with **Restore**. Pick a folder Export notes made. Restore adds what's missing and never replaces a note or a file, so restoring the same backup again adds nothing.
+
+Files go first, so a note's pictures are there when it is. They're matched by name. A file named by its SHA-256 hash, as attachments are, must match that hash, or it's left out as damaged. A file whose name is free here is copied in, and one that's already here and the same is left alone. A different file with that name stays, and the backup's is left out.
+
+Notes are matched by id, which is the file name:
+
+- A note that isn't here comes back byte for byte. It has no History until its first save.
+- A missing live note whose title another live note has now comes back numbered, such as "Plan 2", as archive's Restore does. The backup's text is kept in its History, and links to it aren't rewritten. An archived note keeps its title.
+- A note that's here and matches the backup, or already has the backup's text in its History, counts as already here.
+- A note that's here and differs stays as it is. The backup's text joins its History once; open **History** to compare it or restore it.
+
+A note longer than 1,000,000 characters is left out too, since Notes couldn't save it. Restoring into a different realm from the one exported works the same way. Quest links, in a note's text and in `quests`, may then name quests that realm doesn't have, and those show as "Not in the queue".
+
+From the press until main answers, the picker included, a spinner line under the links says "Exporting notes…" or "Restoring notes…", and both links are disabled. Cancelling the picker changes nothing and shows no dialog. The result opens in a dialog with **Close**. "Notes exported" says what went in ("Saved 12 notes and 3 files in “Notes backup gait-feedback 2026-11-17”.") and adds "Note history stays in Queue-tea; it isn't in the backup." "Notes restored" has a line for each count that isn't zero: "Added 3 notes and 2 files.", "1 got a number added because its title was taken.", "4 notes were already here." and "1 note differs from yours. Yours stay as they are; the backup's text is in each one's History." A backup that brings nothing new says "Everything in this backup is already in your notes." The note list shows restored notes at once, and after a restore that stopped part way it reads the folder again, so notes restored before the stop show too. Anything left out is listed under "2 items were left out:", each by its path and why: "too large (a file of 10 MB or more, or a note over a million characters)", "couldn't be read", "doesn't match its fingerprint" or "a different file with this name is already here".
+
+A failure opens "Couldn't export notes" or "Couldn't restore notes" with main's message, **Close** and **Try again**, which runs it again. Export says "This realm has no notes to export yet." for an empty realm, and "Nothing was saved. Check that the disk is connected, has free space and lets you save there, then try again." when writing fails. Restore refuses a folder without the marker ("This folder isn't a Notes backup. Choose a folder that Export notes made; its name starts with “Notes backup”."), a backup in a newer format ("This backup comes from a newer Queue-tea. Update the app, then try again.") and one with more than 5,000 notes ("This backup holds more than 5,000 notes, which is more than Notes can read."). A write that fails here stops it: "Restoring stopped. Notes already restored are kept; trying again adds only the rest." Esc closes the dialog, and focus goes back to the link that opened it.
+
+The engine adds `exportNotes` and `restoreNotes`. Each takes only the realm key and returns `null` when the picker is cancelled. Main opens the picker itself, through `pickFolder` in `app/main/main.ts` with the button's label, so no path comes from the window. The picker waits outside the save queue, so an open note keeps saving while it's up; the copying then runs in that queue, like a save. `exportNotes` returns a `NotesExport`: the new folder's name, how many notes and files went in, and what was left out. `restoreNotes` returns a `NotesRestore`: the realm's notes for the list, then `added` (numbered notes included), `renamed`, `same`, `toHistory`, `files`, and what was left out. Each file left out is a `BackupSkip`, its path with `size`, `unreadable`, `damaged` or `taken`. The types are in `app/shared/notes.ts`.
+
+`app/main/features/notes/data/note_backup.ts` decides what a backup holds, reads a file (refusing a symlink or anything 10 MB or more), makes the new folder and holds the marker's name and format number. Export writes each file only where nothing is yet. Restore places files, and notes that come back byte for byte, with `publish` in `note_files.ts`, which attaching a file uses too: a temporary file, then a hard link that never replaces another file, refused when the folder leads out of the vault. A numbered note is written as a save is, with its History. The marker holds `format` (1), the realm key, the export time and the counts; restore reads only `format`. The links and the dialog are `app/renderer/features/notes/presentation/widgets/notes_backup.tsx`, their text is under `notebook.backup` in `app/renderer/l10n/en.ts`, and main's messages are in `app/main/core/messages.ts`.
+
+Known limit: a note keeps at most 100 versions (see [Version history](#version-history)). Later saves can prune the backup text a restore put in History, and restoring the same backup again then adds it once more.
+
+Checks for this follow-up:
+
+1. Export a realm with live and archived notes, attachments and a file at the top of its folder. The new folder holds each one byte for byte, and `queue-tea-notes.json`, and no `.history/`, `.tmp`, `.bak`, hidden file, other folder or symlink. Opened in Obsidian, its links and pictures work.
+2. A second export on the same day makes a folder ending in " 2". A file of 10 MB or more is left out and named. A failed write leaves no folder behind. An empty realm is refused before the picker opens, and cancelling the picker changes nothing.
+3. Restoring into an empty realm brings every note and file back byte for byte. Restoring the same backup again says "Everything in this backup is already in your notes."
+4. A note edited since the export stays as it is, and the backup's text shows in its History. A missing note whose title is taken comes back as "Title 2", with the backup's text in its History. A different file under an attachment's name stays and the backup's is listed as left out, and an attachment whose bytes don't match its name is listed as damaged.
+5. A folder without `queue-tea-notes.json` is refused as not a backup, and one with a newer `format` asks for an update.
+6. While either runs, the spinner line shows and both links are disabled. Results and failures open in a dialog, Try again runs it again, and Esc puts focus back on the link.
+
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph, the canvas, BrewQuest's animations and drag-to-note, and AI note analysis. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

@@ -262,6 +262,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readNoteFile: vi.fn(async (_key: string, path: string) => ({ ok: true as const, data: { path, kind: (path.endsWith('.pdf') ? 'pdf' : path.endsWith('.png') ? 'image' : 'other') as 'pdf' | 'image' | 'other' } })),
     downloadNoteFile: vi.fn(async () => ({ ok: true as const, data: true })),
     showNotes: vi.fn(async () => ({ ok: true as const, data: null })),
+    exportNotes: vi.fn(async () => ({ ok: true as const, data: { folder: 'Notes backup demo-abc123 2026-11-17', notes: 2, files: 1, skipped: [] } })),
+    restoreNotes: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, added: 1, renamed: 0, same: 1, toHistory: 0, files: 1, skipped: [] } })),
     openLink: vi.fn(async () => ({ ok: true as const, data: null })),
     readBookmark: vi.fn(async (url: string) => ({ ok: true as const, data: { url, title: 'Example page', description: 'What the page is about.', site: 'Example' } })),
     createNote: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, id: 'n-00000001' } })),

@@ -123,9 +123,9 @@ const places = {
   ...game,
   commandDirs: ['/usr/local/bin', '/opt/homebrew/bin', `${home}/.local/bin`],
   reveal: (path: string) => shell.showItemInFolder(path),
-  pickFolder: async () => {
+  pickFolder: async (buttonLabel?: string) => {
     const window = BrowserWindow.getFocusedWindow()
-    const options = { properties: ['openDirectory' as const, 'createDirectory' as const] }
+    const options = { buttonLabel, properties: ['openDirectory' as const, 'createDirectory' as const] }
     const picked = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options)
 
     return picked.canceled ? null : (picked.filePaths[0] ?? null)
@@ -134,7 +134,7 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
-const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path),
+const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path), pickFolder: places.pickFolder,
   saveNoteFile: async (name, bytes) => {
     const window = BrowserWindow.getFocusedWindow()
     const options = { defaultPath: name }
@@ -235,6 +235,8 @@ const serveEngine = () => {
   handle(CHANNELS.readNoteFile, (_, key: unknown, path: unknown) => notes.readNoteFile(key, path))
   handle(CHANNELS.downloadNoteFile, (_, key: unknown, path: unknown) => notes.downloadNoteFile(key, path))
   handle(CHANNELS.showNotes, (_, key: unknown) => notes.showNotes(key))
+  handle(CHANNELS.exportNotes, (_, key: unknown) => notes.exportNotes(key))
+  handle(CHANNELS.restoreNotes, (_, key: unknown) => notes.restoreNotes(key))
   handle(CHANNELS.openLink, (_, url: unknown) => notes.openLink(url))
   handle(CHANNELS.readBookmark, (_, url: unknown) => notes.readBookmark(url))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))

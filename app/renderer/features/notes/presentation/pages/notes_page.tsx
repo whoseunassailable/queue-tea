@@ -19,6 +19,7 @@ import { captureOf, dailyBodyOf, dayError, folderNameError, foldersOf, isDay, jo
 import type { FolderGroup } from '../../domain/notes_view'
 import { useNotesAsks } from '../state_management/notes_asks'
 import { Robot } from '../widgets/brew_quest'
+import { useNotesBackup } from '../widgets/notes_backup'
 import { NoteWorkspace } from '../widgets/note_workspace'
 import type { Held, Layout, NoteActions } from '../widgets/note_workspace'
 import '../notes.css'
@@ -137,6 +138,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [failure, setFailure] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Note | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
+  const backup = useNotesBackup({ engine, realm: realm.key, onView: read.adopt, onRefresh: read.refresh })
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
   const [isDrawerOpen, setDrawerOpen] = useState(false)
@@ -566,6 +568,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
             {t.notebook.backToNotes}
           </button>
         )}
+        {backup.links}
       </div>
     </nav>
   )
@@ -605,6 +608,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />
         )}
       </div>
+      {backup.dialog}
       {renaming !== null && (
         <RenameFolder
           folder={renaming}

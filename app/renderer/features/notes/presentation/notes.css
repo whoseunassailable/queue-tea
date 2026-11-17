@@ -23,7 +23,12 @@
 .rm .nt-item.on { background: var(--sel); box-shadow: inset 3px 0 0 var(--line); }
 .rm .nt-item-title { font-weight: 700; }
 .rm .nt-unsaved { color: var(--urg-t); }
-.rm .nt-list-foot { margin-top: auto; padding-top: 8px; }
+.rm .nt-list-foot { margin-top: auto; padding-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.rm .nt-day { display: flex; flex-direction: column; gap: 4px; }
+.rm .nt-day label { font-size: 12px; font-weight: 700; color: var(--ink2); }
+.rm .nt-day-row { display: flex; gap: 6px; align-items: center; }
+.rm .nt-list .nt-day-row .input { width: auto; flex: 1; min-width: 0; }
+.rm .nt-day .hint { margin: 2px 0 0; }
 /* Below 900 px the list is a drawer over the page, which dims behind it. */
 .rm .nt-list.drawer { position: fixed; z-index: 30; left: 12px; top: 12px; bottom: 12px; width: 300px; max-height: none; }
 .rm .nt-scrim { position: fixed; z-index: 29; inset: 0; background: rgba(20, 16, 30, 0.35); }

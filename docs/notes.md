@@ -265,6 +265,19 @@ Added after Notes 1, from the epic's "templates and pinned notes" quest.
 - **Pinned notes:** **Pin note** at the foot of the inspector saves at once and puts the note in a **Pinned** group at the top of the list, where its row also names its folder. A pinned note shows only there, not in its folder as well. **Unpin note** puts it back. An archived note keeps its pin for when it's restored, and the archived list shows it in its folder.
 - **Renaming a folder:** every folder but Inbox has **Rename**, which shows when you point at the folder or tab to it, including in Archived. When all its live notes are pinned, open one and use **Rename folder** under Folder in the inspector. The dialog asks for the new name, required and checked as the Folder field is, with any error under it. Every note in the folder moves, archived ones too, and a name already in use puts the two folders together. If the open note is in the folder, it saves first; if it can't, nothing is renamed and the dialog says so. A failure part way leaves the notes already moved in the new folder; pressing **Rename folder** again moves the rest. Renaming doesn't change a note's edited time.
 - **Moving a note keeps its links:** a link names a note by its title, and every file sits at the top of the realm's folder whatever its folder, so changing a note's Folder field or renaming its folder never changes a link.
+
+## Daily notes and the journal
+
+Added from the epic's "daily notes and a journal" quest.
+
+- **A day's note is the live note titled with its date**, `2026-11-17`, as Obsidian's daily notes plugin names them. That makes `[[2026-11-17]]` a link to that day, here and in Obsidian. A title that isn't a real date, such as `2026-02-30`, is an ordinary note.
+- **Today**, in the list's head, opens today's note, using this Mac's local date. When there isn't one yet, it makes it in the **Journal** folder, typed Daily, from the daily template, and puts the cursor in its text. Today is hidden in Archived.
+- **Journal (n)** at the list's foot counts the days and turns the list into the journal: the days newest first, a group per month ("Nov 2026"), each row naming its weekday ("Tue 17 Nov"). Search works on the days as it does on notes. **Back to notes** returns. A day keeps showing in its folder too, since the journal goes by title, not by folder.
+- **Day \*** in the journal picks any date, today by default, and **Open day** opens or makes that day, staying in the journal. An empty field says "Day is required." and a date that isn't one says "Enter a day as a date, like 2026-11-17.", under the field, on blur and on Open day.
+- **The daily template is a note.** New days start from the live note titled **Daily template** when it has text, with `{{date}}` and `{{title}}` turned into the day. Without one, they start from the built-in Daily headings above. **Edit the daily template**, under the day field, opens that note, or makes it in Journal with the built-in headings for you to change. Picking Daily under **Start from a template** uses it too. Keeping the template as a note means it saves, versions and syncs to Obsidian like any other, with no setting of its own.
+
+The rules are `isDay`, `dayError`, `dailyBodyOf` and `journalOf` in `app/renderer/features/notes/domain/notes_view.ts`. The page uses `createNote` as it is, with the type and body filled in, so main is unchanged. `JOURNAL` and `DAILY_TEMPLATE` are in `app/shared/notes.ts`.
+
 ## Notes in the command palette
 
 Open ⌘K from any screen and type words from a note. The palette reads only the selected realm's notes, when it opens and when the engine announces a change. Search follows Notes search: every word must appear in the title, text or tags, ignoring case; `#word` matches tags only. Archived notes stay out. Title matches rank above text matches, with the newest edited note first among equal matches. Up to five notes appear. A text match shows its matching line, cut to 60 characters with ellipses when needed.
@@ -317,7 +330,7 @@ Bookmark checks cover which links count and reading a page's tags in `app/main/f
 
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, daily notes, the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph, the canvas, BrewQuest's animations and drag-to-note, AI note analysis and export. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

@@ -1,5 +1,5 @@
 import type { Difficulty, Priority } from '../../../../../types'
-import { cleanTag, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, openItemsOf, questIdOf } from '../../../../shared/notes'
+import { cleanTag, DAILY_TEMPLATE, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, noteTitled, openItemsOf, questIdOf } from '../../../../shared/notes'
 import type { Note, NoteChange, NoteInput, NoteType, QuestProposal } from '../../../../shared/notes'
 import { dayOf } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
@@ -61,11 +61,35 @@ export const isUntitled = (title: string): boolean => {
 
 // Picking a template gives a note its type and starting text. A Daily note
 // still called Untitled takes today's date as its title.
-export const templateChange = (type: NoteType, title: string, notes: readonly Note[], id: string, today: string): Partial<NoteChange> => ({
-  type,
-  body: t.notebook.templates[type],
-  ...(type === 'daily' && isUntitled(title) ? { title: freeTitle(notes, today, id) } : {}),
-})
+export const templateChange = (type: NoteType, title: string, notes: readonly Note[], id: string, today: string): Partial<NoteChange> => {
+  const named = type === 'daily' && isUntitled(title) ? freeTitle(notes, today, id) : title
+
+  return { type, body: type === 'daily' ? dailyBodyOf(notes, today, named) : t.notebook.templates[type], ...(named === title ? {} : { title: named }) }
+}
+
+// A day's note is the live note titled with its date, as Obsidian names
+// daily notes. A date that doesn't exist, such as 2026-02-30, isn't a day.
+export const isDay = (title: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(title) && localDay(new Date(`${title}T12:00`)) === title
+
+export const dayError = (day: string): string | undefined => (day.trim() === '' ? t.notebook.dayRequired : isDay(day.trim()) ? undefined : t.notebook.dayBad)
+
+// What a new day starts with: the realm's "Daily template" note when it has
+// text, else the built-in one. {{date}} and {{title}} become the day and title.
+export const dailyBodyOf = (notes: readonly Note[], day: string, title = day): string => {
+  const own = noteTitled(notes, DAILY_TEMPLATE)?.body ?? ''
+
+  return (own.trim() === '' ? t.notebook.templates.daily : own).replace(/\{\{\s*date\s*\}\}/g, () => day).replace(/\{\{\s*title\s*\}\}/g, () => title)
+}
+
+// The journal: the live days that match, newest first, a group per month.
+export const journalOf = (notes: readonly Note[], query: string): FolderGroup[] => {
+  const days = notes.filter(note => !note.isArchived && isDay(note.title) && matches(note, query)).sort((a, b) => b.title.localeCompare(a.title))
+
+  return [...new Set(days.map(note => note.title.slice(0, 7)))].map(month => ({
+    folder: `${t.months[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`,
+    notes: days.filter(note => note.title.startsWith(month)),
+  }))
+}
 
 export const tagsOf = (text: string): string[] => [...new Set(text.split(',').map(cleanTag).filter(tag => tag !== ''))]
 

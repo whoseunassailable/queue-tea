@@ -9,6 +9,9 @@ export const NOTE_HISTORY_FOLDER = '.history'
 export const NOTE_HISTORY_LIMITS = { recent: 50, hourly: 24, daily: 26 } as const
 export const NOTE_VERSION_ID = /^v-(\d{13})-([a-f0-9]{40})$/
 export const INBOX = 'Inbox'
+// Where a day's note is made, and the note new days start from.
+export const JOURNAL = 'Journal'
+export const DAILY_TEMPLATE = 'Daily template'
 export const NOTE_LIMITS = { title: 200, folder: 60, tag: 40, tags: 20, item: 500, body: 1_000_000, notes: 5000, quests: 50 } as const
 // What a note is, apart from where it's kept: each has a template.
 export const NOTE_TYPES = ['idea', 'feature', 'bug', 'meeting', 'research', 'decision', 'daily'] as const

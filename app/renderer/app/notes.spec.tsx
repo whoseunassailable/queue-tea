@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EngineApi, Reply } from '../../shared/engine_api'
 import { NOTE_TYPES } from '../../shared/notes'
@@ -84,6 +84,7 @@ const write = (text: string) => {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   window.innerWidth = 1280
 })
 
@@ -767,5 +768,164 @@ describe('the Notes page', () => {
     const card = await screen.findByRole('link', { name: t.notebook.openBookmark('Example page', 'example.com') })
     await act(async () => void fireEvent.click(card))
     expect(openLink).toHaveBeenCalledWith('https://example.com/post')
+  })
+})
+
+describe('daily notes and the journal', () => {
+  // Today is pinned, on this computer's clock, so nothing hangs on the real date.
+  const TODAY = '2026-11-20'
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 20, 12))
+  })
+
+  const list = () => within(screen.getByRole('navigation', { name: t.notebook.title }))
+  const dayField = () => screen.getByLabelText(`${t.notebook.day} *`) as HTMLInputElement
+  const titleField = () => screen.getByLabelText(`${t.notebook.noteTitle} *`) as HTMLInputElement
+
+  it('Today makes today’s note in Journal from the daily template, and pressing it again opens that note with no second note', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await press(t.notebook.todayNoteLabel(TODAY))
+    expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: TODAY, folder: 'Journal', type: 'daily', body: t.notebook.templates.daily })
+    await waitFor(() => expect(titleField().value).toBe(TODAY))
+    expect(body().value).toBe(t.notebook.templates.daily)
+    await waitFor(() => expect(document.activeElement).toBe(body()))
+
+    await press(/^Bug Bounty Helper/)
+    await waitFor(() => expect(titleField().value).toBe('Bug Bounty Helper'))
+    await press(t.notebook.todayNoteLabel(TODAY))
+    await waitFor(() => expect(titleField().value).toBe(TODAY))
+    expect(notes.createNote).toHaveBeenCalledTimes(1)
+  })
+
+  it('the Journal lists the days newest first by month, each with its weekday, and no Rename', async () => {
+    await open(memoryNotes([
+      note({ id: 'd1', title: '2026-11-03', folder: 'Journal' }),
+      note({ id: 'd2', title: '2026-11-20', folder: 'Journal' }),
+      note({ id: 'd3', title: '2026-10-31', folder: 'Ideas' }),
+      note({ id: 'plan', title: 'Plan', folder: 'Journal' }),
+      note({ id: 'old', title: '2026-11-01', folder: 'Journal', isArchived: true }),
+    ]))
+    await screen.findByDisplayValue('2026-10-31')
+
+    await press(t.notebook.journal(3))
+
+    expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.journalHeader} 3`)
+    expect(list().getAllByRole('region').map(group => [group.getAttribute('aria-label'), within(group).getAllByRole('button', { name: /^2026-/ }).map(row => row.textContent)])).toEqual([
+      ['Nov 2026', ['2026-11-20Fri 20 Nov', '2026-11-03Tue 3 Nov']],
+      ['Oct 2026', ['2026-10-31Sat 31 Oct']],
+    ])
+    expect(list().queryByRole('button', { name: /^Plan/ })).toBeNull()
+    expect(list().queryByRole('button', { name: t.notebook.renameFolderLabel('Nov 2026') })).toBeNull()
+    expect(list().queryByText(t.notebook.rename)).toBeNull()
+    expect(list().queryByRole('button', { name: t.notebook.newNote })).toBeNull()
+    expect(list().queryByLabelText(t.notebook.capture)).toBeNull()
+  })
+
+  it('an empty Journal says how to start it, and a cleared Day shows Day is required. on blur and on submit, making nothing', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(t.notebook.journal(0))
+    expect(list().getByText(t.notebook.noJournal)).toBeTruthy()
+    expect(dayField().value).toBe(TODAY)
+
+    fireEvent.input(dayField(), { target: { value: '' } })
+    fireEvent.blur(dayField())
+    expect(document.getElementById('nt-day-error')?.textContent).toBe(t.notebook.dayRequired)
+    expect(dayField().getAttribute('aria-invalid')).toBe('true')
+    expect(dayField().getAttribute('aria-describedby')).toContain('nt-day-error')
+
+    fireEvent.input(dayField(), { target: { value: '2026-11-18' } })
+    fireEvent.blur(dayField())
+    expect(screen.queryByText(t.notebook.dayRequired)).toBeNull()
+    fireEvent.input(dayField(), { target: { value: '' } })
+    await press(t.notebook.openDay)
+    expect(screen.getByText(t.notebook.dayRequired)).toBeTruthy()
+    expect(notes.createNote).not.toHaveBeenCalled()
+  })
+
+  it('Open day opens a day that is there, makes one that is not, and stays in the Journal', async () => {
+    const notes = memoryNotes([note({ id: 'a', title: 'Alpha', updated: '2026-11-08' }), note({ id: 'd', title: '2026-11-02', folder: 'Journal', body: 'Monday words' })])
+    await open(notes)
+    await screen.findByDisplayValue('Alpha')
+    await press(t.notebook.journal(1))
+
+    fireEvent.input(dayField(), { target: { value: '2026-11-02' } })
+    await press(t.notebook.openDay)
+    await waitFor(() => expect(titleField().value).toBe('2026-11-02'))
+    expect(body().value).toBe('Monday words')
+    expect(notes.createNote).not.toHaveBeenCalled()
+
+    fireEvent.input(dayField(), { target: { value: '2026-11-18' } })
+    await press(t.notebook.openDay)
+    expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: '2026-11-18', folder: 'Journal', type: 'daily', body: t.notebook.templates.daily })
+    await waitFor(() => expect(titleField().value).toBe('2026-11-18'))
+    expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.journalHeader} 2`)
+    expect(within(list().getByRole('region', { name: 'Nov 2026' })).getAllByRole('button', { name: /^2026-/ }).map(row => row.textContent)).toEqual(['2026-11-18Wed 18 Nov', '2026-11-02Mon 2 Nov'])
+    expect(list().getByRole('button', { name: t.notebook.backToNotes })).toBeTruthy()
+  })
+
+  it('a Daily template note’s own text, with {{date}} put in, starts a new day', async () => {
+    const notes = memoryNotes([note({ id: 'tpl', title: 'daily template', folder: 'Journal', body: '# {{date}}\n\n- [ ] Plan {{ title }}' })])
+    await open(notes)
+    await screen.findByDisplayValue('daily template')
+
+    await press(t.notebook.todayNoteLabel(TODAY))
+
+    expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: TODAY, folder: 'Journal', type: 'daily', body: `# ${TODAY}\n\n- [ ] Plan ${TODAY}` })
+    await waitFor(() => expect(body().value).toBe(`# ${TODAY}\n\n- [ ] Plan ${TODAY}`))
+  })
+
+  it('Edit the daily template makes it in Journal when it is missing, opens it when it is there, and shows the notes', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    await press(t.notebook.journal(0))
+
+    await press(t.notebook.editDailyTemplate)
+    expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: 'Daily template', folder: 'Journal', body: t.notebook.templates.daily })
+    await waitFor(() => expect(titleField().value).toBe('Daily template'))
+    expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.title} 2`)
+    expect(within(list().getByRole('region', { name: 'Journal' })).getByRole('button', { name: /^Daily template/ })).toBeTruthy()
+
+    await press(/^Bug Bounty Helper/)
+    await waitFor(() => expect(titleField().value).toBe('Bug Bounty Helper'))
+    await press(t.notebook.journal(0))
+    await press(t.notebook.editDailyTemplate)
+    await waitFor(() => expect(titleField().value).toBe('Daily template'))
+    expect(notes.createNote).toHaveBeenCalledTimes(1)
+    expect(list().getByRole('button', { name: t.notebook.newNote })).toBeTruthy()
+  })
+
+  it('the foot counts Journal and Archived, each opens its list, Back to notes returns, and Archived has no Today', async () => {
+    await open(memoryNotes([
+      note({ id: 'a', title: 'Alpha', updated: '2026-11-08' }),
+      note({ id: 'd', title: '2026-11-19', folder: 'Journal' }),
+      note({ id: 'x', title: '2026-11-01', isArchived: true }),
+      note({ id: 'y', title: 'Gone', isArchived: true }),
+    ]))
+    await screen.findByDisplayValue('Alpha')
+    const foot = () => list().getAllByRole('button', { name: /^(Journal \(|Archived \(|Back to notes)/ }).map(button => button.textContent)
+
+    expect(foot()).toEqual([t.notebook.journal(1), t.notebook.archived(2)])
+    await press(t.notebook.archived(2))
+    expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.archivedHeader} 2`)
+    expect(foot()).toEqual([t.notebook.backToNotes])
+    expect(screen.queryByRole('button', { name: t.notebook.todayNoteLabel(TODAY) })).toBeNull()
+
+    await press(t.notebook.backToNotes)
+    expect(foot()).toEqual([t.notebook.journal(1), t.notebook.archived(2)])
+    await press(t.notebook.journal(1))
+    expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.journalHeader} 1`)
+    expect(foot()).toEqual([t.notebook.backToNotes])
+    expect(screen.getByRole('button', { name: t.notebook.todayNoteLabel(TODAY) })).toBeTruthy()
+
+    await press(t.notebook.backToNotes)
+    expect(list().getByRole('heading', { level: 2 }).textContent).toBe(`${t.notebook.title} 2`)
+    expect(list().getByLabelText(t.notebook.capture)).toBeTruthy()
   })
 })

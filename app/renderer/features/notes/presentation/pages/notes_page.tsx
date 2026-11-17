@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 
 import type { EngineApi, ProjectView, Reply } from '../../../../../shared/engine_api'
-import { backlinksOf, INBOX, NOTES_FOLDER } from '../../../../../shared/notes'
+import { backlinksOf, DAILY_TEMPLATE, INBOX, JOURNAL, NOTES_FOLDER, noteTitled } from '../../../../../shared/notes'
 import type { Note, NoteChange, NoteFiled, NoteInput, NotesView } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
 import type { Answer } from '../../../../core/api/engine_client'
@@ -14,7 +14,8 @@ import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { useWindowWidth } from '../../../../core/widgets/window_width'
 import { t } from '../../../../l10n/en'
 import type { ReadableView } from '../../../workspace/state_management/workspace_store'
-import { captureOf, folderNameError, foldersOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
+import { dayName } from '../../../../core/domain/format'
+import { captureOf, dailyBodyOf, dayError, folderNameError, foldersOf, isDay, journalOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
 import type { FolderGroup } from '../../domain/notes_view'
 import { useNotesAsks } from '../state_management/notes_asks'
 import { Robot } from '../widgets/brew_quest'
@@ -128,7 +129,11 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [newId, setNewId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [capture, setCapture] = useState('')
-  const [isArchivedView, setArchivedView] = useState(false)
+  // Which notes the list shows: the folders, the archived ones or the journal's days.
+  const [shown, setShown] = useState<'notes' | 'archived' | 'journal'>('notes')
+  const isArchivedView = shown === 'archived'
+  const [day, setDay] = useState(() => localDay(new Date()))
+  const [dayFault, setDayFault] = useState<string | undefined>(undefined)
   const [failure, setFailure] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Note | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -162,7 +167,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const create = async (input: NoteInput, isOpening = true): Promise<boolean> => {
     const made = await act(() => engine.createNote(realm.key, input), data => data.view)
     if (!made.ok) return false
-    setArchivedView(false)
+    // A new day stays in the journal; anything else shows in its folder.
+    setShown(was => (was === 'journal' && isDay(input.title) ? was : 'notes'))
     if (isOpening) {
       setOpenId(made.data.id)
       setNewId(made.data.id)
@@ -193,7 +199,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   useNotesAsks(asked => {
     if (asked.kind === 'new') newNote()
     else if (asked.kind === 'open') {
-      setArchivedView(false)
+      setShown('notes')
       pick(asked.id, true)
     } else {
       const input = captureOf(asked.text)
@@ -249,7 +255,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     onArchive: (note, isArchived) =>
       void act(() => engine.archiveNote(realm.key, note.id, isArchived), view => view).then(answer => {
         if (!answer.ok) return
-        setArchivedView(false)
+        setShown('notes')
         setOpenId(isArchived ? null : note.id)
       }),
     onDelete: setDeleting,
@@ -300,16 +306,36 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const view = read.load.data
   const live = view.notes.filter(note => !note.isArchived)
   const archivedCount = view.notes.length - live.length
-  const groups = foldersOf(view.notes, query, isArchivedView)
+  const groups = shown === 'journal' ? journalOf(view.notes, query) : foldersOf(view.notes, query, isArchivedView)
+  const journalCount = live.filter(note => isDay(note.title)).length
   const first = groups.find(group => !folded.has(keyOf(group)))?.notes[0] ?? groups[0]?.notes[0]
   const open = view.notes.find(note => note.id === openId) ?? first
-  const isEmpty = live.length === 0 && !isArchivedView
+  const isEmpty = live.length === 0 && shown === 'notes'
   const today = localDay(new Date())
   const yesterday = localDay(new Date(Date.now() - 86_400_000))
   const folders = [...new Set(live.map(note => note.folder))].sort()
   const focusId = open?.id ?? first?.id
   // Below 900 px the list is a drawer over the note, unless there's no note.
   const isDrawer = layout === 'narrow' && !isEmpty
+
+  // A day's note opens when it's there, and starts from the daily template
+  // when it isn't; either way the cursor goes to its text.
+  const openDay = (date: string) => {
+    const found = noteTitled(view.notes, date)
+    if (found !== undefined) return pick(found.id, true)
+    void create({ title: date, folder: JOURNAL, type: 'daily', body: dailyBodyOf(view.notes, date) }).then(isMade => isMade && requestAnimationFrame(() => document.getElementById('nt-body')?.focus()))
+  }
+  const openPickedDay = () => {
+    const fault = dayError(day)
+    setDayFault(fault)
+    if (fault === undefined) openDay(day.trim())
+  }
+  const editDailyTemplate = () => {
+    const found = noteTitled(view.notes, DAILY_TEMPLATE)
+    if (found === undefined) return void create({ title: DAILY_TEMPLATE, folder: JOURNAL, body: t.notebook.templates.daily })
+    setShown('notes')
+    pick(found.id, true)
+  }
 
   const noteList = (
     <nav
@@ -324,9 +350,15 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     >
       <div class="nt-list-head">
         <h2>
-          {isArchivedView ? t.notebook.archivedHeader : t.notebook.title} <span class="sub">{isArchivedView ? archivedCount : live.length}</span>
+          {isArchivedView ? t.notebook.archivedHeader : shown === 'journal' ? t.notebook.journalHeader : t.notebook.title}{' '}
+          <span class="sub">{isArchivedView ? archivedCount : shown === 'journal' ? journalCount : live.length}</span>
         </h2>
         {!isArchivedView && (
+          <button type="button" class="chip-btn" aria-label={t.notebook.todayNoteLabel(today)} onClick={() => openDay(today)}>
+            {t.notebook.todayNote}
+          </button>
+        )}
+        {shown === 'notes' && (
           <button type="button" class="chip-btn" onClick={newNote}>
             {t.notebook.newNote}
           </button>
@@ -337,7 +369,47 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           </button>
         )}
       </div>
-      {!isArchivedView && (
+      {shown === 'journal' && (
+        <form
+          class="nt-day"
+          noValidate
+          onSubmit={event => {
+            event.preventDefault()
+            openPickedDay()
+          }}
+        >
+          <label for="nt-day">
+            {t.notebook.day} *
+          </label>
+          <div class="nt-day-row">
+            <input
+              id="nt-day"
+              type="date"
+              class="input"
+              value={day}
+              aria-invalid={dayFault === undefined ? undefined : 'true'}
+              aria-describedby={dayFault === undefined ? 'nt-day-hint' : 'nt-day-error nt-day-hint'}
+              onInput={event => setDay((event.target as HTMLInputElement).value)}
+              onBlur={() => setDayFault(dayError(day))}
+            />
+            <button type="submit" class="chip-btn">
+              {t.notebook.openDay}
+            </button>
+          </div>
+          {dayFault !== undefined && (
+            <p class="field-error" id="nt-day-error">
+              {dayFault}
+            </p>
+          )}
+          <p class="hint" id="nt-day-hint">
+            {t.notebook.dailyTemplateLine}{' '}
+            <button type="button" class="nt-link" onClick={editDailyTemplate}>
+              {t.notebook.editDailyTemplate}
+            </button>
+          </p>
+        </form>
+      )}
+      {shown === 'notes' && (
         <form
           class="nt-capture"
           noValidate
@@ -429,7 +501,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
                   <span aria-hidden="true">{isFolded ? '▸' : '▾'} </span>
                   {name} <span class="sub">{group.notes.length}</span>
                 </button>
-                {group.folder !== null && group.folder !== INBOX && (
+                {group.folder !== null && group.folder !== INBOX && shown !== 'journal' && (
                   <button type="button" class="nt-link nt-rename" aria-label={t.notebook.renameFolderLabel(group.folder)} onClick={() => setRenaming(group.folder)}>
                     {t.notebook.rename}
                   </button>
@@ -449,7 +521,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
                       >
                         <span class="nt-item-title">{note.title}</span>
                         <span class="sub">
-                          {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : whenOf(note.updated, today, yesterday)}
+                          {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : shown === 'journal' ? dayName(note.title) : whenOf(note.updated, today, yesterday)}
                           {group.folder === null && ` · ${note.folder}`}
                           {note.tags.length > 0 && ` · #${note.tags[0]}`}
                         </span>
@@ -471,18 +543,30 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
         </p>
       )}
       {groups.length === 0 && query.trim() === '' && isArchivedView && <p class="hint">{t.notebook.noArchived}</p>}
+      {groups.length === 0 && query.trim() === '' && shown === 'journal' && <p class="hint">{t.notebook.noJournal}</p>}
       {view.unreadable.length > 0 && (
         <p class="hint" role="status">
           {t.notebook.unreadable(view.unreadable)}
         </p>
       )}
-      {(archivedCount > 0 || isArchivedView) && (
-        <div class="nt-list-foot">
-          <button type="button" class="nt-link" aria-pressed={isArchivedView} onClick={() => setArchivedView(!isArchivedView)}>
-            {isArchivedView ? t.notebook.backToNotes : t.notebook.archived(archivedCount)}
+      <div class="nt-list-foot">
+        {shown === 'notes' ? (
+          <>
+            <button type="button" class="nt-link" aria-pressed="false" onClick={() => setShown('journal')}>
+              {t.notebook.journal(journalCount)}
+            </button>
+            {archivedCount > 0 && (
+              <button type="button" class="nt-link" aria-pressed="false" onClick={() => setShown('archived')}>
+                {t.notebook.archived(archivedCount)}
+              </button>
+            )}
+          </>
+        ) : (
+          <button type="button" class="nt-link" aria-pressed="true" onClick={() => setShown('notes')}>
+            {t.notebook.backToNotes}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </nav>
   )
 

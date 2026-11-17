@@ -7,7 +7,87 @@ import { NOTE_TYPES } from '../../../../shared/notes'
 import { t } from '../../../l10n/en'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
 import type { QuestLine } from './notes_view'
-import { captureOf, folderError, folderNameError, foldersOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf } from './notes_view'
+import { captureOf, dailyBodyOf, dayError, folderError, folderNameError, foldersOf, isDay, journalOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf } from './notes_view'
+
+describe('days', () => {
+  it.each(['2026-11-17', '2024-02-29', '2026-12-31', '2027-01-01'])('%s is a day', title => {
+    expect(isDay(title)).toBe(true)
+  })
+
+  it.each(['2026-02-30', '2026-02-29', '2026-13-01', '2026-00-10', '2026-11-00', '2026-11-32', '2026-11-7', ' 2026-11-17', '2026-11-17 2', '2026/11/17', 'Plan', ''])('%j is not a day', title => {
+    expect(isDay(title)).toBe(false)
+  })
+
+  it('a blank day is required, a day that is not a date says how to write one, and a real day passes', () => {
+    expect(dayError('')).toBe('Day is required.')
+    expect(dayError('   ')).toBe('Day is required.')
+    expect(dayError('2026-02-30')).toBe('Enter a day as a date, like 2026-11-17.')
+    expect(dayError('tomorrow')).toBe('Enter a day as a date, like 2026-11-17.')
+    expect(dayError(' 2026-11-17 ')).toBeUndefined()
+  })
+})
+
+describe('the daily template', () => {
+  it('a new day starts from the built-in text when the realm has no Daily template note', () => {
+    expect(dailyBodyOf([note({ title: 'Plan', body: '# {{date}}' })], '2026-11-17')).toBe(t.notebook.templates.daily)
+  })
+
+  it('a Daily template note in any case gives its text, with the day and title put in for every placeholder', () => {
+    const notes = [note({ id: 'tpl', title: 'daily TEMPLATE', body: '# {{date}}\n\n{{ title }} · {{  date }} · {{title}}' })]
+
+    expect(dailyBodyOf(notes, '2026-11-17', 'Standup')).toBe('# 2026-11-17\n\nStandup · 2026-11-17 · Standup')
+    expect(dailyBodyOf(notes, '2026-11-17')).toBe('# 2026-11-17\n\n2026-11-17 · 2026-11-17 · 2026-11-17')
+  })
+
+  it('a blank Daily template note falls back to the built-in text', () => {
+    expect(dailyBodyOf([note({ title: 'Daily template', body: '  \n\t\n' })], '2026-11-17')).toBe(t.notebook.templates.daily)
+  })
+
+  it('an archived Daily template note is ignored', () => {
+    expect(dailyBodyOf([note({ title: 'Daily template', body: 'Old {{date}}', isArchived: true })], '2026-11-17')).toBe(t.notebook.templates.daily)
+  })
+
+  it('a title holding $& or $1 goes in as it is written', () => {
+    const notes = [note({ title: 'Daily template', body: '{{title}} on {{date}}' })]
+
+    expect(dailyBodyOf(notes, '2026-11-17', 'Costs $& and $1 and $$')).toBe('Costs $& and $1 and $$ on 2026-11-17')
+  })
+})
+
+describe('the journal', () => {
+  const rows = (notes: Parameters<typeof journalOf>[0], query: string) => journalOf(notes, query).map(group => [group.folder, group.notes.map(n => n.title)])
+
+  it('lists only live notes titled with a real day, newest first, one group per month', () => {
+    const notes = [
+      note({ id: 'a', title: '2026-10-31' }),
+      note({ id: 'b', title: '2026-11-03', folder: 'Ideas' }),
+      note({ id: 'c', title: '2025-12-24' }),
+      note({ id: 'd', title: '2026-11-17' }),
+      note({ id: 'e', title: '2026-11-10', isArchived: true }),
+      note({ id: 'f', title: '2026-11-17 2' }),
+      note({ id: 'g', title: '2026-02-30' }),
+      note({ id: 'h', title: 'Daily template' }),
+    ]
+
+    expect(rows(notes, '')).toEqual([
+      ['Nov 2026', ['2026-11-17', '2026-11-03']],
+      ['Oct 2026', ['2026-10-31']],
+      ['Dec 2025', ['2025-12-24']],
+    ])
+  })
+
+  it('search keeps the days whose title, text or tags match', () => {
+    const notes = [note({ id: 'a', title: '2026-11-17', body: 'Standup went well' }), note({ id: 'b', title: '2026-11-16', tags: ['standup'] }), note({ id: 'c', title: '2026-10-02' })]
+
+    expect(rows(notes, 'standup')).toEqual([['Nov 2026', ['2026-11-17', '2026-11-16']]])
+    expect(rows(notes, '2026-10')).toEqual([['Oct 2026', ['2026-10-02']]])
+    expect(rows(notes, 'missing')).toEqual([])
+  })
+
+  it('is empty with no days', () => {
+    expect(journalOf([note()], '')).toEqual([])
+  })
+})
 
 describe('note templates', () => {
   it.each(NOTE_TYPES)('starts a %s note with its own text and leaves the folder alone', type => {
@@ -23,6 +103,14 @@ describe('note templates', () => {
     expect(templateChange('daily', 'Untitled 2', notes, 'me', '2026-11-07').title).toBe('2026-11-07 3')
     expect(templateChange('daily', 'My journal', notes, 'me', '2026-11-07').title).toBeUndefined()
     expect(templateChange('idea', 'Untitled', notes, 'me', '2026-11-07').title).toBeUndefined()
+  })
+
+  it('a Daily note starts from the realm’s Daily template, with today and its title put in', () => {
+    const notes = [note({ id: 'tpl', title: 'Daily template', body: '# {{date}} · {{title}}' }), note({ id: 'taken', title: '2026-11-07' })]
+
+    expect(templateChange('daily', 'Untitled', notes, 'me', '2026-11-07')).toEqual({ type: 'daily', title: '2026-11-07 2', body: '# 2026-11-07 · 2026-11-07 2' })
+    expect(templateChange('daily', 'My journal', notes, 'me', '2026-11-07')).toEqual({ type: 'daily', body: '# 2026-11-07 · My journal' })
+    expect(templateChange('idea', 'Untitled', notes, 'me', '2026-11-07').body).toBe(t.notebook.templates.idea)
   })
 })
 

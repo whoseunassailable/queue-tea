@@ -135,6 +135,20 @@
 .rm .nt-mode-btn { height: 24px; padding: 0 10px; border: none; border-radius: 999px; background: transparent; color: var(--ink2); font: inherit; font-size: 12px; font-weight: 700; }
 .rm .nt-mode-btn.on { background: linear-gradient(180deg, #F8E7B4, #E2BC66); color: #3A2C14; }
 
+/* The Graph view: its controls, then the map, with its states laid over it */
+.rm .nt-graph { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 60vh; }
+.rm .nt-graph-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rm .nt-graph-menu { left: 0; right: auto; width: 168px; }
+.rm .nt-graph-menu .prio-item[aria-checked='false'] { color: var(--ink3); }
+.rm .nt-graph-area { position: relative; flex: 1; min-height: 360px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-soft); overflow: hidden; touch-action: none; cursor: grab; }
+.rm .nt-graph-area:focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+.rm .nt-graph-area.is-panning { cursor: grabbing; }
+.rm .nt-graph-area.is-over-node { cursor: pointer; }
+.rm .nt-graph-area canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rm .nt-graph-over { position: absolute; left: 12px; bottom: 12px; margin: 0; pointer-events: none; }
+.rm .nt-graph-over button { pointer-events: auto; }
+.rm .nt-graph-said { position: absolute; left: 12px; top: 10px; margin: 0; font-size: 12px; font-weight: 700; color: var(--ink2); pointer-events: none; }
+
 /* The Read view: the same column and type as the text it reads */
 .rm .nt-read { flex: 1; width: 100%; max-width: 640px; min-height: 48vh; font-size: 15px; line-height: 1.7; color: var(--ink); overflow-wrap: anywhere; }
 .rm .nt-read > :first-child { margin-top: 0; }

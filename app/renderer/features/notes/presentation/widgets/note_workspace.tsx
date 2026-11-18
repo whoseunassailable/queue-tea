@@ -16,6 +16,8 @@ import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkQueryA
 import type { QuestLine } from '../../domain/notes_view'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
+import type { GraphKept, GraphSettings } from './note_graph_view'
+import { NoteGraphView } from './note_graph_view'
 import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { NoteHistory } from './note_history'
 
@@ -44,7 +46,9 @@ export type NoteActions = {
 export type Layout = 'wide' | 'mid' | 'narrow'
 
 // saveRef: how the page saves the open note before it moves notes itself.
-type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; isReading: boolean; onReading: (isReading: boolean) => void; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions }
+export type NoteMode = 'write' | 'read' | 'graph'
+
+type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; mode: NoteMode; onMode: (mode: NoteMode) => void; graph: GraphSettings; onGraph: (next: GraphSettings) => void; kept: MutableRef<GraphKept>; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions }
 
 const PICKER_WIDTH = 320
 
@@ -156,7 +160,7 @@ const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, Q
 // One note, open: its editor, what it links to and from, and BrewQuest. Every
 // change saves itself a moment after typing stops, over the file it was read
 // from; a file changed meanwhile stops the saving and asks what to keep.
-export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, isReading, onReading, onShowList, saveRef, actions }: Props) => {
+export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, mode, onMode, graph, onGraph, kept, onShowList, saveRef, actions }: Props) => {
   const start = held?.change ?? changeOf(note)
   const [draft, setDraft] = useState<NoteChange>(start)
   const [titleText, setTitleText] = useState(start.title)
@@ -184,11 +188,13 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const titleBox = useRef<HTMLInputElement>(null)
   const detailsButton = useRef<HTMLButtonElement>(null)
   const historyButton = useRef<HTMLButtonElement>(null)
+  const graphButton = useRef<HTMLButtonElement>(null)
   const caret = useRef<number | null>(null)
   const isLive = !note.isArchived
   const isFloating = layout !== 'wide'
   // An archived note can't be edited, so it always reads.
-  const isShowingRead = isReading || !isLive
+  const view: NoteMode = isLive ? mode : 'read'
+  const isShowingRead = view === 'read'
 
   const flush = async (): Promise<boolean> => {
     if (timer.current !== null) clearTimeout(timer.current)
@@ -390,14 +396,18 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     detailsButton.current?.focus()
   }
   // Esc puts the floating inspector away, wherever the focus is; fields that
-  // use Esc themselves keep it from coming here. ⌘E turns Write and Read over.
+  // use Esc themselves keep it from coming here. ⌘E turns Write and Read over, ⌘G opens Graph.
   useWindowKeys(event => {
     if (document.querySelector('[role="dialog"]') !== null) return
     if (event.key === 'Escape' && isDetailsOpen) closeDetails()
     else if (event.key === 'e' && event.metaKey && isLive) {
       event.preventDefault()
       setPicker(null)
-      onReading(!isReading)
+      onMode(view === 'write' ? 'read' : 'write')
+    } else if (event.key === 'g' && event.metaKey && isLive) {
+      event.preventDefault()
+      setPicker(null)
+      onMode('graph')
     }
   })
 
@@ -437,12 +447,11 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           </span>
           {isLive && (
             <span class="nt-mode" role="group" aria-label={t.notebook.viewAs}>
-              <button type="button" class={isReading ? 'nt-mode-btn' : 'nt-mode-btn on'} aria-pressed={!isReading} title={t.notebook.modeKeys} onClick={() => onReading(false)}>
-                {t.notebook.write}
-              </button>
-              <button type="button" class={isReading ? 'nt-mode-btn on' : 'nt-mode-btn'} aria-pressed={isReading} title={t.notebook.modeKeys} onClick={() => onReading(true)}>
-                {t.notebook.read}
-              </button>
+              {(['write', 'read', 'graph'] as const).map(choice => (
+                <button key={choice} ref={choice === 'graph' ? graphButton : undefined} type="button" class={view === choice ? 'nt-mode-btn on' : 'nt-mode-btn'} aria-pressed={view === choice} title={choice === 'graph' ? t.notebook.graphKeys : t.notebook.modeKeys} onClick={() => onMode(choice)}>
+                  {t.notebook[choice]}
+                </button>
+              ))}
             </span>
           )}
           <SaveLine save={save} onRetry={() => void flush()} />
@@ -531,7 +540,9 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           )}
         </div>
         <AttachmentInput engine={engine} realm={realm} id={note.id} isLive={isLive} onInsert={insertFile}>
-        {isShowingRead ? (
+        {view === 'graph' ? (
+          <NoteGraphView engine={engine} notes={notes} open={shown} quests={quests} settings={graph} onSettings={onGraph} kept={kept} onOpenNote={actions.onOpen} onOpenQuest={actions.onOpenQuest} onLeave={() => graphButton.current?.focus()} />
+        ) : isShowingRead ? (
           <ReadView engine={engine} realm={realm} body={draft.body} notes={notes} quests={quests} isLive={isLive} onToggle={index => change({ body: toggleTaskAt(latest.current.body, index) })} onOpenNote={actions.onOpen} onOpenQuest={actions.onOpenQuest} onOpenLink={actions.onOpenLink} />
         ) : (
           <div class="nt-body" ref={bodyBox}>
@@ -595,7 +606,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           </div>
         )}
         </AttachmentInput>
-        {isLive && !isShowingRead && draft.body === '' && draft.type === null && (
+        {isLive && view === 'write' && draft.body === '' && draft.type === null && (
           <div class="nt-templates" role="group" aria-label={t.notebook.templatesLabel}>
             <span class="sub">{t.notebook.templatesLabel}</span>
             {NOTE_TYPES.map(type => (

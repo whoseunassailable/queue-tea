@@ -62,3 +62,29 @@ export const PALETTE_NOTE_ROWS = 5
 export const PALETTE_SNIPPET = 60
 // Rows of the 8 kept for quests, when that many match.
 export const NOTE_PICKER_QUEST_ROWS = 3
+// The note graph's layout: how far apart linked notes sit, how hard notes push
+// apart and how gently all of them are drawn to the middle. A layout that has
+// most of its points kept starts warm, so it settles quickly and doesn't jump.
+// 150 steps and a looser Barnes-Hut (theta 1.2) lay out 5,000 notes in about
+// 1.4 s cold and 1 s warm; d3's own 300 steps and 0.9 took 4.7 s.
+export const GRAPH_LINK_DISTANCE = 60
+export const GRAPH_CHARGE = -120
+export const GRAPH_GRAVITY = 0.04
+export const GRAPH_TICKS = 150
+export const GRAPH_THETA = 1.2
+export const GRAPH_WARM_ALPHA = 0.1
+// How many layout steps pass between two progress reports.
+export const GRAPH_PROGRESS_TICKS = 20
+// The note graph on screen: the wait before its spinner shows, the zoom at
+// which every title shows on the whole realm, how near a click must land on a
+// node, how long a title may be, the zoom range, and how far the mouse moves
+// before a press is a pan and not a click.
+export const GRAPH_SPINNER_MS = 150
+export const GRAPH_LABEL_ZOOM = 1.5
+export const GRAPH_HIT_PX = 10
+export const GRAPH_LABEL_CHARS = 40
+export const GRAPH_ZOOM_MIN = 0.05
+export const GRAPH_ZOOM_MAX = 4
+export const GRAPH_DRAG_PX = 3
+// The room Fit leaves around the graph, in pixels.
+export const GRAPH_FIT_PX = 40

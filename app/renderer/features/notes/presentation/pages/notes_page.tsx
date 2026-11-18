@@ -21,7 +21,9 @@ import { useNotesAsks } from '../state_management/notes_asks'
 import { Robot } from '../widgets/brew_quest'
 import { useNotesBackup } from '../widgets/notes_backup'
 import { NoteWorkspace } from '../widgets/note_workspace'
-import type { Held, Layout, NoteActions } from '../widgets/note_workspace'
+import type { Held, Layout, NoteActions, NoteMode } from '../widgets/note_workspace'
+import type { GraphSettings } from '../widgets/note_graph_view'
+import { GRAPH_START, keptStart } from '../widgets/note_graph_view'
 import '../notes.css'
 
 const DeleteNote = ({ note, linkedFrom, onDelete, onClose }: { note: Note; linkedFrom: string[]; onDelete: (note: Note) => Promise<Answer<unknown>>; onClose: () => void }) => {
@@ -143,8 +145,11 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set())
   const [isDrawerOpen, setDrawerOpen] = useState(false)
   const [showFailure, setShowFailure] = useState<string | null>(null)
-  // Write or Read, kept as you move between notes.
-  const [isReading, setReading] = useState(false)
+  // Write, Read or Graph, and the graph's settings, kept as you move between notes.
+  const [mode, setMode] = useState<NoteMode>('write')
+  const [graph, setGraph] = useState<GraphSettings>(GRAPH_START)
+  // The whole realm's map, kept across notes (App remounts the page per realm).
+  const kept = useRef(keptStart())
   // Edits that couldn't be saved yet, by note, kept while another note is open.
   const [held, setHeld] = useState<Record<string, Held>>({})
   const search = useRef<HTMLInputElement>(null)
@@ -602,7 +607,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           empty
         ) : open !== undefined ? (
           <div class="nt-main">
-            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} isReading={isReading} onReading={setReading} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} />
+            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} mode={mode} onMode={setMode} graph={graph} onGraph={setGraph} kept={kept} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} />
           </div>
         ) : (
           <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />

@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   ".claude-plugin/plugin.json": {
-    "mtime": 1794299681.2007952,
-    "seen": 1794912392.376176,
-    "ast_hash": "f3eca37d9db421884905c46d3448c4ce",
+    "mtime": 1795029244.6612835,
+    "seen": 1795033691.077559,
+    "ast_hash": "d8b916780edf6ebf7b96f4882daaef47",
     "semantic_hash": ""
   },
   "app/e2e/board.e2e.ts": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "app/package.json": {
-    "mtime": 1794299681.253806,
-    "seen": 1794912392.3763,
-    "ast_hash": "f9e7da16681b7f489e54c1808d867cc0",
+    "mtime": 1795029244.661695,
+    "seen": 1795033691.0776792,
+    "ast_hash": "e02b0b2ac1be3e47b3d00d7fd125b1ba",
     "semantic_hash": ""
   },
   "app/playwright.config.ts": {
@@ -1092,9 +1092,9 @@
     "semantic_hash": ""
   },
   "app/renderer/test_setup.ts": {
-    "mtime": 1794299681.3120182,
-    "seen": 1794912392.376422,
-    "ast_hash": "7177cec334a9b594ddda302dbfa75859",
+    "mtime": 1795033385.006443,
+    "seen": 1795033691.077795,
+    "ast_hash": "6348bce0ab2fbf3a60c507fee0659bec",
     "semantic_hash": ""
   },
   "app/renderer/test_support.ts": {
@@ -2670,8 +2670,8 @@
     "semantic_hash": ""
   },
   "app/renderer/app/designs.spec.tsx": {
-    "mtime": 1795028493.0668657,
-    "seen": 1795028582.272455,
+    "mtime": 1795032981.375893,
+    "seen": 1795033691.0776849,
     "ast_hash": "df4d712ee22c6786e84f8749ada76ff0",
     "semantic_hash": ""
   },
@@ -3162,9 +3162,9 @@
     "semantic_hash": ""
   },
   "app/renderer/app/notes.spec.tsx": {
-    "mtime": 1794299681.2576408,
-    "seen": 1794912392.376308,
-    "ast_hash": "b50fb37130edf92d9ab9985e3d7dd8f1",
+    "mtime": 1795032996.7769895,
+    "seen": 1795033691.077687,
+    "ast_hash": "a1d04caca2e769f3a03dc743a44fc0d1",
     "semantic_hash": ""
   },
   "app/renderer/features/notes/domain/notes_view.spec.ts": {

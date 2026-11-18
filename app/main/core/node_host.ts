@@ -3,7 +3,7 @@ import { access, mkdir, readdir, readFile, rename, rm, rmdir, stat, writeFile } 
 import { dirname } from 'node:path'
 
 import type { Host, RunResult } from '../../../hooks/core/host/host'
-import { FORBIDDEN_GIT } from './constants'
+import { FORBIDDEN_GIT, RUN_OUTPUT_LIMIT } from './constants'
 import type { Logger } from './logger'
 
 const failed = (err: unknown): RunResult => ({ exitCode: 1, stdout: '', stderr: err instanceof Error ? err.message : String(err) })
@@ -59,7 +59,7 @@ export const nodeHost = (log: Logger, openUrl: (url: string) => Promise<RunResul
         return
       }
       log.debug(`run: ${argv.join(' ')}`)
-      execFile(argv[0]!, argv.slice(1), { cwd, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+      execFile(argv[0]!, argv.slice(1), { cwd, maxBuffer: RUN_OUTPUT_LIMIT }, (err, stdout, stderr) => {
         const code = err === null ? 0 : typeof err.code === 'number' ? err.code : 1
         done({ exitCode: code, stdout, stderr: err !== null && stderr === '' ? err.message : stderr })
       })

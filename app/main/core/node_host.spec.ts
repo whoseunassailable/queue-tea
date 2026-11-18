@@ -86,4 +86,15 @@ describe('the file calls', () => {
     expect(ran.exitCode).not.toBe(0)
     expect(ran.stderr).not.toBe('')
   })
+
+  // A branch's diff carries graphify's graph files, about 21 MB.
+  it('a command that prints more than 16 MB comes back whole', async () => {
+    const size = 20 * 1024 * 1024
+
+    const ran = await host.run([process.execPath, '-e', `process.stdout.write('x'.repeat(${size}))`], dir)
+
+    expect(ran.stderr).toBe('')
+    expect(ran.exitCode).toBe(0)
+    expect(ran.stdout.length).toBe(size)
+  })
 })

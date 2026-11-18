@@ -13,6 +13,10 @@ export const WINDOW = { width: 1280, height: 800, minWidth: 720, minHeight: 560 
 // typed capability for actions explicitly approved by the user.
 export const FORBIDDEN_GIT = ['commit', 'push', 'merge', 'pull'] as const
 
+// The most a command may print. A branch's diff carries graphify's graph files,
+// rewritten whole on each build: about 21 MB on 2026-11-18, past the old 16 MB.
+export const RUN_OUTPUT_LIMIT = 256 * 1024 * 1024
+
 // Longer than any command or path the window has reason to copy.
 export const COPY_LIMIT = 4_096
 

@@ -1,14 +1,35 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EngineApi, Reply } from '../../shared/engine_api'
 import { NOTE_TYPES } from '../../shared/notes'
 import type { Note, NoteChange, NoteFiled, NoteInput, NotesView, QuestProposal } from '../../shared/notes'
+import type { LayoutInput, Point } from '../features/notes/domain/note_graph_layout'
+import type { LayoutRun } from '../features/notes/presentation/state_management/graph_layout'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
-import { fakeEngine, note, projectView, quest } from '../test_support'
+import { fakeEngine, note, projectRow, projectView, quest } from '../test_support'
 import { App } from './app'
+
+// The graph is laid out at once, with no worker: the centre (or the first note
+// for the whole realm) at (0, 0), and the others, by id, at (100, 0),
+// (-100, 0), (0, 100) and (0, -100). Every layout asked for is kept, newest last.
+const layouts = vi.hoisted((): LayoutInput[] => [])
+vi.mock('../features/notes/presentation/state_management/graph_layout', async () => {
+  const actual = await vi.importActual<typeof import('../features/notes/presentation/state_management/graph_layout')>('../features/notes/presentation/state_management/graph_layout')
+  const spots: Point[] = [{ x: 100, y: 0 }, { x: -100, y: 0 }, { x: 0, y: 100 }, { x: 0, y: -100 }]
+  const workerLayout: LayoutRun = input => {
+    layouts.push(input)
+    const centre = input.centre ?? input.ids[0]!
+    const others = input.ids.filter(id => id !== centre).sort()
+    const points = new Map<string, Point>([[centre, { x: 0, y: 0 }], ...others.map((id, i): [string, Point] => [id, spots[i] ?? { x: 0, y: 100 * i }])])
+
+    return { done: Promise.resolve(points), cancel: () => {} }
+  }
+
+  return { ...actual, workerLayout }
+})
 
 const KEY = 'a-000001'
 const FOLDER = '/Users/me/.queue-tea/notes/a-000001'
@@ -767,5 +788,211 @@ describe('the Notes page', () => {
     const card = await screen.findByRole('link', { name: t.notebook.openBookmark('Example page', 'example.com') })
     await act(async () => void fireEvent.click(card))
     expect(openLink).toHaveBeenCalledWith('https://example.com/post')
+  })
+
+  describe('Write, Read and Graph', () => {
+    // jsdom's canvas has no 2D context, so the graph isn't drawn, and every
+    // element measures 800 × 600: a fitted graph with notes at (100, 0) and
+    // (-100, 0) puts the centre at (400, 300) and the note at (100, 0) at (500, 300).
+    beforeEach(() => {
+      layouts.length = 0
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, x: 0, y: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON() {} } as DOMRect)
+    })
+    afterEach(() => vi.restoreAllMocks())
+
+    const toggle = () => within(screen.getByRole('group', { name: t.notebook.viewAs }))
+    const mode = () => [t.notebook.write, t.notebook.read, t.notebook.graph].map(name => toggle().getByRole('button', { name }).getAttribute('aria-pressed'))
+    const graph = () => screen.queryByRole('group', { name: /^Graph (around|of the whole realm)/ })
+    const row = (title: string) => within(screen.getByRole('region', { name: 'Ideas' })).getByRole('button', { name: new RegExp(`^${title}`) })
+    // Lets the layout's answer, already settled, reach the view.
+    const settle = () => act(async () => void (await new Promise(resolve => setTimeout(resolve, 0))))
+
+    it('Write, Read and Graph switch the view, and the choice stays on the next note', async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', body: '[[Beta]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' }), note({ id: 'c', title: 'Cello', body: 'See [[Alpha]]' })]))
+      await screen.findByDisplayValue('Alpha')
+      expect(toggle().getByRole('button', { name: t.notebook.graph }).getAttribute('title')).toBe(t.notebook.graphKeys)
+      expect(mode()).toEqual(['true', 'false', 'false'])
+
+      await press(t.notebook.graph)
+      await settle()
+      expect(mode()).toEqual(['false', 'false', 'true'])
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph around Alpha/)
+      expect(screen.queryByLabelText(t.notebook.body, { selector: 'textarea' })).toBeNull()
+      expect(screen.getByDisplayValue('Alpha')).toBeTruthy()
+      const about = screen.getByRole('complementary', { name: t.notebook.inspector })
+      expect(within(about).getByRole('button', { name: 'Beta' })).toBeTruthy()
+      expect(within(about).getByRole('button', { name: 'Cello' })).toBeTruthy()
+
+      await press(t.notebook.read)
+      expect(mode()).toEqual(['false', 'true', 'false'])
+      expect(screen.getByRole('article')).toBeTruthy()
+      expect(graph()).toBeNull()
+
+      await press(t.notebook.graph)
+      await act(async () => void fireEvent.click(row('Beta')))
+      expect(await screen.findByDisplayValue('Beta')).toBeTruthy()
+      await settle()
+      expect(mode()).toEqual(['false', 'false', 'true'])
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph around Beta/)
+
+      await press(t.notebook.write)
+      expect(mode()).toEqual(['true', 'false', 'false'])
+      expect(graph()).toBeNull()
+      expect(body().value).toBe('')
+    })
+
+    it('⌘G opens Graph, and ⌘E goes back to Write from Graph', async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', body: '[[Beta]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]))
+      await screen.findByDisplayValue('Alpha')
+
+      fireEvent.keyDown(window, { key: 'g', metaKey: true })
+      await settle()
+      expect(mode()).toEqual(['false', 'false', 'true'])
+      expect(graph()).toBeTruthy()
+
+      fireEvent.keyDown(window, { key: 'e', metaKey: true })
+      expect(mode()).toEqual(['true', 'false', 'false'])
+      expect(body().value).toBe('[[Beta]]')
+
+      fireEvent.keyDown(window, { key: 'e', metaKey: true })
+      expect(mode()).toEqual(['false', 'true', 'false'])
+      expect(screen.getByRole('article')).toBeTruthy()
+
+      fireEvent.keyDown(window, { key: 'e', metaKey: true })
+      expect(mode()).toEqual(['true', 'false', 'false'])
+      expect(body().value).toBe('[[Beta]]')
+
+      fireEvent.keyDown(window, { key: 'e', metaKey: true })
+      fireEvent.keyDown(window, { key: 'g', metaKey: true })
+      await settle()
+      expect(mode()).toEqual(['false', 'false', 'true'])
+      expect(graph()).toBeTruthy()
+    })
+
+    it('an archived note shows Read and has no Graph button', async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', updated: '2026-11-08' }), note({ id: 'old', title: 'Old plan', body: '- [ ] Scan', isArchived: true })]))
+      await screen.findByDisplayValue('Alpha')
+      // Graph was the choice when the archived note opened.
+      await press(t.notebook.graph)
+
+      await act(async () => void fireEvent.click(await screen.findByRole('button', { name: t.notebook.archived(1) })))
+      await act(async () => void fireEvent.click(await screen.findByRole('button', { name: /^Old plan/ })))
+      expect(await screen.findByText(t.notebook.archivedLine)).toBeTruthy()
+      expect(screen.getByRole('article')).toBeTruthy()
+      expect(graph()).toBeNull()
+      expect(screen.queryByRole('button', { name: t.notebook.write })).toBeNull()
+      expect(screen.queryByRole('button', { name: t.notebook.graph })).toBeNull()
+
+      fireEvent.keyDown(window, { key: 'g', metaKey: true })
+      await settle()
+      expect(graph()).toBeNull()
+      expect(screen.getByRole('article')).toBeTruthy()
+    })
+
+    it('clicking a note in the graph opens it and stays in Graph', async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', body: '[[Beta]] [[Cello]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' }), note({ id: 'c', title: 'Cello' })]))
+      await screen.findByDisplayValue('Alpha')
+      await press(t.notebook.graph)
+      await settle()
+
+      // Alpha is in the middle, Beta at (100, 0) and Cello at (-100, 0).
+      const area = graph()!
+      fireEvent.mouseDown(area, { clientX: 500, clientY: 300, button: 0 })
+      fireEvent.mouseUp(area, { clientX: 500, clientY: 300, button: 0 })
+
+      expect(await screen.findByDisplayValue('Beta')).toBeTruthy()
+      expect(row('Beta').getAttribute('aria-current')).toBe('true')
+      expect(row('Alpha').getAttribute('aria-current')).toBeNull()
+      await settle()
+      expect(mode()).toEqual(['false', 'false', 'true'])
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph around Beta/)
+    })
+
+    it('a new empty note made while in Graph shows the map and no template chips', async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', body: '[[Beta]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]))
+      await screen.findByDisplayValue('Alpha')
+      await press(t.notebook.graph)
+      await settle()
+
+      await act(async () => void fireEvent.keyDown(window, { key: 'N', metaKey: true, shiftKey: true }))
+      await settle()
+
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph around Untitled/)
+      expect(mode()).toEqual(['false', 'false', 'true'])
+      expect(screen.queryByRole('group', { name: t.notebook.templatesLabel })).toBeNull()
+    })
+
+    it("the graph's scope and filters stay while moving between notes", async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', body: '[[Beta]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]))
+      await screen.findByDisplayValue('Alpha')
+      await press(t.notebook.graph)
+      await settle()
+      await press(t.notebook.graphView.oneStep)
+      await press(t.notebook.graphView.filter)
+      await act(async () => void fireEvent.click(screen.getByRole('menuitemcheckbox', { name: t.notebook.graphView.quests })))
+      await press(t.notebook.graphView.realm)
+      await settle()
+
+      await act(async () => void fireEvent.click(row('Beta')))
+      expect(await screen.findByDisplayValue('Beta')).toBeTruthy()
+      await settle()
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph of the whole realm/)
+      expect(screen.getByRole('button', { name: t.notebook.graphView.realm }).getAttribute('aria-pressed')).toBe('true')
+      await press(t.notebook.graphView.filter)
+      expect(screen.getByRole('menuitemcheckbox', { name: t.notebook.graphView.quests }).getAttribute('aria-checked')).toBe('false')
+
+      await press(t.notebook.graphView.around)
+      await settle()
+      expect(screen.getByRole('button', { name: t.notebook.graphView.oneStep }).getAttribute('aria-pressed')).toBe('true')
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph around Beta: .* within 1 step$/)
+    })
+
+    it('a new realm starts with no kept points', async () => {
+      window.location.hash = '#/notes'
+      const notesOf = (key: string): NotesView => ({
+        // The same ids in both realms, as each realm numbers its own notes; the second has one more.
+        notes:
+          key === KEY
+            ? [note({ id: 'a', title: 'Alpha', body: '[[Beta]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]
+            : [note({ id: 'a', title: 'Other alpha', body: '[[Other beta]] [[Other cello]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Other beta' }), note({ id: 'c', title: 'Other cello' })],
+        unreadable: [],
+        folder: FOLDER,
+      })
+      const { engine } = fakeEngine({ listProjects: async () => ok([projectRow(KEY), projectRow('b-000002')]), readNotes: async (key: string) => ok(notesOf(key)) })
+      const workspace = createWorkspace(engine)
+      await act(async () => {
+        render(<App workspace={workspace} engine={engine} />)
+        await workspace.start()
+      })
+      await act(async () => workspace.pick(KEY))
+      await screen.findByDisplayValue('Alpha')
+      await press(t.notebook.graph)
+      await press(t.notebook.graphView.realm)
+      await settle()
+      expect(graph()?.getAttribute('aria-label')).toMatch(/^Graph of the whole realm/)
+      expect(layouts.filter(input => input.centre === null)).toHaveLength(1)
+
+      await act(async () => workspace.pick('b-000002'))
+      expect(await screen.findByDisplayValue('Other alpha')).toBeTruthy()
+      const before = layouts.length
+      await press(t.notebook.graph)
+      await press(t.notebook.graphView.realm)
+      await settle()
+      expect(layouts.slice(before).find(input => input.centre === null)?.start).toEqual(new Map())
+    })
+
+    it('Esc in the graph puts the focus on the Graph button', async () => {
+      await open(memoryNotes([note({ id: 'a', title: 'Alpha', body: '[[Beta]]', updated: '2026-11-08' }), note({ id: 'b', title: 'Beta' })]))
+      await screen.findByDisplayValue('Alpha')
+      await press(t.notebook.graph)
+      await settle()
+
+      const area = graph()!
+      act(() => area.focus())
+      fireEvent.keyDown(area, { key: 'Escape' })
+      expect(document.activeElement).toBe(toggle().getByRole('button', { name: t.notebook.graph }))
+      expect(mode()).toEqual(['false', 'false', 'true'])
+    })
   })
 })

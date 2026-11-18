@@ -1,7 +1,7 @@
 {
   "name": "queue-tea-app",
   "productName": "Queue-tea",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "description": "The Queue-tea workspace app: every project's queue, beside Claude Code.",
   "author": "Rohan Bhande",
@@ -28,7 +28,9 @@
     "@playwright/test": "1.64.1",
     "@preact/preset-vite": "2.10.6",
     "@testing-library/preact": "3.2.6",
+    "@types/d3-force": "3.0.10",
     "@types/node": "26.6.6",
+    "d3-force": "3.0.0",
     "electron": "45.2.1",
     "electron-builder": "26.0.12",
     "electron-vite": "6.0.0",
@@ -39,5 +41,10 @@
     "vite": "7.3.7",
     "vitest": "3.2.7",
     "zod": "4.6.7"
+  },
+  "overrides": {
+    "d3-quadtree": "3.0.1",
+    "d3-dispatch": "3.0.1",
+    "d3-timer": "3.0.1"
   }
 }

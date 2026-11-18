@@ -9,10 +9,11 @@ export const Spinner = () => (
   </svg>
 )
 
-export const Loading = ({ line }: { line: string }) => (
+export const Loading = ({ line, children }: { line: string; children?: ComponentChildren }) => (
   <div class="state panel" role="status">
     <Spinner />
     <p class="state-line">{line}</p>
+    {children}
   </div>
 )
 

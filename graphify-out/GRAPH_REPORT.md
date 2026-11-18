@@ -1,32 +1,32 @@
-# Graph Report - queue-tea-notes-release  (2026-11-07)
+# Graph Report - designs-approve-version-next  (2026-11-18)
 
 ## Corpus Check
-- 552 files · ~515,433 words
+- 552 files · ~518,400 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: (none) 4, .css 4, .pen 2)
 
 ## Summary
-- 3479 nodes · 12751 edges · 116 communities (110 shown, 6 thin omitted)
+- 3486 nodes · 12772 edges · 139 communities (131 shown, 8 thin omitted)
 - Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 682 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5ab54f87`
+- Built from commit: `21c2bd06`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - note_workspace.tsx
-- vitest
-- tasks_api.ts
-- update_service.ts
-- tasks_api.ts
+- ref_node_fs
+- Refusal
+- ports.ts
+- queue_rules.ts
 - pages.e2e.ts
-- designs_page.tsx
+- EngineApi
 - time.ts
-- realms_api.ts
+- opening_api.spec.ts
 - tasks_controller.ts
-- designs.ts
+- design_forms.ts
 - check_prompt.ts
 - first_run.tsx
 - t
@@ -41,37 +41,37 @@
 - families.ts
 - edits.e2e.ts
 - palette.ts
-- notes_api.ts
+- server.ts
 - Part 2: edits
 - checkpoints.ts
 - tests/helpers.ts
-- states.tsx
-- project_views.ts
+- hud.tsx
+- ranking.ts
 - game.ts
 - branch_api.ts
-- test_support.ts
+- App
 - design_editor.tsx
-- mana.ts
+- sessions.test.ts
 - ui.test.tsx
 - Task 3: Entities and pure rules
 - designs_api.ts
 - note_attachments.ts
 - menu_frame.tsx
-- sessions.test.ts
+- worktrees_repository_impl.ts
 - flows.e2e.ts
 - devDependencies
-- claude_code.ts
+- app_menu.ts
 - commit_guard.ts
-- github_api.ts
+- settings_api.ts
 - compilerOptions
 - 4. Screens
 - queue_controller.ts
 - library_api.ts
 - activity.ts
 - designs.spec.tsx
-- time.ts
+- notes.ts
+- library_page.tsx
 - app.tsx
-- notes_page.tsx
 - board.e2e.ts
 - engine_api.ts
 - host.ts
@@ -80,22 +80,22 @@
 - settings_page.tsx
 - Queue-tea: panel redesign
 - band_host.tsx
-- settings_api.ts
+- flows.spec.tsx
 - chronicle_page.tsx
 - view_store.ts
 - docs_log_source.ts
 - commit-chai-n.md
 - helpers_api.spec.ts
-- session_beat.ts
+- hoard_page.tsx
 - app/README.md
 - quest_detail.tsx
-- notes.ts
+- notes_api.ts
 - package.json
 - chai-pter.md
 - Queue-tea in Codex
-- start_api.spec.ts
+- live_api.spec.ts
 - server.ts
-- spec.md
+- Roadmap: the outside review, checked against the code
 - tea-dd.md
 - quests_page.tsx
 - scripts
@@ -104,32 +104,55 @@
 - install_app.sh
 - designs_api.spec.ts
 - record_source.ts
-- branch_source.ts
-- inspector.tsx
+- detail_api.ts
+- designs.ts
 - branch_workflow.e2e.ts
 - Architecture
 - Designs tab
-- operations.ts
-- core/logger.ts
+- test_support.ts
+- ref_node_child_process
 - Branch workflow completion — 5 November 2026
 - Queue-tea: workspace app UI design
 - release_guard.d.mts
 - Tea-concile
 - Notes
-- GitState
+- Shared Types (Task 1 writes them; every task uses them)
 - Task Log
 - main.tsx
-- worktrees_repository_impl.ts
-- Part B: the app
+- feedback.spec.tsx
+- helpers_api.ts
+- project_views.ts
 - Guild helpers on tasks
 - Queue-tea, the workspace app
 - ref_node_path
+- detail.spec.tsx
 - Part 3: setting out and coming back
+- check_layers.mjs
 - .line-check-NZS8Gw/tsconfig.json
-- session_rhythm.ts
-- ref_node_fs
+- register.tsx
+- quest_keys.ts
+- notes.e2e.ts
 - Part 2: edits
-- mocha-mockup.md
+- ProjectView
+- brew_quest.tsx
+- codex_providers.ts
+- fakeEngine
+- Scene
+- judgements.spec.ts
+- projects_api.spec.ts
+- board.spec.tsx
+- shell.spec.tsx
+- comments_panel.tsx
+- Queue-tea: workspace app
+- Review Focus
+- settings.spec.tsx
+- Queue-tea
+- first_window.e2e.ts
+- sky_time.ts
+- queue_rules.ts
+- quests_edits.spec.tsx
+- electron
+- update_control.spec.tsx
 
 ## God Nodes (most connected - your core abstractions)
 1. `t` - 109 edges
@@ -144,189 +167,185 @@
 10. `scopeOf()` - 56 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Acceptance criteria` --references--> `merge()`  [INFERRED]
+  docs/workspace-app.md → app/e2e/branch_workflow.e2e.ts
 - `Parallel quests and branches` --references--> `main()`  [INFERRED]
   docs/spec.md → app/main/codex.ts
 - `1. Find the merge` --references--> `main()`  [INFERRED]
   skills/tea-concile/SKILL.md → app/main/codex.ts
-- `The road` --references--> `Host`  [INFERRED]
-  docs/plan-workspace-app-2.md → hooks/core/host/host.ts
-- `Decisions` --references--> `Host`  [INFERRED]
-  docs/workspace-app.md → hooks/core/host/host.ts
-- `1. The shape of the mod` --references--> `Ports`  [INFERRED]
-  docs/architecture.md → hooks/core/ports/ports.ts
+- `The note file` --references--> `created()`  [INFERRED]
+  docs/notes.md → app/main/features/notes/api/notes_api.spec.ts
+- `Version history` --references--> `NoteVersion`  [INFERRED]
+  docs/notes.md → app/shared/notes.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (116 total, 6 thin omitted)
+## Communities (139 total, 8 thin omitted)
 
 ### Community 0 - "note_workspace.tsx"
-Cohesion: 0.11
-Nodes (33): brewLineOf(), isInPlay(), lineOf(), localDay(), questLineOf(), tickedItemsOf(), whenOf(), BrewQuestCard() (+25 more)
+Cohesion: 0.15
+Nodes (25): isInPlay(), localDay(), QuestLine, questLineOf(), whenOf(), caretPoint(), changeOf(), groupsOf() (+17 more)
 
-### Community 1 - "vitest"
+### Community 1 - "ref_node_fs"
 Cohesion: 0.05
-Nodes (33): attempt(), failed(), isForbiddenGit(), nodeHost(), host, log, DUNE, NOW (+25 more)
+Nodes (45): createLogger(), stackOf(), attempt(), failed(), isForbiddenGit(), nodeHost(), host, log (+37 more)
 
-### Community 2 - "tasks_api.ts"
-Cohesion: 0.12
-Nodes (46): COPY_LIMIT, inGameWords(), Refusal, activeTask(), goBack(), lastNoteAt(), putBackNow(), putBackQuest() (+38 more)
+### Community 2 - "Refusal"
+Cohesion: 0.09
+Nodes (66): inGameWords(), Refusal, activeTask(), goBack(), lastNoteAt(), putBackNow(), putBackQuest(), finishQuest() (+58 more)
 
-### Community 3 - "update_service.ts"
-Cohesion: 0.22
-Nodes (8): majorOf(), setup(), updateWatch(), WatchDeps, AppIdentity, UpdatePhase, UpdateState, PublishedRequest
-
-### Community 4 - "tasks_api.ts"
+### Community 3 - "ports.ts"
 Cohesion: 0.10
-Nodes (39): editQuest(), setPriority(), togglePlayNext(), criteriaOf(), descriptionOf(), DIFFICULTIES, difficultyOf(), helpersOf() (+31 more)
+Nodes (40): Shared resources, Task 5: The shared resources' data and controllers, Task 9: Keeping usage down, MenuSpec, Ports, SessionUsage, pad(), shouldFresh() (+32 more)
+
+### Community 4 - "queue_rules.ts"
+Cohesion: 0.17
+Nodes (19): Drafting a version for the Designs tab, How you work, What you don't do, What you report, NewQuest, QuestEdit, Task 1: the engine's three additions, Task 2: Filing and editing carry the choice (+11 more)
 
 ### Community 5 - "pages.e2e.ts"
 Cohesion: 0.29
 Nodes (4): APP, task(), TODAY, won()
 
-### Community 6 - "designs_page.tsx"
-Cohesion: 0.07
-Nodes (64): Answer, ask(), EngineRead, useEngineRead(), THUMB_BOX, ReadView(), Loading(), useWindowWidth() (+56 more)
+### Community 6 - "EngineApi"
+Cohesion: 0.08
+Nodes (57): ask(), EngineRead, useEngineRead(), ReadView(), Loading(), Spinner(), useWindowWidth(), Window (+49 more)
 
 ### Community 7 - "time.ts"
 Cohesion: 0.07
-Nodes (47): ctx, One engine, two hosts, Ctx, Env, Block, logFileIn(), withBlock(), BlockResult (+39 more)
+Nodes (55): codexOperations(), CodexRefusal, readable(), ctx, setup(), One engine, two hosts, Ctx, Env (+47 more)
 
-### Community 8 - "realms_api.ts"
-Cohesion: 0.09
-Nodes (32): projectsFolder(), canWrite(), installCommand(), openedFromUrl(), OpeningDeps, logged, run, commandFileIn() (+24 more)
+### Community 8 - "opening_api.spec.ts"
+Cohesion: 0.24
+Nodes (13): canWrite(), installCommand(), openedFromUrl(), OpeningDeps, commandFileIn(), findCommand(), isOurs(), needsPath() (+5 more)
 
 ### Community 9 - "tasks_controller.ts"
 Cohesion: 0.07
-Nodes (80): Features, Task 11: `tasks`: the task's own cycle, Global constraints, Guild helpers on tasks: implementation plan, Review focus, Task 4: The turn's instruction and the first message, Task 5: Noting helper runs and the reminder at done, beat() (+72 more)
+Nodes (61): Task 11: `tasks`: the task's own cycle, Task 4: The turn's instruction and the first message, Task 5: Noting helper runs and the reminder at done, How Claude uses them (the mod), once(), running, markFor(), helperToRemind() (+53 more)
 
-### Community 10 - "designs.ts"
-Cohesion: 0.11
-Nodes (29): colourError(), commentError(), Drafted, draftOf(), labelError(), lineOf(), NextErrors, NextField (+21 more)
+### Community 10 - "design_forms.ts"
+Cohesion: 0.12
+Nodes (23): colourError(), Drafted, draftOf(), labelError(), lineOf(), NextErrors, NextField, nextFormOf() (+15 more)
 
 ### Community 11 - "check_prompt.ts"
 Cohesion: 0.19
 Nodes (14): checkMessage(), checkRepositoryImpl(), replyOf(), CheckRepository, DIFFICULTIES, INTENTS, KINDS, parseCheckAnswer() (+6 more)
 
 ### Community 12 - "first_run.tsx"
-Cohesion: 0.13
-Nodes (31): accountsIn(), hasAccounts(), isGone(), isKnown(), needsAnswer(), NO_ACCOUNT, pickedOf(), account() (+23 more)
+Cohesion: 0.12
+Nodes (35): HOLD_FILES_SHOWN, accountsIn(), hasAccounts(), isGone(), isKnown(), needsAnswer(), NO_ACCOUNT, pickedOf() (+27 more)
 
 ### Community 13 - "t"
-Cohesion: 0.11
-Nodes (22): fileNamed(), FILES, frontmatter(), Helper, helperOf(), HELPERS, KINDS, LOGOS (+14 more)
+Cohesion: 0.10
+Nodes (31): Content(), Failed(), HelperBench(), nameOf(), Props, Report(), fileNamed(), FILES (+23 more)
 
 ### Community 14 - "Queue-tea: design"
 Cohesion: 0.05
 Nodes (43): A task's life, Codex in place of Claude Code, Coming back later, Commands, Effort, Errands, Features, Filing a task (+35 more)
 
 ### Community 15 - "cup_mood.ts"
-Cohesion: 0.12
-Nodes (23): AIR, body(), Cup, CUP_COLUMNS, CUP_ROWS, cupArt, CupFacts, cupOf() (+15 more)
+Cohesion: 0.11
+Nodes (24): AIR, body(), Cup, CUP_COLUMNS, CUP_ROWS, cupArt, CupFacts, cupOf() (+16 more)
 
 ### Community 16 - "scope.ts"
-Cohesion: 0.13
-Nodes (41): GAME_WORDS, MESSAGES, reply(), cancelMergeChecks(), Observation, readChronicle(), GameDeps, readGame() (+33 more)
+Cohesion: 0.11
+Nodes (51): projectsFolder(), Logger, GAME_WORDS, MESSAGES, reply(), readChronicle(), GameDeps, readGame() (+43 more)
 
 ### Community 17 - "git_source.ts"
-Cohesion: 0.20
-Nodes (27): File Structure, Task 8: The task flow, What each screen reads from existing data, Options, commitsBetween(), diffSince(), git(), lastCommit() (+19 more)
+Cohesion: 0.19
+Nodes (28): Task 8: The task flow, Already built, What each screen reads from existing data, Options, commitsBetween(), diffSince(), git(), lastCommit() (+20 more)
 
 ### Community 18 - "main.ts"
 Cohesion: 0.05
-Nodes (59): BUSY_PROBE, FORBIDDEN_GIT, GH_CODE_WAIT_MS, GH_LOGIN_WAIT_MS, GH_PATHS, LOG_FILE, RESTART_FILE, SETTINGS_FILE (+51 more)
+Nodes (61): BUSY_PROBE, COPY_LIMIT, FORBIDDEN_GIT, GH_CODE_WAIT_MS, GH_LOGIN_WAIT_MS, GH_PATHS, LOG_FILE, RESTART_FILE (+53 more)
 
 ### Community 19 - "version.test.mjs"
 Cohesion: 0.12
-Nodes (26): checkLayers(), CLAUDE_MAY(), cyclesIn(), edgeProblem(), importsOf(), isData(), isTypeOnly(), placeOf() (+18 more)
+Nodes (21): env, run, server, @modelcontextprotocol/sdk, fixtures, addToCommit(), bumpOf(), FILES (+13 more)
 
 ### Community 20 - "emptyRecord"
 Cohesion: 0.05
-Nodes (37): Account, plantGh(), statusOf(), APP, dayBefore(), fileOf(), won(), APP (+29 more)
+Nodes (31): Account, plantGh(), statusOf(), APP, dayBefore(), won(), APP, BUNDLE (+23 more)
 
 ### Community 21 - "notes_view.ts"
-Cohesion: 0.13
-Nodes (27): folderError(), FolderGroup, folderNameError(), foldersOf(), IN_PLAY, isUntitled(), linkOptionsOf(), linkPicksOf() (+19 more)
+Cohesion: 0.14
+Nodes (26): brewLineOf(), folderError(), FolderGroup, folderNameError(), foldersOf(), IN_PLAY, isUntitled(), linkOptionsOf() (+18 more)
 
 ### Community 22 - "families.ts"
-Cohesion: 0.17
-Nodes (30): readChoices(), 4.5 New task, and Add child task inline, checkPrompt(), checkTypedMessage(), FeatureFound, findFeatureUseCase(), MoveResult, moveTaskUseCase() (+22 more)
+Cohesion: 0.18
+Nodes (26): 4.5 New task, and Add child task inline, 4.9 Back to queue, Blocked…, Move and Remove, checkPrompt(), checkTypedMessage(), TypedVerdict, MoveResult, moveTaskUseCase(), activeFeature() (+18 more)
 
 ### Community 23 - "edits.e2e.ts"
 Cohesion: 0.24
 Nodes (5): APP, onDisk(), SEED, stored(), titled()
 
 ### Community 24 - "palette.ts"
-Cohesion: 0.15
-Nodes (25): actions(), allQuests(), canRun(), creates(), entry(), filterPalette(), GO_TO, isStatus() (+17 more)
+Cohesion: 0.14
+Nodes (27): PALETTE_NOTE_ROWS, PALETTE_SNIPPET, actions(), allQuests(), canRun(), creates(), entry(), filterPalette() (+19 more)
 
-### Community 25 - "notes_api.ts"
-Cohesion: 0.12
-Nodes (29): changeOf(), folderNameOf(), LINK_KINDS, linkOf(), Loaded, NotesApi, NotesDeps, proposedOf() (+21 more)
+### Community 25 - "server.ts"
+Cohesion: 0.13
+Nodes (25): log, main(), codexSkills(), companionSkills(), files, helperDefinition(), helperInstructions(), skill() (+17 more)
 
 ### Community 26 - "Part 2: edits"
-Cohesion: 0.12
-Nodes (16): After the first install, Part 4: the rest of the screens, Part 5: an app you can install, Review focus, Review focus, Review focus, Stage A: the pages that only read, Stage A: the quest in hand, in full (+8 more)
+Cohesion: 0.13
+Nodes (15): After the first install, Part 4: the rest of the screens, Part 5: an app you can install, Review focus, Review focus, Review focus, Stage A: the pages that only read, Stage A: the quest in hand, in full (+7 more)
 
 ### Community 27 - "checkpoints.ts"
-Cohesion: 0.13
-Nodes (22): 4.4 A task's detail: current, queued and done, CODEX_RULES(), FIRST_MESSAGE_LABELS, cardNote, HandoffSection, handoffSections(), isHeading(), checkLines() (+14 more)
+Cohesion: 0.14
+Nodes (25): 4.4 A task's detail: current, queued and done, CODEX_RULES(), FIRST_MESSAGE_LABELS, cardNote, HandoffSection, handoffSections(), isHeading(), checkLines() (+17 more)
 
 ### Community 28 - "tests/helpers.ts"
 Cohesion: 0.07
-Nodes (38): Global Constraints, projectRepositoryOf(), CTX, fakePorts(), makeTask(), memoryHost(), Run, current() (+30 more)
+Nodes (41): Task 1: the file seam, unixFiles(), emptyRecord(), projectRepositoryOf(), CTX, fakePorts(), makeTask(), memoryHost() (+33 more)
 
-### Community 29 - "states.tsx"
+### Community 29 - "hud.tsx"
 Cohesion: 0.09
-Nodes (36): ALL, hrefOf(), Route, routeOf(), ROUTES, useRoute(), GROWS_AT, UPDATE_POLL_MS (+28 more)
+Nodes (34): ALL, hrefOf(), Route, routeOf(), ROUTES, useRoute(), GROWS_AT, isStreakAtRisk() (+26 more)
 
-### Community 30 - "project_views.ts"
-Cohesion: 0.12
-Nodes (35): xpOf(), activeOf(), BRANCH_ORDER, difficultyOf(), entryOf(), minutesOf(), questOf(), rowOf() (+27 more)
+### Community 30 - "ranking.ts"
+Cohesion: 0.18
+Nodes (22): 4.2 Tasks, with a feature in the detail pane, blockedTasks(), blockedText(), blockersOf(), BUDGETS, canWaitFor(), DEFAULT_MINUTES, effectivePriority() (+14 more)
 
 ### Community 31 - "game.ts"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (23): actualOf(), countBadge(), dayOf(), gameOf(), hourOf(), levelOf(), nextDay(), runsOf() (+15 more)
 
 ### Community 32 - "branch_api.ts"
 Cohesion: 0.08
-Nodes (77): streamProcess(), abandonMerge(), BranchDeps, completeMerge(), freshReview(), messageOf(), openMergeFolder(), prepareMerge() (+69 more)
+Nodes (86): abandonMerge(), BranchDeps, completeMerge(), freshReview(), messageOf(), openMergeFolder(), prepareMerge(), readBranch() (+78 more)
 
-### Community 33 - "test_support.ts"
-Cohesion: 0.03
-Nodes (109): App(), open(), BOARD, FIRST, open(), SAGA, SECOND, click() (+101 more)
+### Community 33 - "App"
+Cohesion: 0.19
+Nodes (23): App(), moodOf(), open(), useHour(), open(), open(), open(), open() (+15 more)
 
 ### Community 34 - "design_editor.tsx"
-Cohesion: 0.12
-Nodes (40): commit(), History, historyOf(), redo(), undo(), Box, clamp(), copyWithIds() (+32 more)
+Cohesion: 0.13
+Nodes (40): Box, clamp(), copyWithIds(), DESIGN_FRAME, duplicateLayer(), Handle, handlesOf(), layerOf() (+32 more)
 
-### Community 35 - "mana.ts"
-Cohesion: 0.18
-Nodes (21): chronicleOf(), dayBefore(), dayTimeOf(), lineOf(), minutesOf(), RANK, totalOf(), winsIn() (+13 more)
+### Community 35 - "sessions.test.ts"
+Cohesion: 0.07
+Nodes (43): chronicleOf(), dayBefore(), dayTimeOf(), lineOf(), minutesOf(), RANK, totalOf(), winsIn() (+35 more)
 
 ### Community 36 - "ui.test.tsx"
 Cohesion: 0.09
 Nodes (16): HELP_COMMANDS, answerHost(), BAND, CLEAN, COMMAND, DIRTY, ENTRIES, FILE (+8 more)
 
 ### Community 37 - "Task 3: Entities and pure rules"
-Cohesion: 0.11
-Nodes (30): Read, Task 3: Entities and pure rules, Shared Types (Task 1 writes them; every task uses them), Task 11: Live try, move and install, Task 2: The record, Task 5: Time and effort, Task 6: The docs log, Task 7: The message check (+22 more)
+Cohesion: 0.15
+Nodes (21): Task 3: Entities and pure rules, Allowance, Band, Checkpoint, claude-code, CommandRun, Difficulty, Effort (+13 more)
 
 ### Community 38 - "designs_api.ts"
-Cohesion: 0.12
-Nodes (34): counted(), DesignsApi, DesignsDeps, fileOf(), folderArg(), idArg(), idsIn(), jsonOf() (+26 more)
+Cohesion: 0.17
+Nodes (20): approvalOf(), checkScene(), CommentsFile, isComment(), isNumberIn(), isObject(), isText(), Json (+12 more)
 
 ### Community 39 - "note_attachments.ts"
-Cohesion: 0.15
-Nodes (21): filePathOf(), formatOf(), noteFiles(), AttachmentInput(), bytesOf(), tokenizer(), attachmentError(), attachmentMarkdown() (+13 more)
+Cohesion: 0.16
+Nodes (20): filePathOf(), formatOf(), noteFiles(), AttachmentInput(), bytesOf(), tokenizer(), attachmentError(), attachmentMarkdown() (+12 more)
 
 ### Community 40 - "menu_frame.tsx"
-Cohesion: 0.16
-Nodes (32): Task 7: Split the menu and the band in place, Task 10: The panel, the band, the status line and the commands, drawHelp(), HELP_KEYS, drawHome(), ENTRIES, pressMenu(), renderMenu() (+24 more)
-
-### Community 41 - "sessions.test.ts"
-Cohesion: 0.16
-Nodes (17): NOW, record(), Part A: the mod, Task 2: the new record fields, Task 3: session files, Task 4: `review`, Task 5: requests, Task 6: Open in Queue-tea app (+9 more)
+Cohesion: 0.17
+Nodes (33): Task 7: Split the menu and the band in place, Task 8: `tea_cup`, `history`, `settings` and the Brew view, drawHelp(), HELP_KEYS, drawHome(), ENTRIES, pressMenu(), pressOpenApp() (+25 more)
 
 ### Community 42 - "flows.e2e.ts"
 Cohesion: 0.17
@@ -336,129 +355,125 @@ Nodes (9): APP, change(), editTask(), git(), noRequests(), onDisk(), run, sessio
 Cohesion: 0.11
 Nodes (18): devDependencies, electron, electron-builder, electron-vite, @fontsource/marcellus, @fontsource/nunito-sans, jsdom, marked (+10 more)
 
-### Community 44 - "claude_code.ts"
-Cohesion: 0.11
-Nodes (30): appMenu(), command(), letter(), Send, items(), menu(), named(), TABS (+22 more)
+### Community 44 - "app_menu.ts"
+Cohesion: 0.24
+Nodes (9): appMenu(), command(), letter(), Send, items(), menu(), named(), TABS (+1 more)
 
 ### Community 45 - "commit_guard.ts"
 Cohesion: 0.15
 Nodes (15): GIT_OPTIONS_WITH_VALUE, isCommitOrPush(), isRefused(), lex(), Lexed, readParens(), REFUSED_GIT, RESERVED (+7 more)
 
-### Community 46 - "github_api.ts"
-Cohesion: 0.22
-Nodes (11): GithubApi, GithubDeps, Login, login(), accountsOf(), codeOf(), GhAccount, gitProtocolOf() (+3 more)
+### Community 46 - "settings_api.ts"
+Cohesion: 0.13
+Nodes (24): GithubApi, login(), accountsOf(), codeOf(), GhAccount, gitProtocolOf(), isGithubLogin(), rawAccounts() (+16 more)
 
 ### Community 47 - "compilerOptions"
 Cohesion: 0.12
 Nodes (15): compilerOptions, isolatedModules, jsx, jsxImportSource, lib, module, moduleResolution, noEmit (+7 more)
 
 ### Community 48 - "4. Screens"
-Cohesion: 0.10
-Nodes (20): 4.0 The Tasks layout decision, 4.10 History (here: All projects, last week), 4.11 Usage & time, 4.12 Settings, 4.13 Guild Hall, formerly the Tea Room, 4.14 First run with no projects, 4.15 The failed record, 4.16 States across screens (+12 more)
+Cohesion: 0.11
+Nodes (18): 4.0 The Tasks layout decision, 4.10 History (here: All projects, last week), 4.11 Usage & time, 4.12 Settings, 4.13 Guild Hall, formerly the Tea Room, 4.14 First run with no projects, 4.15 The failed record, 4.16 States across screens (+10 more)
 
 ### Community 49 - "queue_controller.ts"
-Cohesion: 0.17
-Nodes (32): The eight items, Task 10: `tasks`: the queue side, unblockTaskUseCase(), fileFromCommand(), parentFor(), blockTask(), featureCommand(), moveTask() (+24 more)
+Cohesion: 0.16
+Nodes (39): Features, The eight items, Task 10: `tasks`: the queue side, KEYS, togglePlayNextUseCase(), unblockTaskUseCase(), fileTask(), clearHold() (+31 more)
 
 ### Community 50 - "library_api.ts"
-Cohesion: 0.20
-Nodes (20): bookOf(), isPageCount(), LibraryApi, LibraryDeps, pageIn(), addBook(), changed(), emptyLibrary() (+12 more)
+Cohesion: 0.21
+Nodes (19): bookOf(), isPageCount(), LibraryApi, LibraryDeps, pageIn(), addBook(), changed(), emptyLibrary() (+11 more)
 
 ### Community 51 - "activity.ts"
-Cohesion: 0.13
-Nodes (18): codexEvents, CodexObservation, commandOf(), parse(), Row, textOf(), AT, COMMIT_ACTIVITY_LIMIT (+10 more)
+Cohesion: 0.11
+Nodes (20): codexEvents, CodexObservation, commandOf(), parse(), Row, textOf(), cache, catalog (+12 more)
 
 ### Community 52 - "designs.spec.tsx"
-Cohesion: 0.17
-Nodes (8): designsOf(), ok(), open(), readEach(), ready(), scene(), versionOf(), VersionView
+Cohesion: 0.14
+Nodes (9): designsOf(), ok(), readEach(), ready(), scene(), versionOf(), AUTOSAVE_MS, NUDGE_PX (+1 more)
 
-### Community 53 - "time.ts"
-Cohesion: 0.26
-Nodes (11): noteSeen(), applyPending(), CHANGES, countToolCall(), createTracker(), nothing(), once(), Pending (+3 more)
+### Community 53 - "notes.ts"
+Cohesion: 0.12
+Nodes (25): body(), memoryNotes(), ok(), write(), linkLineOf(), versions, note(), backlinksOf() (+17 more)
 
-### Community 54 - "app.tsx"
-Cohesion: 0.04
-Nodes (67): ContentProps, moodOf(), MORE_PAGES, SheetProps, SheetView(), TABS, useHour(), AUTOSAVE_MS (+59 more)
+### Community 54 - "library_page.tsx"
+Cohesion: 0.18
+Nodes (20): Answer, Empty(), BookErrors, BookField, BookForm, bookOf(), EMPTY_BOOK, pageError() (+12 more)
 
-### Community 55 - "notes_page.tsx"
-Cohesion: 0.08
-Nodes (41): Content(), Dialog(), Empty(), useWindowKeys(), captureOf(), DeleteNote(), keyOf(), layoutOf() (+33 more)
+### Community 55 - "app.tsx"
+Cohesion: 0.05
+Nodes (54): ContentProps, MORE_PAGES, SheetProps, TABS, KNOWN, NEW, TWO, DETAIL_FLOATS_BELOW (+46 more)
 
 ### Community 56 - "board.e2e.ts"
 Cohesion: 0.21
 Nodes (6): APP, change(), git(), onDisk(), run, stored()
 
 ### Community 57 - "engine_api.ts"
-Cohesion: 0.05
-Nodes (52): STAGE_SCALE, dayOf(), Coins(), EggArt(), MEDALS, Sky(), StageArt(), FIRST_LEVEL (+44 more)
+Cohesion: 0.06
+Nodes (49): MEDALS, withoutReview(), askingLine(), stepLine(), Named, QuestActions, Readable, Named (+41 more)
 
 ### Community 58 - "host.ts"
-Cohesion: 0.19
-Nodes (18): checkPath(), HelpersApi, HelpersDeps, Block, clip(), doingOf(), fileOf(), HELPER_LIMITS (+10 more)
+Cohesion: 0.22
+Nodes (13): Block, clip(), doingOf(), fileOf(), HELPER_LIMITS, parse(), Seen, seenIn() (+5 more)
 
 ### Community 59 - "designs.e2e.ts"
 Cohesion: 0.17
 Nodes (12): APP, CHART, designFile(), errors, json(), layerOn(), onDisk(), PAIR (+4 more)
 
 ### Community 60 - "Queue-tea architecture"
-Cohesion: 0.20
-Nodes (10): AppError, 1. The shape of the mod, 2. Rules, 3. The layers, in a picture, 4. Pressing Start, step by step, 7. Tests, 8. Getting there, 9. Not part of the restructure (+2 more)
+Cohesion: 0.18
+Nodes (11): AppError, 1. The shape of the mod, 2. Rules, 3. The layers, in a picture, 4. Pressing Start, step by step, 5. Features, shared resources and the core, 7. Tests, 8. Getting there (+3 more)
 
 ### Community 61 - "settings_page.tsx"
-Cohesion: 0.18
-Nodes (17): logPathError(), copyText(), FromClaude(), Keyboard(), LogDialog(), Motion(), Opening(), PageProps (+9 more)
+Cohesion: 0.15
+Nodes (19): DEFAULT_LOG_PATH, logPathError(), copyText(), FromClaude(), Keyboard(), LogDialog(), Motion(), Opening() (+11 more)
 
 ### Community 62 - "Queue-tea: panel redesign"
-Cohesion: 0.22
-Nodes (8): Handoff card, Queue-tea: panel redesign, Shortcuts and palette, The images, described, The panel, top to bottom, What Rohan chose, What the panel can draw (this build's mod API), Where to change it
+Cohesion: 0.20
+Nodes (9): plain(), Handoff card, Queue-tea: panel redesign, Shortcuts and palette, The images, described, The panel, top to bottom, What Rohan chose, What the panel can draw (this build's mod API) (+1 more)
 
 ### Community 63 - "band_host.tsx"
-Cohesion: 0.08
-Nodes (56): 5. Features, shared resources and the core, The core and the app, Audit: what the menu exposes of the engine, Order to fix them, Problems not on the list, Review Focus, Task 0: A clean start (Rohan runs these), Task 12: `app/`, and the end of the flat files (+48 more)
+Cohesion: 0.16
+Nodes (27): live(), Order to fix them, Task 9: `conversation` and `message_check`, drawQuestion(), MOOD_COLOR, MOOD_WORD, closeBand(), showBand() (+19 more)
 
-### Community 64 - "settings_api.ts"
-Cohesion: 0.22
-Nodes (14): cleanSettings(), DEFAULT_SETTINGS, isFolds(), isLastProject(), isRealmAccounts(), isScope(), isSky(), isTerminal() (+6 more)
+### Community 64 - "flows.spec.tsx"
+Cohesion: 0.15
+Nodes (11): line(), BOARD, held(), hold(), MAIN, OTHER, SEALED, withActive() (+3 more)
 
 ### Community 65 - "chronicle_page.tsx"
-Cohesion: 0.12
-Nodes (32): clockTime(), dayName(), manaLeft(), weekdayIndex(), weekdayOf(), BAR_PX, Column(), dayTotal() (+24 more)
+Cohesion: 0.08
+Nodes (57): clockTime(), dayAndTime(), dayName(), dayOf(), isClaudeOut(), manaLeft(), refillTime(), NOW (+49 more)
 
 ### Community 66 - "view_store.ts"
 Cohesion: 0.07
 Nodes (29): View, allowanceAtom, bandAtom, bandQueueAtom, blockingAtom, budgetAtom, busyAtom, canContinueAtom (+21 more)
 
 ### Community 67 - "docs_log_source.ts"
-Cohesion: 0.23
-Nodes (12): addRow(), capital(), escapeCell(), HEAD, rowLine(), TABLE, writeDocsLog(), DocsRow (+4 more)
+Cohesion: 0.18
+Nodes (17): loadCodexContext(), File Structure, addRow(), capital(), escapeCell(), HEAD, rowLine(), TABLE (+9 more)
 
 ### Community 68 - "commit-chai-n.md"
 Cohesion: 0.25
 Nodes (6): Branch names, Commits, Merging and pulling, Pull requests, The rule you never bend, What you report
 
 ### Community 69 - "helpers_api.spec.ts"
-Cohesion: 0.15
-Nodes (12): DONE, INIT, jobOf(), last(), NOW, ran(), READ, REAL_WAIT (+4 more)
+Cohesion: 0.14
+Nodes (13): ProcessRequest, DONE, INIT, jobOf(), last(), NOW, ran(), READ (+5 more)
 
-### Community 70 - "session_beat.ts"
-Cohesion: 0.42
-Nodes (6): clearCrashed(), endBeat(), writeBeat(), readCup(), SessionsRepository, sessionsRepositoryOf()
-
-### Community 71 - "app/README.md"
-Cohesion: 0.15
-Nodes (8): Commands, Develop, Helpers, Install, License, Queue-tea, Settings, What it does
+### Community 70 - "hoard_page.tsx"
+Cohesion: 0.14
+Nodes (17): STAGE_SCALE, Coins(), EggArt(), Sky(), StageArt(), FIRST_LEVEL, STAGES, stageState() (+9 more)
 
 ### Community 72 - "quest_detail.tsx"
-Cohesion: 0.09
-Nodes (42): Field(), FieldProps, Group(), Pick(), Failed(), BookErrors, BookField, BookForm (+34 more)
+Cohesion: 0.08
+Nodes (49): SheetView(), Dialog(), Field(), FieldProps, Group(), Pick(), useWindowKeys(), NextForm (+41 more)
 
-### Community 73 - "notes.ts"
-Cohesion: 0.15
-Nodes (20): NOW, versionsToKeep(), body(), write(), linkLineOf(), backlinksOf(), firstParagraphOf(), isNoteId() (+12 more)
+### Community 73 - "notes_api.ts"
+Cohesion: 0.10
+Nodes (33): changeOf(), folderNameOf(), LINK_KINDS, linkOf(), Loaded, NotesApi, proposedOf(), same() (+25 more)
 
 ### Community 74 - "package.json"
-Cohesion: 0.14
-Nodes (13): author, description, license, main, name, private, productName, version (+5 more)
+Cohesion: 0.15
+Nodes (12): author, description, license, main, name, private, productName, version (+4 more)
 
 ### Community 75 - "chai-pter.md"
 Cohesion: 0.33
@@ -468,32 +483,32 @@ Nodes (5): Before you write, How you write, Keeping docs true, What you don't do
 Cohesion: 0.29
 Nodes (7): Boundaries, Commands and tools, Helpers and companion skills, Queue-tea in Codex, Standalone setup for CLI, desktop or IDE, Start from Queue-tea, Verification
 
-### Community 77 - "start_api.spec.ts"
-Cohesion: 0.09
-Nodes (22): loadCodexContext(), CodexContext, git(), NOW, onDisk(), run, seed(), Task 1: the file seam (+14 more)
+### Community 77 - "live_api.spec.ts"
+Cohesion: 0.14
+Nodes (12): data(), facts(), git(), NOW, run, seed(), logged, NOW (+4 more)
 
 ### Community 78 - "server.ts"
-Cohesion: 0.11
-Nodes (28): log, main(), codexArgs(), NASTY, run, codexSkills(), companionSkills(), files (+20 more)
+Cohesion: 0.21
+Nodes (21): appleScriptText(), bringForwardArgv(), claudeLine(), codexLine(), codexOptions(), codexPasteLine(), openLineArgv(), openVsCode() (+13 more)
 
-### Community 79 - "spec.md"
+### Community 79 - "Roadmap: the outside review, checked against the code"
 Cohesion: 0.14
-Nodes (10): 1. The board: Backlog, In progress, Blocked, Done, 2. Recoverable tasks, 3. Checkpoints in place of the handoff note, Plan: the board, recoverable tasks and checkpoints, Parallel quests: implementation decisions, Later, Next: smarter filing, Not planned (+2 more)
+Nodes (11): Audit: what the menu exposes of the engine, Problems not on the list, 1. The board: Backlog, In progress, Blocked, Done, 2. Recoverable tasks, 3. Checkpoints in place of the handoff note, Plan: the board, recoverable tasks and checkpoints, Later, Next: smarter filing (+3 more)
 
 ### Community 80 - "tea-dd.md"
 Cohesion: 0.50
 Nodes (3): How you work, What you never do, What you report
 
 ### Community 81 - "quests_page.tsx"
-Cohesion: 0.04
-Nodes (104): ACTIVITY_REFRESH_MS, LINES_REFRESH_MS, dayAndTime(), isClaudeOut(), refillTime(), NOW, Dragon(), Spinner() (+96 more)
+Cohesion: 0.06
+Nodes (59): ACTIVITY_REFRESH_MS, LINES_REFRESH_MS, metaOf(), openRow(), Row, rowsOf(), stepFrom(), withWholeSagas() (+51 more)
 
 ### Community 82 - "scripts"
 Cohesion: 0.15
 Nodes (13): scripts, build, dev, e2e, e2e:packaged, install-app, package, package:stage (+5 more)
 
 ### Community 83 - "Branch workflow in Queue-tea"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (11): Acceptance checks, Branch workflow in Queue-tea, Conflicts and recovery, Data and implementation boundaries, Implemented flow and validation, Keep the app update tied to integrated source, Screen layout, Status and motion (+3 more)
 
 ### Community 86 - "designs_api.spec.ts"
@@ -501,20 +516,20 @@ Cohesion: 0.11
 Nodes (18): COMMENTS, data(), git(), gitEnv, json(), NOW, onDisk(), PAIR (+10 more)
 
 ### Community 89 - "record_source.ts"
-Cohesion: 0.10
-Nodes (37): p, Asked, askedOf(), idOf(), judgementWatch(), asking(), broken, setup() (+29 more)
+Cohesion: 0.07
+Nodes (41): fileOf(), realmFile(), p, canRestoreFrom(), git(), NOW, onDisk(), run (+33 more)
 
-### Community 90 - "branch_source.ts"
-Cohesion: 0.28
-Nodes (14): digest(), gitIn(), graphOf(), headsOf(), pendingGit(), reviewOf(), workingSnapshot(), observeTask() (+6 more)
+### Community 90 - "detail_api.ts"
+Cohesion: 0.21
+Nodes (15): readCodexSession(), Observation, observeTask(), activeOf(), branchToBe(), gitOf(), linesSince(), quietly() (+7 more)
 
-### Community 91 - "inspector.tsx"
-Cohesion: 0.23
-Nodes (13): numberError(), TextEdit(), Inspector(), InspectorProps, number(), Small(), WEIGHTS, LayerView() (+5 more)
+### Community 91 - "designs.ts"
+Cohesion: 0.15
+Nodes (22): counted(), DesignsApi, DesignsDeps, fileOf(), folderArg(), idArg(), idsIn(), jsonOf() (+14 more)
 
 ### Community 92 - "branch_workflow.e2e.ts"
-Cohesion: 0.14
-Nodes (21): check(), commitSelected(), dialog(), git(), merge(), mergeButton(), openReview(), prepare() (+13 more)
+Cohesion: 0.32
+Nodes (11): check(), commitSelected(), dialog(), git(), merge(), mergeButton(), openReview(), prepare() (+3 more)
 
 ### Community 93 - "Architecture"
 Cohesion: 0.15
@@ -522,15 +537,15 @@ Nodes (13): Architecture, Opening on a project, Parallel quests and the Branches
 
 ### Community 94 - "Designs tab"
 Cohesion: 0.15
-Nodes (12): version(), Acceptance checks, Architecture, Behaviour, Decisions, Designs tab, Files on disk, Implemented (+4 more)
+Nodes (13): version(), Acceptance checks, Architecture, Behaviour, Decisions, Designs tab, Files on disk, Implemented (+5 more)
 
-### Community 95 - "operations.ts"
-Cohesion: 0.16
-Nodes (23): codexOperations(), CodexRefusal, readable(), live(), Task 6: `commit_guard` and `errands`, runErrand(), Errand, ERRAND_NOT_SENT (+15 more)
+### Community 95 - "test_support.ts"
+Cohesion: 0.17
+Nodes (15): chronicle(), mana(), game(), CHRONICLE, DESIGNS, GAME, helperJob(), HOARD (+7 more)
 
-### Community 96 - "core/logger.ts"
-Cohesion: 0.08
-Nodes (36): createLogger(), Logger, stackOf(), OutputSink, ProcessRequest, running, log, stopProcesses() (+28 more)
+### Community 96 - "ref_node_child_process"
+Cohesion: 0.13
+Nodes (23): Deps, setup(), updateService(), majorOf(), setup(), updateWatch(), WatchDeps, AppIdentity (+15 more)
 
 ### Community 97 - "Branch workflow completion — 5 November 2026"
 Cohesion: 0.40
@@ -545,12 +560,12 @@ Cohesion: 0.22
 Nodes (8): 1. Find the merge, 2. Read both intents before editing, 3. Resolve by kind, 4. Find what git didn't flag, 5. Hand it back, Common mistakes, Report, Tea-concile
 
 ### Community 101 - "Notes"
-Cohesion: 0.11
-Nodes (17): Acceptance checks, Answered, Architecture, Attachment boundaries and design choice, Attachments, Behaviour, Decisions, Fields and their checks (+9 more)
+Cohesion: 0.10
+Nodes (19): Acceptance checks, Answered, Architecture, Attachment boundaries and design choice, Attachments, Behaviour, Decisions, Fields and their checks (+11 more)
 
-### Community 102 - "GitState"
-Cohesion: 0.39
-Nodes (5): holdCommandOf(), holdKindOf(), Task 3: Reading git and making branches, GitState, fakeGit()
+### Community 102 - "Shared Types (Task 1 writes them; every task uses them)"
+Cohesion: 0.24
+Nodes (11): Read, Shared Types (Task 1 writes them; every task uses them), Task 11: Live try, move and install, Task 2: The record, Task 3: Reading git and making branches, Task 5: Time and effort, Task 6: The docs log, Task 7: The message check (+3 more)
 
 ### Community 103 - "Task Log"
 Cohesion: 0.40
@@ -560,9 +575,17 @@ Nodes (4): 2026-11-03, 2026-11-05, 2026-11-06, Task Log
 Cohesion: 0.33
 Nodes (3): workspace, @fontsource/marcellus, @fontsource/nunito-sans
 
-### Community 107 - "Part B: the app"
-Cohesion: 0.20
-Nodes (9): Global constraints, Part B: the app, Review focus, Task 10: the window's frame, Task 11: Home and Quests, read-only, Task 12: seen working, Task 7: the project, Task 9: the game rules (+1 more)
+### Community 105 - "feedback.spec.tsx"
+Cohesion: 0.15
+Nodes (9): ACCOUNTS, BOARD, input(), moved(), started(), empty(), projectView(), reply() (+1 more)
+
+### Community 106 - "helpers_api.ts"
+Cohesion: 0.19
+Nodes (13): OutputSink, running, stopProcesses(), streamProcess(), nodeUserGit(), UserGit, UserGitAction, HelpersApi (+5 more)
+
+### Community 107 - "project_views.ts"
+Cohesion: 0.21
+Nodes (15): activeOf(), BRANCH_ORDER, difficultyOf(), entryOf(), minutesOf(), questOf(), rowOf(), sessionInfoOf() (+7 more)
 
 ### Community 108 - "Guild helpers on tasks"
 Cohesion: 0.18
@@ -573,52 +596,136 @@ Cohesion: 0.33
 Nodes (6): Branch review and merge, Check it, Flavors, Install it, Queue-tea, the workspace app, Run it
 
 ### Community 110 - "ref_node_path"
-Cohesion: 0.23
-Nodes (11): esbuild, writeBundle(), currentProvenance(), git(), releaseProblem(), root, run(), candidate (+3 more)
+Cohesion: 0.06
+Nodes (20): APP, event(), plantClaude(), APP, errors, PNG, APP, esbuild (+12 more)
+
+### Community 111 - "detail.spec.tsx"
+Cohesion: 0.25
+Nodes (5): ACTIVE, BOARD, FIRST, HELD, QUEST_FACTS
 
 ### Community 112 - "Part 3: setting out and coming back"
 Cohesion: 0.20
 Nodes (10): Part 3: setting out and coming back, Review focus, Task 1: the mod's half, Task 2: the terminals, Task 3: Start in main, Task 4: Judgement, Finish and Back in main, Task 5: the flows in the window, Task 6: the cards and sheets (+2 more)
 
+### Community 113 - "check_layers.mjs"
+Cohesion: 0.23
+Nodes (13): checkLayers(), CLAUDE_MAY(), cyclesIn(), edgeProblem(), importsOf(), isData(), isTypeOnly(), placeOf() (+5 more)
+
 ### Community 114 - ".line-check-NZS8Gw/tsconfig.json"
 Cohesion: 0.50
 Nodes (3): extends, include, ../tsconfig.json
 
-### Community 115 - "session_rhythm.ts"
-Cohesion: 0.09
-Nodes (48): Shared resources, After this plan, Feature-first restructure Implementation Plan, Global Constraints, Task 5: The shared resources' data and controllers, Task 9: Keeping usage down, How Claude uses them (the mod), pressRestore() (+40 more)
+### Community 115 - "register.tsx"
+Cohesion: 0.10
+Nodes (62): The core and the app, Task 12: `app/`, and the end of the flat files, Task 4: The core, Task 6: `commit_guard` and `errands`, drawCup(), renderBand(), stillCup(), toggleMenu() (+54 more)
 
-### Community 117 - "ref_node_fs"
-Cohesion: 0.04
-Nodes (39): APP, FIRST, record(), recordFile(), replaceRecord(), APP, event(), plantClaude() (+31 more)
+### Community 116 - "quest_keys.ts"
+Cohesion: 0.21
+Nodes (14): isFromMenu(), isLetterKey(), isOnControl(), isTyping(), LETTERS, menuKey(), PRIORITY_KEYS, QuestKey (+6 more)
+
+### Community 117 - "notes.e2e.ts"
+Cohesion: 0.40
+Nodes (4): APP, errors, noteFiles(), notesDir()
 
 ### Community 118 - "Part 2: edits"
-Cohesion: 0.25
-Nodes (8): Edit, Part 2: edits, Review focus, Task 1: the engine's three additions, Task 3: edits in the window, Task 4: the forms, Task 5: the board and the detail pane, Task 6: seen working
+Cohesion: 0.29
+Nodes (7): Edit, Part 2: edits, Review focus, Task 3: edits in the window, Task 4: the forms, Task 5: the board and the detail pane, Task 6: seen working
 
-### Community 121 - "mocha-mockup.md"
-Cohesion: 0.40
-Nodes (4): Drafting a version for the Designs tab, How you work, What you don't do, What you report
+### Community 119 - "ProjectView"
+Cohesion: 0.13
+Nodes (9): BOARD, input(), noop(), BOARD, fail, ROW, projectRow(), quest() (+1 more)
+
+### Community 120 - "brew_quest.tsx"
+Cohesion: 0.22
+Nodes (13): lineOf(), tickedItemsOf(), BrewQuestCard(), BrewSheet(), DIFFICULTIES, Errors, parentError(), PRIORITIES (+5 more)
+
+### Community 121 - "codex_providers.ts"
+Cohesion: 0.24
+Nodes (8): codexRepositoryOf(), folderOf(), readCodexActivity(), codexRepositoryImpl(), CodexRepository, codexLog(), NOW, SINCE
+
+### Community 122 - "fakeEngine"
+Cohesion: 0.19
+Nodes (13): click(), one, openReview(), two, view, branchGraph(), branchReview(), FORK (+5 more)
+
+### Community 123 - "Scene"
+Cohesion: 0.33
+Nodes (6): commit(), History, historyOf(), redo(), undo(), Scene
+
+### Community 124 - "judgements.spec.ts"
+Cohesion: 0.29
+Nodes (9): Asked, askedOf(), idOf(), judgementWatch(), asking(), broken, setup(), WatchDeps (+1 more)
+
+### Community 125 - "projects_api.spec.ts"
+Cohesion: 0.18
+Nodes (8): ProjectsDeps, list(), logged, NOW, put(), putRecord(), read(), record()
+
+### Community 126 - "board.spec.tsx"
+Cohesion: 0.20
+Nodes (5): BOARD, FIRST, SAGA, SECOND, LiveFacts
+
+### Community 127 - "shell.spec.tsx"
+Cohesion: 0.25
+Nodes (6): BOARD, FIRST, key(), palette(), SECOND, NOTES
+
+### Community 128 - "comments_panel.tsx"
+Cohesion: 0.31
+Nodes (8): commentError(), ids(), CommentRow(), CommentsPanel(), Props, CommentInput, layersOf(), Problem
+
+### Community 129 - "Queue-tea: workspace app"
+Cohesion: 0.20
+Nodes (10): Acceptance criteria, Build order, for the plan, Checked, Decisions, Errors and edge cases, In this release, Not in this release, Queue-tea: workspace app (+2 more)
+
+### Community 130 - "Review Focus"
+Cohesion: 0.22
+Nodes (8): After this plan, Feature-first restructure Implementation Plan, Global Constraints, Review Focus, Task 0: A clean start (Rohan runs these), Task 13: Docs, then the real thing, Task 1: Pin what the tests don't cover yet, Task 2: The layer check
+
+### Community 131 - "settings.spec.tsx"
+Cohesion: 0.25
+Nodes (3): FAILED, NEW_FOLDER, SETTINGS_PAGE
+
+### Community 132 - "Queue-tea"
+Cohesion: 0.25
+Nodes (8): Commands, Develop, Helpers, Install, License, Queue-tea, Settings, What it does
+
+### Community 133 - "first_window.e2e.ts"
+Cohesion: 0.38
+Nodes (5): APP, FIRST, record(), recordFile(), replaceRecord()
+
+### Community 134 - "sky_time.ts"
+Cohesion: 0.70
+Nodes (3): skyAt(), skyOf(), SkyTime
+
+### Community 135 - "queue_rules.ts"
+Cohesion: 0.32
+Nodes (7): Task 10: The panel, the band, the status line and the commands, removeTaskUseCase(), setPriorityUseCase(), orderQueue(), removeTask(), setPriority(), suggestion()
+
+### Community 136 - "quests_edits.spec.tsx"
+Cohesion: 0.25
+Nodes (5): BOARD, CHOICES, FIRST, SAGA, SECOND
+
+### Community 137 - "electron"
+Cohesion: 0.50
+Nodes (3): engine, CHANNELS, electron
 
 ## Knowledge Gaps
 - **6 isolated node(s):** `../tsconfig.json`, `@types/node`, `electron-builder`, `jsdom`, `typescript` (+1 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 959 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 961 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **8 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `vitest` to `note_workspace.tsx`, `update_service.ts`, `designs_page.tsx`, `time.ts`, `realms_api.ts`, `designs.ts`, `first_run.tsx`, `t`, `emptyRecord`, `notes_view.ts`, `states.tsx`, `game.ts`, `branch_api.ts`, `test_support.ts`, `design_editor.tsx`, `designs_api.ts`, `note_attachments.ts`, `sessions.test.ts`, `claude_code.ts`, `github_api.ts`, `library_api.ts`, `activity.ts`, `designs.spec.tsx`, `app.tsx`, `notes_page.tsx`, `engine_api.ts`, `host.ts`, `helpers_api.spec.ts`, `quest_detail.tsx`, `notes.ts`, `package.json`, `start_api.spec.ts`, `server.ts`, `quests_page.tsx`, `designs_api.spec.ts`, `record_source.ts`, `branch_source.ts`, `core/logger.ts`, `GitState`, `ref_node_path`, `ref_node_fs`?**
-  _High betweenness centrality (0.053) - this node is a cross-community bridge._
+- **Why does `vitest` connect `ref_node_fs` to `note_workspace.tsx`, `Refusal`, `settings.spec.tsx`, `EngineApi`, `time.ts`, `sky_time.ts`, `quests_edits.spec.tsx`, `design_forms.ts`, `update_control.spec.tsx`, `first_run.tsx`, `t`, `emptyRecord`, `notes_view.ts`, `server.ts`, `hud.tsx`, `game.ts`, `branch_api.ts`, `design_editor.tsx`, `sessions.test.ts`, `designs_api.ts`, `note_attachments.ts`, `app_menu.ts`, `library_api.ts`, `activity.ts`, `designs.spec.tsx`, `notes.ts`, `library_page.tsx`, `app.tsx`, `engine_api.ts`, `host.ts`, `flows.spec.tsx`, `chronicle_page.tsx`, `helpers_api.spec.ts`, `notes_api.ts`, `package.json`, `live_api.spec.ts`, `server.ts`, `quests_page.tsx`, `designs_api.spec.ts`, `record_source.ts`, `designs.ts`, `test_support.ts`, `ref_node_child_process`, `feedback.spec.tsx`, `ref_node_path`, `detail.spec.tsx`, `ProjectView`, `fakeEngine`, `Scene`, `judgements.spec.ts`, `projects_api.spec.ts`, `board.spec.tsx`, `shell.spec.tsx`?**
+  _High betweenness centrality (0.047) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `emptyRecord()` (e.g. with `Task 2: The record` and `4.14 First run with no projects`) actually correct?**
   _`emptyRecord()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `../tsconfig.json`, `@types/node`, `electron-builder` to the rest of the system?**
   _6 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `note_workspace.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.1126984126984127 - nodes in this community are weakly interconnected._
-- **Why does `emptyRecord()` connect `emptyRecord` to `vitest`, `time.ts`, `realms_api.ts`, `cup_mood.ts`, `families.ts`, `tests/helpers.ts`, `game.ts`, `branch_api.ts`, `ui.test.tsx`, `Task 3: Entities and pure rules`, `menu_frame.tsx`, `sessions.test.ts`, `4. Screens`, `time.ts`, `helpers_api.spec.ts`, `start_api.spec.ts`, `designs_api.spec.ts`, `record_source.ts`, `branch_workflow.e2e.ts`, `core/logger.ts`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
-- **Should `vitest` be split into smaller, more focused modules?**
-  _Cohesion score 0.05454545454545454 - nodes in this community are weakly interconnected._
-- **Why does `main()` connect `server.ts` to `vitest`, `Tea-concile`, `Queue-tea, the workspace app`, `start_api.spec.ts`, `Queue-tea: design`?**
-  _High betweenness centrality (0.023) - this node is a cross-community bridge._
+  _Cohesion score 0.1477832512315271 - nodes in this community are weakly interconnected._
+- **Why does `emptyRecord()` connect `tests/helpers.ts` to `ref_node_fs`, `ports.ts`, `time.ts`, `cup_mood.ts`, `scope.ts`, `emptyRecord`, `families.ts`, `game.ts`, `branch_api.ts`, `sessions.test.ts`, `ui.test.tsx`, `4. Screens`, `helpers_api.spec.ts`, `live_api.spec.ts`, `designs_api.spec.ts`, `record_source.ts`, `branch_workflow.e2e.ts`, `Shared Types (Task 1 writes them; every task uses them)`, `judgements.spec.ts`, `projects_api.spec.ts`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+- **Should `ref_node_fs` be split into smaller, more focused modules?**
+  _Cohesion score 0.04542124542124542 - nodes in this community are weakly interconnected._
+- **Why does `Host` connect `scope.ts` to `ref_node_fs`, `Queue-tea: workspace app`, `ports.ts`, `time.ts`, `opening_api.spec.ts`, `git_source.ts`, `Part 2: edits`, `tests/helpers.ts`, `sessions.test.ts`, `worktrees_repository_impl.ts`, `settings_api.ts`, `library_api.ts`, `activity.ts`, `docs_log_source.ts`, `server.ts`, `designs_api.spec.ts`, `record_source.ts`, `detail_api.ts`, `register.tsx`, `codex_providers.ts`?**
+  _High betweenness centrality (0.025) - this node is a cross-community bridge._

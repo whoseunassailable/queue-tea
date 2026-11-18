@@ -16,7 +16,7 @@ import { nextFormOf, questOfNext, validateNext } from '../../domain/design_forms
 import type { Names, NextForm } from '../../domain/design_forms'
 import { BrokenFile, DesignCard } from '../widgets/design_card'
 import type { CardRead } from '../widgets/design_card'
-import { DesignEditor } from '../widgets/design_editor'
+import { DesignEditor, Neighbours } from '../widgets/design_editor'
 import { NextVersionSheet } from '../widgets/next_version_sheet'
 import { VersionMenu, VersionRail } from '../widgets/version_rail'
 import '../designs.css'
@@ -39,7 +39,9 @@ const FiledNote = ({ filed, onQuests }: { filed: Filed; onQuests: () => void }) 
 
 // A design read once when it opens: a later read would throw away its undo
 // history, so only Load the new one reads it again.
-const EditorLoader = ({ engine, realm, row, id, version, onBack, onComments, onCopied }: { engine: EngineApi; realm: string; row: VersionRow; id: string; version: VersionView; onBack: () => void; onComments: (comments: DesignComment[]) => void; onCopied: (name: string) => void }) => {
+type Step = (() => void) | null
+
+const EditorLoader = ({ engine, realm, row, id, version, onBack, onPrevious, onNext, onComments, onCopied }: { engine: EngineApi; realm: string; row: VersionRow; id: string; version: VersionView; onBack: () => void; onPrevious: Step; onNext: Step; onComments: (comments: DesignComment[]) => void; onCopied: (name: string) => void }) => {
   const [reads, setReads] = useState(0)
   const [load, setLoad] = useState<{ status: 'loading' } | { status: 'failed'; message: string } | { status: 'ready'; data: DesignRead }>({ status: 'loading' })
   useEffect(() => {
@@ -69,6 +71,7 @@ const EditorLoader = ({ engine, realm, row, id, version, onBack, onComments, onC
         <button type="button" class="link-btn" onClick={onBack}>
           {t.designs.back(row.label)}
         </button>
+        <Neighbours onPrevious={onPrevious} onNext={onNext} />
         <div class="panel panel-pad">
           <BrokenFile
             title={t.designs.brokenTitle(id)}
@@ -99,11 +102,42 @@ const EditorLoader = ({ engine, realm, row, id, version, onBack, onComments, onC
       comments={version.comments}
       commentsProblem={version.commentsProblem}
       onBack={onBack}
+      onPrevious={onPrevious}
+      onNext={onNext}
       onReload={again}
       onCopied={onCopied}
       onAddComment={input => comment(() => engine.addDesignComment(realm, row.folder, input))}
       onSetComment={(commentId, isResolved) => comment(() => engine.setDesignComment(realm, row.folder, commentId, isResolved))}
     />
+  )
+}
+
+type ApprovalState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'failed'; message: string }
+
+// A version's approval: who approved it and when, and the button that
+// approves or withdraws it. A failure shows beside the button, which tries again.
+const ApprovalRow = ({ engine, realm, row, onChanged }: { engine: EngineApi; realm: string; row: VersionRow; onChanged: () => void }) => {
+  const [state, setState] = useState<ApprovalState>({ kind: 'idle' })
+  const isApproved = row.approved !== null
+  const toggle = async () => {
+    setState({ kind: 'saving' })
+    const answer = await ask(engine, () => engine.setDesignApproval(realm, row.folder, !isApproved))
+    setState(answer.ok ? { kind: 'idle' } : { kind: 'failed', message: answer.message })
+    if (answer.ok) onChanged()
+  }
+
+  return (
+    <div class="dz-approval">
+      <p class="sub">{row.approved !== null ? <b>{t.designs.approvedLine(row.approved.by, row.approved.at)}</b> : t.designs.notApprovedLine}</p>
+      <button type="button" class="btn" disabled={state.kind === 'saving'} onClick={() => void toggle()}>
+        {state.kind === 'saving' ? t.designs.approving : isApproved ? t.designs.withdrawApproval : t.designs.approve}
+      </button>
+      {state.kind === 'failed' && (
+        <p class="field-error" role="alert">
+          {state.message}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -146,13 +180,21 @@ const VersionScope = ({ engine, realm, name, row, view, rail, filed, onFiled, on
     onChanged()
   }
   if (open !== null) {
+    const at = data.designs.indexOf(open)
+    const stepTo = (to: number): Step => (at >= 0 && to >= 0 && to < data.designs.length ? () => setOpen(data.designs[to]!) : null)
+
     return (
+      // Keyed by design, so moving on unmounts the editor (saving what's waiting
+      // under the design left) before the next one is read.
       <EditorLoader
+        key={open}
         engine={engine}
         realm={realm}
         row={row}
         id={open}
         version={data}
+        onPrevious={stepTo(at - 1)}
+        onNext={stepTo(at + 1)}
         onBack={() => {
           setOpen(null)
           version.refresh()
@@ -187,6 +229,7 @@ const VersionScope = ({ engine, realm, name, row, view, rail, filed, onFiled, on
             <p class="sub">
               <b>{t.designs.by(row.by)}</b> · {t.designs.meta(row.made, row.from, data.designs.length)}
             </p>
+            <ApprovalRow engine={engine} realm={realm} row={row} onChanged={onChanged} />
           </div>
           <div class="dz-next">
             <button

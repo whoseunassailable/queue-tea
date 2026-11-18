@@ -545,7 +545,7 @@ describe('sending the comments to the next version', () => {
   it('names the coming version in the version file, keeping the rest', async () => {
     data(await send({ label: ' 5.4.4 ', quest: ' Designs 5.4.4 ' }))
 
-    expect(await onDisk('5.4.3', 'version.json')).toEqual({ ...VERSION, next: { label: '5.4.4', quest: 'Designs 5.4.4' } })
+    expect(await onDisk('5.4.3', 'version.json')).toEqual({ ...VERSION, next: { label: '5.4.4', quest: 'Designs 5.4.4' }, approved: null })
   })
 
   it('shows the coming version and the sent count in the rail after', async () => {
@@ -592,6 +592,70 @@ describe('sending the comments to the next version', () => {
   })
 })
 
+describe('approving a version', () => {
+  const APPROVAL = { by: 'Rohan', at: '2026-11-04T18:00:00.000Z' }
+
+  it('approves by the first word of git\'s user name, now, keeping every other field', async () => {
+    data(await api.setDesignApproval(KEY, '5.4.3', true))
+
+    expect(await onDisk('5.4.3', 'version.json')).toEqual({ ...VERSION, next: null, approved: { by: 'Rohan', at: AT } })
+  })
+
+  it('withdraws an approval as null, keeping every other field', async () => {
+    await put('5.4.3', 'version.json', { ...VERSION, next: { label: '5.4.4', quest: 'Designs 5.4.4' }, approved: APPROVAL })
+
+    data(await api.setDesignApproval(KEY, '5.4.3', false))
+
+    expect(await onDisk('5.4.3', 'version.json')).toEqual({ ...VERSION, next: { label: '5.4.4', quest: 'Designs 5.4.4' }, approved: null })
+  })
+
+  it('signs as You when git has no user name', async () => {
+    await git('config', '--unset', 'user.name')
+
+    data(await api.setDesignApproval(KEY, '5.4.3', true))
+
+    expect((await onDisk('5.4.3', 'version.json')).approved).toEqual({ by: 'You', at: AT })
+  })
+
+  it('shows the approval on the version\'s row in the rail, and none on the others', async () => {
+    data(await api.setDesignApproval(KEY, '5.4.3', true))
+
+    const rows = data(await api.readDesigns(KEY)).versions
+    expect(rows.find(v => v.folder === '5.4.3')?.approved).toEqual({ by: 'Rohan', at: AT })
+    expect(rows.find(v => v.folder === 'onboarding-pass-2')?.approved).toBeNull()
+    expect(rows.find(v => v.folder === '5.4.2')).toMatchObject({ approved: null, problem: { detail: 'It has a mistake near line 3.' } })
+  })
+
+  it('refuses a version that does not read, and leaves its file', async () => {
+    expect(refused(await api.setDesignApproval(KEY, '5.4.2', true))).toBe(MESSAGES.brokenVersion('docs/designs/5.4.2/version.json'))
+    expect(await text('5.4.2', 'version.json')).toBe(BROKEN_VERSION)
+  })
+
+  it('refuses a folder with no version file, and writes none', async () => {
+    await put('stray', 'welcome.design.json', WELCOME)
+
+    expect(refused(await api.setDesignApproval(KEY, 'stray', true))).toBe(MESSAGES.brokenVersion('docs/designs/stray/version.json'))
+    expect((await readdir(join(designs, 'stray'))).sort()).toEqual(['welcome.design.json'])
+  })
+
+  it('says the approval could not be saved when the write fails, and leaves the file', async () => {
+    // A folder where the new file is written first, so writing it fails.
+    await mkdir(at('5.4.3', 'version.json.tmp'))
+    const before = await text('5.4.3', 'version.json')
+
+    expect(refused(await api.setDesignApproval(KEY, '5.4.3', true))).toBe(MESSAGES.setApproval)
+    expect(await text('5.4.3', 'version.json')).toBe(before)
+  })
+
+  it('runs an approval and a send to the next version at once one after the other, so neither loses the other', async () => {
+    const [approved, sent] = await Promise.all([api.setDesignApproval(KEY, '5.4.3', true), api.sendDesignComments(KEY, '5.4.3', { label: '5.4.4', quest: 'Designs 5.4.4' })])
+    data(approved)
+    data(sent)
+
+    expect(await onDisk('5.4.3', 'version.json')).toMatchObject({ approved: { by: 'Rohan', at: AT }, next: { label: '5.4.4', quest: 'Designs 5.4.4' }, theme: 'day' })
+  })
+})
+
 describe('Show in Finder', () => {
   it('shows docs/designs, or the realm when there is none yet', async () => {
     data(await api.showDesigns(KEY))
@@ -616,6 +680,7 @@ describe('names from the window', () => {
       api.addDesignComment(KEY, folder, { design: 'welcome', on: null, text: 'Hi' }),
       api.setDesignComment(KEY, folder, 'c1', true),
       api.sendDesignComments(KEY, folder, { label: '9.9', quest: 'Q' }),
+      api.setDesignApproval(KEY, folder, true),
     ])
 
     for (const answer of answers) expect(refused(answer)).toBe(MESSAGES.unknownDesign)

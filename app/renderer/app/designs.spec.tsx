@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { DesignComment, DesignRead, DesignsView, Scene, VersionRow, VersionView } from '../../shared/designs'
 import type { EngineApi, Reply } from '../../shared/engine_api'
+import { AUTOSAVE_MS, NUDGE_PX } from '../core/constants/constants'
 import { CommentsPanel } from '../features/designs/presentation/widgets/comments_panel'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
@@ -37,7 +38,7 @@ const errorOf = (field: HTMLElement) => document.getElementById(field.getAttribu
 const never = <T,>() => new Promise<T>(() => {})
 const ok = <T,>(data: T): Reply<T> => ({ ok: true, data })
 
-const row = (folder: string, over: Partial<VersionRow> = {}): VersionRow => ({ folder, label: folder, made: '2026-11-04T16:20:00-06:00', by: 'claude', from: '5.4.2', designCount: 2, open: 0, resolved: 0, sent: 0, sentTo: null, next: null, problem: null, ...over })
+const row = (folder: string, over: Partial<VersionRow> = {}): VersionRow => ({ folder, label: folder, made: '2026-11-04T16:20:00-06:00', by: 'claude', from: '5.4.2', designCount: 2, open: 0, resolved: 0, sent: 0, sentTo: null, next: null, approved: null, problem: null, ...over })
 const designsOf = (versions: VersionRow[], coming: DesignsView['coming'] = []) => async (): Promise<Reply<DesignsView>> => ok({ versions, coming })
 const versionOf = (over: Partial<VersionView> = {}) => async (_key: string, folder: string): Promise<Reply<VersionView>> => ok({ folder, label: folder, designs: ['welcome', 'pair'], comments: [], commentsProblem: null, uncommitted: 0, ...over })
 const scene = (name: string): Scene => ({ format: 1, name, width: 390, height: 844, fill: '#F6F1E7', nodes: [{ id: 'headline', type: 'text', name: 'Headline', x: 24, y: 293, width: 342, text: 'Walk better', font: 'Nunito Sans', size: 28, weight: 400, color: '#2A2218' }] })
@@ -343,6 +344,240 @@ describe('Next version', () => {
     await waitFor(() => expect(sendDesignComments).toHaveBeenCalledTimes(2))
     expect(engine.fileQuest).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(t.designs.filedTitle)).toBeTruthy()
+  })
+})
+
+describe('approving a version', () => {
+  const APPROVAL = { by: 'Rohan', at: '2026-11-05T12:00:00Z' }
+  const page = async (over: Partial<EngineApi> = {}) => {
+    const opened = await open({ readDesigns: designsOf([row('5.4.3')]), readDesignVersion: versionOf(), readDesign: readEach, ...over })
+    await screen.findByRole('heading', { name: '5.4.3' })
+
+    return opened
+  }
+
+  it('says a version is not approved yet, and approving it reads the list again to show who approved it', async () => {
+    const readDesigns = vi.fn(designsOf([row('5.4.3')]))
+    const { engine } = await page({ readDesigns })
+    expect(screen.getByText(t.designs.notApprovedLine)).toBeTruthy()
+    readDesigns.mockImplementation(designsOf([row('5.4.3', { approved: APPROVAL })]))
+
+    await press(t.designs.approve)
+
+    expect(engine.setDesignApproval).toHaveBeenCalledWith(KEY, '5.4.3', true)
+    expect(await screen.findByText(t.designs.approvedLine('Rohan', APPROVAL.at))).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.designs.withdrawApproval })).toBeTruthy()
+    expect(screen.queryByText(t.designs.notApprovedLine)).toBeNull()
+  })
+
+  it('shows who approved the version and when, and Withdraw approval takes it back', async () => {
+    const readDesigns = vi.fn(designsOf([row('5.4.3', { approved: APPROVAL })]))
+    const { engine } = await page({ readDesigns })
+    expect(screen.getByText(t.designs.approvedLine('Rohan', APPROVAL.at))).toBeTruthy()
+    readDesigns.mockImplementation(designsOf([row('5.4.3')]))
+
+    await press(t.designs.withdrawApproval)
+
+    expect(engine.setDesignApproval).toHaveBeenCalledWith(KEY, '5.4.3', false)
+    expect(await screen.findByText(t.designs.notApprovedLine)).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.designs.approve })).toBeTruthy()
+  })
+
+  it('reads Saving approval… and cannot be pressed again while it saves', async () => {
+    const { engine } = await page({ setDesignApproval: vi.fn(() => never<Reply<null>>()) })
+
+    await press(t.designs.approve)
+    // Not clicked again: jsdom, unlike a browser, still fires clicks on a disabled button.
+    const saving = screen.getByRole('button', { name: t.designs.approving })
+
+    expect(saving).toHaveProperty('disabled', true)
+    expect(engine.setDesignApproval).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows why the approval did not save under its button, reads nothing again, and pressing again tries again', async () => {
+    const setDesignApproval = vi.fn(async (): Promise<Reply<null>> => ok(null))
+    setDesignApproval.mockResolvedValueOnce({ ok: false, error: { message: "Couldn't save the approval. Try again." } })
+    const readDesigns = vi.fn(designsOf([row('5.4.3')]))
+    await page({ readDesigns, setDesignApproval })
+    const reads = readDesigns.mock.calls.length
+
+    await press(t.designs.approve)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe("Couldn't save the approval. Try again.")
+    expect(alert.closest('.dz-approval')?.contains(screen.getByRole('button', { name: t.designs.approve }))).toBe(true)
+    expect(readDesigns.mock.calls.length).toBe(reads)
+
+    await press(t.designs.approve)
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(setDesignApproval).toHaveBeenCalledTimes(2)
+    expect(setDesignApproval).toHaveBeenLastCalledWith(KEY, '5.4.3', true)
+    expect(readDesigns.mock.calls.length).toBeGreaterThan(reads)
+  })
+
+  it('badges an approved version as Approved in the rail, ahead of its open comments, and a broken one still as Couldn\'t read', async () => {
+    const problem = { file: 'docs/designs/5.4.2/version.json', detail: 'It has a mistake near line 3.', backupAt: null }
+    await open({ readDesigns: designsOf([row('5.4.3', { approved: APPROVAL, open: 2 }), row('5.4.2', { approved: APPROVAL, problem }), row('v5', { open: 1 })]), readDesignVersion: versionOf(), readDesign: readEach })
+
+    const rail = await screen.findByRole('complementary', { name: t.designs.history })
+    const badgeOf = (label: RegExp) => within(rail).getByRole('button', { name: label }).querySelector('.dz-badge')?.textContent
+    expect(badgeOf(/^5\.4\.3/)).toBe(t.designs.approvedTag)
+    expect(badgeOf(/^5\.4\.2/)).toBe(t.designs.couldntRead)
+    expect(badgeOf(/^v5/)).toBe(t.designs.open(1))
+  })
+
+  describe('in a narrow window', () => {
+    const openMenu = async (n: number) => act(async () => void fireEvent.click(await screen.findByRole('button', { name: `${t.designs.versionMenu(1, n)} ▾` })))
+    const menuBadgeOf = (label: RegExp) => within(screen.getByRole('listbox', { name: t.designs.historyMenu })).getByRole('option', { name: label }).querySelector('.dz-badge')?.textContent ?? null
+
+    it('badges an approved version as Approved in the history menu, ahead of its open comments', async () => {
+      window.innerWidth = 700
+      await open({ readDesigns: designsOf([row('5.4.3', { approved: APPROVAL, open: 2 })]), readDesignVersion: versionOf(), readDesign: readEach })
+
+      await openMenu(1)
+
+      expect(menuBadgeOf(/^5\.4\.3/)).toBe(t.designs.approvedTag)
+    })
+
+    it('badges no Approved on a version that is not approved, Couldn\'t read on a broken one, and nothing on a plain one in the history menu', async () => {
+      window.innerWidth = 700
+      const problem = { file: 'docs/designs/5.4.2/version.json', detail: 'It has a mistake near line 3.', backupAt: null }
+      await open({ readDesigns: designsOf([row('5.4.3', { open: 2 }), row('5.4.2', { approved: APPROVAL, problem }), row('5.4.1')]), readDesignVersion: versionOf(), readDesign: readEach })
+
+      await openMenu(3)
+
+      expect(menuBadgeOf(/^5\.4\.3/)).toBe(t.designs.open(2))
+      expect(menuBadgeOf(/^5\.4\.2/)).toBe(t.designs.couldntRead)
+      expect(menuBadgeOf(/^5\.4\.1/)).toBeNull()
+    })
+
+    it('drops the Approved badge from the history menu once approval is withdrawn and the list is read again', async () => {
+      window.innerWidth = 700
+      const readDesigns = vi.fn(designsOf([row('5.4.3', { approved: APPROVAL })]))
+      await page({ readDesigns })
+      await openMenu(1)
+      expect(menuBadgeOf(/^5\.4\.3/)).toBe(t.designs.approvedTag)
+      await openMenu(1)
+      readDesigns.mockImplementation(designsOf([row('5.4.3')]))
+
+      await press(t.designs.withdrawApproval)
+      await screen.findByText(t.designs.notApprovedLine)
+      await openMenu(1)
+
+      expect(menuBadgeOf(/^5\.4\.3/)).toBeNull()
+    })
+  })
+})
+
+describe('moving between designs in the editor', () => {
+  const NAMES: Record<string, string> = { welcome: 'Welcome', pair: 'Pair your insoles', walk: 'Live walk' }
+  const readNamed = vi.fn(async (_key: string, _folder: string, id: string): Promise<Reply<DesignRead>> => ready(NAMES[id]!))
+  const editorOf = async (over: Partial<EngineApi> = {}, designs = ['welcome', 'pair', 'walk']) => {
+    readNamed.mockClear()
+    const opened = await open({ readDesigns: designsOf([row('5.4.3')]), readDesignVersion: vi.fn(versionOf({ designs })), readDesign: readNamed, ...over })
+    // Found outside act: Preact holds renders until act ends, so the card would never show inside it.
+    const card = await screen.findByRole('button', { name: /^Welcome/ })
+    await act(async () => void fireEvent.click(card))
+    await screen.findByRole('heading', { name: 'Welcome', level: 1 })
+
+    return opened
+  }
+  const previous = () => screen.getByRole('button', { name: t.designs.previousDesign }) as HTMLButtonElement
+  const next = () => screen.getByRole('button', { name: t.designs.nextDesign }) as HTMLButtonElement
+  const nudgeHeadline = () => {
+    const canvas = screen.getByRole('application')
+    fireEvent.keyDown(canvas, { key: 'Tab' })
+    fireEvent.keyDown(canvas, { key: 'ArrowRight' })
+  }
+
+  it('moves through the designs in card order, with Previous off on the first and Next off on the last', async () => {
+    await editorOf({}, ['welcome', 'pair', 'walk'])
+    expect(previous().disabled).toBe(true)
+    expect(next().disabled).toBe(false)
+
+    await press(t.designs.nextDesign)
+    expect(await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })).toBeTruthy()
+    expect(previous().disabled).toBe(false)
+    expect(next().disabled).toBe(false)
+
+    await press(t.designs.nextDesign)
+    expect(await screen.findByRole('heading', { name: 'Live walk', level: 1 })).toBeTruthy()
+    expect(previous().disabled).toBe(false)
+    expect(next().disabled).toBe(true)
+
+    await press(t.designs.previousDesign)
+    expect(await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })).toBeTruthy()
+    expect(readNamed.mock.calls.map(call => call[2]).slice(-3)).toEqual(['pair', 'walk', 'pair'])
+  })
+
+  it('has both off for a version with one design', async () => {
+    await editorOf({}, ['welcome'])
+
+    expect(previous().disabled).toBe(true)
+    expect(next().disabled).toBe(true)
+  })
+
+  it('saves an edit to the design it was made on when Next is pressed before the autosave, and never to the next design', async () => {
+    const { engine } = await editorOf()
+    nudgeHeadline()
+
+    await press(t.designs.nextDesign)
+
+    expect(await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })).toBeTruthy()
+    expect(engine.saveDesign).toHaveBeenCalledTimes(1)
+    expect(engine.saveDesign).toHaveBeenCalledWith(KEY, '5.4.3', 'welcome', expect.objectContaining({ name: 'Welcome', nodes: [expect.objectContaining({ id: 'headline', x: 24 + NUDGE_PX.small })] }), 'stamp-Welcome')
+    // Long enough for an autosave the old editor left behind to fire.
+    await act(() => new Promise(done => setTimeout(done, AUTOSAVE_MS + 150)))
+    expect(vi.mocked(engine.saveDesign).mock.calls.map(call => call[2])).toEqual(['welcome'])
+  })
+
+  it('saves an edit to the design it was made on when Previous is pressed', async () => {
+    const { engine } = await editorOf()
+    await press(t.designs.nextDesign)
+    await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })
+    nudgeHeadline()
+
+    await press(t.designs.previousDesign)
+
+    expect(await screen.findByRole('heading', { name: 'Welcome', level: 1 })).toBeTruthy()
+    expect(vi.mocked(engine.saveDesign).mock.calls.map(call => [call[2], call[4]])).toEqual([['pair', 'stamp-Pair your insoles']])
+  })
+
+  it('saves nothing on moving when nothing was changed', async () => {
+    const { engine } = await editorOf()
+
+    await press(t.designs.nextDesign)
+
+    await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })
+    expect(engine.saveDesign).not.toHaveBeenCalled()
+  })
+
+  it('offers Previous and Next beside a design that does not read', async () => {
+    const problem = { file: 'docs/designs/5.4.3/walk.design.json', detail: 'It has a mistake near line 5.', backupAt: null }
+    await editorOf({ readDesign: async (_k: string, _f: string, id: string) => (id === 'walk' ? ok<DesignRead>({ kind: 'broken', problem }) : ready(NAMES[id]!)) })
+    await press(t.designs.nextDesign)
+    await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })
+
+    await press(t.designs.nextDesign)
+
+    expect(await screen.findByRole('heading', { name: t.designs.brokenTitle('walk') })).toBeTruthy()
+    expect(next().disabled).toBe(true)
+    await press(t.designs.previousDesign)
+    expect(await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })).toBeTruthy()
+  })
+
+  it('goes back to the version page from a design it moved to, and reads the version again', async () => {
+    const { engine } = await editorOf()
+    await press(t.designs.nextDesign)
+    await screen.findByRole('heading', { name: 'Pair your insoles', level: 1 })
+    const reads = vi.mocked(engine.readDesignVersion).mock.calls.length
+
+    await press('‹ 5.4.3')
+
+    expect(await screen.findByRole('heading', { name: '5.4.3', level: 1 })).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.designs.nextVersion })).toBeTruthy()
+    expect(vi.mocked(engine.readDesignVersion).mock.calls.length).toBeGreaterThan(reads)
   })
 })
 

@@ -124,6 +124,18 @@ const saveLine = (state: SaveState, isWaiting: boolean): string => {
   return state.kind === 'saved' ? t.designs.savedAt(state.at) : t.designs.upToDate
 }
 
+// The designs either side of this one, in the version's card order; off at either end.
+export const Neighbours = ({ onPrevious, onNext }: { onPrevious: (() => void) | null; onNext: (() => void) | null }) => (
+  <span class="dz-neighbours">
+    <button type="button" class="link-btn" disabled={onPrevious === null} onClick={() => onPrevious?.()}>
+      {t.designs.previousDesign}
+    </button>
+    <button type="button" class="link-btn" disabled={onNext === null} onClick={() => onNext?.()}>
+      {t.designs.nextDesign}
+    </button>
+  </span>
+)
+
 export type EditorProps = {
   engine: EngineApi
   realm: string
@@ -135,13 +147,15 @@ export type EditorProps = {
   comments: DesignComment[]
   commentsProblem: Problem | null
   onBack: () => void
+  onPrevious: (() => void) | null
+  onNext: (() => void) | null
   onReload: () => void
   onCopied: (name: string) => void
   onAddComment: (input: CommentInput) => Promise<Answer<unknown>>
   onSetComment: (id: string, isResolved: boolean) => Promise<Answer<unknown>>
 }
 
-export const DesignEditor = ({ engine, realm, folder, label, id, scene: first, stamp, comments, commentsProblem, onBack, onReload, onCopied, onAddComment, onSetComment }: EditorProps) => {
+export const DesignEditor = ({ engine, realm, folder, label, id, scene: first, stamp, comments, commentsProblem, onBack, onPrevious, onNext, onReload, onCopied, onAddComment, onSetComment }: EditorProps) => {
   const [history, setHistory] = useState<History>(() => historyOf(first))
   const [draft, setDraft] = useState<Scene | null>(null)
   const scene = draft ?? history.present
@@ -364,6 +378,7 @@ export const DesignEditor = ({ engine, realm, folder, label, id, scene: first, s
         <button type="button" class="link-btn" onClick={onBack}>
           {t.designs.back(label)}
         </button>
+        <Neighbours onPrevious={onPrevious} onNext={onNext} />
         <h1>{scene.name}</h1>
         <button type="button" class={`dz-save s-${save.state.kind}`} onClick={() => (save.state.kind === 'failed' || save.state.kind === 'changed') && setDialog(save.state.kind)} aria-live="polite">
           {saveLine(save.state, save.hasPending())}

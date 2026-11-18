@@ -207,6 +207,7 @@ const serveEngine = () => {
   handle(CHANNELS.addDesignComment, (_, key: unknown, folder: unknown, comment: unknown) => designs.addDesignComment(key, folder, comment))
   handle(CHANNELS.setDesignComment, (_, key: unknown, folder: unknown, id: unknown, isResolved: unknown) => designs.setDesignComment(key, folder, id, isResolved))
   handle(CHANNELS.sendDesignComments, (_, key: unknown, folder: unknown, next: unknown) => designs.sendDesignComments(key, folder, next))
+  handle(CHANNELS.setDesignApproval, (_, key: unknown, folder: unknown, isApproved: unknown) => designs.setDesignApproval(key, folder, isApproved))
   handle(CHANNELS.showDesigns, (_, key: unknown) => designs.showDesigns(key))
   handle(CHANNELS.readSettings, () => readSettings(settings))
   handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))

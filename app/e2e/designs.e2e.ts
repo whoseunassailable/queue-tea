@@ -130,6 +130,37 @@ test('a version in the history rail shows its designs, and one that does not rea
   await expect(page.getByRole('heading', { name: '5.4.3', level: 1 })).toBeVisible()
 })
 
+test('Approve version names Rohan and the time, badges the rail, and keeps the rest of version.json', async () => {
+  const before = await onDisk('5.4.3', 'version.json')
+  const rail = page.getByRole('complementary', { name: 'History' })
+  await expect(page.getByText('Not approved yet. Approve it once the designs are right.')).toBeVisible()
+  const clicked = Date.now()
+
+  await page.getByRole('button', { name: 'Approve version' }).click()
+
+  await expect(page.getByText(/^Approved by Rohan on \d{1,2} \w{3,4} \d{4}, \d\d:\d\d$/)).toBeVisible()
+  await expect(rail.getByRole('button', { name: /^5\.4\.3/ })).toContainText('✓ Approved')
+  await expect(page.getByRole('button', { name: 'Withdraw approval' })).toBeVisible()
+  const saved = await onDisk('5.4.3', 'version.json')
+  expect(saved.approved.by).toBe('Rohan')
+  expect(new Date(saved.approved.at).toISOString()).toBe(saved.approved.at)
+  expect(Date.parse(saved.approved.at)).toBeGreaterThanOrEqual(clicked - 1000)
+  expect(saved).toMatchObject(before)
+})
+
+test('Withdraw approval takes the badge away and writes approved: null, keeping the rest', async () => {
+  const rail = page.getByRole('complementary', { name: 'History' })
+
+  await page.getByRole('button', { name: 'Withdraw approval' }).click()
+
+  await expect(page.getByText('Not approved yet. Approve it once the designs are right.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Approve version' })).toBeVisible()
+  await expect(rail.getByRole('button', { name: /^5\.4\.3/ })).not.toContainText('✓ Approved')
+  const saved = await onDisk('5.4.3', 'version.json')
+  expect(saved.approved).toBeNull()
+  expect(saved).toMatchObject({ format: 1, label: '5.4.3', made: '2026-11-04T16:20:00-06:00', by: 'claude', from: '5.4.2', designs: ['welcome', 'pair-your-insoles', 'live-walk'] })
+})
+
 test('a card opens in the editor, which shows a layer it does not know as a grey box', async () => {
   await page.getByRole('button', { name: /^Welcome/ }).click()
 
@@ -199,6 +230,39 @@ test('a comment is added about the selected layer', async () => {
   await expect
     .poll(async () => (await onDisk('5.4.3', 'comments.json')).comments.at(-1))
     .toMatchObject({ design: 'welcome', on: 'headline', text: 'Warmer colours on the headline', by: 'Rohan', resolved: null, sentTo: null })
+})
+
+test('on the first design Previous is off and Next is on', async () => {
+  await expect(page.getByRole('application', { name: /^Welcome, the design/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: '‹ Previous design' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Next design ›' })).toBeEnabled()
+})
+
+test('Next design saves the edit waiting on Welcome to Welcome and leaves Pair your insoles as it was', async () => {
+  const pairBefore = await readFile(designFile('5.4.3', 'pair-your-insoles.design.json'), 'utf8')
+  await page.locator('[data-layer="headline"]').dblclick()
+  await page.keyboard.type('Walk better tomorrow')
+  await page.keyboard.press('Escape')
+
+  // At once, inside the autosave's wait: moving on has to save it.
+  await page.getByRole('button', { name: 'Next design ›' }).click()
+
+  await expect(page.getByRole('application', { name: /^Pair your insoles, the design/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Pair your insoles', level: 1 })).toBeVisible()
+  await expect.poll(async () => (await layerOn('headline')).text, { timeout: 10_000 }).toBe('Walk better tomorrow')
+  expect(await readFile(designFile('5.4.3', 'pair-your-insoles.design.json'), 'utf8')).toBe(pairBefore)
+  await expect(page.getByRole('button', { name: '‹ Previous design' })).toBeEnabled()
+})
+
+test('the last design, which does not read, has Next off, and Previous goes back one', async () => {
+  await page.getByRole('button', { name: 'Next design ›' }).click()
+
+  await expect(page.getByRole('heading', { name: "live-walk doesn't read" })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Next design ›' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '‹ Previous design' })).toBeEnabled()
+
+  await page.getByRole('button', { name: '‹ Previous design' }).click()
+  await expect(page.getByRole('application', { name: /^Pair your insoles, the design/ })).toBeVisible()
 })
 
 test('Next version files a quest from the open comments and shows the version coming', async () => {

@@ -17,6 +17,7 @@ import type { ReadableView } from '../../../workspace/state_management/workspace
 import { dayName } from '../../../../core/domain/format'
 import { captureOf, dailyBodyOf, dayError, folderKeyOf, folderNameError, folderPageOf, foldersOf, isDay, journalOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
 import { useNotesAsks } from '../state_management/notes_asks'
+import { useBrewDrag } from '../state_management/brew_drag'
 import { Robot } from '../widgets/brew_quest'
 import { useNotesBackup } from '../widgets/notes_backup'
 import { NoteWorkspace } from '../widgets/note_workspace'
@@ -125,6 +126,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const read = useEngineRead(engine, () => engine.readNotes(realm.key), [realm.key])
   const [openId, setOpenId] = useState<string | null>(null)
   const [newId, setNewId] = useState<string | null>(null)
+  const [brewId, setBrewId] = useState<string | null>(null)
+  const brewDrag = useBrewDrag(realm.key)
   const [page, setPage] = useState(0)
   const [query, setQueryValue] = useState('')
   const setQuery = (value: string) => {
@@ -342,6 +345,12 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
       if (list.current !== null) list.current.scrollTop = 0
     })
   }
+  const brewOn = async (note: Note) => {
+    if (note.isArchived || (saveOpen.current !== null && !(await saveOpen.current()))) return
+    setOpenId(note.id)
+    setBrewId(note.id)
+    setDrawerOpen(false)
+  }
   // Below 900 px the list is a drawer over the note, unless there's no note.
   const isDrawer = layout === 'narrow' && !isEmpty
 
@@ -545,12 +554,15 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
                         tabIndex={note.id === focusId ? 0 : -1}
                         aria-current={note.id === open?.id ? 'true' : undefined}
                         onClick={event => pick(note.id, event.detail === 0)}
+                        {...brewDrag.target(`row:${note.id}`, !note.isArchived, () => void brewOn(note))}
                       >
                         <span class="nt-item-title">{note.title}</span>
                         <span class="sub">
-                          {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : shown === 'journal' ? dayName(note.title) : whenOf(note.updated, today, yesterday)}
-                          {group.folder === null && ` · ${note.folder}`}
-                          {note.tags.length > 0 && ` · #${note.tags[0]}`}
+                          {!note.isArchived && brewDrag.isDragging ? <span class="nt-brew-drop-hint">{t.notebook.brew.drop}</span> : <>
+                            {note.id in held ? <b class="nt-unsaved">{t.notebook.notSavedRow}</b> : shown === 'journal' ? dayName(note.title) : whenOf(note.updated, today, yesterday)}
+                            {group.folder === null && ` · ${note.folder}`}
+                            {note.tags.length > 0 && ` · #${note.tags[0]}`}
+                          </>}
                         </span>
                       </button>
                     </li>
@@ -634,7 +646,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           empty
         ) : open !== undefined ? (
           <div class="nt-main">
-            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} mode={mode} onMode={setMode} graph={graph} onGraph={setGraph} kept={kept} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} />
+            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} mode={mode} onMode={setMode} graph={graph} onGraph={setGraph} kept={kept} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} brewDrag={brewDrag} isBrewRequested={brewId === open.id} onBrewHandled={() => setBrewId(null)} />
           </div>
         ) : (
           <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />

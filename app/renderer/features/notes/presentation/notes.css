@@ -89,6 +89,13 @@
 .rm .nt-brew-text { display: flex; flex-direction: column; min-width: 0; max-width: 240px; }
 .rm .nt-brew .btn { flex: none; white-space: nowrap; }
 .rm .nt-robot { flex: none; }
+.rm .nt-brew-drag { display: inline-flex; flex: none; cursor: grab; }
+.rm .nt-brew-drag:active { cursor: grabbing; }
+.rm .nt-brew-drag .nt-robot { pointer-events: none; }
+.rm .nt-brew-drag-hint { font-size: 11px; }
+.rm .nt [data-brew-target='true'] { outline: 2px dashed var(--link); outline-offset: -2px; }
+.rm .nt [data-brew-over='true'] { outline-style: solid; background: var(--sel); }
+.rm .nt-brew-drop-hint { color: var(--link); font-weight: 800; }
 
 /* The inspector: beside the editor, or floating over its right edge. */
 .rm .nt-inspector { display: flex; flex-direction: column; gap: 8px; padding: 14px; min-width: 0; box-sizing: border-box; }

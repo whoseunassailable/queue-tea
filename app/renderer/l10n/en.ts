@@ -708,6 +708,8 @@ export const t = {
     openNotSaved: "The open note couldn't be saved, so the folder wasn't renamed. Save it, then try again.",
     brew: {
       name: 'BrewQuest',
+      drag: 'Drag BrewQuest onto a note',
+      drop: 'Drop to review quests',
       asOne: 'This note can be one quest.',
       canBe: (lines: number) => (lines === 1 ? '1 checklist line can be a quest.' : `${lines} checklist lines can be quests.`),
       allFiled: (quests: number) => `Filed ${quests === 1 ? '1 quest' : `${quests} quests`}. Everything here is in the queue.`,

@@ -6,8 +6,8 @@
     "semantic_hash": ""
   },
   ".claude-plugin/plugin.json": {
-    "mtime": 1795031337.127821,
-    "seen": 1795031345.076576,
+    "mtime": 1795034409.980246,
+    "seen": 1795034415.092154,
     "ast_hash": "a8bb35be29f8b27e3660b3c6da409153",
     "semantic_hash": ""
   },
@@ -486,8 +486,8 @@
     "semantic_hash": ""
   },
   "app/package.json": {
-    "mtime": 1795031337.128691,
-    "seen": 1795031345.076725,
+    "mtime": 1795034409.9809375,
+    "seen": 1795034415.0923,
     "ast_hash": "ebc43435fefb2cabc12420d6751450f4",
     "semantic_hash": ""
   },
@@ -1092,9 +1092,9 @@
     "semantic_hash": ""
   },
   "app/renderer/test_setup.ts": {
-    "mtime": 1793845880.869814,
-    "seen": 1795029482.825482,
-    "ast_hash": "7177cec334a9b594ddda302dbfa75859",
+    "mtime": 1795034409.94573,
+    "seen": 1795034415.092441,
+    "ast_hash": "6348bce0ab2fbf3a60c507fee0659bec",
     "semantic_hash": ""
   },
   "app/renderer/test_support.ts": {
@@ -3162,9 +3162,9 @@
     "semantic_hash": ""
   },
   "app/renderer/app/notes.spec.tsx": {
-    "mtime": 1795030307.9198728,
-    "seen": 1795030325.688425,
-    "ast_hash": "1000ca31afcc801d17f5fb0da0906315",
+    "mtime": 1795034409.9952064,
+    "seen": 1795034415.092309,
+    "ast_hash": "d08f8c1ba74d673a0c54534d3b6190b7",
     "semantic_hash": ""
   },
   "app/renderer/features/notes/domain/notes_view.spec.ts": {

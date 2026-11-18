@@ -199,7 +199,7 @@ describe('the Notes page', () => {
     expect((screen.getByLabelText(t.notebook.type) as HTMLSelectElement).value).toBe(type)
     expect((screen.getByLabelText(t.notebook.folder) as HTMLInputElement).value).toBe('Plans')
     expect(screen.queryByRole('group', { name: t.notebook.templatesLabel })).toBeNull()
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ type, folder: 'Plans', body: t.notebook.templates[type] }), 's-1'), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ type, folder: 'Plans', body: t.notebook.templates[type] }), 's-1'))
   })
 
   it('changing or clearing the type keeps existing text and the folder', async () => {
@@ -210,9 +210,9 @@ describe('the Notes page', () => {
     const type = screen.getByLabelText(t.notebook.type)
 
     fireEvent.change(type, { target: { value: 'bug' } })
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ type: 'bug', body: 'Keep my words', folder: 'Plans' }), 's-1'), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ type: 'bug', body: 'Keep my words', folder: 'Plans' }), 's-1'))
     fireEvent.change(type, { target: { value: '' } })
-    await waitFor(() => expect(notes.saveNote).toHaveBeenLastCalledWith(KEY, 'n-00000001', expect.objectContaining({ type: null, body: 'Keep my words', folder: 'Plans' }), expect.any(String)), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenLastCalledWith(KEY, 'n-00000001', expect.objectContaining({ type: null, body: 'Keep my words', folder: 'Plans' }), expect.any(String)))
     expect(body().value).toBe('Keep my words')
     expect(screen.queryByRole('group', { name: t.notebook.templatesLabel })).toBeNull()
   })
@@ -264,7 +264,7 @@ describe('the Notes page', () => {
     expect(notes.saveNote.mock.invocationCallOrder[0]).toBeLessThan(notes.renameFolder.mock.invocationCallOrder[0]!)
     await waitFor(() => expect((screen.getByLabelText(t.notebook.folder) as HTMLInputElement).value).toBe('Plans'))
     write('Later words')
-    await waitFor(() => expect(notes.saveNote).toHaveBeenLastCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: 'Later words', folder: 'Plans' }), expect.stringMatching(/^r-/)), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenLastCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: 'Later words', folder: 'Plans' }), expect.stringMatching(/^r-/)))
   })
 
   it('checks folder names on blur and submit, and does not rename Inbox', async () => {
@@ -412,7 +412,7 @@ describe('the Notes page', () => {
 
     write('Hello')
     expect(screen.getByText(t.notebook.unsaved)).toBeTruthy()
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'new', { title: 'New', folder: 'Ideas', type: null, isPinned: false, tags: [], body: 'Hello' }, 's-1'), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'new', { title: 'New', folder: 'Ideas', type: null, isPinned: false, tags: [], body: 'Hello' }, 's-1'))
     expect(await screen.findByText(/^Saved/)).toBeTruthy()
   })
 
@@ -423,7 +423,7 @@ describe('the Notes page', () => {
 
     write('Samex')
     write('Same')
-    expect(await screen.findByText(/^Saved/, {}, { timeout: 2000 })).toBeTruthy()
+    expect(await screen.findByText(/^Saved/)).toBeTruthy()
     expect(notes.saveNote).not.toHaveBeenCalled()
   })
 
@@ -437,7 +437,7 @@ describe('the Notes page', () => {
 
     expect(document.getElementById(title.getAttribute('aria-describedby')!)?.textContent).toBe('Title is required.')
     write('Still saves the text')
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalled(), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalled())
     expect(notes.saveNote.mock.calls[0]![2].title).toBe('Bug Bounty Helper')
   })
 
@@ -449,7 +449,7 @@ describe('the Notes page', () => {
     await screen.findByDisplayValue('Bug Bounty Helper')
 
     write('My words')
-    expect(await screen.findByText(t.notebook.changedTitle, {}, { timeout: 2000 })).toBeTruthy()
+    expect(await screen.findByText(t.notebook.changedTitle)).toBeTruthy()
     await press(t.notebook.loadTheirs)
 
     expect(body().value).toBe('Their words')
@@ -463,7 +463,7 @@ describe('the Notes page', () => {
     await screen.findByDisplayValue('Bug Bounty Helper')
 
     write('Words')
-    expect((await screen.findByText(/Couldn't save this note/, {}, { timeout: 2000 })).closest('[role="alert"]')).toBeTruthy()
+    expect((await screen.findByText(/Couldn't save this note/)).closest('[role="alert"]')).toBeTruthy()
     await press(t.failed.tryAgain)
     expect(await screen.findByText(/^Saved/)).toBeTruthy()
   })
@@ -661,7 +661,7 @@ describe('the Notes page', () => {
     expect(openLink).toHaveBeenLastCalledWith('https://example.com/p.png')
 
     fireEvent.click(within(read as HTMLElement).getByLabelText(t.notebook.taskBox('Scan')))
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalled(), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalled())
     expect(notes.saveNote.mock.calls[0]![2].body).toContain('- [x] Scan')
 
     await press('the other')
@@ -785,7 +785,7 @@ describe('the Notes page', () => {
     fireEvent.keyDown(window, { key: 'e', metaKey: true })
 
     await act(async () => void fireEvent.paste(document.querySelector('.nt-read')!, { clipboardData: { files: [], getData: () => 'https://example.com/post' } }))
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: 'Reading list\n\nhttps://example.com/post\n\n' }), 's-1'), { timeout: 2000 })
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: 'Reading list\n\nhttps://example.com/post\n\n' }), 's-1'))
     const card = await screen.findByRole('link', { name: t.notebook.openBookmark('Example page', 'example.com') })
     await act(async () => void fireEvent.click(card))
     expect(openLink).toHaveBeenCalledWith('https://example.com/post')

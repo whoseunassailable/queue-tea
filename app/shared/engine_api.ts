@@ -359,6 +359,7 @@ export type EngineApi = {
   addDesignComment: (key: string, folder: string, comment: CommentInput) => Promise<Reply<DesignComment[]>>
   setDesignComment: (key: string, folder: string, id: string, isResolved: boolean) => Promise<Reply<DesignComment[]>>
   sendDesignComments: (key: string, folder: string, next: NextVersion) => Promise<Reply<null>>
+  setDesignApproval: (key: string, folder: string, isApproved: boolean) => Promise<Reply<null>>
   showDesigns: (key: string) => Promise<Reply<null>>
   readSettings: () => Promise<Reply<Settings>>
   saveSettings: (patch: Partial<Settings>) => Promise<Reply<Settings>>
@@ -467,6 +468,7 @@ export const CHANNELS = {
   addDesignComment: 'engine:add-design-comment',
   setDesignComment: 'engine:set-design-comment',
   sendDesignComments: 'engine:send-design-comments',
+  setDesignApproval: 'engine:set-design-approval',
   showDesigns: 'engine:show-designs',
   readSettings: 'engine:read-settings',
   saveSettings: 'engine:save-settings',

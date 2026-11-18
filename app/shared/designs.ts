@@ -28,6 +28,8 @@ export type DesignComment = { id: string; design: string; on: string | null; tex
 export const isOpen = (c: DesignComment) => c.resolved === null && c.sentTo === null
 export type CommentInput = { design: string; on: string | null; text: string }
 export type NextVersion = { label: string; quest: string }
+// Approval: who approved a version and when. Only the person approves, in the app.
+export type Approval = { by: string; at: string }
 
 export type VersionRow = {
   folder: string
@@ -41,6 +43,7 @@ export type VersionRow = {
   sent: number
   sentTo: string | null
   next: NextVersion | null
+  approved: Approval | null
   problem: Problem | null
 }
 // coming: a next version filed as a quest that hasn't been drafted yet.

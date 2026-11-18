@@ -94,6 +94,7 @@ export const MESSAGES = {
   addComment: "Couldn't save your comment. Try again.",
   setComment: "Couldn't change that comment. Try again.",
   sendComments: "Couldn't mark the comments as sent. Try again.",
+  setApproval: "Couldn't save the approval. Try again.",
   unknownDesign: "That design isn't one Queue-tea knows. Go back to the version and pick it again.",
   designGone: "That design isn't on disk any more. Go back to the version to see what's there.",
   brokenVersion: (file: string) => `${file} can't be read, so nothing was changed. Fix it, or ask Claude to, then try again.`,

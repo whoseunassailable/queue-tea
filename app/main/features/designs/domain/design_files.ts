@@ -1,10 +1,10 @@
 import { isDesignId, isHex, LIMITS } from '../../../../shared/designs'
 import { MESSAGES } from '../../../core/messages'
-import type { Author, DesignComment, NextVersion, Scene } from '../../../../shared/designs'
+import type { Approval, Author, DesignComment, NextVersion, Scene } from '../../../../shared/designs'
 
 // What a version.json holds. rest is every field this version of the app
 // doesn't know, written back as it was read.
-export type VersionFile = { format: number; label: string; made: string | null; by: Author | null; from: string | null; designs: string[]; next: NextVersion | null; [field: string]: unknown }
+export type VersionFile = { format: number; label: string; made: string | null; by: Author | null; from: string | null; designs: string[]; next: NextVersion | null; approved: Approval | null; [field: string]: unknown }
 export type CommentsFile = { format: number; comments: DesignComment[]; [field: string]: unknown }
 export type Parsed<T> = { ok: true; value: T } | { ok: false; detail: string }
 
@@ -126,6 +126,12 @@ const nextOf = (value: unknown): NextVersion | null | undefined => {
   return isObject(value) && isText(value.label, LIMITS.label) && isText(value.quest, LIMITS.title) ? { label: value.label, quest: value.quest } : undefined
 }
 
+const approvalOf = (value: unknown): Approval | null | undefined => {
+  if (value === undefined || value === null) return null
+
+  return isObject(value) && isText(value.by, 100) && typeof value.at === 'string' && !Number.isNaN(Date.parse(value.at)) ? { by: value.by, at: value.at } : undefined
+}
+
 export const parseVersion = (text: string): Parsed<VersionFile> =>
   then(text, value => {
     if (!isObject(value)) return { ok: false, detail: F.notAVersion }
@@ -134,6 +140,8 @@ export const parseVersion = (text: string): Parsed<VersionFile> =>
     if (value.designs !== undefined && !(Array.isArray(value.designs) && value.designs.every(isDesignId))) return { ok: false, detail: fault(F.theVersion, 'list of designs') }
     const next = nextOf(value.next)
     if (next === undefined) return { ok: false, detail: fault(F.theVersion, 'next version') }
+    const approved = approvalOf(value.approved)
+    if (approved === undefined) return { ok: false, detail: fault(F.theVersion, 'approval') }
 
     return {
       ok: true,
@@ -146,6 +154,7 @@ export const parseVersion = (text: string): Parsed<VersionFile> =>
         from: typeof value.from === 'string' ? value.from : null,
         designs: (value.designs as string[] | undefined) ?? [],
         next,
+        approved,
       },
     }
   })

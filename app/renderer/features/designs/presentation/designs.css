@@ -744,3 +744,25 @@
     transform: none;
   }
 }
+
+.rm .dz-approval {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+
+.rm .dz-approval .field-error {
+  flex-basis: 100%;
+}
+
+.rm .dz-neighbours {
+  display: inline-flex;
+  gap: 12px;
+}
+
+.rm .dz-neighbours .link-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

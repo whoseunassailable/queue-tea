@@ -6,25 +6,28 @@ import { t } from '../../../../l10n/en'
 
 const badgeOf = (row: VersionRow): { text: string; tone: string } | null => {
   if (row.problem !== null) return { text: t.designs.couldntRead, tone: 'bad' }
+  if (row.approved !== null) return { text: t.designs.approvedTag, tone: 'done' }
   if (row.open > 0) return { text: t.designs.open(row.open), tone: 'open' }
   if (row.sent > 0 && row.sentTo !== null) return { text: t.designs.sent(row.sent, row.sentTo), tone: 'sent' }
 
   return row.resolved > 0 ? { text: t.designs.allResolved, tone: 'done' } : null
 }
 
-const Row = ({ row, isCurrent, onPick }: { row: VersionRow; isCurrent: boolean; onPick: () => void }) => {
+const Badge = ({ row }: { row: VersionRow }) => {
   const badge = badgeOf(row)
 
-  return (
-    <li>
-      <button type="button" class={`dz-vrow${isCurrent ? ' sel' : ''}`} aria-current={isCurrent ? 'true' : undefined} onClick={onPick}>
-        <span class="dz-vlabel">{row.label}</span>
-        <span class="sub">{row.problem === null ? t.designs.rowMeta(row.made, row.designCount) : row.problem.file}</span>
-        {badge !== null && <span class={`dz-badge ${badge.tone}`}>{badge.text}</span>}
-      </button>
-    </li>
-  )
+  return badge === null ? null : <span class={`dz-badge ${badge.tone}`}>{badge.text}</span>
 }
+
+const Row = ({ row, isCurrent, onPick }: { row: VersionRow; isCurrent: boolean; onPick: () => void }) => (
+  <li>
+    <button type="button" class={`dz-vrow${isCurrent ? ' sel' : ''}`} aria-current={isCurrent ? 'true' : undefined} onClick={onPick}>
+      <span class="dz-vlabel">{row.label}</span>
+      <span class="sub">{row.problem === null ? t.designs.rowMeta(row.made, row.designCount) : row.problem.file}</span>
+      <Badge row={row} />
+    </button>
+  </li>
+)
 
 type Props = { view: DesignsView; current: string | null; showFailure: string | null; onPick: (folder: string) => void; onShow: () => void }
 
@@ -118,6 +121,7 @@ export const VersionMenu = ({ view, current, showFailure, onPick, onShow }: Prop
             >
               <span class="dz-vlabel">{row.label}</span>
               <span class="sub">{t.designs.rowMeta(row.made, row.designCount)}</span>
+              <Badge row={row} />
             </button>
           ))}
           <p class="sub">{t.designs.menuKeys}</p>

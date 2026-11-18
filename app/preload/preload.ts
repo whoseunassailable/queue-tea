@@ -22,6 +22,7 @@ const engine: EngineApi = {
   addDesignComment: (key, folder, comment) => ipcRenderer.invoke(CHANNELS.addDesignComment, key, folder, comment),
   setDesignComment: (key, folder, id, isResolved) => ipcRenderer.invoke(CHANNELS.setDesignComment, key, folder, id, isResolved),
   sendDesignComments: (key, folder, next) => ipcRenderer.invoke(CHANNELS.sendDesignComments, key, folder, next),
+  setDesignApproval: (key, folder, isApproved) => ipcRenderer.invoke(CHANNELS.setDesignApproval, key, folder, isApproved),
   showDesigns: key => ipcRenderer.invoke(CHANNELS.showDesigns, key),
   readSettings: () => ipcRenderer.invoke(CHANNELS.readSettings),
   saveSettings: patch => ipcRenderer.invoke(CHANNELS.saveSettings, patch),

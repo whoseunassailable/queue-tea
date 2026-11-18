@@ -234,6 +234,7 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     addDesignComment: vi.fn(async () => ({ ok: true as const, data: [] })),
     setDesignComment: vi.fn(async () => ({ ok: true as const, data: [] })),
     sendDesignComments: vi.fn(async () => ({ ok: true as const, data: null })),
+    setDesignApproval: vi.fn(async () => ({ ok: true as const, data: null })),
     showDesigns: vi.fn(async () => ({ ok: true as const, data: null })),
     readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }),
     saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' as const, chronicleScope: 'realm' as const, letterKeys: true, realmAccounts: {}, ...patch } })),

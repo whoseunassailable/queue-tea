@@ -4,7 +4,7 @@ Spec for the **Design Tab** task, from the screens in `docs/design-tab.pen` that
 
 ## What the user should be able to do
 
-Open **Designs** (after Quests, ⌘3) and see the designs of the selected realm. A history rail on the left lists the realm's design versions, newest first, and the page opens on the newest one that reads. Clicking another opens its designs as cards. Opening a card opens an editor where frames move and resize, text is edited, and fills, colours and corners change, with undo, redo and autosave. Every design has a comments box. **Next version…** turns a version's open comments into a quest, and when that quest runs, Claude drafts the next version from them.
+Open **Designs** (after Quests, ⌘3) and see the designs of the selected realm. A history rail on the left lists the realm's design versions, newest first, and the page opens on the newest one that reads. Clicking another opens its designs as cards. Opening a card opens an editor where frames move and resize, text is edited, and fills, colours and corners change, with undo, redo and autosave. **Previous design** and **Next design** in the editor's top bar move through the version's designs in card order, saving what's waiting first; each is off at its end. Every design has a comments box. **Approve version** on a version's page records who approved it and when, and **Withdraw approval** takes it back. **Next version…** turns a version's open comments into a quest, and when that quest runs, Claude drafts the next version from them.
 
 A version's label is free text. `5.4.3`, `v5`, `Onboarding pass 2` and `First sketch` are all fine. The rail orders versions by when they were made, not by their labels.
 
@@ -56,8 +56,9 @@ A version's folder is its label, lower-cased, with every run of characters other
 | `from` | The label of the version it was drafted from, or `null` |
 | `designs` | Design ids in the order the cards show. A `*.design.json` in the folder that isn't listed shows after the listed ones, by name |
 | `next` | Set by Next version: `{ "label": "5.4.4", "quest": "<quest title>" }`. The rail shows a "coming" row for it until a version with that label exists |
+| `approved` | Set by **Approve version** on the version's page: `{ "by": "Rohan", "at": "<ISO time>" }`, the first word of the realm's `git config user.name` and when. **Withdraw approval** sets it to `null`. The header says "Approved by Rohan on …" and the rail's badge says "✓ Approved". Only the person approves, in the app; Claude never writes it |
 
-Only `format` and `label` must be there; a missing `made`, `by`, `from` or `next` reads as `null`, and a missing `designs` as an empty list. Fields the app doesn't know are written back as they were read.
+Only `format` and `label` must be there; a missing `made`, `by`, `from`, `next` or `approved` reads as `null`, and a missing `designs` as an empty list. Fields the app doesn't know are written back as they were read.
 
 **`<id>.design.json`.** An id is lower-case letters, digits and `-`, starts and ends with a letter or digit, and is at most 60 characters. A file with any other name doesn't show.
 
@@ -126,7 +127,7 @@ The approved screens are `docs/design-tab.pen`, numbered as below.
   - **Save failed:** the dialog names the design and says the edits stay while the window is open. Keep editing, or Try again.
   - **Changed on disk:** something else saved the file while you edited it, or removed it. Queue-tea won't write over it. Load the new one, or save yours beside it as "<Name> (yours)", a new design listed right after the one you were editing.
 - **5 · Night.** The same page in the night sky theme. Every colour comes from the theme tokens.
-- **6a, 6b · Narrow window.** Under 900 px the rail becomes a menu at the top ("Version 1 of 5, newest"), where ↑↓ move, ↩ opens and Esc closes. The menu lists the coming versions first, as rows you can't pick, then the versions. Show in Finder sits beside the menu's button, and if it fails, its error shows under it. The editor's **Inspector** and **Comments · 3 open** buttons open panels that float over the canvas.
+- **6a, 6b · Narrow window.** Under 900 px the rail becomes a menu at the top ("Version 1 of 5, newest"), where ↑↓ move, ↩ opens and Esc closes. The menu lists the coming versions first, as rows you can't pick, then the versions, each with the same badge as in the rail. Show in Finder sits beside the menu's button, and if it fails, its error shows under it. The editor's **Inspector** and **Comments · 3 open** buttons open panels that float over the canvas.
 
 ## Behaviour
 

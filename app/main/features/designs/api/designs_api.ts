@@ -132,7 +132,7 @@ export const designsApi = (d: DesignsDeps) => {
   // that doesn't read sorts by when its file last changed.
   const rowOf = async (realm: Realm, folder: string): Promise<{ row: VersionRow; at: number }> => {
     const files = await d.host.list(`${realm.base}/${folder}`)
-    const blank = { folder, label: folder, made: null, by: null, from: null, next: null, open: 0, resolved: 0, sent: 0, sentTo: null }
+    const blank = { folder, label: folder, made: null, by: null, from: null, next: null, approved: null, open: 0, resolved: 0, sent: 0, sentTo: null }
     const designCount = idsIn(files, []).length
     const at = (await d.host.modifiedAt(`${realm.base}/${folder}/${VERSION}`)) ?? 0
     const version = await readParsed(realm, folder, VERSION, parseVersion)
@@ -143,7 +143,7 @@ export const designsApi = (d: DesignsDeps) => {
     const made = v.made === null ? Number.NaN : Date.parse(v.made)
 
     return {
-      row: { folder, label: v.label, made: v.made, by: v.by, from: v.from, next: v.next, designCount, problem: null, ...counted(comments?.ok === true ? comments.value.comments : []) },
+      row: { folder, label: v.label, made: v.made, by: v.by, from: v.from, next: v.next, approved: v.approved, designCount, problem: null, ...counted(comments?.ok === true ? comments.value.comments : []) },
       at: Number.isNaN(made) ? at : made,
     }
   }
@@ -344,6 +344,21 @@ export const designsApi = (d: DesignsDeps) => {
           const file = await commentsOf(realm, name)
           if (file.comments.some(isOpen)) await writeFile(realm, name, COMMENTS, jsonOf({ ...file, comments: file.comments.map(c => (isOpen(c) ? { ...c, sentTo: label } : c)) }))
           await writeFile(realm, name, VERSION, jsonOf({ ...version, next: { label, quest } }))
+
+          return null
+        }),
+      ),
+
+    // Approving names the person and the time; withdrawing clears it. Every
+    // other field of the version is written back as it was read.
+    setDesignApproval: (key: unknown, folder: unknown, isApproved: unknown): Promise<Reply<null>> =>
+      inTurn(key, () =>
+        reply(d.log, MESSAGES.setApproval, async () => {
+          const realm = await realmOf(key)
+          const name = folderArg(folder)
+          const version = await versionOf(realm, name)
+          const approved = isApproved === true ? { by: await authorOf(realm), at: now() } : null
+          await writeFile(realm, name, VERSION, jsonOf({ ...version, approved }))
 
           return null
         }),

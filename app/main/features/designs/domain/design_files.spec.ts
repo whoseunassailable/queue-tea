@@ -166,12 +166,37 @@ describe('a version file', () => {
   })
 
   it.each([
+    ['missing', '{"format": 1, "label": "5.4.3"}'],
+    ['null', '{"format": 1, "label": "5.4.3", "approved": null}'],
+  ])('reads an approval that is %s as not approved', (_, file) => {
+    expect(value(parseVersion(file)).approved).toBeNull()
+  })
+
+  it('reads who approved the version and when', () => {
+    expect(value(parseVersion('{"format": 1, "label": "5.4.3", "approved": {"by": "Zoë", "at": "2026-11-05T12:00:00.000Z"}}')).approved).toEqual({ by: 'Zoë', at: '2026-11-05T12:00:00.000Z' })
+  })
+
+  it('takes an approver of 100 characters and refuses 101', () => {
+    const approvedBy = (by: string) => parseVersion(JSON.stringify({ format: 1, label: '5.4.3', approved: { by, at: '2026-11-05T12:00:00.000Z' } }))
+
+    expect(value(approvedBy('x'.repeat(100))).approved?.by).toBe('x'.repeat(100))
+    expect(detail(approvedBy('x'.repeat(101)))).toBe('The version has no usable approval.')
+  })
+
+  it.each([
     ['a JSON mistake', '{ "format": 1, "label": "5.4.2",\n  "made": "2026-10-28T16:02:00-06:00"\n  "designs": [] }\n', 'It has a mistake near line 3.'],
     ['something that is not an object', '[1]', 'It isn’t a version file.'],
     ['an unknown format', '{"format": 2, "label": "v5"}', 'It isn’t in a design format this app knows.'],
     ['no label', '{"format": 1}', 'The version has no usable label.'],
     ['a design id that climbs out', '{"format": 1, "label": "v5", "designs": ["../x"]}', 'The version has no usable list of designs.'],
     ['a next version with no label', '{"format": 1, "label": "v5", "next": {"label": "", "quest": "Q"}}', 'The version has no usable next version.'],
+    ['an approval that is not an object', '{"format": 1, "label": "v5", "approved": true}', 'The version has no usable approval.'],
+    ['an approval that is a list', '{"format": 1, "label": "v5", "approved": [{"by": "Rohan", "at": "2026-11-05T12:00:00Z"}]}', 'The version has no usable approval.'],
+    ['an approval by no one', '{"format": 1, "label": "v5", "approved": {"by": "  ", "at": "2026-11-05T12:00:00Z"}}', 'The version has no usable approval.'],
+    ['an approval with no approver', '{"format": 1, "label": "v5", "approved": {"at": "2026-11-05T12:00:00Z"}}', 'The version has no usable approval.'],
+    ['an approval at a time that is not a date', '{"format": 1, "label": "v5", "approved": {"by": "Rohan", "at": "last Tuesday-ish"}}', 'The version has no usable approval.'],
+    ['an approval at a number', '{"format": 1, "label": "v5", "approved": {"by": "Rohan", "at": 1762344000000}}', 'The version has no usable approval.'],
+    ['an approval with no time', '{"format": 1, "label": "v5", "approved": {"by": "Rohan"}}', 'The version has no usable approval.'],
   ])('refuses %s', (_, file, said) => {
     expect(detail(parseVersion(file))).toBe(said)
   })

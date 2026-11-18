@@ -55,6 +55,8 @@ export const UPDATE_POLL_MS = 2_000
 
 // How long a note waits after typing stops before it saves itself.
 export const NOTE_AUTOSAVE_MS = 800
+// Bound the list's rendered rows, including when every folder is folded.
+export const NOTE_LIST_PAGE_SIZE = 100
 // How many notes the [[ link picker offers at once.
 export const NOTE_PICKER_ROWS = 8
 // How many notes the ⌘K palette lists, and how long a matching line it shows.

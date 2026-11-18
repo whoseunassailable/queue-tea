@@ -2,33 +2,82 @@ import type { Difficulty, Priority } from '../../../../../types'
 import { cleanTag, DAILY_TEMPLATE, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, noteTitled, openItemsOf, questIdOf } from '../../../../shared/notes'
 import type { Note, NoteChange, NoteInput, NoteType, QuestProposal } from '../../../../shared/notes'
 import { dayOf } from '../../../core/domain/format'
+import { NOTE_LIST_PAGE_SIZE } from '../../../core/constants/constants'
 import { t } from '../../../l10n/en'
 import type { ReadableView } from '../../workspace/state_management/workspace_store'
 
 // folder is null for the Pinned group.
 export type FolderGroup = { folder: string | null; notes: Note[] }
+// A folder can't start with a space, so this never meets a folder name.
+export const folderKeyOf = (group: FolderGroup): string => group.folder ?? ' pinned'
+
+// A folded folder takes one place too, bounding a realm with many folders.
+// Keep the full group for its count and only render this page's visible notes.
+export const folderPageOf = (groups: readonly FolderGroup[], folded: ReadonlySet<string>, requested: number) => {
+  const sizeOf = (group: FolderGroup) => folded.has(folderKeyOf(group)) ? 1 : Math.max(1, group.notes.length)
+  const pages = Math.max(1, Math.ceil(groups.reduce((sum, group) => sum + sizeOf(group), 0) / NOTE_LIST_PAGE_SIZE))
+  const page = Math.max(0, Math.min(pages - 1, requested))
+  const start = page * NOTE_LIST_PAGE_SIZE
+  const end = start + NOTE_LIST_PAGE_SIZE
+  const shown: (FolderGroup & { visible: Note[] })[] = []
+  let at = 0
+  for (const group of groups) {
+    const size = sizeOf(group)
+    if (at < end && at + size > start) shown.push({ ...group, visible: folded.has(folderKeyOf(group)) ? [] : group.notes.slice(Math.max(0, start - at), end - at) })
+    at += size
+    if (at >= end) break
+  }
+
+  return { groups: shown, page, pages }
+}
 
 const words = (query: string) => query.toLowerCase().split(/\s+/).filter(word => word !== '')
+const searchText = new WeakMap<Note, { text: string; tags: string[] }>()
+
+// IPC replies and saved edits replace notes. A weak key releases old bodies
+// and ensures an edited note never inherits the previous search text.
+const searchable = (note: Note) => {
+  const kept = searchText.get(note)
+  if (kept !== undefined) return kept
+  const tags = note.tags.map(tag => tag.toLowerCase())
+  const made = { text: `${note.title}\n${note.body}\n${tags.map(tag => `#${tag}`).join(' ')}`.toLowerCase(), tags }
+  searchText.set(note, made)
+
+  return made
+}
 
 // A note matches when every word is in its title, body or tags; a #word
 // matches tags only.
-export const matches = (note: Note, query: string): boolean => {
-  const text = `${note.title}\n${note.body}\n${note.tags.map(tag => `#${tag}`).join(' ')}`.toLowerCase()
-  const tags = note.tags.map(tag => tag.toLowerCase())
+const matching = (query: string) => {
+  const terms = words(query)
 
-  return words(query).every(word => (word.startsWith('#') ? tags.some(tag => tag.startsWith(word.slice(1))) : text.includes(word)))
+  return (note: Note): boolean => {
+    if (terms.length === 0) return true
+    const { text, tags } = searchable(note)
+
+    return terms.every(word => (word.startsWith('#') ? tags.some(tag => tag.startsWith(word.slice(1))) : text.includes(word)))
+  }
 }
+export const matches = (note: Note, query: string): boolean => matching(query)(note)
 
 // Pinned notes first, in their own group and not in their folder too; then
 // Inbox, then the rest A to Z; newest note first in each. Archived notes
 // show in their folders.
 export const foldersOf = (notes: readonly Note[], query: string, isArchived: boolean): FolderGroup[] => {
-  const shown = notes.filter(note => note.isArchived === isArchived && matches(note, query)).sort((a, b) => b.updated.localeCompare(a.updated))
-  const pinned = isArchived ? [] : shown.filter(note => note.isPinned)
-  const filed = shown.filter(note => !pinned.includes(note))
-  const names = [...new Set(filed.map(note => note.folder))].sort((a, b) => (a === INBOX ? -1 : b === INBOX ? 1 : a.localeCompare(b)))
+  const match = matching(query)
+  const shown = notes.filter(note => note.isArchived === isArchived && match(note)).sort((a, b) => b.updated.localeCompare(a.updated))
+  const pinned: Note[] = []
+  const folders = new Map<string, Note[]>()
+  for (const note of shown) {
+    if (!isArchived && note.isPinned) pinned.push(note)
+    else {
+      if (!folders.has(note.folder)) folders.set(note.folder, [])
+      folders.get(note.folder)!.push(note)
+    }
+  }
+  const names = [...folders.keys()].sort((a, b) => (a === INBOX ? -1 : b === INBOX ? 1 : a.localeCompare(b)))
 
-  return [...(pinned.length > 0 ? [{ folder: null, notes: pinned }] : []), ...names.map(folder => ({ folder, notes: filed.filter(note => note.folder === folder) }))]
+  return [...(pinned.length > 0 ? [{ folder: null, notes: pinned }] : []), ...names.map(folder => ({ folder, notes: folders.get(folder)! }))]
 }
 
 // notes and id, when given, check the title is free among the live notes.
@@ -83,11 +132,18 @@ export const dailyBodyOf = (notes: readonly Note[], day: string, title = day): s
 
 // The journal: the live days that match, newest first, a group per month.
 export const journalOf = (notes: readonly Note[], query: string): FolderGroup[] => {
-  const days = notes.filter(note => !note.isArchived && isDay(note.title) && matches(note, query)).sort((a, b) => b.title.localeCompare(a.title))
+  const match = matching(query)
+  const days = notes.filter(note => !note.isArchived && isDay(note.title) && match(note)).sort((a, b) => b.title.localeCompare(a.title))
+  const months = new Map<string, Note[]>()
+  for (const day of days) {
+    const month = day.title.slice(0, 7)
+    if (!months.has(month)) months.set(month, [])
+    months.get(month)!.push(day)
+  }
 
-  return [...new Set(days.map(note => note.title.slice(0, 7)))].map(month => ({
+  return [...months].map(([month, days]) => ({
     folder: `${t.months[Number(month.slice(5)) - 1]} ${month.slice(0, 4)}`,
-    notes: days.filter(note => note.title.startsWith(month)),
+    notes: days,
   }))
 }
 

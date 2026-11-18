@@ -110,6 +110,32 @@ afterEach(() => {
 })
 
 describe('the Notes page', () => {
+  it('pages a large list, keeps a keyboard entry on each page, and searches beyond that page', async () => {
+    const notes = Array.from({ length: 205 }, (_, i) => note({ id: `n-${i}`, title: `Idea ${i}`, body: i === 204 ? 'A hidden needle' : '' }))
+    await open(memoryNotes(notes))
+    await screen.findByDisplayValue('Idea 0')
+    const list = screen.getByRole('navigation', { name: 'Notes' })
+    expect(list.querySelectorAll('.nt-item')).toHaveLength(100)
+    await press('Next notes')
+    expect(list.querySelectorAll('.nt-item')).toHaveLength(100)
+    const entry = list.querySelector<HTMLButtonElement>('.nt-item[tabindex="0"]')!
+    expect(entry.textContent).toContain('Idea 100')
+    await waitFor(() => expect(document.activeElement).toBe(entry))
+    await act(async () => void fireEvent.keyDown(entry, { key: 'ArrowDown' }))
+    expect(document.activeElement?.textContent).toContain('Idea 101')
+    await press('Next notes')
+    expect(list.querySelectorAll('.nt-item')).toHaveLength(5)
+    await press('Previous notes')
+    expect(list.querySelectorAll('.nt-item')).toHaveLength(100)
+    expect(list.querySelector('.nt-item')?.textContent).toContain('Idea 100')
+    await act(async () => void fireEvent.input(screen.getByLabelText(t.notebook.search), { target: { value: 'needle' } }))
+    expect(list.querySelectorAll('.nt-item')).toHaveLength(1)
+    expect(within(list).getByRole('button', { name: /^Idea 204/ })).toBeTruthy()
+    expect(within(list).queryByRole('button', { name: 'Next notes' })).toBeNull()
+    await act(async () => void fireEvent.input(screen.getByLabelText(t.notebook.search), { target: { value: '' } }))
+    expect(list.querySelector('.nt-item')?.textContent).toContain('Idea 0')
+  })
+
   it('History shows loading, an empty history, and returns focus when closed with Esc', async () => {
     const readNoteHistory = vi.fn().mockImplementationOnce(never).mockResolvedValue(ok([]))
     await open({ ...memoryNotes([note()]), readNoteHistory })

@@ -15,8 +15,7 @@ import { useWindowWidth } from '../../../../core/widgets/window_width'
 import { t } from '../../../../l10n/en'
 import type { ReadableView } from '../../../workspace/state_management/workspace_store'
 import { dayName } from '../../../../core/domain/format'
-import { captureOf, dailyBodyOf, dayError, folderNameError, foldersOf, isDay, journalOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
-import type { FolderGroup } from '../../domain/notes_view'
+import { captureOf, dailyBodyOf, dayError, folderKeyOf, folderNameError, folderPageOf, foldersOf, isDay, journalOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
 import { useNotesAsks } from '../state_management/notes_asks'
 import { Robot } from '../widgets/brew_quest'
 import { useNotesBackup } from '../widgets/notes_backup'
@@ -108,10 +107,6 @@ const RenameFolder = ({ folder, onRename, onClose }: { folder: string; onRename:
   )
 }
 
-// A folder can't start with a space, so the Pinned group's fold never meets one.
-const PINNED = ' pinned'
-const keyOf = (group: FolderGroup) => group.folder ?? PINNED
-
 type Props = { engine: EngineApi; realm: ReadableView; isCovered: boolean; onProject: (view: ProjectView) => void; onOpenQuest: (id: string) => void; onSay: (text: string, tone?: 'success' | 'error') => void }
 
 const layoutOf = (width: number): Layout => (width < DETAIL_IS_PAGE_BELOW ? 'narrow' : width < DETAIL_FLOATS_BELOW ? 'mid' : 'wide')
@@ -130,10 +125,19 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const read = useEngineRead(engine, () => engine.readNotes(realm.key), [realm.key])
   const [openId, setOpenId] = useState<string | null>(null)
   const [newId, setNewId] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(0)
+  const [query, setQueryValue] = useState('')
+  const setQuery = (value: string) => {
+    setQueryValue(value)
+    setPage(0)
+  }
   const [capture, setCapture] = useState('')
   // Which notes the list shows: the folders, the archived ones or the journal's days.
-  const [shown, setShown] = useState<'notes' | 'archived' | 'journal'>('notes')
+  const [shown, setShownValue] = useState<'notes' | 'archived' | 'journal'>('notes')
+  const setShown = (value: typeof shown | ((was: typeof shown) => typeof shown)) => {
+    setShownValue(value)
+    setPage(0)
+  }
   const isArchivedView = shown === 'archived'
   const [day, setDay] = useState(() => localDay(new Date()))
   const [dayFault, setDayFault] = useState<string | undefined>(undefined)
@@ -160,6 +164,11 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const saveOpen = useRef<(() => Promise<boolean>) | null>(null)
   const layout = layoutOf(useWindowWidth())
   const quests = useMemo(() => questLinesOf(realm), [realm])
+  const groups = useMemo(() => {
+    if (read.load.status !== 'ready') return []
+
+    return shown === 'journal' ? journalOf(read.load.data.notes, query) : foldersOf(read.load.data.notes, query, shown === 'archived')
+  }, [read.load, query, shown])
   const where = `~/${NOTES_FOLDER}/${realm.key}/`
 
   // A change's answer: the notes as they are now, or the reason it failed.
@@ -217,7 +226,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     setDrawerOpen(false)
     requestAnimationFrame(() => document.getElementById('nt-show-list')?.focus())
   }
-  const toggleFold = (folder: string, isFolding?: boolean) =>
+  const toggleFold = (folder: string, isFolding?: boolean) => {
+    setPage(0)
     setFolded(was => {
       const next = new Set(was)
       if (isFolding ?? !was.has(folder)) next.add(folder)
@@ -225,6 +235,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
 
       return next
     })
+  }
 
   // Back at the window, notes edited in another app show.
   useEffect(() => {
@@ -313,15 +324,24 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const view = read.load.data
   const live = view.notes.filter(note => !note.isArchived)
   const archivedCount = view.notes.length - live.length
-  const groups = shown === 'journal' ? journalOf(view.notes, query) : foldersOf(view.notes, query, isArchivedView)
+  const listed = folderPageOf(groups, folded, page)
   const journalCount = live.filter(note => isDay(note.title)).length
-  const first = groups.find(group => !folded.has(keyOf(group)))?.notes[0] ?? groups[0]?.notes[0]
+  const first = groups.find(group => !folded.has(folderKeyOf(group)))?.notes[0] ?? groups[0]?.notes[0]
   const open = view.notes.find(note => note.id === openId) ?? first
   const isEmpty = live.length === 0 && shown === 'notes'
   const today = localDay(new Date())
   const yesterday = localDay(new Date(Date.now() - 86_400_000))
   const folders = [...new Set(live.map(note => note.folder))].sort()
-  const focusId = open?.id ?? first?.id
+  const pageNotes = listed.groups.flatMap(group => group.visible)
+  const focusId = pageNotes.some(note => note.id === open?.id) ? open?.id : pageNotes[0]?.id
+  const turnPage = (by: number) => {
+    setPage(listed.page + by)
+    requestAnimationFrame(() => {
+      const target = list.current?.querySelector<HTMLElement>('.nt-item') ?? list.current?.querySelector<HTMLElement>('.nt-fold')
+      target?.focus()
+      if (list.current !== null) list.current.scrollTop = 0
+    })
+  }
   // Below 900 px the list is a drawer over the note, unless there's no note.
   const isDrawer = layout === 'narrow' && !isEmpty
 
@@ -496,8 +516,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           }
         }}
       >
-        {groups.map(group => {
-          const key = keyOf(group)
+        {listed.groups.map(group => {
+          const key = folderKeyOf(group)
           const isFolded = folded.has(key)
           const name = group.folder ?? t.notebook.pinned
 
@@ -516,7 +536,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
               </h3>
               {!isFolded && (
                 <ul>
-                  {group.notes.map(note => (
+                  {group.visible.map(note => (
                     <li key={note.id}>
                       <button
                         type="button"
@@ -541,6 +561,13 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           )
         })}
       </div>
+      {listed.pages > 1 && (
+        <div class="nt-paging">
+          <span class="sub" role="status">{t.notebook.listPage(listed.page + 1, listed.pages)}</span>
+          <button type="button" class="chip-btn" disabled={listed.page === 0} onClick={() => turnPage(-1)}>{t.notebook.previousNotes}</button>
+          <button type="button" class="chip-btn" disabled={listed.page === listed.pages - 1} onClick={() => turnPage(1)}>{t.notebook.nextNotes}</button>
+        </div>
+      )}
       {groups.length === 0 && query.trim() !== '' && (
         <p class="hint">
           {t.notebook.noMatch(query.trim())}{' '}

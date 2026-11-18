@@ -14,6 +14,9 @@
 .rm .nt-list-head { display: flex; align-items: center; gap: 8px; }
 .rm .nt-list-head h2 { margin: 0 auto 0 0; font-size: 20px; }
 .rm .nt-list-head h2 .sub { font-family: 'Nunito Sans', sans-serif; font-size: 12px; }
+.rm .nt-folders { min-height: 0; overflow-y: auto; }
+.rm .nt-paging { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rm .nt-paging > .sub { flex-basis: 100%; }
 .rm .nt-folder h3 { margin: 4px 0 2px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* Rename shows on the folder you point at, or tab to. */
 .rm .nt-rename { font-size: 11px; color: var(--ink3); opacity: 0; }

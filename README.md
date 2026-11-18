@@ -86,6 +86,9 @@ The design is in [docs/spec.md](docs/spec.md), the code's shape in [docs/archite
 
 For dependency setup in the app's isolated merge checks, see [Merge-check dependency setup](docs/merge-check-dependencies.md).
 
+For capturing ideas, finding notes and filing a saga in the workspace app,
+see the [Notes user guide](docs/notes-user-guide.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

@@ -1,5 +1,8 @@
 # Notes
 
+For capture, search, recovery and a worked example from idea to saga, read the
+[Notes user guide](notes-user-guide.md).
+
 Spec for **Notes 1**, the first slice of Rohan's Notes workspace epic. Mocha Mockup drew the screens on 7 November 2026 in `docs/notes.pen`. The same screens are in `docs/designs/notes-1/`, so the Designs tab shows them once this branch is merged. Rohan hasn't approved them yet. Notes 1 is built on `task/notes-workspace`; [What Notes 1 builds](#what-notes-1-builds) says where the build and the screens still differ.
 
 ## What the user can do
@@ -133,7 +136,7 @@ The screens are in `docs/notes.pen`, numbered as below, at the app's window size
 | ⌘F | Notes | Puts the cursor in search (Edit › Find). Esc in search clears it |
 | ⌘E | A note | Turns Write into Read and back |
 | ↩ / ⌘↩ | Capture line | Adds the idea to Inbox and stays in the line / adds it and opens it |
-| ↑ ↓, ↩, ← → | Note list | Move between notes, open one (the cursor goes to the body), fold or unfold a folder |
+| ↑ ↓, ↩, ← | Note list | Move between notes, open one (the cursor goes to the body), fold its folder. Use the folder heading to reopen it |
 | ↩, Esc | Title | Moves to the body / puts the saved title back |
 | ↑ ↓, ↩ or Tab, Esc | Link picker | Move, insert `Title]]` (for a quest, `quest:<id>\|Title]]`), close and keep what was typed. Typing `]]` closes it too |
 | Space, ⌘↩, Esc | Review sheet | Tick or untick a row, file, cancel |
@@ -387,6 +390,36 @@ Added after Notes 1, from the epic's quest for a knowledge graph. **Graph** sits
 `d3-force` is pinned to 3.0.0, with `d3-quadtree`, `d3-dispatch` and `d3-timer` held at 3.0.1 in `overrides`. All four got new patch releases within an hour of each other on 2026-11-03, the first in five years, and they stay pinned until those are looked at.
 
 Graph checks cover the lines, steps and filters in `note_graph.spec.ts`; the layout, hit testing and arrow keys in `note_graph_layout.spec.ts`; the worker's runs, progress and cancelling in `graph_layout.spec.ts`; the view's states, clicks, keys, controls and kept points in `note_graph_view.spec.tsx`; Write, Read and Graph in the page in `app/renderer/app/notes.spec.tsx`; and a realm of 5,000 notes in the built app in `app/e2e/note_graph.e2e.ts`.
+
+## Lists in large realms
+
+Search covers the current view's full set of notes before the list selects a
+page. The list shows at most 100 note rows per page, with **Previous notes**,
+**Next notes** and a page count below the groups. Folder counts include matches
+on other pages. A folded folder takes one place, so thousands of folders also
+stay within the page limit. A folder spanning pages repeats its heading.
+The rows scroll independently, keeping search and the paging buttons visible.
+Changing page keeps the editor open and focuses the first note on that page,
+or its first folder if all are folded. Search, view changes and folding return
+to page one. Each page keeps a note reachable by Tab even when the open note
+is on another page. The narrow drawer has the same controls.
+
+Search normalizes each note's title, body and tags once, kept under a weak
+reference to that note. IPC replies replace notes, so edited text gets a new
+entry and old entries can be collected. An empty query skips normalization.
+Queries split into terms once per search. Folders and journal months collect
+notes in one pass after sorting, and the page reuses its groups when unrelated
+state changes. `NOTE_LIST_PAGE_SIZE` (100) is in the renderer's constants file;
+the grouping, matching and page rules are in `notes_view.ts`.
+
+The engine reads at most 5,000 valid note files, including archived notes.
+This task keeps its disk reads and conflict checks unchanged. The browser
+fixture captures one idea into a 4,999-note vault, then exercises paging and
+search at 5,000 notes. It reviews a saga before filing, verifies the queue
+record and Markdown links, and reopens the result. Checks live in
+`app/e2e/notes_performance.e2e.ts`, `notes_performance.spec.ts` and the Notes
+page's component tests. The [performance design](superpowers/specs/2026-11-18-notes-performance-design.md)
+records the budgets and fixture limits.
 
 ## Not in Notes 1
 

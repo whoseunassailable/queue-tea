@@ -11,6 +11,7 @@ import { Spinner } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import { isInPlay, lineOf, questLineOf, tickedItemsOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
+import type { BrewDrag } from '../state_management/brew_drag'
 
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
@@ -33,12 +34,15 @@ export const Robot = ({ size = 44 }: { size?: number }) => (
   </svg>
 )
 
-export const BrewQuestCard = ({ line, onBrew }: { line: string; onBrew: () => void }) => (
+export const BrewQuestCard = ({ line, drag, onBrew }: { line: string; drag: BrewDrag; onBrew: () => void }) => (
   <div class="nt-brew">
-    <Robot />
+    <span class="nt-brew-drag" role="img" aria-label={t.notebook.brew.drag} title={t.notebook.brew.drag} {...drag.source}>
+      <Robot />
+    </span>
     <div class="nt-brew-text">
       <b>{t.notebook.brew.name}</b>
       <span class="sub">{line}</span>
+      <span class="sub nt-brew-drag-hint">{t.notebook.brew.drag}</span>
     </div>
     <button type="button" class="btn primary" onClick={onBrew}>
       {t.notebook.brew.turn}

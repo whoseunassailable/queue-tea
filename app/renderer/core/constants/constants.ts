@@ -55,6 +55,7 @@ export const UPDATE_POLL_MS = 2_000
 
 // How long a note waits after typing stops before it saves itself.
 export const NOTE_AUTOSAVE_MS = 800
+export const NOTE_BREW_DRAG_TYPE = 'application/x-queue-tea-brewquest'
 // How many notes the [[ link picker offers at once.
 export const NOTE_PICKER_ROWS = 8
 // How many notes the ⌘K palette lists, and how long a matching line it shows.

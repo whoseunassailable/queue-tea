@@ -224,6 +224,18 @@ Added after Notes 1, from the epic's first quest. **Write** and **Read** sit in 
 - **Links:** `[[Title]]` opens that note, and one with no note is drawn dashed. A quest link shows the quest's live title with its state. Markdown marks in the written title stay part of the link; quest syntax inside code stays code. A quest in play is a button that opens it in Quests, read as "Open Write the parser in Quests, in progress". A done quest shows its title and "✓ Done" and isn't a button. A quest no longer in the queue shows the written text, grey and dashed like a missing note, with "Not in the queue". A web or email link opens in the browser through main, which refuses every other kind ("Queue-tea opens only web and email links from a note."). A web link alone on a line is a bookmark card (see [Bookmarks](#bookmarks)). Local files follow the attachment rules below. A remote image remains a link that opens in the browser.
 - **Safety:** marked 18.1.1 only cuts the text into tokens. Every token becomes an element in the window, so nothing in a note runs as HTML: `<b>` shows as `<b>`.
 
+## Drag BrewQuest onto a note
+
+The robot in the editor's foot has a grab cursor and the hint **Drag BrewQuest onto a note**. Drag it onto the open note in Write, Read or Graph, or onto a live note's row in the list. While dragging, those targets show a dashed outline and **Drop to review quests**. The target under the pointer has a solid outline. A list drop opens that note and its review sheet; a drop on the editor reviews the open note. Graph nodes are not separate drop targets.
+
+Pending edits save through the usual save and conflict checks before the review opens. Dropping on another note first saves the open note; if saving fails or finds a conflict, the current note and its edits stay on screen. Archived notes cannot receive the robot. A cancelled drag or a robot dropped anywhere else changes no note and files no quest. The outlines disappear when the drag ends.
+
+**Turn into quests…** stays beside the robot as the keyboard and click way to open the same sheet. Tab reaches it and Enter or Space activates it. Closing the sheet returns focus to that button. A drop only opens the proposal: **File** still approves the quests, and **Cancel** or Esc files nothing. The robot stays in its footer, with no new animation.
+
+The drag state lives in `app/renderer/features/notes/presentation/state_management/brew_drag.ts`. It accepts only a drag begun by this realm's robot, with a private transfer type and no plain text to insert into a field. Note rows and the editor share it, and both use the existing save and BrewQuest review flow. No engine API or stored note format changes.
+
+Component checks in `app/renderer/app/notes.spec.tsx` cover target hints, hover, cancellation, invalid and foreign drags, archived notes, save failures and pending text in Write, Read and Graph. `app/e2e/notes.e2e.ts` checks native dragging, unchanged files and queue after an invalid drop, review of another note, the editor at 760 px, keyboard activation and returned focus. Run `npm test`, `npm run typecheck` and `npm run e2e` inside `app/`.
+
 ## Version history
 
 **History**, beside the save line, opens a 600 px sheet for the open note, including an archived note. Pending edits save before it opens; a failed save leaves the editor and its text in place. The sheet lists saved times newest first, with a read-only preview of the selected version's title, folder, tags and Markdown source. Text in a snapshot never runs as HTML. The current version is marked and cannot be restored over itself.
@@ -390,7 +402,7 @@ Graph checks cover the lines, steps and filters in `note_graph.spec.ts`; the lay
 
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph (added later, see [The graph](#the-graph)), the canvas, BrewQuest's animations and drag-to-note, and AI note analysis. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph (added later, see [The graph](#the-graph)), the canvas, BrewQuest's animations, drag-to-note (added later, see [Drag BrewQuest onto a note](#drag-brewquest-onto-a-note)), and AI note analysis. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

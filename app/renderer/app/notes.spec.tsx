@@ -103,6 +103,27 @@ const write = (text: string) => {
   fireEvent.input(box, { target: { value: text, selectionStart: text.length, selectionEnd: text.length } })
 }
 
+const brewTransfer = () => {
+  const data = new Map<string, string>()
+
+  return {
+    get types() { return [...data.keys()] },
+    files: [],
+    effectAllowed: 'uninitialized',
+    dropEffect: 'none',
+    setData: (type: string, value: string) => data.set(type, value),
+    getData: (type: string) => data.get(type) ?? '',
+  }
+}
+
+const dragBrew = () => {
+  const dataTransfer = brewTransfer()
+  const robot = screen.getByLabelText('Drag BrewQuest onto a note')
+  fireEvent.dragStart(robot, { dataTransfer })
+
+  return { robot, dataTransfer }
+}
+
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
@@ -570,6 +591,117 @@ describe('the Notes page', () => {
     expect(within(about).getByRole('button', { name: 'Fan' })).toBeTruthy()
     await press(t.notebook.makeIt)
     expect(notes.createNote).toHaveBeenCalledWith(KEY, { title: 'Missing', folder: 'Ideas', body: '' })
+  })
+
+  it('BrewQuest shows live targets during its drag and reviews the note it lands on', async () => {
+    const notes = memoryNotes([note(), note({ id: 'n-other', title: 'Release plan', body: '- [ ] Ship' })])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    const editor = screen.getByRole('region', { name: t.notebook.body })
+    const row = within(screen.getByRole('navigation', { name: t.notebook.title })).getByRole('button', { name: /Release plan/ })
+    const { robot, dataTransfer } = dragBrew()
+    expect(dataTransfer.effectAllowed).toBe('copy')
+    expect(dataTransfer.types).not.toContain('text/plain')
+    expect(editor.getAttribute('data-brew-target')).toBe('true')
+    expect(row.getAttribute('data-brew-target')).toBe('true')
+    expect(screen.getAllByText('Drop to review quests')).toHaveLength(3)
+    expect(fireEvent.dragOver(row, { dataTransfer })).toBe(false)
+    expect(dataTransfer.dropEffect).toBe('copy')
+    expect(row.getAttribute('data-brew-over')).toBe('true')
+    fireEvent(row, new MouseEvent('dragleave', { bubbles: true, relatedTarget: row.firstElementChild }))
+    expect(row.getAttribute('data-brew-over')).toBe('true')
+    await act(async () => void fireEvent.drop(row, { dataTransfer }))
+    fireEvent.dragEnd(robot)
+
+    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Release plan') })
+    expect((within(sheet).getByLabelText(`${t.notebook.brew.questTitle(1)} *`) as HTMLInputElement).value).toBe('Ship')
+    expect(screen.getByLabelText(`${t.notebook.noteTitle} *`)).toHaveProperty('value', 'Release plan')
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
+    expect(notes.saveNote).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-brew-target]')).toBeNull()
+    await press(t.actions.cancel)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: t.notebook.brew.turn }))
+  })
+
+  it.each(['write', 'read', 'graph'] as const)('BrewQuest saves the latest text before reviewing a drop in %s', async mode => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    write('- [ ] A freshly typed quest')
+    if (mode !== 'write') await press(t.notebook[mode])
+    const { dataTransfer } = dragBrew()
+    const target = mode === 'write' ? body() : screen.getByRole('region', { name: t.notebook.body })
+    await act(async () => void fireEvent.drop(target, { dataTransfer }))
+
+    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    expect((within(sheet).getByLabelText(`${t.notebook.brew.questTitle(1)} *`) as HTMLInputElement).value).toBe('A freshly typed quest')
+    expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: '- [ ] A freshly typed quest' }), expect.any(String))
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
+  })
+
+  it('BrewQuest leaves notes and quests alone after an invalid drop or a cancelled drag', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    const original = body().value
+    const editor = screen.getByRole('region', { name: t.notebook.body })
+    const { robot, dataTransfer } = dragBrew()
+    await act(async () => void fireEvent.drop(screen.getByRole('complementary', { name: t.notebook.inspector }), { dataTransfer }))
+    expect(document.querySelector('[data-brew-target]')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    const cancelled = dragBrew()
+    fireEvent.dragOver(editor, { dataTransfer: cancelled.dataTransfer })
+    fireEvent.dragEnd(robot)
+    expect(document.querySelector('[data-brew-target]')).toBeNull()
+    await act(async () => void fireEvent.drop(editor, { dataTransfer: cancelled.dataTransfer }))
+    const unrelated = brewTransfer()
+    unrelated.setData('text/plain', 'unrelated text')
+    dragBrew()
+    expect(fireEvent.dragOver(editor, { dataTransfer: unrelated })).toBe(true)
+    await act(async () => void fireEvent.drop(editor, { dataTransfer: unrelated }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(body().value).toBe(original)
+    expect(notes.saveNote).not.toHaveBeenCalled()
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
+    expect(notes.createNote).not.toHaveBeenCalled()
+    expect(notes.archiveNote).not.toHaveBeenCalled()
+  })
+
+  it('BrewQuest stops a drop when saving fails and keeps the open note and its edits', async () => {
+    const notes = memoryNotes([note(), note({ id: 'n-other', title: 'Release plan' })])
+    const saveNote = vi.fn(async () => ({ ok: false as const, error: { message: "Couldn't save. Your text is still here." } }))
+    await open({ ...notes, saveNote })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    write('Keep this unsaved text')
+    const { dataTransfer } = dragBrew()
+    const row = within(screen.getByRole('navigation', { name: t.notebook.title })).getByRole('button', { name: /Release plan/ })
+    await act(async () => void fireEvent.drop(row, { dataTransfer }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain("Couldn't save.")
+    expect(screen.getByLabelText(`${t.notebook.noteTitle} *`)).toHaveProperty('value', 'Bug Bounty Helper')
+    expect(body().value).toBe('Keep this unsaved text')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
+  })
+
+  it('BrewQuest refuses archived notes and a drag from another realm', async () => {
+    const notes = memoryNotes([note(), note({ id: 'n-archived', title: 'Old plan', isArchived: true })])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    const { dataTransfer } = dragBrew()
+    // The MIME type alone cannot make an outside drag into this realm's robot.
+    dataTransfer.setData(dataTransfer.types[0]!, 'another-realm')
+    await act(async () => void fireEvent.drop(body(), { dataTransfer }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    const active = dragBrew()
+    await press(t.notebook.archived(1))
+    const archived = within(screen.getByRole('navigation', { name: t.notebook.title })).getByRole('button', { name: /Old plan/ })
+    expect(archived.hasAttribute('data-brew-target')).toBe(false)
+    await act(async () => void fireEvent.drop(archived, { dataTransfer: active.dataTransfer }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(notes.saveNote).not.toHaveBeenCalled()
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
   })
 
   it('BrewQuest drafts quests from the checklist, checks them, and files only what you keep', async () => {

@@ -1,8 +1,9 @@
-import type { CommandRun, GitFacts, Intent, ProjectRecord, Task } from '../../../../../types'
+import type { CommandRun, GitFacts, Intent, ProjectRecord, Task, WorkPeriod } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import { noteSeen } from '../../../checkpoints/domain/services/checkpoints'
 import { currentTask } from '../../../records/domain/services/queue_rules'
 import { accrue, addMinutes, dayKey, mergeMinutes as merge } from '../../../time/domain/services/time'
+import { recordRealmTime } from '../../../time/domain/services/realm_time'
 
 const READS: Record<string, string> = { Read: 'file_path', Grep: 'path', Glob: 'path' }
 const CHANGES: Record<string, string> = { Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' }
@@ -27,15 +28,21 @@ export const countToolCall = (
 export type Pending = {
   minutes: Record<string, number>
   projectMinutes: Record<string, number>
+  taskPeriods: WorkPeriod[]
+  projectPeriods: WorkPeriod[]
+  offsetMinutes: number
   files: Task['files']
   understanding: number
   improving: number
   commands: CommandRun[]
 }
 
-const nothing = (): Pending => ({
+const nothing = (offsetMinutes: number): Pending => ({
   minutes: {},
   projectMinutes: {},
+  taskPeriods: [],
+  projectPeriods: [],
+  offsetMinutes,
   files: { read: [], changed: [] },
   understanding: 0,
   improving: 0,
@@ -46,7 +53,7 @@ const nothing = (): Pending => ({
 // tool calls, and the kind of each message.
 export const createTracker = (gapMinutes: number, offsetMinutes: number) => {
   let last: number | null = null
-  let pending = nothing()
+  let pending = nothing(offsetMinutes)
   let to: 'task' | 'project' = 'task'
 
   return {
@@ -55,6 +62,7 @@ export const createTracker = (gapMinutes: number, offsetMinutes: number) => {
       const day = dayKey(nowMs, offsetMinutes)
       if (minutes > 0 && to === 'task') pending.minutes = addMinutes(pending.minutes, day, minutes)
       if (minutes > 0 && to === 'project') pending.projectMinutes = addMinutes(pending.projectMinutes, day, minutes)
+      if (minutes > 0) (to === 'task' ? pending.taskPeriods : pending.projectPeriods).push({ start: last!, end: nowMs })
       last = nowMs
     },
     // After a quick question time goes to the project, until the next task message.
@@ -73,7 +81,7 @@ export const createTracker = (gapMinutes: number, offsetMinutes: number) => {
     },
     take: (): Pending => {
       const taken = pending
-      pending = nothing()
+      pending = nothing(offsetMinutes)
 
       return taken
     },
@@ -94,7 +102,12 @@ export const applyPending = (
   const current = currentTask(record.tasks, place)
   const unassigned = merge(record.unassignedMinutesByDay, pending.projectMinutes)
   if (current === null || current.codexSince !== null) {
-    return { ...record, unassignedMinutesByDay: merge(unassigned, pending.minutes) }
+    const tracked = recordRealmTime(record, {
+      onQuests: [], elsewhere: [...pending.taskPeriods, ...pending.projectPeriods],
+      minutesOnQuests: {}, minutesElsewhere: merge(pending.minutes, pending.projectMinutes), offsetMinutes: pending.offsetMinutes,
+    })
+
+    return { ...tracked, unassignedMinutesByDay: merge(unassigned, pending.minutes) }
   }
 
   const files = {
@@ -118,5 +131,10 @@ export const applyPending = (
       ? counted
       : noteSeen(counted, { at: seen.at, files: pending.files.changed, commands: pending.commands, git: seen.git })
 
-  return { ...record, unassignedMinutesByDay: unassigned, tasks: record.tasks.map(t => (t.id === task.id ? task : t)) }
+  const tracked = recordRealmTime(record, {
+    onQuests: pending.taskPeriods, elsewhere: pending.projectPeriods,
+    minutesOnQuests: pending.minutes, minutesElsewhere: pending.projectMinutes, offsetMinutes: pending.offsetMinutes,
+  })
+
+  return { ...tracked, unassignedMinutesByDay: unassigned, tasks: record.tasks.map(t => (t.id === task.id ? task : t)) }
 }

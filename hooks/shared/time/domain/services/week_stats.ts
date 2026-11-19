@@ -1,5 +1,6 @@
-import type { Task } from '../../../../../types'
+import type { RealmTime, Task } from '../../../../../types'
 import { formatMinutes } from './time'
+import { realmDayTime } from './realm_time'
 
 const DAY = 86_400_000
 
@@ -27,11 +28,15 @@ export const finishedTasks = (tasks: Task[]): Task[] =>
     .sort((a, b) => Date.parse(b.finished!) - Date.parse(a.finished!))
 
 // Minutes per day of the week, Monday first, tasks and project time together.
-export const weekMinutes = (tasks: Task[], unassigned: Record<string, number>, today: string): number[] =>
-  weekOf(today).map(day => tasks.reduce((sum, t) => sum + (t.minutesByDay[day] ?? 0), unassigned[day] ?? 0))
+export const weekMinutes = (tasks: Task[], unassigned: Record<string, number>, today: string, realmTime?: RealmTime): number[] =>
+  weekOf(today).map(day => {
+    const time = realmDayTime({ tasks, unassignedMinutesByDay: unassigned, realmTime }, day)
 
-export const weekLine = (tasks: Task[], unassigned: Record<string, number>, today: string): string => {
-  const minutes = weekMinutes(tasks, unassigned, today).reduce((a, b) => a + b, 0)
+    return time.onQuests + time.elsewhere
+  })
+
+export const weekLine = (tasks: Task[], unassigned: Record<string, number>, today: string, realmTime?: RealmTime): string => {
+  const minutes = weekMinutes(tasks, unassigned, today, realmTime).reduce((a, b) => a + b, 0)
 
   return `${doneThisWeek(tasks, today).length} done · ${formatMinutes(minutes)}`
 }

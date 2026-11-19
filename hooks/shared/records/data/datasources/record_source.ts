@@ -70,11 +70,30 @@ const withDefaults = (t: Partial<Task>): Task =>
     helpers: readHelpers(t.helpers),
   }) as Task
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+
+const isDay = (day: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(`${day}T00:00:00Z`)) &&
+  new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day
+
+const areMinutes = (value: unknown): boolean => isObject(value) &&
+  Object.entries(value).every(([day, minutes]) => isDay(day) && typeof minutes === 'number' && Number.isFinite(minutes) && minutes >= 0)
+
+const arePeriods = (value: unknown): boolean => Array.isArray(value) && value.every(period =>
+  isObject(period) && typeof period.start === 'number' && typeof period.end === 'number' &&
+  Number.isFinite(new Date(period.start).getTime()) && Number.isFinite(new Date(period.end).getTime()) && period.end > period.start)
+
+const isRealmTime = (value: unknown): boolean => isObject(value) && isObject(value.days) &&
+  areMinutes(value.accountedOnQuests) && areMinutes(value.accountedElsewhere) &&
+  Object.entries(value.days).every(([day, periods]) => isDay(day) && isObject(periods) && arePeriods(periods.onQuests) && arePeriods(periods.elsewhere))
+
 export const parseRecord = (text: string): ProjectRecord | 'unreadable' => {
   try {
     const parsed = JSON.parse(text) as Partial<ProjectRecord>
 
-    return (parsed?.version === 1 || parsed?.version === 2) && Array.isArray(parsed.tasks)
+    return (parsed?.version === 1 || parsed?.version === 2) && Array.isArray(parsed.tasks) &&
+      (parsed.realmTime === undefined || isRealmTime(parsed.realmTime))
       ? ({
           ...parsed,
           version: 2,

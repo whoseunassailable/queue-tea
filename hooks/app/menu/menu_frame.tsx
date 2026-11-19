@@ -105,7 +105,7 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
   const today = dayKey(now, offset)
   const name = live.ctx?.projectName ?? 'this project'
   const done = doneThisWeek(tasks, today)
-  const minutes = weekMinutes(tasks, record?.unassignedMinutesByDay ?? {}, today)
+  const minutes = weekMinutes(tasks, record?.unassignedMinutesByDay ?? {}, today, record?.realmTime)
 
   // A solid bar over each view: its icon, name and count.
   const bar = (color: Color, text: string) => (

@@ -1,5 +1,7 @@
 import type { Ctx } from '../../../../core/env/env'
-import { mergeMinutes, minutesOfStamps } from '../../../../shared/time/domain/services/time'
+import { mergeMinutes, minutesOfStamps, periodsOfStamps } from '../../../../shared/time/domain/services/time'
+import { recordRealmTime } from '../../../../shared/time/domain/services/realm_time'
+import type { WorkPeriod } from '../../../../../types'
 import type { Deps } from './deps'
 import { taskFolder } from '../../../../shared/records/domain/services/queue_rules'
 
@@ -13,18 +15,25 @@ export const leaveCodexUseCase = async (d: Deps, ctx: Ctx, taskId: string): Prom
   if (since === null) return false
 
   let byDay: Record<string, number> = {}
+  let periods: WorkPeriod[] = []
   let isTimeLost = false
   try {
     const stamps = await d.codex.activitySince(taskFolder(task!, ctx.projectPath), Date.parse(since), await d.env.now())
     byDay = minutesOfStamps(stamps, ctx.options.idleGapMinutes, ctx.offsetMinutes)
+    periods = periodsOfStamps(stamps, ctx.options.idleGapMinutes)
   } catch (err) {
     d.env.log(`reading Codex's log failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
     isTimeLost = true
   }
-  await d.records.update(r => ({
-    ...r,
-    tasks: r.tasks.map(t => (t.id === taskId && t.codexSince === since ? { ...t, codexSince: null, minutesByDay: mergeMinutes(t.minutesByDay, byDay) } : t)),
-  }))
+  await d.records.update(r => {
+    if (!r.tasks.some(t => t.id === taskId && t.codexSince === since)) return r
+    const tracked = recordRealmTime(r, { onQuests: periods, elsewhere: [], minutesOnQuests: byDay, minutesElsewhere: {}, offsetMinutes: ctx.offsetMinutes })
+
+    return {
+      ...tracked,
+      tasks: r.tasks.map(t => (t.id === taskId ? { ...t, codexSince: null, minutesByDay: mergeMinutes(t.minutesByDay, byDay) } : t)),
+    }
+  })
 
   return isTimeLost
 }

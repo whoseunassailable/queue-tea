@@ -1,5 +1,6 @@
 import type { Difficulty, ProjectRecord, Task } from '../../../../../types'
 import { dayKey } from '../../../../../hooks/shared/time/domain/services/time'
+import { realmDayTime } from '../../../../../hooks/shared/time/domain/services/realm_time'
 import { finishedTasks, weekOf } from '../../../../../hooks/shared/time/domain/services/week_stats'
 import type { ChronicleWeek, DayTime, VictoryLine } from '../../../../shared/engine_api'
 import { xpOf } from '../../game/domain/services/game'
@@ -14,8 +15,8 @@ const minutesOf = (task: Task): number => Object.values(task.minutesByDay).reduc
 
 export const dayTimeOf = (records: ProjectRecord[], day: string): DayTime => ({
   day,
-  onQuests: records.reduce((sum, r) => sum + r.tasks.reduce((all, t) => all + (t.minutesByDay[day] ?? 0), 0), 0),
-  elsewhere: records.reduce((sum, r) => sum + (r.unassignedMinutesByDay[day] ?? 0), 0),
+  onQuests: records.reduce((sum, r) => sum + realmDayTime(r, day).onQuests, 0),
+  elsewhere: records.reduce((sum, r) => sum + realmDayTime(r, day).elsewhere, 0),
 })
 
 export const totalOf = (days: DayTime[]): number => days.reduce((sum, d) => sum + d.onQuests + d.elsewhere, 0)

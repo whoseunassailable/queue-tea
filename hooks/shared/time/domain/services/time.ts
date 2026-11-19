@@ -1,3 +1,5 @@
+import type { WorkPeriod } from '../../../../../types'
+
 const MINUTE = 60_000
 
 // The local day of a moment, as `YYYY-MM-DD`, for the offset `date +%z` gave.
@@ -23,6 +25,17 @@ export const addMinutes = (
 
 export const mergeMinutes = (byDay: Record<string, number>, more: Record<string, number>): Record<string, number> =>
   Object.entries(more).reduce((sum, [day, minutes]) => addMinutes(sum, day, minutes), byDay)
+
+export const periodsOfStamps = (stamps: number[], gapMinutes: number): WorkPeriod[] => {
+  const periods: WorkPeriod[] = []
+  let last: number | null = null
+  for (const stamp of [...stamps].sort((a, b) => a - b)) {
+    if (accrue(last, stamp, gapMinutes) > 0) periods.push({ start: last!, end: stamp })
+    last = stamp
+  }
+
+  return periods
+}
 
 // Minutes per day from moments of activity, counted the way a session's are:
 // each gap up to the idle limit.

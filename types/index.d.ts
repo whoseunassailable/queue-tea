@@ -97,6 +97,16 @@ export type Platform = 'claude' | 'codex'
 // what the task goes back blocked on.
 export type AppRequest = { id: string; kind: 'begin' | 'putBack'; taskId: string; at: string; block?: { waitFor: string } | { reason: string } }
 
+export type WorkPeriod = { start: number; end: number }
+
+// Merged periods for Realm totals, independent of the tasks' minute counters.
+// Accounted minutes distinguish timed work from older totals without periods.
+export type RealmTime = {
+  days: Record<string, { onQuests: WorkPeriod[]; elsewhere: WorkPeriod[] }>
+  accountedOnQuests: Record<string, number>
+  accountedElsewhere: Record<string, number>
+}
+
 export type ProjectRecord = {
   version: 1 | 2
   project: { name: string; path: string }
@@ -107,6 +117,7 @@ export type ProjectRecord = {
   feature: string | null
   tasks: Task[]
   unassignedMinutesByDay: Record<string, number>
+  realmTime?: RealmTime
   requests: AppRequest[]
 }
 

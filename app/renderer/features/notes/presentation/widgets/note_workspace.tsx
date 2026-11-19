@@ -20,6 +20,7 @@ import type { GraphKept, GraphSettings } from './note_graph_view'
 import { NoteGraphView } from './note_graph_view'
 import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { NoteHistory } from './note_history'
+import type { BrewDrag } from '../state_management/brew_drag'
 
 export type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
@@ -48,7 +49,7 @@ export type Layout = 'wide' | 'mid' | 'narrow'
 // saveRef: how the page saves the open note before it moves notes itself.
 export type NoteMode = 'write' | 'read' | 'graph'
 
-type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; mode: NoteMode; onMode: (mode: NoteMode) => void; graph: GraphSettings; onGraph: (next: GraphSettings) => void; kept: MutableRef<GraphKept>; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions }
+type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; mode: NoteMode; onMode: (mode: NoteMode) => void; graph: GraphSettings; onGraph: (next: GraphSettings) => void; kept: MutableRef<GraphKept>; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions; brewDrag: BrewDrag; isBrewRequested: boolean; onBrewHandled: () => void }
 
 const PICKER_WIDTH = 320
 
@@ -160,7 +161,7 @@ const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, Q
 // One note, open: its editor, what it links to and from, and BrewQuest. Every
 // change saves itself a moment after typing stops, over the file it was read
 // from; a file changed meanwhile stops the saving and asks what to keep.
-export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, mode, onMode, graph, onGraph, kept, onShowList, saveRef, actions }: Props) => {
+export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, mode, onMode, graph, onGraph, kept, onShowList, saveRef, actions, brewDrag, isBrewRequested, onBrewHandled }: Props) => {
   const start = held?.change ?? changeOf(note)
   const [draft, setDraft] = useState<NoteChange>(start)
   const [titleText, setTitleText] = useState(start.title)
@@ -188,6 +189,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const titleBox = useRef<HTMLInputElement>(null)
   const detailsButton = useRef<HTMLButtonElement>(null)
   const historyButton = useRef<HTMLButtonElement>(null)
+  const brewButton = useRef<HTMLDivElement>(null)
   const graphButton = useRef<HTMLButtonElement>(null)
   const caret = useRef<number | null>(null)
   const isLive = !note.isArchived
@@ -376,7 +378,16 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   }
 
   const brew = async () => {
-    if (await flush()) setBrewing(true)
+    if (isLive && await flush()) setBrewing(true)
+  }
+  useEffect(() => {
+    if (!isBrewRequested) return
+    onBrewHandled()
+    void brew()
+  }, [isBrewRequested])
+  const closeBrew = () => {
+    setBrewing(false)
+    brewButton.current?.querySelector('button')?.focus()
   }
   const openHistory = async () => {
     setOpeningHistory(true)
@@ -432,7 +443,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
 
   return (
     <div class={isFloating ? 'nt-open floats' : 'nt-open'}>
-      <section class="nt-editor panel" aria-label={t.notebook.body}>
+      <section class="nt-editor panel" aria-label={t.notebook.body} {...brewDrag.target('editor', isLive, () => void brew())}>
         <header class="nt-head">
           {layout === 'narrow' && (
             <button type="button" id="nt-show-list" class="chip-btn" onClick={onShowList}>
@@ -440,10 +451,12 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             </button>
           )}
           <span class="nt-head-folder sub">
-            <span aria-hidden="true">▭ </span>
-            {draft.folder}
-            {draft.type !== null && ` · ${t.notebook.types[draft.type]}`}
-            {draft.isPinned && ` · ${t.notebook.pinned}`}
+            {isLive && brewDrag.isDragging ? <span class="nt-brew-drop-hint" role="status">{t.notebook.brew.drop}</span> : <>
+              <span aria-hidden="true">▭ </span>
+              {draft.folder}
+              {draft.type !== null && ` · ${t.notebook.types[draft.type]}`}
+              {draft.isPinned && ` · ${t.notebook.pinned}`}
+            </>}
           </span>
           {isLive && (
             <span class="nt-mode" role="group" aria-label={t.notebook.viewAs}>
@@ -617,8 +630,8 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           </div>
         )}
         {isLive && (
-          <footer class="nt-foot">
-            <BrewQuestCard line={brewLine} onBrew={() => void brew()} />
+          <footer class="nt-foot" ref={brewButton}>
+            <BrewQuestCard line={brewLine} drag={brewDrag} onBrew={() => void brew()} />
           </footer>
         )}
       </section>
@@ -747,7 +760,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           </div>
         </aside>
       )}
-      {isBrewing && <BrewSheet engine={engine} realm={realm} realmName={realmName} note={shown} quests={quests} onFiled={actions.onFiled} onRefresh={actions.onRefresh} onClose={() => setBrewing(false)} />}
+      {isBrewing && <BrewSheet engine={engine} realm={realm} realmName={realmName} note={shown} quests={quests} onFiled={actions.onFiled} onRefresh={actions.onRefresh} onClose={closeBrew} />}
       {historyNote !== null && <NoteHistory engine={engine} realm={realm} note={historyNote} onClose={closeHistory} onRefresh={actions.onRefresh} onRestored={saved => {
         adopt(saved.note)
         actions.onSaved(saved.view)

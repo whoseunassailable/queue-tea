@@ -85,6 +85,58 @@ test('the linked note shows the backlink', async () => {
   await expect(page.getByLabel('Title *')).toHaveValue('Bug Bounty Helper')
 })
 
+test('dragging BrewQuest highlights notes and opens their review without filing; the button still works with Enter', async () => {
+  const robot = () => page.getByLabel('Drag BrewQuest onto a note')
+  const list = page.getByRole('navigation', { name: 'Notes' })
+  const other = list.getByRole('button', { name: /^Threat model/ })
+  const inspector = page.getByRole('complementary', { name: 'About this note' })
+  const before = await record()
+  const files = await Promise.all((await noteFiles()).map(name => readFile(join(notesDir(), name), 'utf8')))
+  await robot().dragTo(inspector)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(await record()).toEqual(before)
+  expect(await Promise.all((await noteFiles()).map(name => readFile(join(notesDir(), name), 'utf8')))).toEqual(files)
+
+  const source = (await robot().boundingBox())!
+  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2)
+  await page.mouse.down()
+  try {
+    await page.mouse.move(source.x + source.width / 2 - 15, source.y + source.height / 2 - 15, { steps: 5 })
+    await expect(other).toHaveAttribute('data-brew-target', 'true')
+    const target = (await other.boundingBox())!
+    await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 })
+    // The first move enters the row; a second move delivers its dragover.
+    await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2)
+    await expect(other).toHaveAttribute('data-brew-over', 'true')
+    await page.screenshot({ path: '/private/tmp/queue-tea-brewquest-targets.png' })
+  } finally {
+    await page.mouse.up()
+  }
+  const otherSheet = page.getByRole('dialog', { name: 'Turn Threat model into quests' })
+  await expect(otherSheet).toBeVisible()
+  await otherSheet.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Turn into quests…' })).toBeFocused()
+  expect(await record()).toEqual(before)
+
+  await robot().dragTo(list.getByRole('button', { name: /^Bug Bounty Helper/ }))
+  const sheet = page.getByRole('dialog', { name: 'Turn Bug Bounty Helper into quests' })
+  await expect(sheet).toBeVisible()
+  await sheet.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.setViewportSize({ width: 760, height: 900 })
+  await robot().dragTo(page.getByRole('combobox', { name: 'Note' }))
+  await expect(sheet).toBeVisible()
+  await page.keyboard.press('Escape')
+  expect(await page.locator('.nt-editor').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  const button = page.getByRole('button', { name: 'Turn into quests…' })
+  await button.focus()
+  await button.press('Enter')
+  await expect(sheet).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(button).toBeFocused()
+  await page.setViewportSize({ width: 1440, height: 900 })
+  expect(errors).toEqual([])
+})
+
 test('BrewQuest files the checklist as a saga in the realm’s queue, linked back to the note', async () => {
   await page.getByRole('button', { name: 'Turn into quests…' }).click()
   const sheet = page.getByRole('dialog', { name: 'Turn Bug Bounty Helper into quests' })

@@ -680,3 +680,55 @@ describe('reading a bookmark', () => {
     expect(refused(await api.readBookmark('http://localhost:9/'))).toBe(MESSAGES.bookmarkPrivate)
   })
 })
+
+describe('the canvas', () => {
+  const card = (id: string, over: Record<string, unknown> = {}) => ({ id, type: 'file', file: 'n-1.md', x: 0, y: 0, width: 280, height: 160, ...over })
+  const board = { nodes: [card('a'), card('b', { type: 'link', file: undefined, url: 'https://example.com', x: 400, color: '4' })], edges: [{ id: 'e', fromNode: 'a', fromSide: 'right', toNode: 'b', toSide: 'left', label: 'then' }] }
+  const file = () => readFile(join(dir, 'Canvas.canvas'), 'utf8')
+
+  it('reads an empty board before the first save, then saves and reads it back as Obsidian writes it', async () => {
+    expect(data(await api.readCanvas(KEY))).toEqual({ canvas: { nodes: [], edges: [] }, stamp: null })
+    const saved = data(await api.saveCanvas(KEY, board, null))
+    expect(saved.kind).toBe('saved')
+
+    const text = await file()
+    expect(text).toContain('\n\t"nodes": [')
+    expect(JSON.parse(text)).toEqual({ nodes: [card('a'), { id: 'b', type: 'link', url: 'https://example.com', color: '4', x: 400, y: 0, width: 280, height: 160 }], edges: board.edges })
+    expect(data(await makeApi().readCanvas(KEY))).toEqual({ canvas: JSON.parse(text), stamp: saved.kind === 'saved' ? saved.stamp : null })
+    expect(await readdir(dir)).toEqual(['Canvas.canvas'])
+  })
+
+  it('writes nothing over a file changed since it was read, and hands back the file as it is', async () => {
+    const first = data(await api.saveCanvas(KEY, board, null))
+    const theirs = `${JSON.stringify({ nodes: [card('z')], edges: [] })}\n`
+    await writeFile(join(dir, 'Canvas.canvas'), theirs)
+
+    const answer = data(await api.saveCanvas(KEY, { nodes: [], edges: [] }, first.kind === 'saved' ? first.stamp : null))
+    expect(answer).toEqual({ kind: 'changed', view: { canvas: { nodes: [card('z')], edges: [] }, stamp: createHash('sha1').update(theirs).digest('hex') } })
+    expect(await file()).toBe(theirs)
+    // A board that never read a file can't write over one either.
+    expect(data(await api.saveCanvas(KEY, board, null)).kind).toBe('changed')
+  })
+
+  it('refuses a file that is not a canvas and never writes over it', async () => {
+    await mkdir(dir, { recursive: true })
+    for (const text of ['{ not json', '{"nodes": "no"}', '{"nodes": [{"id": "a", "type": "file", "x": 0, "y": 0, "width": 0, "height": 10}]}']) {
+      await writeFile(join(dir, 'Canvas.canvas'), text)
+      expect(refused(await api.readCanvas(KEY))).toBe(MESSAGES.badCanvasFile)
+      expect(refused(await api.saveCanvas(KEY, board, 'stale'))).toBe(MESSAGES.badCanvasFile)
+      expect(await file()).toBe(text)
+    }
+  })
+
+  it('checks the board from the window before writing', async () => {
+    for (const bad of [null, 'board', { nodes: [card('a'), card('a')] }, { nodes: [card('a', { x: 'left' })] }, { nodes: [card('a', { extra: { nested: true } })] }, { nodes: [card('a', { text: 7 })] }, { nodes: [card('a', { type: 'not a type' })] }]) {
+      expect(refused(await api.saveCanvas(KEY, bad, null))).toBe(MESSAGES.badValue)
+    }
+    expect(refused(await api.saveCanvas(KEY, board, 7))).toBe(MESSAGES.badValue)
+    expect(refused(await api.saveCanvas(KEY, { nodes: Array.from({ length: 1001 }, (_, i) => card(`c${i}`)), edges: [] }, null))).toBe(MESSAGES.canvasTooBig)
+    expect(refused(await api.saveCanvas(KEY, { nodes: [card('a', { text: 'x'.repeat(100_000) }), ...Array.from({ length: 60 }, (_, i) => card(`c${i}`, { text: 'x'.repeat(100_000) }))], edges: [] }, null))).toBe(MESSAGES.canvasTooBig)
+    expect(refused(await api.readCanvas('../other'))).toBe(MESSAGES.unknownProject)
+    expect(refused(await api.saveCanvas('../other', board, null))).toBe(MESSAGES.unknownProject)
+    await expect(readdir(dir)).rejects.toThrow()
+  })
+})

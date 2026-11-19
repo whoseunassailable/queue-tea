@@ -240,6 +240,8 @@ const serveEngine = () => {
   handle(CHANNELS.restoreNotes, (_, key: unknown) => notes.restoreNotes(key))
   handle(CHANNELS.openLink, (_, url: unknown) => notes.openLink(url))
   handle(CHANNELS.readBookmark, (_, url: unknown) => notes.readBookmark(url))
+  handle(CHANNELS.readCanvas, (_, key: unknown) => notes.readCanvas(key))
+  handle(CHANNELS.saveCanvas, (_, key: unknown, canvas: unknown, stamp: unknown) => notes.saveCanvas(key, canvas, stamp))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
   handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
   handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))

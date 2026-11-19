@@ -4,6 +4,7 @@ import { vi } from 'vitest'
 import type { DesignsView } from '../shared/designs'
 import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 import type { Note, NotesView } from '../shared/notes'
+import type { CanvasSave, CanvasView } from '../shared/note_canvas'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -267,6 +268,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     restoreNotes: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, added: 1, renamed: 0, same: 1, toHistory: 0, files: 1, skipped: [] } })),
     openLink: vi.fn(async () => ({ ok: true as const, data: null })),
     readBookmark: vi.fn(async (url: string) => ({ ok: true as const, data: { url, title: 'Example page', description: 'What the page is about.', site: 'Example' } })),
+    readCanvas: vi.fn(async () => ({ ok: true as const, data: { canvas: { nodes: [], edges: [] }, stamp: null } as CanvasView })),
+    saveCanvas: vi.fn(async () => ({ ok: true as const, data: { kind: 'saved' as const, stamp: 'c-2' } as CanvasSave })),
     createNote: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, id: 'n-00000001' } })),
     saveNote: vi.fn(async (_key: string, id: string, change: Pick<Note, 'title' | 'folder' | 'tags' | 'body'>) => ({ ok: true as const, data: { kind: 'saved' as const, view: NOTES, note: note({ id, ...change, stamp: 's-2' }), relinked: 0 } })),
     archiveNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),

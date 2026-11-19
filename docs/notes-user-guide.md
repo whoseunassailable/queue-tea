@@ -98,6 +98,14 @@ shows those connections, either **Around this note** or across the **Whole
 realm**. Use **Filter** to choose which types and quests appear, and **Fit**
 to bring the graph into view.
 
+**Canvas**, at the foot of the list, opens the realm's board. **Add note or
+quest…** and **Add web link…** put cards on it, and dropping an image or PDF
+on the board adds one too. Drag a card to move it and its corner to resize
+it; with a card focused, the arrow keys move it and Option with the arrow keys
+resizes it. **Connect**, then another card, draws a line between them; a
+focused line goes with Delete. The board is `Canvas.canvas` in the notes
+folder, so Obsidian opens it as a canvas.
+
 **Today** opens today's note, creating it in Journal when needed. **Journal**
 lists daily notes by month and lets you open another date with **Day** and
 **Open day**. **Edit the daily template** opens the note that new days copy;

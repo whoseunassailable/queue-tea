@@ -1,6 +1,7 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
 import type { NoteAttachment, NoteUpload } from './note_attachments'
 import type { NoteBookmark } from './note_bookmarks'
+import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
@@ -393,6 +394,8 @@ export type EngineApi = {
   restoreNotes: (key: string) => Promise<Reply<NotesRestore | null>>
   openLink: (url: string) => Promise<Reply<null>>
   readBookmark: (url: string) => Promise<Reply<NoteBookmark>>
+  readCanvas: (key: string) => Promise<Reply<CanvasView>>
+  saveCanvas: (key: string, canvas: NoteCanvas, stamp: string | null) => Promise<Reply<CanvasSave>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
   saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
@@ -501,6 +504,8 @@ export const CHANNELS = {
   restoreNotes: 'engine:restore-notes',
   openLink: 'engine:open-link',
   readBookmark: 'engine:read-bookmark',
+  readCanvas: 'engine:read-canvas',
+  saveCanvas: 'engine:save-canvas',
   createNote: 'engine:create-note',
   saveNote: 'engine:save-note',
   archiveNote: 'engine:archive-note',

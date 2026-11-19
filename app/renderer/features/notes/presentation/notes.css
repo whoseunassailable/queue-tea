@@ -191,3 +191,42 @@
 .rm .nt-bookmark-text { margin: 0; font-size: 14px; color: var(--ink2); overflow-wrap: anywhere; }
 .rm .nt-bookmark-site { font-size: 12px; color: var(--ink3); overflow-wrap: anywhere; }
 .rm .nt-bookmark .nt-file-status { margin: 0; }
+
+/* The canvas: a board of cards and lines, panned and zoomed as the graph is.
+   Cards are page elements, so they hold pictures, previews and buttons. */
+.rm .nc { min-height: 70vh; }
+.rm .nc-title { margin: 0 auto 0 0; font-size: 15px; }
+.rm .nc-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rm .nc-zoom { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.rm .nc .nt-dropzone { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.rm .nc-board { position: relative; flex: 1; min-height: 420px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-soft); overflow: hidden; touch-action: none; cursor: grab; }
+.rm .nc-board.is-dragging { cursor: grabbing; }
+.rm .nc-board:focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+.rm .nc-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.rm .nc-lines { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+.rm .nc-line { cursor: pointer; outline: none; }
+.rm .nc-line-hit { fill: none; stroke: transparent; stroke-width: 14px; }
+.rm .nc-line-stroke { fill: none; stroke: var(--ink3); stroke-width: 2px; }
+.rm .nc-line.on .nc-line-stroke { stroke: var(--line); stroke-width: 3px; }
+.rm .nc-lines marker path { fill: var(--ink3); }
+.rm .nc-line-remove { position: absolute; transform: translate(-50%, -50%); }
+.rm .nc-card { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 6px 10px 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--pn-solid); box-shadow: 0 4px 14px rgba(30, 24, 60, 0.12); overflow: hidden; cursor: move; }
+.rm .nc-card:focus-visible, .rm .nc-card:focus-within { outline: 2px solid var(--line); outline-offset: 1px; }
+.rm .nc-card.is-from { box-shadow: 0 0 0 3px var(--line); }
+.rm .nc-card.group { background: transparent; border-style: dashed; box-shadow: none; }
+.rm .nc-card-head { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+.rm .nc-group-label { font-weight: 700; color: var(--ink2); }
+.rm .nc-card-actions { display: inline-flex; gap: 4px; margin-left: auto; visibility: hidden; }
+.rm .nc-card:hover .nc-card-actions, .rm .nc-card:focus-within .nc-card-actions, .rm .nc-card.is-from .nc-card-actions { visibility: visible; }
+.rm .nc-card-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+.rm .nc-card-title { font-size: 15px; overflow-wrap: anywhere; }
+.rm .nc-excerpt, .rm .nc-text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink2); overflow-wrap: anywhere; }
+.rm .nc-text { white-space: pre-wrap; color: var(--ink); }
+.rm .nc-card .nt-bookmark { margin: 0; padding: 0; border: none; background: none; }
+.rm .nc-card .nt-file-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+.rm .nc-resize { position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line-soft) 50%); }
+.rm .nc-empty { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.rm .nc-said { position: absolute; left: 12px; top: 10px; margin: 0; font-size: 12px; font-weight: 700; color: var(--ink2); pointer-events: none; }
+.rm .nc-picks { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.rm .nc-pick { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 10px; border: none; border-radius: 6px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.rm .nc-pick:hover, .rm .nc-pick:focus-visible { background: var(--sel); }

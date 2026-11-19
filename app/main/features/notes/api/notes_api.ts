@@ -22,6 +22,9 @@ import { readPage } from '../data/bookmark_page'
 import { BACKUP_FORMAT, BACKUP_MANIFEST, backupEntriesOf, newBackupFolder, readBackupFile, removeBackupFolder, writeBackupFile } from '../data/note_backup'
 import { filePathOf, noteFiles } from '../data/note_files'
 import { bookmarkOf } from '../domain/bookmark'
+import { canvasOf, canvasText, parseCanvas } from '../domain/note_canvas'
+import { CANVAS_LIMITS, NOTE_CANVAS } from '../../../../shared/note_canvas'
+import type { CanvasSave, CanvasView } from '../../../../shared/note_canvas'
 import { versionsToKeep } from '../domain/note_history'
 
 // pickFolder: the system's folder picker, with its button named; null when cancelled.
@@ -258,6 +261,20 @@ export const notesApi = (d: NotesDeps) => {
       return folder === null ? null : { realm, folder }
     })
 
+  const canvasPathOf = (key: string) => `${folderOf(key)}/${NOTE_CANVAS}`
+  // The board as its file holds it, or an empty one before the first save. A
+  // file that isn't a canvas is refused and never written over.
+  const canvasViewOf = async (key: string): Promise<CanvasView> => {
+    const path = canvasPathOf(key)
+    if (!(await d.host.exists(path))) return { canvas: { nodes: [], edges: [] }, stamp: null }
+    const text = await d.host.read(path)
+    d.log.debug(`canvas read: ${path}`)
+    const canvas = text.length > CANVAS_LIMITS.bytes ? null : parseCanvas(text)
+    if (canvas === null) throw new Refusal(MESSAGES.badCanvasFile)
+
+    return { canvas, stamp: stampOf(text) }
+  }
+
   const newId = async (key: string): Promise<string> => {
     for (let tries = 0; tries < 5; tries += 1) {
       const id = d.newNoteId()
@@ -355,6 +372,33 @@ export const notesApi = (d: NotesDeps) => {
         bookmarks.set(link, bookmark)
 
         return bookmark
+      }),
+
+    readCanvas: (key: unknown): Promise<Reply<CanvasView>> => reply(d.log, MESSAGES.readCanvas, async () => canvasViewOf(await realmOf(key))),
+
+    // stamp is the file as the board read it, null when there was none. When
+    // the file on disk isn't that one any more, nothing is written and the
+    // board gets the file as it is now, to ask which to keep.
+    saveCanvas: (key: unknown, canvas: unknown, stamp: unknown): Promise<Reply<CanvasSave>> =>
+      inTurn(MESSAGES.saveCanvas, async (): Promise<CanvasSave> => {
+        const realm = await realmOf(key)
+        const counts = (canvas ?? {}) as { nodes?: unknown; edges?: unknown }
+        if ((Array.isArray(counts.nodes) && counts.nodes.length > CANVAS_LIMITS.nodes) || (Array.isArray(counts.edges) && counts.edges.length > CANVAS_LIMITS.edges)) throw new Refusal(MESSAGES.canvasTooBig)
+        const next = canvasOf(canvas)
+        if (next === null || (stamp !== null && typeof stamp !== 'string')) throw new Refusal(MESSAGES.badValue)
+        const text = canvasText(next)
+        if (text.length > CANVAS_LIMITS.bytes) throw new Refusal(MESSAGES.canvasTooBig)
+        const path = canvasPathOf(realm)
+        const now = (await d.host.exists(path)) ? stampOf(await d.host.read(path)) : null
+        if (now !== stamp) return { kind: 'changed', view: await canvasViewOf(realm) }
+        const made = await d.host.makeDirs(folderOf(realm))
+        if (made.exitCode !== 0) throw new Error(made.stderr)
+        await d.host.write(`${path}.tmp`, text)
+        const moved = await d.host.move(`${path}.tmp`, path)
+        if (moved.exitCode !== 0) throw new Error(moved.stderr)
+        d.log.debug(`canvas written: ${path}`)
+
+        return { kind: 'saved', stamp: stampOf(text) }
       }),
 
     // Shows the realm's notes folder in Finder, made first if it isn't there yet.

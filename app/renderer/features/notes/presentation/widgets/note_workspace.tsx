@@ -21,7 +21,7 @@ import { NoteGraphView } from './note_graph_view'
 import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { NoteHistory } from './note_history'
 
-type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
+export type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
 // A note's edits that couldn't be saved yet, kept while another note is open.
 export type Held = { change: NoteChange; stamp: string }
@@ -74,7 +74,7 @@ const caretPoint = (box: HTMLTextAreaElement, at: number): { top: number; left: 
   return point
 }
 
-const SaveLine = ({ save, onRetry }: { save: SaveState; onRetry: () => void }) => {
+export const SaveLine = ({ save, onRetry }: { save: SaveState; onRetry: () => void }) => {
   if (save.kind === 'failed') {
     return (
       <p class="nt-save failed" role="alert">

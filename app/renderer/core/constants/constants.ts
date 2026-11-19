@@ -90,3 +90,19 @@ export const GRAPH_ZOOM_MAX = 4
 export const GRAPH_DRAG_PX = 3
 // The room Fit leaves around the graph, in pixels.
 export const GRAPH_FIT_PX = 40
+
+// The canvas: the zoom range, how far a press moves before it drags, how far
+// an arrow key moves or resizes a card (Shift: four times that), the smallest
+// card, the room Fit leaves, how far a new card steps aside from one already
+// there, how far a line bows out of a card's side at most, how much of a
+// note's text its card shows, and each new card's size.
+export const CANVAS_ZOOM_MIN = 0.1
+export const CANVAS_ZOOM_MAX = 2
+export const CANVAS_DRAG_PX = 3
+export const CANVAS_STEP_PX = 20
+export const CANVAS_MIN_SIZE = { width: 120, height: 60 } as const
+export const CANVAS_FIT_PX = 40
+export const CANVAS_CASCADE_PX = 30
+export const CANVAS_CURVE_PX = 120
+export const CANVAS_EXCERPT = 240
+export const CANVAS_CARD_SIZE = { note: { width: 280, height: 160 }, quest: { width: 280, height: 100 }, link: { width: 300, height: 140 }, file: { width: 300, height: 240 } } as const

@@ -23,6 +23,7 @@ import { NoteWorkspace } from '../widgets/note_workspace'
 import type { Held, Layout, NoteActions, NoteMode } from '../widgets/note_workspace'
 import type { GraphSettings } from '../widgets/note_graph_view'
 import { GRAPH_START, keptStart } from '../widgets/note_graph_view'
+import { canvasKeptStart, NoteCanvasView } from '../widgets/note_canvas_view'
 import '../notes.css'
 
 const DeleteNote = ({ note, linkedFrom, onDelete, onClose }: { note: Note; linkedFrom: string[]; onDelete: (note: Note) => Promise<Answer<unknown>>; onClose: () => void }) => {
@@ -154,6 +155,9 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [graph, setGraph] = useState<GraphSettings>(GRAPH_START)
   // The whole realm's map, kept across notes (App remounts the page per realm).
   const kept = useRef(keptStart())
+  // The canvas shows in place of the open note until a note is picked.
+  const [isBoard, setBoard] = useState(false)
+  const canvasKept = useRef(canvasKeptStart())
   // Edits that couldn't be saved yet, by note, kept while another note is open.
   const [held, setHeld] = useState<Record<string, Held>>({})
   const search = useRef<HTMLInputElement>(null)
@@ -186,6 +190,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     // A new day stays in the journal; anything else shows in its folder.
     setShown(was => (was === 'journal' && isDay(input.title) ? was : 'notes'))
     if (isOpening) {
+      setBoard(false)
       setOpenId(made.data.id)
       setNewId(made.data.id)
       setDrawerOpen(false)
@@ -205,6 +210,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   }
 
   const pick = (id: string, isFromKeys: boolean) => {
+    setBoard(false)
     setOpenId(id)
     setDrawerOpen(false)
     // Picked from the keyboard, the cursor goes on to the note's text.
@@ -343,7 +349,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     })
   }
   // Below 900 px the list is a drawer over the note, unless there's no note.
-  const isDrawer = layout === 'narrow' && !isEmpty
+  const isDrawer = layout === 'narrow' && (!isEmpty || isBoard)
 
   // A day's note opens when it's there, and starts from the daily template
   // when it isn't; either way the cursor goes to its text.
@@ -600,6 +606,9 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
             {t.notebook.backToNotes}
           </button>
         )}
+        <button type="button" class="nt-link" aria-pressed={isBoard} onClick={() => setBoard(!isBoard)}>
+          {t.notebook.canvas.open}
+        </button>
         {backup.links}
       </div>
     </nav>
@@ -630,7 +639,25 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
       <div class={layout === 'narrow' ? 'nt-grid narrow' : 'nt-grid'}>
         {(!isDrawer || isDrawerOpen) && noteList}
         {isDrawer && isDrawerOpen && <div class="nt-scrim" aria-hidden="true" onClick={closeDrawer} />}
-        {isEmpty ? (
+        {isBoard ? (
+          <div class="nt-main">
+            <NoteCanvasView
+              engine={engine}
+              realm={realm.key}
+              notes={view.notes}
+              quests={quests}
+              layout={layout}
+              kept={canvasKept}
+              onShowList={() => setDrawerOpen(true)}
+              onOpenNote={id => {
+                setShown('notes')
+                pick(id, false)
+              }}
+              onOpenQuest={onOpenQuest}
+              onOpenLink={actions.onOpenLink}
+            />
+          </div>
+        ) : isEmpty ? (
           empty
         ) : open !== undefined ? (
           <div class="nt-main">

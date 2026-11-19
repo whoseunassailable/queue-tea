@@ -2,14 +2,16 @@ import type { ComponentChildren } from 'preact'
 import { useRef, useState } from 'preact/hooks'
 
 import type { EngineApi } from '../../../shared/engine_api'
+import type { NoteAttachment } from '../../../shared/note_attachments'
 import { attachmentError, attachmentMarkdown, NOTE_FILE_ACCEPT } from '../../../shared/note_attachments'
 import { bookmarkUrlOf } from '../../../shared/note_bookmarks'
 import { ask } from '../api/engine_client'
 import { Spinner } from './states'
 import { t } from '../../l10n/en'
 
-// A null id attaches to the realm, for a quest's description.
-type Props = { engine: EngineApi; realm: string; id: string | null; isLive?: boolean; children: ComponentChildren; onInsert: (markdown: string) => Promise<void>; onBusy?: (isBusy: boolean) => void }
+// A null id attaches to the realm, for a quest's description or the canvas.
+// onFile takes each stored file in place of the Markdown onInsert gets.
+type Props = { engine: EngineApi; realm: string; id: string | null; isLive?: boolean; children: ComponentChildren; onInsert?: (markdown: string) => Promise<void>; onFile?: (file: NoteAttachment, name: string) => Promise<void>; onBusy?: (isBusy: boolean) => void }
 type State = { kind: 'idle' } | { kind: 'busy'; name: string } | { kind: 'done' } | { kind: 'failed'; message: string }
 
 // FileReader works in both the sandboxed window and the component tests.
@@ -21,7 +23,7 @@ const bytesOf = (file: File): Promise<Uint8Array> => new Promise((done, fail) =>
   reader.readAsArrayBuffer(file)
 })
 
-export const AttachmentInput = ({ engine, realm, id, isLive = true, children, onInsert, onBusy }: Props) => {
+export const AttachmentInput = ({ engine, realm, id, isLive = true, children, onInsert, onFile, onBusy }: Props) => {
   const [state, setState] = useState<State>({ kind: 'idle' })
   const [isOver, setOver] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -58,7 +60,7 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
 
           return
         }
-        await onInsert(attachmentMarkdown(answer.data, file.name))
+        await (onFile === undefined ? onInsert?.(attachmentMarkdown(answer.data, file.name)) : onFile(answer.data, file.name))
         // Retrying a batch starts at the failed file, keeping earlier links once.
         retry.current = retry.current.slice(1)
       }
@@ -100,7 +102,7 @@ export const AttachmentInput = ({ engine, realm, id, isLive = true, children, on
       // bookmark already. In Read a pasted link goes in as one. A quest's
       // description has no bookmarks, so a link pasted beside it stays out.
       const url = bookmarkUrlOf(event.clipboardData?.getData('text/plain') ?? '')
-      if (url === null || id === null || event.target instanceof HTMLTextAreaElement) return
+      if (url === null || id === null || onInsert === undefined || event.target instanceof HTMLTextAreaElement) return
       event.preventDefault()
       void onInsert(url)
     }}>

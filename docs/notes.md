@@ -3,7 +3,7 @@
 For capture, search, recovery and a worked example from idea to saga, read the
 [Notes user guide](notes-user-guide.md).
 
-Spec for **Notes 1**, the first slice of Rohan's Notes workspace epic. Mocha Mockup drew the screens on 7 November 2026 in `docs/notes.pen`. The same screens are in `docs/designs/notes-1/`, so the Designs tab shows them once this branch is merged. Rohan hasn't approved them yet. Notes 1 is built on `task/notes-workspace`; [What Notes 1 builds](#what-notes-1-builds) says where the build and the screens still differ.
+Spec for **Notes 1**, the first slice of Rohan's Notes workspace epic. Mocha Mockup drew the screens on 7 November 2026 in `docs/notes.pen`. The same screens are in `docs/designs/notes-1/`, so the Designs tab shows them. Rohan hasn't approved them yet. Notes 1 is built on `task/notes-workspace`; [What Notes 1 builds](#what-notes-1-builds) says where the build and the screens still differ. A second design version, `1`, draws what was added after Notes 1 ([Design version 1](#design-version-1)).
 
 ## What the user can do
 
@@ -290,7 +290,7 @@ Added from the epic's "daily notes and a journal" quest.
 
 - **A day's note is the live note titled with its date**, `2026-11-17`, as Obsidian's daily notes plugin names them. That makes `[[2026-11-17]]` a link to that day, here and in Obsidian. A title that isn't a real date, such as `2026-02-30`, is an ordinary note.
 - **Today**, in the list's head, opens today's note, using this Mac's local date. When there isn't one yet, it makes it in the **Journal** folder, typed Daily, from the daily template, and puts the cursor in its text. Today is hidden in Archived.
-- **Journal (n)** at the list's foot counts the days and turns the list into the journal: the days newest first, a group per month ("Nov 2026"), each row naming its weekday ("Tue 17 Nov"). Search works on the days as it does on notes. **Back to notes** returns. A day keeps showing in its folder too, since the journal goes by title, not by folder.
+- **Journal (n)** at the list's foot counts the days and turns the list into the journal: the days newest first, a group per month ("Nov 2026"), each row naming its weekday ("Tue 17 Nov"). Search works on the days as it does on notes. With no days yet, it says "No days in your journal yet. Open today's note to start it." **Back to notes** returns. A day keeps showing in its folder too, since the journal goes by title, not by folder.
 - **Day \*** in the journal picks any date, today by default, and **Open day** opens or makes that day, staying in the journal. An empty field says "Day is required." and a date that isn't one says "Enter a day as a date, like 2026-11-17.", under the field, on blur and on Open day.
 - **The daily template is a note.** New days start from the live note titled **Daily template** when it has text, with `{{date}}` and `{{title}}` turned into the day. Without one, they start from the built-in Daily headings above. **Edit the daily template**, under the day field, opens that note, or makes it in Journal with the built-in headings for you to change. Picking Daily under **Start from a template** uses it too. Keeping the template as a note means it saves, versions and syncs to Obsidian like any other, with no setting of its own.
 
@@ -474,3 +474,43 @@ Everything in the screens and the acceptance checks above, with these small diff
 - **Filing that stops part way** shows main's message in the sheet's banner, locks the rows that went in ("Filed already. Try again files only the rest.") and turns the button into **Try again**. It doesn't count "2 of 3 quests are filed" in the banner itself.
 - **The empty page** names the notes folder by its full path, not from `~`.
 - **Loading** shows straight away, without the 150 ms wait.
+
+## Design version 1
+
+Version 1 is the second set of Notes screens, made on 20 November 2026 for the follow-ups above. Its 12 screens are in `docs/notes.pen`, named "v1 · 1 · …" to "v1 · 10 · …" so they don't mix with Notes 1's, and drawn in the Jade Peaks theme from copies of screen 1. The export is in `docs/designs/1/`. Its `version.json` has the label "1", `by` set to `"claude"` and `from` set to `null`, so the Designs tab lists it, above Notes 1, once `task/notes-section` is merged. Rohan hasn't approved it yet. Every screen is 1,280 × 954, in the day sky except screen 10.
+
+| Screen | Design | What it shows |
+| --- | --- | --- |
+| 1 · Read view: links, a bookmark card and an image | `01-read-view` | [The Read view](#the-read-view) with note and quest links, a [bookmark card](#bookmarks) and an [attachment](#attachments) |
+| 2 · Today's daily note and the journal | `02-daily-note` | [Daily notes and the journal](#daily-notes-and-the-journal) |
+| 3 · The knowledge graph | `03-graph` | [The graph](#the-graph) |
+| 4 · The realm's canvas | `04-canvas` | [The canvas](#the-canvas) |
+| 5 · A note's version history | `05-version-history` | [Version history](#version-history) |
+| 6 · New note from a template, with pinned notes | `06-templates-pinned` | [Templates, types and pinned notes](#templates-types-and-pinned-notes) |
+| 7 · Notes in the command palette | `07-palette` | [Notes in the command palette](#notes-in-the-command-palette) |
+| 8 · Export and restore | `08-export-restore` | [Export and restore](#export-and-restore), with the "Notes restored" dialog |
+| 9a · The graph laying out a large realm | `09a-graph-laying-out` | "Laying out 4,812 notes…", with the list on page 1 of 49 ([Lists in large realms](#lists-in-large-realms)) |
+| 9b · The canvas couldn't be read | `09b-canvas-unreadable` | The canvas's failed state for a file that isn't a canvas |
+| 9c · An empty journal | `09c-empty-journal` | The journal with no days |
+| 10 · The graph at night | `10-night-graph` | The graph in the night theme |
+
+The Designs tab draws frames and text only ([design-tab.md](design-tab.md)), so the export differs from the Pen screens in a few places:
+
+- Paths inside components, such as BrewQuest's body and the corner brackets, are left out.
+- Graph and canvas lines are straight runs, across or down.
+- Diamonds and arrowheads are text glyphs.
+- Dashes are approximate.
+- Images are plain boxes standing in for them.
+
+`app/main/features/designs/domain/committed_designs.spec.ts` reads every version folder in this repository's `docs/designs/` the way the Designs tab does, and checks that version 1 is there with that label, `by` and `from`.
+
+### Open in version 1
+
+Six questions were left open while drawing. Each is written here with the suggested answer, which the screens draw unless it says otherwise. The build hasn't taken any of them up yet.
+
+1. **The editor's head at 480 px.** When the head wraps, the save line and **History** stay together, right-aligned, on the second line, as screen 2 draws it. The build wraps each item on its own, so the two can end up on different lines.
+2. **Start from a template** sits directly under the body's placeholder, not at the editor's foot. Screen 6 draws it at the foot, where the build puts it.
+3. **"Current version" in History.** The list marks its top saved time "Current version", as [Version history](#version-history) says, and screen 5 draws that. The build says so only in the preview ("This is the current version.").
+4. **What a restore left out.** Each item gives its path on one line and the reason under it, as screen 8 draws it, not "path: reason" on one line as the build writes it.
+5. **A large realm's count.** The list's header writes the count as "4,812" and lets it shrink. Screen 9a's header reads "4812", as the build writes it, though its folder counts read "4,402".
+6. **A ticked line in Read** is drawn in a softer colour, without strike-through, as screen 1 draws it. The build draws it in the body's colour.

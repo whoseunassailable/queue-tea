@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "label": "1",
+  "made": "2026-11-20T20:17:52.735Z",
+  "by": "claude",
+  "from": null,
+  "designs": [
+    "01-read-view",
+    "02-daily-note",
+    "03-graph",
+    "04-canvas",
+    "05-version-history",
+    "06-templates-pinned",
+    "07-palette",
+    "08-export-restore",
+    "09a-graph-laying-out",
+    "09b-canvas-unreadable",
+    "09c-empty-journal",
+    "10-night-graph"
+  ]
+}

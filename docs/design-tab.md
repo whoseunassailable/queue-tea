@@ -170,6 +170,8 @@ Main does every read and write of `docs/designs/` through ten engine API calls: 
 
 Next version files its quest with the same call as New quest, then has main mark the comments and write `next`, so a failure between the two leaves a filed quest and a Try again that only marks. The comments box checks itself on blur only once it has been typed in, so focus passing through an empty box shows no error.
 
+This repository's own versions are checked too. `app/main/features/designs/domain/committed_designs.spec.ts` reads every version folder in `docs/designs/` as the tab does: `version.json`, a file for each design it lists, each `*.design.json`, and `comments.json` when there is one. A committed version that doesn't read fails `npm test` in `app/`.
+
 Not in this version:
 
 - Adding layers from scratch (duplicate and delete cover the basics), images, and groups or auto-layout.

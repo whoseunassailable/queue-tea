@@ -1,4 +1,4 @@
-import type { TaskActivity } from '../../types'
+import type { CommitProposal, TaskActivity } from '../../types'
 
 export type BranchState = 'queued' | 'working' | 'needsYou' | 'review' | 'paused' | 'unobserved' | 'merged'
 export type BranchTip = { id: string; title: string; branch: string; base: string | null; head: string | null; fork: string | null; merged: boolean; state: BranchState; latest: string | null; seenAt: number | null; changed: number | null; commits: number | null }
@@ -21,7 +21,7 @@ export type MergeWorkspace = { availableChecks?: CheckChoice[]; checks?: CheckRu
 export type BranchReview = {
   taskId: string; source: string; target: string; targets: string[]; sourceHead: string; targetHead: string; fingerprint: string;
   files: ChangedFile[]; diff: string; truncated: boolean; commits: GraphCommit[]; steps: TaskActivity[];
-  commitProgress?: CommitProgress | null; state: BranchState; blocked: string | null; merged: boolean; operation: MergeOperation | null; remotes: string[];
+  commitProgress?: CommitProgress | null; proposal?: CommitProposal | null; state: BranchState; blocked: string | null; merged: boolean; operation: MergeOperation | null; remotes: string[];
 }
 export type MergeRequest = { taskId: string; target: string; fingerprint: string; idleConfirmed: boolean }
 export type CommitRequest = MergeRequest & { files: string[]; message: string }

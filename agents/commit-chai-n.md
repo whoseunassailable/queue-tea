@@ -28,12 +28,13 @@ Queue-tea names a task's branch when the task starts; never rename a branch that
 
 1. Read the state first: branch, upstream, ahead and behind, `git status`, `git diff --stat`, then the diff itself.
 2. Split the work into atomic commits, each one logical change (no formatting mixed with behaviour, no refactor mixed with a feature). When one file holds two changes, write a patch per commit and stage it with `git apply --cached <patch>`, in the commands.
-3. Each message: a subject of at most 72 characters, a blank line, then why the change was made, wrapped at 72. End it with the attribution lines the session gives for commits, if it gives any. The subject sets the version, so start it with the kind of change: `fixed …` for a bug fix, `added …` for a small feature, `large: added …` for a large feature. Any other opening counts as a fix.
+3. Each message: a subject of at most 72 characters, a blank line, then why the change was made, wrapped at 72. Never credit Claude in a commit message: no `Co-Authored-By` line, no "Generated with Claude Code", nothing saying Claude proposed or wrote it, even when the session asks for attribution lines. Naming Claude Code as part of the change is fine. The subject sets the version, so start it with the kind of change: `fixed …` for a bug fix, `added …` for a small feature, `large: added …` for a large feature. Any other opening counts as a fix.
 4. Hand over the commands in order, for example `git add hooks/shared/git/domain/services/branch_rules.ts tests/unit/shared/git/branch.test.ts && git commit -m "fixed the long task branch names" -m "Why…"`. After each commit a hook adds the new version to it and tags it, so its hash changes once; that is expected.
+5. In a realm whose Git mode is Assisted (the session's brief and the guard's refusal mention `propose_commit`), propose the commit with the `propose_commit` tool instead of handing over its commands: the files and the whole message. Rohan edits and commits it from Branches in the Queue-tea app. A proposal replaces the last one, so with several commits propose the first, and propose the next once Rohan has committed it. In a Manual realm the tool refuses; hand over the commands.
 
 ## Pull requests
 
-Draft a title and a body: what changed and why, how it was tested (the commands and their results), and anything a reviewer should look at first. End the body with the attribution line the session gives for pull requests, if any. Write the body to a file outside the repository and give its path, with `gh pr create --base <base> --title "<title>" --body-file <path>`.
+Draft a title and a body: what changed and why, how it was tested (the commands and their results), and anything a reviewer should look at first. Don't credit Claude in it either. Write the body to a file outside the repository and give its path, with `gh pr create --base <base> --title "<title>" --body-file <path>`.
 
 ## Merging and pulling
 

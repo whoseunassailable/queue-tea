@@ -1,10 +1,11 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BranchGraph, BranchReview, MergeWorkspace } from '../../../../shared/branches'
 import { createLogger } from '../../../core/logger'
 import { scopeOf, type TasksDeps } from '../../tasks/api/scope'
 import { graphOf, reviewOf } from '../data/branch_source'
 import { workspaceOf } from '../data/merge_workspace'
 import { readBranch, readBranches, readMergeWorkspace } from './branch_api'
+import { branchReview, SOURCE, TARGET } from '../../../../renderer/features/branches/test_fixtures'
 
 vi.mock('../../tasks/api/scope', () => ({ scopeOf: vi.fn(async (_d, key) => ({ key, ctx: { projectPath: '/repo' }, record: { tasks: [{ id: 'one', branch: 'task/one', baseBranch: 'main' }] } })) }))
 vi.mock('../data/branch_source', () => ({ graphOf: vi.fn(), reviewOf: vi.fn() }))
@@ -47,4 +48,37 @@ it('releases failed reads for retry and keeps engines separate', async () => {
   expect(await readBranches(deps, 'realm')).toMatchObject({ ok: true })
   await readBranches(d(), 'realm')
   expect(graphOf).toHaveBeenCalledTimes(3)
+})
+
+describe('Claude\'s proposal in a branch review', () => {
+  const PROPOSAL = { message: 'fixed the retry button', files: ['a.ts'], head: SOURCE, at: '2026-11-20T09:00:00+01:00' }
+  const CHANGED = [{ path: 'a.ts', previous: null, status: ' M' }, { path: 'b.ts', previous: null, status: '??' }]
+  const reading = async (record: object, sourceHead = SOURCE) => {
+    vi.mocked(scopeOf).mockResolvedValueOnce({ key: 'realm', ctx: { projectPath: '/repo' }, record } as never)
+    vi.mocked(reviewOf).mockResolvedValueOnce(branchReview({ sourceHead, files: CHANGED }))
+    const answer = await readBranch(d(), 'realm', 'one', 'main')
+    if (!answer.ok) throw new Error(`should read: ${answer.error.message}`)
+    return answer.data.proposal
+  }
+  const task = (over: object = {}) => ({ id: 'one', branch: 'task/one', baseBranch: 'main', commitProposal: PROPOSAL, ...over })
+
+  it('carries the proposal in an Assisted realm', async () => {
+    expect(await reading({ gitMode: 'assisted', tasks: [task()] })).toEqual(PROPOSAL)
+  })
+
+  it('carries it in a realm whose record is from before Git modes', async () => {
+    expect(await reading({ tasks: [task()] })).toEqual(PROPOSAL)
+  })
+
+  it('carries none in a Manual realm, even with one saved on the task', async () => {
+    expect(await reading({ gitMode: 'manual', tasks: [task()] })).toBeNull()
+  })
+
+  it('carries none when the task has no proposal', async () => {
+    expect(await reading({ tasks: [task({ commitProposal: undefined })] })).toBeNull()
+  })
+
+  it('carries none once the branch has a newer commit than the proposal', async () => {
+    expect(await reading({ tasks: [task()] }, TARGET)).toBeNull()
+  })
 })

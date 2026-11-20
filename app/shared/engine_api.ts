@@ -4,7 +4,7 @@ import type { NoteBookmark } from './note_bookmarks'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
-import type { Allowance, AppRequest, Difficulty, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
+import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -212,7 +212,7 @@ export type ChronicleScope = 'realm' | 'all'
 export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string> }
 
 // What the Settings page shows beside the app's own settings.
-export type RealmLine = { key: string; name: string; path: string; file: string; hasCopy: boolean; logPath: string | null; isReadable: boolean }
+export type RealmLine = { key: string; name: string; path: string; file: string; hasCopy: boolean; logPath: string | null; gitMode: GitMode; isReadable: boolean }
 // realm is the one you're in; null with none picked.
 export type SettingsPage = { options: Options; isDefault: boolean; realm: RealmLine | null; command: InstalledCommand | null }
 
@@ -366,6 +366,7 @@ export type EngineApi = {
   saveSettings: (patch: Partial<Settings>) => Promise<Reply<Settings>>
   readSettingsPage: (key: string | null) => Promise<Reply<SettingsPage>>
   setTaskLog: (key: string, path: string) => Promise<Reply<null>>
+  setGitMode: (key: string, mode: GitMode) => Promise<Reply<null>>
   showRecord: (key: string) => Promise<Reply<null>>
   openFolder: () => Promise<Reply<FolderPick | null>>
   addProject: (path: string) => Promise<Reply<string>>
@@ -477,6 +478,7 @@ export const CHANNELS = {
   saveSettings: 'engine:save-settings',
   readSettingsPage: 'engine:read-settings-page',
   setTaskLog: 'engine:set-task-log',
+  setGitMode: 'engine:set-git-mode',
   showRecord: 'engine:show-record',
   openFolder: 'engine:open-folder',
   addProject: 'engine:add-project',

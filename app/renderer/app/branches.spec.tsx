@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { EngineApi, Reply } from '../../shared/engine_api'
 import type { BranchReview as Review } from '../../shared/branches'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { activeQuest, fakeEngine, helperJob, projectView } from '../test_support'
-import { branchGraph, branchReview, mergeOperation, mergeWorkspace, MERGE } from '../features/branches/test_fixtures'
+import { branchGraph, branchReview, mergeOperation, mergeWorkspace, MERGE, SOURCE } from '../features/branches/test_fixtures'
 import { BranchReview } from '../features/branches/presentation/widgets/branch_review'
 import { MergeReview } from '../features/branches/presentation/widgets/merge_review'
+import { t } from '../l10n/en'
 import { App } from './app'
 
 const KEY = 'a-000001'
@@ -240,4 +241,98 @@ it('keeps both active cards usable on Home', async () => {
   expect(screen.getByRole('heading', { name: two.title })).toBeTruthy()
   await click(await screen.findByRole('button', { name: 'Show Codex' }))
   expect(engine.openClaude).toHaveBeenCalledWith(KEY, 'two')
+})
+
+describe('Claude\'s proposed commit in the review', () => {
+  const FILES = [{ path: 'a.ts', previous: null, status: ' M' }, { path: 'b.ts', previous: null, status: '??' }, { path: 'c.ts', previous: null, status: ' M' }]
+  const FIRST = { message: 'fixed the retry button', files: ['a.ts', 'c.ts'], head: SOURCE, at: '2026-11-20T09:00:00+01:00' }
+  const NEWER = { message: 'fixed the retry button and its test', files: ['b.ts'], head: SOURCE, at: '2026-11-20T09:05:00+01:00' }
+  // Preact runs the form's effects after the next frame (35 ms at most in jsdom).
+  const painted = () => act(() => new Promise<void>(resolve => setTimeout(resolve, 50)))
+  const messageBox = () => screen.getByLabelText(t.branches.commitMessage) as HTMLTextAreaElement
+  const ticked = () => FILES.map(f => f.path).filter(path => (screen.getByRole('checkbox', { name: new RegExp(path.replace('.', '\\.')) }) as HTMLInputElement).checked)
+  const reviewing = async (first: Partial<Review>) => {
+    let review = branchReview({ files: FILES, ...first })
+    const readBranch = vi.fn<EngineApi['readBranch']>(async () => ({ ok: true, data: review }))
+    const opened = await openReview({ readBranch })
+    await click(await screen.findByRole('tab', { name: t.branches.tabs.changes }))
+    // A record change makes the review read again, now with `next`.
+    const reread = async (next: Partial<Review>) => {
+      review = branchReview({ files: FILES, ...next })
+      const reads = readBranch.mock.calls.length
+      await act(() => opened.fire())
+      await waitFor(() => expect(readBranch.mock.calls.length).toBeGreaterThan(reads))
+      await painted()
+    }
+    return { ...opened, reread }
+  }
+
+  it('fills the commit message, ticks only the proposed files and says Claude proposed them; nothing is committed until Commit is pressed', async () => {
+    const { engine } = await reviewing({ proposal: FIRST })
+
+    await waitFor(() => expect(messageBox().value).toBe(FIRST.message))
+    expect(ticked()).toEqual(['a.ts', 'c.ts'])
+    expect(screen.getByText(t.branches.proposed)).toBeTruthy()
+    expect(engine.commitBranchFiles).not.toHaveBeenCalled()
+
+    await click(screen.getAllByRole('checkbox', { name: t.branches.idle })[0]!)
+    await click(screen.getByRole('button', { name: t.branches.commitSelected }))
+
+    expect(engine.commitBranchFiles).toHaveBeenCalledWith(KEY, expect.objectContaining({ files: ['a.ts', 'c.ts'], message: FIRST.message }))
+  })
+
+  it('a newer proposal replaces a message Rohan has not edited, and its files', async () => {
+    const { reread } = await reviewing({ proposal: FIRST })
+    await waitFor(() => expect(messageBox().value).toBe(FIRST.message))
+
+    await reread({ proposal: NEWER })
+
+    expect(messageBox().value).toBe(NEWER.message)
+    expect(ticked()).toEqual(['b.ts'])
+  })
+
+  it('a newer proposal leaves a message Rohan has edited, and the files ticked', async () => {
+    const { reread } = await reviewing({ proposal: FIRST })
+    await waitFor(() => expect(messageBox().value).toBe(FIRST.message))
+    await act(() => void fireEvent.input(messageBox(), { target: { value: 'fixed the retry button, in my words' } }))
+
+    await reread({ proposal: NEWER })
+
+    expect(messageBox().value).toBe('fixed the retry button, in my words')
+    expect(ticked()).toEqual(['a.ts', 'c.ts'])
+  })
+
+  it('a newer proposal fills a message Rohan has emptied', async () => {
+    const { reread } = await reviewing({ proposal: FIRST })
+    await waitFor(() => expect(messageBox().value).toBe(FIRST.message))
+    await act(() => void fireEvent.input(messageBox(), { target: { value: '' } }))
+
+    await reread({ proposal: NEWER })
+
+    expect(messageBox().value).toBe(NEWER.message)
+    expect(ticked()).toEqual(['b.ts'])
+  })
+
+  it('the same proposal read again leaves the files Rohan unticked', async () => {
+    const { reread } = await reviewing({ proposal: FIRST })
+    await waitFor(() => expect(messageBox().value).toBe(FIRST.message))
+    await click(screen.getByRole('checkbox', { name: /c\.ts/ }))
+
+    await reread({ proposal: { ...FIRST } })
+
+    expect(ticked()).toEqual(['a.ts'])
+    expect(messageBox().value).toBe(FIRST.message)
+  })
+
+  it.each([
+    ['no proposal', {}],
+    ['a proposal of null', { proposal: null }],
+  ])('with %s, nothing is filled in, ticked or said', async (_, over) => {
+    await reviewing(over)
+    await painted()
+
+    expect(messageBox().value).toBe('')
+    expect(ticked()).toEqual([])
+    expect(screen.queryByText(t.branches.proposed)).toBeNull()
+  })
 })

@@ -21,6 +21,16 @@ const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }:
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [operationId, setOperationId] = useState<string | null>(review.operation?.id ?? null)
+  // Claude's proposal fills the form once, and a newer one replaces it only
+  // while the form still holds nothing or the last proposal unedited.
+  const proposal = review.proposal ?? null
+  const proposalKey = proposal && `${proposal.at}\n${proposal.message}\n${proposal.files.join('\n')}`
+  const [applied, setApplied] = useState<{ key: string; message: string } | null>(null)
+  useEffect(() => {
+    if (!proposal || !proposalKey || proposalKey === applied?.key) return
+    if (!message.trim() || message === applied?.message) { setMessage(proposal.message); setSelected(proposal.files); setMessageError(null) }
+    setApplied({ key: proposalKey, message: proposal.message })
+  }, [proposalKey])
   useEffect(() => { setOperationId(review.operation?.id ?? null) }, [review.operation?.id])
   const request = { taskId: review.taskId, target: review.target, fingerprint: review.fingerprint, idleConfirmed: idle }
   const validate = () => {
@@ -60,6 +70,7 @@ const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }:
         {review.files.length === 0 ? <p>{t.branches.noFiles}</p> : <>
           <label class="branch-confirm"><input type="checkbox" checked={isAllChosen} disabled={disabled} onChange={e => setSelected(e.currentTarget.checked ? review.files.map(file => file.path) : [])} />{t.branches.selectAll}</label>
           <ul class="branch-files">{review.files.map(file => <li key={file.path}><label><input type="checkbox" checked={chosen.includes(file.path)} disabled={disabled} onChange={e => { const checked = e.currentTarget.checked; setSelected(was => checked ? [...was, file.path] : was.filter(f => f !== file.path)) }} /><code>{file.status}</code> {file.path}</label></li>)}</ul>
+          {proposal && <p class="hint" role="status">{t.branches.proposed}</p>}
           <label>{t.branches.commitMessage}<textarea value={message} disabled={disabled} onInput={e => setMessage(e.currentTarget.value)} onBlur={validate} aria-invalid={!!messageError} /></label>
           {messageError && <p role="alert">{messageError}</p>}
           <label class="branch-confirm"><input type="checkbox" checked={idle} disabled={disabled} onChange={e => setIdleFor(e.currentTarget.checked ? review.fingerprint : null)} />{t.branches.idle}</label>

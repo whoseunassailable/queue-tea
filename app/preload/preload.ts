@@ -28,6 +28,7 @@ const engine: EngineApi = {
   saveSettings: patch => ipcRenderer.invoke(CHANNELS.saveSettings, patch),
   readSettingsPage: key => ipcRenderer.invoke(CHANNELS.readSettingsPage, key),
   setTaskLog: (key, path) => ipcRenderer.invoke(CHANNELS.setTaskLog, key, path),
+  setGitMode: (key, mode) => ipcRenderer.invoke(CHANNELS.setGitMode, key, mode),
   showRecord: key => ipcRenderer.invoke(CHANNELS.showRecord, key),
   openFolder: () => ipcRenderer.invoke(CHANNELS.openFolder),
   addProject: path => ipcRenderer.invoke(CHANNELS.addProject, path),

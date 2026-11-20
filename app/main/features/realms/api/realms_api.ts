@@ -4,6 +4,7 @@ import { backupPath, emptyRecord, projectKey, restoreRecord } from '../../../../
 import { recordsRepositoryImpl } from '../../../../../hooks/shared/records/data/repositories/records_repository_impl'
 import { sessionsRepositoryImpl } from '../../../../../hooks/shared/sessions/data/repositories/sessions_repository_impl'
 import { isFresh } from '../../../../../hooks/shared/sessions/domain/services/session_rules'
+import { gitModeOf, isGitMode } from '../../../../../hooks/shared/records/domain/services/git_mode'
 import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { FolderPick, Reply, SettingsPage } from '../../../../shared/engine_api'
 import { projectsFolder } from '../../../core/constants'
@@ -61,23 +62,42 @@ export const readSettingsPage = (d: RealmsDeps & { commandDirs?: string[] }, key
               file: scanned.file.split('/').pop()!,
               hasCopy: await d.host.exists(backupPath(scanned.file)),
               logPath: scanned.kind === 'readable' ? scanned.record.docsLogPath : null,
+              gitMode: scanned.kind === 'readable' ? gitModeOf(scanned.record) : 'assisted',
               isReadable: scanned.kind === 'readable',
             },
       command: await findCommand(d.host, d.commandDirs ?? []),
     }
   })
 
+// A readable realm's record, to change under its lock.
+const realmRecords = async (d: RealmsDeps, key: unknown) => {
+  const realm = await realmFile(d, key)
+  const scanned = (await scanRecords(d.host, d.home, d.log)).find(s => s.key === realm.key)
+  if (scanned?.kind !== 'readable') throw new Refusal(MESSAGES.unreadableRealm)
+  const { path: projectPath, name } = scanned.record.project
+  const records = recordsRepositoryImpl(d.host, { cwd: projectPath, home: d.home, projectPath, projectName: name, file: realm.file, offsetMinutes: d.offsetMinutes(), options: readOptions({}) })
+
+  return { projectPath, records }
+}
+
 export const setTaskLog = (d: RealmsDeps, key: unknown, path: unknown): Promise<Reply<null>> =>
   reply(d.log, MESSAGES.setTaskLog, async () => {
-    const realm = await realmFile(d, key)
-    const scanned = (await scanRecords(d.host, d.home, d.log)).find(s => s.key === realm.key)
-    if (scanned?.kind !== 'readable') throw new Refusal(MESSAGES.unreadableRealm)
-    const { path: projectPath, name } = scanned.record.project
+    const { projectPath, records } = await realmRecords(d, key)
     const checked = logPathIn(path, projectPath)
     if (checked === null) throw new Refusal(MESSAGES.logPathRequired)
-    const records = recordsRepositoryImpl(d.host, { cwd: projectPath, home: d.home, projectPath, projectName: name, file: realm.file, offsetMinutes: d.offsetMinutes(), options: readOptions({}) })
     const saved = await records.update(r => ({ ...r, docsLogPath: checked }))
     if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
+
+    return null
+  })
+
+export const setGitMode = (d: RealmsDeps, key: unknown, mode: unknown): Promise<Reply<null>> =>
+  reply(d.log, MESSAGES.setGitMode, async () => {
+    if (!isGitMode(mode)) throw new Refusal(MESSAGES.gitModeInvalid)
+    const { records } = await realmRecords(d, key)
+    const saved = await records.update(r => ({ ...r, gitMode: mode }))
+    if (saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
+    d.log.debug(`git mode of ${String(key)} set to ${mode}`)
 
     return null
   })

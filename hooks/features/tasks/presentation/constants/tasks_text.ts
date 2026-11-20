@@ -1,7 +1,13 @@
-import type { HelperId } from '../../../../../types'
+import type { GitMode, HelperId } from '../../../../../types'
 
-export const TASK_LINE = (title: string): string =>
-  `The current Queue-tea task is "${title}". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.`
+// Claude's brief names what the realm's Git mode lets it do.
+const GIT_LINE: Record<GitMode, string> = {
+  manual: 'Never commit or push: Rohan does.',
+  assisted: 'Never commit or push: Rohan does. When work is ready to commit, propose it with propose_commit, and he commits it from Branches in the Queue-tea app.',
+}
+
+export const TASK_LINE = (title: string, mode: GitMode): string =>
+  `The current Queue-tea task is "${title}". When a reply of yours has finished what it asked, call task_looks_done. ${GIT_LINE[mode]}`
 
 export const HELPER_NAMES: Record<HelperId, string> = {
   'commit-chai-n': 'Commit Chai-n',

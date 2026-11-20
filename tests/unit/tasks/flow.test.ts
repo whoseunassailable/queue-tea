@@ -260,9 +260,25 @@ test('the compose section names the task only while one is current', () => {
   expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })).toEqual({
     id: 'queue-tea:task',
     scope: 'session',
-    text: 'The current Queue-tea task is "Retry button". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.',
+    text: 'The current Queue-tea task is "Retry button". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does. When work is ready to commit, propose it with propose_commit, and he commits it from Branches in the Queue-tea app.',
   })
   expect(taskSection(null)).toBeNull()
+})
+
+test('in a Manual realm the brief only says Rohan commits, and names no propose_commit', () => {
+  const current = makeTask({ title: 'Retry button', state: 'current' })
+
+  const text = taskSection({ ...emptyRecord('p', '/p'), gitMode: 'manual', tasks: [current] })?.text
+
+  expect(text).toBe(TASK_LINE('Retry button', 'manual'))
+  expect(text).toBe('The current Queue-tea task is "Retry button". When a reply of yours has finished what it asked, call task_looks_done. Never commit or push: Rohan does.')
+})
+
+test('an Assisted realm’s brief asks for propose_commit', () => {
+  const current = makeTask({ title: 'Retry button', state: 'current' })
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), gitMode: 'assisted', tasks: [current] })?.text).toBe(TASK_LINE('Retry button', 'assisted'))
+  expect(TASK_LINE('Retry button', 'assisted')).toContain('propose_commit')
 })
 
 test('the compose section adds a line for each helper that is on, in work order', () => {
@@ -270,14 +286,14 @@ test('the compose section adds a line for each helper that is on, in work order'
   const line = (id: HelperId) => HELPER_LINES.find(([h]) => h === id)![1]
 
   expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
-    [TASK_LINE('Retry button'), line('tea-dd'), line('commit-chai-n')].join('\n'),
+    [TASK_LINE('Retry button', 'assisted'), line('tea-dd'), line('commit-chai-n')].join('\n'),
   )
 })
 
 test('with no helpers on, the compose section is the task line alone', () => {
   const current = makeTask({ title: 'Retry button', state: 'current' })
 
-  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(TASK_LINE('Retry button'))
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(TASK_LINE('Retry button', 'assisted'))
 })
 
 test('firstMessage includes the handoff note when there is one', () => {

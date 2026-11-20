@@ -5,6 +5,7 @@ import type { Engine } from 'claude-code/testing'
 import { emptyCheckpoint } from '../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { emptyRecord, projectKey, recordPath } from '../../hooks/shared/records/data/datasources/record_source'
 import { HELP_COMMANDS } from '../../hooks/app/menu/help_view'
+import { GUARD_TEXT, PROPOSAL_TEXT } from '../../hooks/features/commit_guard/presentation/constants/commit_guard_text'
 import type { MenuView, ProjectRecord } from '../../types'
 import { answerHost, makeTask, memoryHost } from '../helpers'
 import type { Run } from '../helpers'
@@ -352,11 +353,11 @@ test('a subagent finishing writes no handoff note and clears nothing', async ($,
   expect(seen.clears).toBe(1)
 })
 
-test('a git error at the start still registers the tool and the commands', async ($, on) => {
+test('a git error at the start still registers the tools and the commands', async ($, on) => {
   const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now' })
   const { seen } = await startSession($, on, { file: record({ tasks: [task] }), status: 'missing' })
 
-  expect(seen.tools).toEqual(['task_looks_done'])
+  expect(seen.tools).toEqual(['task_looks_done', 'propose_commit'])
   expect(seen.commands).toEqual(['queue-tea', 'done', 'steep', 'brew', 'instant', 'tea', 'feature'])
 })
 
@@ -1497,20 +1498,80 @@ test('features and their tasks are all there after a restart, the active feature
   await ui.unmount()
 })
 
-test('the mod refuses a commit Claude tries through Bash', async ($, on) => {
+// Runs whatever the guard lets through, so a test sees whether it did.
+const passedOn = (on: On) => {
+  const ran: string[] = []
+  on('tool.call', (_, e) => {
+    ran.push(e.tool)
+
+    return { result: 'ran' } as never
+  })
+
+  return ran
+}
+
+test('in a realm made before Git modes the mod refuses a commit through Bash, naming propose_commit', async ($, on) => {
+  const ran = passedOn(on)
   await startSession($, on)
+
+  expect(await $.tool.call({ tool: 'Bash', command: 'git commit -m x' } as never)).toMatchObject({ deny: GUARD_TEXT.assisted })
+  expect(ran).toEqual([])
+})
+
+test('in an Assisted realm the mod refuses a push through Monitor, naming propose_commit', async ($, on) => {
+  const ran = passedOn(on)
+  await startSession($, on, { file: record({ gitMode: 'assisted' }) })
+
+  expect(await $.tool.call({ tool: 'Monitor', command: 'git push' } as never)).toMatchObject({ deny: GUARD_TEXT.assisted })
+  expect(GUARD_TEXT.assisted).toContain('propose_commit')
+  expect(ran).toEqual([])
+})
+
+test('in a Manual realm the mod still refuses a commit through Bash, in the plain words', async ($, on) => {
+  const ran = passedOn(on)
+  await startSession($, on, { file: record({ gitMode: 'manual' }) })
 
   expect(await $.tool.call({ tool: 'Bash', command: 'git commit -m x' } as never)).toMatchObject({
     deny: 'Queue-tea: commits and pushes are yours to make.',
   })
+  expect(ran).toEqual([])
 })
 
-test('the mod refuses a push through Monitor', async ($, on) => {
-  await startSession($, on)
+test('in a Manual realm the mod still refuses a push through Monitor, in the plain words', async ($, on) => {
+  const ran = passedOn(on)
+  await startSession($, on, { file: record({ gitMode: 'manual' }) })
 
   expect(await $.tool.call({ tool: 'Monitor', command: 'git push' } as never)).toMatchObject({
     deny: 'Queue-tea: commits and pushes are yours to make.',
   })
+  expect(ran).toEqual([])
+})
+
+const HEAD_GIT = { 'git rev-parse HEAD': { stdout: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n' }, 'git symbolic-ref --short -q HEAD': { stdout: 'main\n' } }
+
+test('propose_commit saves Claude’s proposal on the current task for Branches', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [task] }), git: HEAD_GIT })
+
+  const answer = await $.tool.call({ tool: 'mcp__queue-tea__propose_commit', message: 'fixed the retry button', files: ['src/retry.ts'] } as never)
+
+  expect(JSON.stringify(answer)).toContain(PROPOSAL_TEXT.saved(1))
+  expect(recordOf(mem).tasks[0]?.commitProposal).toEqual({
+    message: 'fixed the retry button',
+    files: ['src/retry.ts'],
+    head: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
+    at: '2026-10-21T09:12:00+02:00',
+  })
+})
+
+test('propose_commit refuses in a Manual realm and saves nothing', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [task], gitMode: 'manual' }), git: HEAD_GIT })
+
+  const answer = await $.tool.call({ tool: 'mcp__queue-tea__propose_commit', message: 'fixed the retry button', files: ['src/retry.ts'] } as never)
+
+  expect(JSON.stringify(answer)).toContain(JSON.stringify(PROPOSAL_TEXT.manual).slice(1, -1))
+  expect(recordOf(mem).tasks[0]?.commitProposal).toBeUndefined()
 })
 
 test('the mod lets an ordinary command through', async ($, on) => {

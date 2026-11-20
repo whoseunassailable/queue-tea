@@ -2,6 +2,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { GitMode } from '../../../types'
+import { MESSAGES } from '../../main/core/messages'
 import type { EngineApi, FolderPick, ProjectView, Reply, Settings, SettingsPage } from '../../shared/engine_api'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
@@ -172,6 +174,99 @@ describe('the task log path in Settings', () => {
 
     expect((await screen.findByRole('alert')).textContent).toBe("Couldn't save the task log path.")
     expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+})
+
+describe('the Git mode in Settings', () => {
+  const withMode = (gitMode: GitMode, key = KEY) => page({ realm: { ...SETTINGS_PAGE.realm!, key, name: key.split('-')[0]!, gitMode } })
+  const modeButton = async (mode: GitMode) => within(await screen.findByRole('group', { name: t.settings.gitMode })).getByRole<HTMLButtonElement>('button', { name: t.settings.gitModes[mode] })
+  const pressedOf = async (mode: GitMode) => (await modeButton(mode)).getAttribute('aria-pressed')
+  // Preact runs a new row's effects after the next frame (35 ms at most in
+  // jsdom). A click before that frame is one no one can make, so wait it out.
+  const painted = () => act(() => new Promise<void>(resolve => setTimeout(resolve, 50)))
+  const choose = async (mode: GitMode) => {
+    const button = await modeButton(mode)
+    await painted()
+    await act(() => void fireEvent.click(button))
+  }
+
+  it('shows Manual and Assisted, with the saved Assisted pressed and what it means', async () => {
+    await open('/settings')
+
+    expect(await pressedOf('assisted')).toBe('true')
+    expect(await pressedOf('manual')).toBe('false')
+    expect(screen.getByText(t.settings.gitModeLines.assisted)).toBeTruthy()
+  })
+
+  it('shows Manual pressed in a Manual realm', async () => {
+    await open('/settings', { readSettingsPage: async () => withMode('manual') })
+
+    expect(await pressedOf('manual')).toBe('true')
+    expect(await pressedOf('assisted')).toBe('false')
+    expect(screen.getByText(t.settings.gitModeLines.manual)).toBeTruthy()
+  })
+
+  it('pressing the other mode saves it, says so while it saves, then reads the page again', async () => {
+    let answer!: (reply: Reply<null>) => void
+    const setGitMode = vi.fn<EngineApi['setGitMode']>(() => new Promise(resolve => { answer = resolve }))
+    const readSettingsPage = vi.fn<EngineApi['readSettingsPage']>(async () => withMode('assisted'))
+    await open('/settings', { setGitMode, readSettingsPage })
+
+    await choose('manual')
+
+    expect(setGitMode).toHaveBeenCalledWith(KEY, 'manual')
+    expect(screen.getByText(t.settings.savingGitMode).closest('[role="status"]')).toBeTruthy()
+    expect(await pressedOf('manual')).toBe('true')
+    expect((await modeButton('assisted')).disabled).toBe(true)
+    const reads = readSettingsPage.mock.calls.length
+    readSettingsPage.mockResolvedValue(withMode('manual'))
+
+    await act(async () => answer({ ok: true, data: null }))
+
+    await waitFor(() => expect(readSettingsPage.mock.calls.length).toBeGreaterThan(reads))
+    await waitFor(() => expect(screen.getByText(t.settings.gitModeLines.manual)).toBeTruthy())
+    expect(await pressedOf('manual')).toBe('true')
+    expect(screen.queryByText(t.settings.savingGitMode)).toBeNull()
+    expect((await modeButton('assisted')).disabled).toBe(false)
+  })
+
+  it('pressing the mode already saved saves nothing', async () => {
+    const { engine } = await open('/settings')
+
+    await choose('assisted')
+
+    expect(engine.setGitMode).not.toHaveBeenCalled()
+  })
+
+  it('a failed save says why beside the row, goes back to the saved mode, and pressing again tries again', async () => {
+    const setGitMode = vi.fn<EngineApi['setGitMode']>()
+      .mockResolvedValueOnce({ ok: false, error: { message: MESSAGES.setGitMode } })
+      .mockResolvedValue({ ok: true, data: null })
+    await open('/settings', { setGitMode })
+
+    await choose('manual')
+
+    expect((await screen.findByRole('alert')).textContent).toBe(MESSAGES.setGitMode)
+    expect(await pressedOf('assisted')).toBe('true')
+    expect((await modeButton('manual')).disabled).toBe(false)
+
+    await choose('manual')
+
+    expect(setGitMode).toHaveBeenCalledTimes(2)
+    expect(setGitMode).toHaveBeenLastCalledWith(KEY, 'manual')
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  })
+
+  it('a failure in one realm is not shown on the next realm picked', async () => {
+    const readSettingsPage = vi.fn<EngineApi['readSettingsPage']>(async key => withMode('assisted', key ?? KEY))
+    const { workspace } = await open('/settings', { readSettingsPage, setGitMode: async () => ({ ok: false, error: { message: MESSAGES.setGitMode } }) })
+    await choose('manual')
+    await screen.findByRole('alert')
+
+    await act(async () => workspace.pick('b-000002'))
+
+    expect(await screen.findByRole('heading', { name: t.settings.thisRealm('b') })).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })
 

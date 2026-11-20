@@ -27,17 +27,18 @@ import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
 import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
 import { clearHold } from './hold'
+import { gitModeOf } from '../../../../shared/records/domain/services/git_mode'
 
 const DOCS_LOG = 'docs/task_log.md'
 
 export const taskSection = (record: ProjectRecord | null) => {
   const current = record === null ? null : currentTask(record.tasks, live.ctx)
-  if (current === null) return null
+  if (record === null || current === null) return null
 
   return {
     id: 'queue-tea:task',
     scope: 'session' as const,
-    text: [TASK_LINE(current.title), ...HELPER_LINES.filter(([id]) => current.helpers.on.includes(id)).map(([, line]) => line)].join('\n'),
+    text: [TASK_LINE(current.title, gitModeOf(record)), ...HELPER_LINES.filter(([id]) => current.helpers.on.includes(id)).map(([, line]) => line)].join('\n'),
   }
 }
 

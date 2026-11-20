@@ -1,5 +1,6 @@
-import { useRef, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 
+import type { GitMode } from '../../../../../../types'
 import type { EngineApi, RealmLine, Settings, SettingsPage as PageData, SkyChoice, TerminalChoice } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
@@ -7,12 +8,14 @@ import { DEFAULT_LOG_PATH } from '../../../../core/constants/constants'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { Field } from '../../../../core/widgets/field'
 import { ReadView } from '../../../../core/widgets/read_view'
+import { Spinner } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import { GithubAccounts } from '../../../github/presentation/widgets/github_accounts'
 import { logPathError } from '../../../quests/domain/quest_form'
 
 const SKIES: readonly SkyChoice[] = ['auto', 'morning', 'day', 'evening', 'night']
 const TERMINALS: readonly TerminalChoice[] = ['terminal', 'iterm', 'vscode']
+const GIT_MODES: readonly GitMode[] = ['manual', 'assisted']
 const CONFIG = '/config'
 
 const LogDialog = ({ engine, realm, onDone, onClose }: { engine: EngineApi; realm: RealmLine; onDone: () => void; onClose: () => void }) => {
@@ -143,10 +146,60 @@ const copyText = (realm: RealmLine): string => {
   return realm.hasCopy ? t.settings.hasCopy : t.settings.noCopy
 }
 
-type ThisRealmProps = { realm: RealmLine; account: string | null; onShow: (key: string) => void; onEdit: () => void; onConnect: (realm: RealmLine) => void }
+// Saved as soon as it's pressed; pressing again after a failure retries.
+const GitModeRow = ({ engine, realm, onSaved }: { engine: EngineApi; realm: RealmLine; onSaved: () => void }) => {
+  const [pending, setPending] = useState<GitMode | null>(null)
+  const [isSaving, setSaving] = useState(false)
+  const [failure, setFailure] = useState<string | null>(null)
+  // The reread brings the saved mode; until then the pressed one shows.
+  useEffect(() => setPending(null), [realm.gitMode])
+  const shown = pending ?? realm.gitMode
+
+  const choose = async (mode: GitMode) => {
+    if (isSaving || (mode === shown && failure === null)) return
+    setPending(mode)
+    setSaving(true)
+    setFailure(null)
+    const answer = await ask(engine, () => engine.setGitMode(realm.key, mode))
+    setSaving(false)
+    if (!answer.ok) {
+      setPending(null)
+      setFailure(answer.message)
+
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <div class="set-row">
+      <span>{t.settings.gitMode}</span>
+      <div class="seg" role="group" aria-label={t.settings.gitMode}>
+        {GIT_MODES.map(mode => (
+          <button key={mode} type="button" class={shown === mode ? 'on' : ''} aria-pressed={shown === mode} disabled={isSaving} onClick={() => void choose(mode)}>
+            {t.settings.gitModes[mode]}
+          </button>
+        ))}
+      </div>
+      {isSaving ? (
+        <span class="sub" role="status">
+          <Spinner /> {t.settings.savingGitMode}
+        </span>
+      ) : failure !== null ? (
+        <span class="sub" role="alert">
+          {failure}
+        </span>
+      ) : (
+        <span class="sub">{t.settings.gitModeLines[shown]}</span>
+      )}
+    </div>
+  )
+}
+
+type ThisRealmProps = { engine: EngineApi; realm: RealmLine; account: string | null; onShow: (key: string) => void; onEdit: () => void; onConnect: (realm: RealmLine) => void; onSaved: () => void }
 
 // One realm at a time, so nothing of another realm's is ever on this page.
-const ThisRealm = ({ realm, account, onShow, onEdit, onConnect }: ThisRealmProps) => (
+const ThisRealm = ({ engine, realm, account, onShow, onEdit, onConnect, onSaved }: ThisRealmProps) => (
   <section class="panel panel-pad" aria-labelledby="set-realm">
     <div class="sec-row">
       <h2 id="set-realm">{t.settings.thisRealm(realm.name)}</h2>
@@ -171,6 +224,7 @@ const ThisRealm = ({ realm, account, onShow, onEdit, onConnect }: ThisRealmProps
           </button>
           {realm.logPath === null && <span class="sub">{t.settings.notSetLine}</span>}
         </div>
+        <GitModeRow key={realm.key} engine={engine} realm={realm} onSaved={onSaved} />
         <div class="set-row">
           <span>
             {t.github.question} · {account === null ? t.github.notConnected : <span class="mono">{t.github.chip(account)}</span>}
@@ -235,7 +289,7 @@ export const SettingsPage = ({ engine, selected, settings, onChange, onCopy, onS
       <ReadView read={read} line={t.loading.settings}>
         {page => (
           <div class="set-grid">
-            {page.realm !== null && <ThisRealm realm={page.realm} account={settings.realmAccounts[page.realm.key] ?? null} onShow={onShow} onEdit={() => setEditing(true)} onConnect={onConnect} />}
+            {page.realm !== null && <ThisRealm engine={engine} realm={page.realm} account={settings.realmAccounts[page.realm.key] ?? null} onShow={onShow} onEdit={() => setEditing(true)} onConnect={onConnect} onSaved={read.refresh} />}
             <GithubAccounts engine={engine} onCopy={onCopy} />
             <FromClaude page={page} onCopy={onCopy} />
             <Opening page={page} onInstall={() => void onInstall().then(isDone => isDone && read.refresh())} />

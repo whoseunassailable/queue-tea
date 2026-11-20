@@ -50,6 +50,14 @@ export type Checkpoint = {
 export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
 export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
 
+// What Queue-tea may do with git in a realm. Manual: Rohan does it all.
+// Assisted: Claude proposes a commit, Rohan approves it in the app's Branches.
+export type GitMode = 'manual' | 'assisted'
+
+// A commit Claude proposed for Rohan to approve in Branches. head is the
+// branch's commit when it was proposed, so a later commit makes it stale.
+export type CommitProposal = { message: string; files: string[]; head: string; at: string }
+
 export type Task = {
   id: string
   title: string
@@ -87,6 +95,8 @@ export type Task = {
   codexSince: string | null
   // The task's own checkout. Older tasks keep using the project's folder.
   worktreePath: string | null
+  // The latest commit Claude proposed in an Assisted realm; absent for none.
+  commitProposal?: CommitProposal
 }
 
 // Who works on a task in progress.
@@ -119,6 +129,8 @@ export type ProjectRecord = {
   unassignedMinutesByDay: Record<string, number>
   realmTime?: RealmTime
   requests: AppRequest[]
+  // Absent in records made before Git modes: read as 'assisted'.
+  gitMode?: GitMode
 }
 
 // What a new task is filed under: nothing, a task already there, or a new

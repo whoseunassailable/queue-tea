@@ -2,7 +2,8 @@ import { beat, endBeat } from './app/session/session_beat'
 import { beginActivity } from './shared/activity/presentation/state_management/activity_controller'
 import { afterClear, afterEachTurn, checkTyped, runErrand, saveBeforeClear, startSession } from './app/session/session_rhythm'
 import { errandState } from './features/errands/presentation/state_management/errands_controller'
-import { commitGuardState } from './features/commit_guard/presentation/state_management/commit_guard_controller'
+import { commitGuardState, guardText, proposeCommit } from './features/commit_guard/presentation/state_management/commit_guard_controller'
+import { GUARD_TEXT, PROPOSE_TOOL } from './features/commit_guard/presentation/constants/commit_guard_text'
 import { gitRepositoryOf } from './shared/git/git_providers'
 import { effortState, flush } from './shared/effort/presentation/state_management/effort_controller'
 import { onViewChange, portsOf } from './core/ports/claude_ports'
@@ -28,7 +29,6 @@ import { renderMenu } from './app/menu/menu_frame'
 import { isoLocal } from './shared/time/domain/services/time'
 import { readAllowance } from './features/conversation/domain/services/allowance'
 
-const GUARD_TEXT = 'Queue-tea: commits and pushes are yours to make.'
 const HELD_TEXT = 'Queue-tea: held for the band above the prompt'
 
 export const register: Register = (on, options) => {
@@ -63,6 +63,8 @@ export const register: Register = (on, options) => {
     // A registered tool's result is what the model reads: a string, not a record.
     return { result: await taskLooksDone(portsOf($), e.checked) }
   })
+
+  on('tool.call', { tool: `mcp__queue-tea__${PROPOSE_TOOL.name}` }, async ($, e) => ({ result: await proposeCommit(portsOf($), e) }))
 
   // Each helper Claude runs, noted on the task; a /brew or /tea errand is outside it.
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
@@ -243,11 +245,12 @@ export const register: Register = (on, options) => {
   })
 
   // A guard: when it fails it refuses rather than lets the command through.
-  on('tool.call', { tool: 'Bash' }, ($, e, next) =>
-    isCommitOrPush(e.command) ? { deny: GUARD_TEXT } : next(e),
-  ).catch(($, e, next) => (next.called ? next(e) : { deny: GUARD_TEXT }))
+  // The record only picks the refusal's wording; every mode refuses.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) =>
+    isCommitOrPush(e.command) ? { deny: guardText(await getView($, 'record')) } : next(e),
+  ).catch(($, e, next) => (next.called ? next(e) : { deny: GUARD_TEXT.manual }))
 
-  on('tool.call', { tool: 'Monitor' }, ($, e, next) =>
-    e.command !== undefined && isCommitOrPush(e.command) ? { deny: GUARD_TEXT } : next(e),
-  ).catch(($, e, next) => (next.called ? next(e) : { deny: GUARD_TEXT }))
+  on('tool.call', { tool: 'Monitor' }, async ($, e, next) =>
+    e.command !== undefined && isCommitOrPush(e.command) ? { deny: guardText(await getView($, 'record')) } : next(e),
+  ).catch(($, e, next) => (next.called ? next(e) : { deny: GUARD_TEXT.manual }))
 }

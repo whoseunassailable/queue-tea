@@ -30,7 +30,7 @@ The terminal mod keeps working as it does today. The app and the mod read and wr
 - **A phone or web app.** The window talks to the engine through one typed API, so HTTP can sit behind it later.
 - **Also left out:** a menu-bar cup, notarisation, and updates from anywhere but this Mac's own pushes to main.
 - **From the game:** a shop to spend gold, naming the dragon, and quests or rewards from the helpers.
-- **Commit, Push, Merge and Pull buttons, ever.** Git commands appear only as text to copy (criterion 3 of the design).
+- **A Pull button, and Git run without Rohan's press.** Branches commits, merges and pushes only when Rohan presses the button after reviewing the change ([branch-workflow.md](branch-workflow.md)); Claude never does ([git-modes.md](git-modes.md)).
 
 ## Decisions
 
@@ -172,7 +172,7 @@ Finish, Back to the board and Seal on a quest with Codex read Codex's log before
 
 Quests and Home show all current quests. Start and Start in Codex stay available for queued, unsealed quests, even with others active. Each new start creates its own worktree from main, keeping the original folder untouched. Existing current quests keep their original folder. The Branches tab sits after Quests and Designs: base branch → quest cards, with platform, status, worktree folder, saga and terminal controls. The keyboard tabs are Home ⌘1, Quests ⌘2, Designs ⌘3, Branches ⌘4, Chronicle ⌘5 and Mana & time ⌘6.
 
-`ProjectView.activeQuests` holds every active card and its folder's session; `active` remains the primary quest for Home shortcuts. `branches` includes queued, active and finished quests with saved branches. `openClaude(key, taskId)` addresses the selected quest. `readMerge(key, taskId)` checks local merge readiness and returns commands as text. Merge instructions shows loading, errors with retry, conflicts, readiness or already merged status. No Git commit, push or merge runs from the app.
+`ProjectView.activeQuests` holds every active card and its folder's session; `active` remains the primary quest for Home shortcuts. `branches` includes queued, active and finished quests with saved branches. `openClaude(key, taskId)` addresses the selected quest. A quest's review commits, merges and pushes only when Rohan presses the button, as [branch-workflow.md](branch-workflow.md) describes. In an Assisted realm the commit form starts from the commit Claude proposed ([git-modes.md](git-modes.md)).
 
 The full behavior and safe folder retention are in [Parallel quests and branches](spec.md#parallel-quests-and-branches). The implementation decisions are recorded in [plan-parallel-quests.md](plan-parallel-quests.md).
 
@@ -242,7 +242,7 @@ Section 6 of the design lists every field: what each screen reads, the new field
 - **End to end.** Playwright's Electron driver against a temporary `HOME` with fixture records. The runs: file a task, change priority, Start through a git hold and then past it, Review then Done with the log row, and Back to queue with no session.
 - **The plugin folder.** After `npm install` in `app/`, `claude plugin test .` still finds only the mod's tests. If it picks up files from `app/node_modules`, the app moves out of the plugin folder.
 - **The game rules.** `game.spec.ts` runs XP, levels, stages, the streak, gold and every badge over fixture records, including a finish at 03:30 and a streak across midnight.
-- **The design's own checks:** no Commit, Push, Merge or Pull button in the DOM; the screenshot diff across the four times of day; contrast at each time; and nothing animating under Reduce Motion or Calm mode.
+- **The design's own checks:** no Pull button in the DOM, and Commit, Merge and Push only in a quest's review in Branches; the screenshot diff across the four times of day; contrast at each time; and nothing animating under Reduce Motion or Calm mode.
 
 ## Acceptance criteria
 

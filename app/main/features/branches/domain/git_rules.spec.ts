@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isBranch, isFile, parseLog, parseStatus } from './git_rules'
+import { isBranch, isFile, parseLog, parseStatus, proposalFor } from './git_rules'
 import { codexEvents } from '../data/observation'
 import { graphLayout } from '../../../../renderer/features/branches/domain/graph_layout'
 import { branchGraph, SOURCE, TARGET, FORK } from '../../../../renderer/features/branches/test_fixtures'
@@ -50,5 +50,62 @@ describe('Codex event evidence', () => {
   it('does not call a background launch successful or accept future timestamps', () => {
     const text = [row('response_item', { type: 'function_call', name: 'exec_command', call_id: 'a', arguments: JSON.stringify({ cmd: 'npm test' }) }), row('response_item', { type: 'function_call_output', call_id: 'a', output: 'Process running with session ID 42' }), row('event_msg', { type: 'task_started' }, now + 10000)].join('\n')
     expect(codexEvents(text + '\n{"unfinished', now - 1000, now).steps[0]!.status).toBe('running')
+  })
+})
+
+describe('Claude\'s proposal as Branches shows it', () => {
+  const changed = [{ status: ' M', path: 'a.ts', previous: null }, { status: '??', path: 'b.ts', previous: null }]
+  const proposal = { message: 'fixed the retry button', files: ['a.ts', 'b.ts'], head: SOURCE, at: '2026-11-20T09:00:00+01:00' }
+
+  it('shows a proposal made on the branch\'s current commit, as it was saved', () => {
+    expect(proposalFor(proposal, SOURCE, changed)).toEqual(proposal)
+  })
+
+  it('keeps only the proposed files that are still changed', () => {
+    expect(proposalFor({ ...proposal, files: ['gone.ts', 'b.ts'] }, SOURCE, changed)).toEqual({ ...proposal, files: ['b.ts'] })
+  })
+
+  it('drops a proposed path that is not a plain file in the repository, even when listed as changed', () => {
+    const odd = [...changed, { status: ' M', path: '.git/config', previous: null }, { status: ' M', path: '../outside.ts', previous: null }]
+
+    expect(proposalFor({ ...proposal, files: ['.git/config', '../outside.ts', 42, 'a.ts'] }, SOURCE, odd)).toEqual({ ...proposal, files: ['a.ts'] })
+  })
+
+  it('shows nothing once the branch has moved on from the commit it was made on', () => {
+    expect(proposalFor(proposal, TARGET, changed)).toBeNull()
+  })
+
+  it('shows nothing when none of its files is still changed', () => {
+    expect(proposalFor(proposal, SOURCE, [])).toBeNull()
+    expect(proposalFor({ ...proposal, files: [] }, SOURCE, changed)).toBeNull()
+  })
+
+  it.each([
+    ['no proposal', undefined],
+    ['null', null],
+    ['text', 'fixed x'],
+    ['an empty message', { ...proposal, message: '' }],
+    ['a blank message', { ...proposal, message: ' \n\t ' }],
+    ['a message that is not text', { ...proposal, message: 42 }],
+    ['no head', { ...proposal, head: undefined }],
+    ['no time', { ...proposal, at: undefined }],
+    ['a time that is not text', { ...proposal, at: 1 }],
+    ['files that are not a list', { ...proposal, files: 'a.ts' }],
+    ['no files', { ...proposal, files: undefined }],
+  ])('shows nothing for %s read from the record', (_, saved) => {
+    expect(proposalFor(saved, SOURCE, changed)).toBeNull()
+  })
+
+  it.each([
+    'fixed x\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>',
+    'fixed x\n\nGenerated with Claude Code',
+    'fixed x\n\nProposed by Claude',
+    'fixed x 🤖',
+  ])('shows nothing when the saved message credits Claude: %j', message => {
+    expect(proposalFor({ ...proposal, message }, SOURCE, changed)).toBeNull()
+  })
+
+  it('shows a message that only names Claude Code as a feature', () => {
+    expect(proposalFor({ ...proposal, message: 'added Claude Code session probe' }, SOURCE, changed)).toEqual({ ...proposal, message: 'added Claude Code session probe' })
   })
 })

@@ -1,3 +1,5 @@
+import type { CommitProposal } from '../../../../../types'
+import { creditsClaude } from '../../../../../hooks/features/commit_guard/domain/services/commit_proposal'
 import type { ChangedFile, GraphCommit } from '../../../../shared/branches'
 
 export const isOid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{40,64}$/.test(value)
@@ -16,4 +18,13 @@ export const parseStatus = (text: string): ChangedFile[] => {
     files.push({ status, path: line.slice(3), previous: /[RC]/.test(status) ? parts[++i] ?? null : null })
   }
   return files
+}
+// Claude's proposal as Branches shows it: only when it was made on the commit
+// the branch is on now, and only its files that are still changed. The record
+// is read from disk, so its shape is checked here.
+export const proposalFor = (proposal: unknown, head: string, changed: ChangedFile[]): CommitProposal | null => {
+  const p = proposal as Partial<CommitProposal> | null | undefined
+  if (!p || typeof p.message !== 'string' || !p.message.trim() || creditsClaude(p.message) || p.head !== head || typeof p.at !== 'string' || !Array.isArray(p.files)) return null
+  const files = p.files.filter(f => isFile(f) && changed.some(c => c.path === f))
+  return files.length ? { message: p.message, files, head: p.head, at: p.at } : null
 }

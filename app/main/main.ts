@@ -213,6 +213,7 @@ const serveEngine = () => {
   handle(CHANNELS.saveSettings, (_, patch: unknown) => saveSettings(settings, patch))
   handle(CHANNELS.readSettingsPage, (_, key: unknown) => realms.readSettingsPage(places, key))
   handle(CHANNELS.setTaskLog, (_, key: unknown, path: unknown) => realms.setTaskLog(places, key, path))
+  handle(CHANNELS.setGitMode, (_, key: unknown, mode: unknown) => realms.setGitMode(places, key, mode))
   handle(CHANNELS.showRecord, (_, key: unknown) => realms.showRecord(places, key))
   handle(CHANNELS.openFolder, () => realms.openFolder(places))
   handle(CHANNELS.addProject, (_, path: unknown) => realms.addProject(places, path))

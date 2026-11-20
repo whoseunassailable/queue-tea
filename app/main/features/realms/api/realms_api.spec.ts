@@ -12,7 +12,8 @@ import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import { makeTask } from '../../tasks/api/fixtures'
 import { readProject } from '../../projects/api/projects_api'
-import { addProject, openFolder, readSettingsPage, restoreRealm, setTaskLog, showRecord } from './realms_api'
+import { MESSAGES } from '../../../core/messages'
+import { addProject, openFolder, readSettingsPage, restoreRealm, setGitMode, setTaskLog, showRecord } from './realms_api'
 import type { RealmsDeps } from './realms_api'
 
 const NOW = Date.parse('2026-10-26T16:50:00Z')
@@ -69,7 +70,7 @@ describe('the Settings page', () => {
 
     const page = data(await readSettingsPage(deps, 'a-000001'))
 
-    expect(page.realm).toEqual({ key: 'a-000001', name: 'a', path: '/p/a-000001', file: 'a-000001.json', hasCopy: true, logPath: 'docs/task_log.md', isReadable: true })
+    expect(page.realm).toEqual({ key: 'a-000001', name: 'a', path: '/p/a-000001', file: 'a-000001.json', hasCopy: true, logPath: 'docs/task_log.md', gitMode: 'assisted', isReadable: true })
     expect(JSON.stringify(page)).not.toContain('b-000002')
   })
 
@@ -86,7 +87,7 @@ describe('the Settings page', () => {
   it('keeps a record that doesn\'t read, without its log', async () => {
     await writeFile(fileOf('broken-000003'), '{ not json')
 
-    expect(data(await readSettingsPage(deps, 'broken-000003')).realm).toEqual({ key: 'broken-000003', name: 'broken', path: '', file: 'broken-000003.json', hasCopy: false, logPath: null, isReadable: false })
+    expect(data(await readSettingsPage(deps, 'broken-000003')).realm).toEqual({ key: 'broken-000003', name: 'broken', path: '', file: 'broken-000003.json', hasCopy: false, logPath: null, gitMode: 'assisted', isReadable: false })
   })
 
   it('shows the defaults, marked, with no session', async () => {
@@ -146,6 +147,78 @@ describe('the task log path', () => {
     await writeFile(fileOf('broken-000003'), '{ not json')
 
     expect((await setTaskLog(deps, 'broken-000003', 'log.md')).ok).toBe(false)
+  })
+})
+
+describe('the Git mode', () => {
+  const stored = async (key: string) => JSON.parse(await readFile(fileOf(key), 'utf8'))
+
+  it('reads a record made before Git modes as Assisted', async () => {
+    await seed('a-000001')
+
+    expect(data(await readSettingsPage(deps, 'a-000001')).realm?.gitMode).toBe('assisted')
+  })
+
+  it('saves Manual to the realm\'s record, and the Settings page reads it back', async () => {
+    await seed('a-000001')
+
+    data(await setGitMode(deps, 'a-000001', 'manual'))
+
+    expect((await stored('a-000001')).gitMode).toBe('manual')
+    expect(data(await readSettingsPage(deps, 'a-000001')).realm?.gitMode).toBe('manual')
+  })
+
+  it('switches a Manual realm back to Assisted', async () => {
+    await seed('a-000001', { gitMode: 'manual' })
+
+    data(await setGitMode(deps, 'a-000001', 'assisted'))
+
+    expect((await stored('a-000001')).gitMode).toBe('assisted')
+  })
+
+  it('changes nothing else in the record', async () => {
+    const task = makeTask({ id: 'keep-me' })
+    await seed('a-000001', { docsLogPath: 'notes/log.md', tasks: [task] })
+    const before = await stored('a-000001')
+
+    data(await setGitMode(deps, 'a-000001', 'manual'))
+
+    expect(await stored('a-000001')).toEqual({ ...before, gitMode: 'manual' })
+  })
+
+  it('changes only the realm it is given', async () => {
+    await seed('a-000001')
+    await seed('b-000002')
+
+    data(await setGitMode(deps, 'a-000001', 'manual'))
+
+    expect((await stored('b-000002')).gitMode).toBeUndefined()
+  })
+
+  it.each([
+    ['a capitalised name', 'Manual'],
+    ['another word', 'auto'],
+    ['nothing', ''],
+    ['no value', null],
+    ['a number', 1],
+  ])('refuses %s, and leaves the record alone', async (_, mode) => {
+    await seed('a-000001')
+
+    expect(refused(await setGitMode(deps, 'a-000001', mode))).toBe(MESSAGES.gitModeInvalid)
+    expect((await stored('a-000001')).gitMode).toBeUndefined()
+  })
+
+  it('refuses a realm that doesn\'t read, and leaves its file as it was', async () => {
+    await writeFile(fileOf('broken-000003'), '{ not json')
+
+    expect(refused(await setGitMode(deps, 'broken-000003', 'manual'))).toBe(MESSAGES.unreadableRealm)
+    expect(await readFile(fileOf('broken-000003'), 'utf8')).toBe('{ not json')
+  })
+
+  it('refuses a realm it doesn\'t know, and a made-up path', async () => {
+    expect((await setGitMode(deps, 'nope-000000', 'manual')).ok).toBe(false)
+    expect((await setGitMode(deps, '../../etc/passwd', 'manual')).ok).toBe(false)
+    expect(await readdir(folder)).toEqual([])
   })
 })
 

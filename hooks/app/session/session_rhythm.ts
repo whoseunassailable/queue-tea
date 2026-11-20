@@ -22,6 +22,7 @@ import { loadRecord } from '../../shared/records/presentation/state_management/r
 import { recordsRepositoryOf } from '../../shared/records/records_providers'
 import { HEARTBEAT_MS } from '../../shared/sessions/domain/services/session_rules'
 import { isoLocal } from '../../shared/time/domain/services/time'
+import { PROPOSE_TOOL } from '../../features/commit_guard/presentation/constants/commit_guard_text'
 import { loadContext } from './load_context'
 import { beat } from './session_beat'
 
@@ -70,6 +71,19 @@ export async function startSession($: EngineInterface) {
             'Optional. One line on what you checked before calling, such as the tests you ran and what they showed. Shown to Rohan beside the question.',
         },
       },
+    },
+    isDeferred: false,
+  })
+  await $.tool.register({
+    name: PROPOSE_TOOL.name,
+    description: PROPOSE_TOOL.description,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: PROPOSE_TOOL.message },
+        files: { type: 'array', items: { type: 'string' }, description: PROPOSE_TOOL.files },
+      },
+      required: ['message', 'files'],
     },
     isDeferred: false,
   })

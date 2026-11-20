@@ -7,7 +7,8 @@ import { questIdOf } from '../../tasks/domain/task_input'
 import { scopeOf } from '../../tasks/api/scope'
 import type { TasksDeps, Scope } from '../../tasks/api/scope'
 import { BRANCH_LIMITS, BRANCH_TEXT } from '../domain/constants'
-import { isBranch } from '../domain/git_rules'
+import { isBranch, proposalFor } from '../domain/git_rules'
+import { gitModeOf } from '../../../../../hooks/shared/records/domain/services/git_mode'
 import { ancestor, gitIn, graphOf, headOf, reviewOf } from '../data/branch_source'
 import { conflictEntries, safeResolutionPath, workspaceOf, workspacePath } from '../data/merge_workspace'
 import { loadOperation, operationsOf, saveOperation, withBranchLock } from '../data/operation_store'
@@ -64,6 +65,7 @@ export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unkn
   if (!isBranch(selected)) throw new Refusal(BRANCH_TEXT.invalid)
   const review = await reviewOf(d, scope, task, selected)
   review.commitProgress = await readCommitProgress(d, scope.key, task.id)
+  review.proposal = gitModeOf(scope.record) === 'assisted' ? proposalFor(task.commitProposal, review.sourceHead, review.files) : null
   const ops = await operationsOf(d, scope.key)
   review.operation = ops.find(o => o.taskId === task.id && o.target === selected && o.stage !== 'abandoned') ?? null
   return review

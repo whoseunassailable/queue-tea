@@ -766,7 +766,7 @@ START · 4 refused
    Couldn't open iTerm2.  [ Try again ]  [ Copy: cd ~/…/Gait-feedback && claude ⧉ ]
 ```
 
-- Commands are copy-only. The app never commits, pushes or merges, so no such button exists.
+- These commands are copy-only. Committing, merging and pushing happen only in Branches, when Rohan presses the button after reviewing the change.
 - The hold is view state and isn't saved.
 - **With a session open,** Start adds a `begin` request to the record. The mod takes it at a safe point: no turn running and an empty prompt box. Otherwise the mod offers Continue there.
 - **With none,** the app opens the terminal chosen in Settings, running `claude` in the project.

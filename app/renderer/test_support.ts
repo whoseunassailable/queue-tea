@@ -167,7 +167,7 @@ export const QUEST_FACTS: QuestFacts = { note: null, messages: [], branchToBe: n
 export const SETTINGS_PAGE: SettingsPage = {
   options: { idleGapMinutes: 15, freshAtTokens: 100_000, handoffAtPercent: 90, checkTimeoutSeconds: 10 },
   isDefault: true,
-  realm: { key: 'a-000001', name: 'a', path: '/p/a-000001', file: 'a-000001.json', hasCopy: true, logPath: 'notes/log.md', isReadable: true },
+  realm: { key: 'a-000001', name: 'a', path: '/p/a-000001', file: 'a-000001.json', hasCopy: true, logPath: 'notes/log.md', gitMode: 'assisted', isReadable: true },
   command: null,
 }
 
@@ -241,6 +241,7 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     saveSettings: vi.fn(async patch => ({ ok: true as const, data: { sky: 'day' as const, isCalm: false, lastProject: null, folds: {}, terminal: 'terminal' as const, chronicleScope: 'realm' as const, letterKeys: true, realmAccounts: {}, ...patch } })),
     readSettingsPage: async () => ({ ok: true, data: SETTINGS_PAGE }),
     setTaskLog: vi.fn(async () => ({ ok: true as const, data: null })),
+    setGitMode: vi.fn(async () => ({ ok: true as const, data: null })),
     showRecord: vi.fn(async () => ({ ok: true as const, data: null })),
     openFolder: vi.fn(async () => ({ ok: true as const, data: null })),
     addProject: vi.fn(async (path: string) => ({ ok: true as const, data: path })),

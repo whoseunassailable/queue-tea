@@ -553,3 +553,4 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 .rm .helper-chip img{display:block;width:20px;height:20px}
 .rm .helper-chip[aria-pressed="false"]{background:transparent;box-shadow:inset 0 0 0 1px var(--m)}
 .rm .helper-chip[aria-pressed="false"] img{opacity:.5}
+.rm .profile-chips{margin-bottom:6px}.rm .profile-chips .helper-chip{padding:3px 12px}

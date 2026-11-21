@@ -290,6 +290,23 @@ test('the compose section adds a line for each helper that is on, in work order'
   )
 })
 
+test("a profile Tea-DD picked closes the compose section, with its reason", () => {
+  const current = makeTask({ title: 'Retry button', state: 'current', helpers: { on: ['tea-dd'], ran: [], reminded: false }, testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } })
+  const line = HELPER_LINES.find(([h]) => h === 'tea-dd')![1]
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
+    [TASK_LINE('Retry button', 'assisted'), line, 'Test profile: Deep, chosen by Tea-DD: a new tool'].join('\n'),
+  )
+})
+
+test("a profile Rohan picked tells Claude that Tea-DD keeps to it", () => {
+  const current = makeTask({ title: 'Retry button', state: 'current', testProfile: { id: 'critical', by: 'rohan' } })
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
+    [TASK_LINE('Retry button', 'assisted'), 'Test profile: Critical, chosen by Rohan. Tea-DD keeps to it.'].join('\n'),
+  )
+})
+
 test('with no helpers on, the compose section is the task line alone', () => {
   const current = makeTask({ title: 'Retry button', state: 'current' })
 

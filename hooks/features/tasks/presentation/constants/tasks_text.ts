@@ -1,4 +1,5 @@
-import type { GitMode, HelperId } from '../../../../../types'
+import type { GitMode, HelperId, TestProfile, TestProfileId } from '../../../../../types'
+import { TEST_PROFILE_LIMITS } from '../../../../shared/records/domain/services/test_profile'
 
 // Claude's brief names what the realm's Git mode lets it do.
 const GIT_LINE: Record<GitMode, string> = {
@@ -19,13 +20,50 @@ export const HELPER_NAMES: Record<HelperId, string> = {
 // In work order.
 export const HELPER_LINES: readonly (readonly [HelperId, string])[] = [
   ['mocha-mockup', 'Before writing code, work out the design with Mocha Mockup (`queue-tea:mocha-mockup`).'],
-  ['tea-dd', 'Have Tea-DD (`queue-tea:tea-dd`) write and run the tests for each feature or fix.'],
+  ['tea-dd', 'Have Tea-DD (`queue-tea:tea-dd`) write and run the tests for each feature or fix, at the test profile the change needs.'],
   ['chai-pter', 'When behaviour changes, have Chai-pter (`queue-tea:chai-pter`) update the docs.'],
   [
     'commit-chai-n',
     'Once the acceptance criteria are met and the tests pass, have Commit Chai-n (`queue-tea:commit-chai-n`) prepare the commits, before calling task_looks_done.',
   ],
 ]
+
+export const PROFILE_NAMES: Record<TestProfileId, string> = {
+  quick: 'Quick',
+  standard: 'Standard',
+  deep: 'Deep',
+  critical: 'Critical',
+  release: 'Release',
+}
+
+// The brief's line once a profile is set.
+export const PROFILE_LINE = (profile: TestProfile): string =>
+  profile.by === 'rohan'
+    ? `Test profile: ${PROFILE_NAMES[profile.id]}, chosen by Rohan. Tea-DD keeps to it.`
+    : `Test profile: ${PROFILE_NAMES[profile.id]}, chosen by Tea-DD: ${profile.reason}`
+
+export const PROFILE_TOOL = {
+  name: 'set_test_profile',
+  description:
+    "Record the test profile for the current Queue-tea task before running its checks: quick, standard, deep, critical or release, with the reason. Rohan sees it on the quest. Call it again to move up when the change reaches further than you thought. If Rohan chose the profile, his choice stands and nothing changes.",
+  profile: 'The profile: quick, standard, deep, critical or release.',
+  reason: `Why, in one line Rohan can read, at most ${TEST_PROFILE_LIMITS.reason} characters: what the change reaches.`,
+} as const
+
+// What the tool answers. Claude reads it.
+export const PROFILE_TEXT = {
+  saved: (id: TestProfileId) => `Recorded ${PROFILE_NAMES[id]} on the quest. Run the checks it asks for.`,
+  rohans: (id: TestProfileId) => `Rohan chose ${PROFILE_NAMES[id]} for this quest, so it stands. Run its checks; say in your report if you think it should differ.`,
+  noTask: 'No Queue-tea task is current in this folder, so no profile was recorded.',
+  notCurrent: 'That task is no longer current, so the profile was not recorded.',
+  unreadable: "Queue-tea can't read this realm's record, so the profile was not recorded. The Queue-tea menu says why.",
+  failed: 'Recording the profile failed. Go on with its checks and name the profile in your report.',
+  errand: 'This is a /brew or /tea errand, outside the task, so no profile was recorded.',
+  problems: {
+    profile: 'Give the profile as one of quick, standard, deep, critical or release.',
+    reason: `Give the reason in one line, not empty and at most ${TEST_PROFILE_LIMITS.reason} characters.`,
+  },
+} as const
 
 export const ASKED = 'Rohan is asked in the Queue-tea menu whether the task is done for now.'
 

@@ -1,6 +1,7 @@
 import type { LoadError, OtherProject, ProjectRecord, Task } from '../../../../../types'
 import type { Host } from '../../../../core/host/host'
 import { readHelpers } from '../../domain/services/helpers'
+import { readTestProfile } from '../../domain/services/test_profile'
 
 // FNV-1a, 32 bits: a short, stable code for a path.
 const fnv1a = (text: string): string => {
@@ -53,8 +54,10 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
 // A record written before a field existed gets the field's empty value. A
 // task without an id gets one from its creation and title, the same at every
 // read until it is written back.
-const withDefaults = (t: Partial<Task>): Task =>
-  ({
+const withDefaults = ({ testProfile, ...t }: Partial<Task>): Task => {
+  const profile = readTestProfile(testProfile)
+
+  return {
     id: `t-${fnv1a(`${t.created ?? ''}|${t.title ?? ''}`)}`,
     baseBranch: null,
     blockedBy: [],
@@ -68,7 +71,9 @@ const withDefaults = (t: Partial<Task>): Task =>
     worktreePath: null,
     ...t,
     helpers: readHelpers(t.helpers),
-  }) as Task
+    ...(profile === undefined ? {} : { testProfile: profile }),
+  } as Task
+}
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)

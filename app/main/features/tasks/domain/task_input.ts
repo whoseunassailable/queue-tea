@@ -1,7 +1,8 @@
-import type { Difficulty, HelperId, ParentPick, Platform, Priority } from '../../../../../types'
+import type { Difficulty, HelperId, ParentPick, Platform, Priority, TestProfileId } from '../../../../../types'
 import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/task_rules'
 import type { NewQuest, QuestEdit, Seal } from '../../../../shared/engine_api'
 import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../../hooks/shared/records/domain/services/helpers'
+import { isTestProfileId } from '../../../../../hooks/shared/records/domain/services/test_profile'
 import { MESSAGES } from '../../../core/messages'
 import { Refusal } from '../../../core/reply'
 
@@ -87,6 +88,12 @@ export const newQuestOf = (value: unknown): NewQuest => {
   }
 }
 
+const testProfileOf = (value: unknown): TestProfileId | null => {
+  if (value !== null && !isTestProfileId(value)) throw new Refusal(MESSAGES.badValue)
+
+  return value
+}
+
 export const questEditOf = (value: unknown): QuestEdit => {
   const v = (value ?? {}) as Record<string, unknown>
 
@@ -96,6 +103,7 @@ export const questEditOf = (value: unknown): QuestEdit => {
     ...(v.criteria === undefined ? {} : { criteria: criteriaOf(v.criteria) }),
     ...(v.difficulty === undefined ? {} : { difficulty: difficultyOf(v.difficulty) }),
     ...(v.helpers === undefined ? {} : { helpers: helpersOf(v.helpers) }),
+    ...(v.testProfile === undefined ? {} : { testProfile: testProfileOf(v.testProfile) }),
   }
 }
 

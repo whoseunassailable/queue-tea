@@ -1,4 +1,4 @@
-import type { Difficulty, HelperId, Task } from '../../../../../types'
+import type { Difficulty, HelperId, Task, TestProfileId } from '../../../../../types'
 import { onlyHelpers } from '../../../../shared/records/domain/services/helpers'
 import type { Deps } from './deps'
 
@@ -8,6 +8,8 @@ export type TaskEdit = {
   criteria?: string[]
   difficulty?: Difficulty
   helpers?: HelperId[]
+  // Rohan's pick, or null to let Tea-DD pick again.
+  testProfile?: TestProfileId | null
 }
 
 const edited = (t: Task, edit: TaskEdit): Task => ({
@@ -17,11 +19,14 @@ const edited = (t: Task, edit: TaskEdit): Task => ({
   ...(edit.criteria === undefined ? {} : { criteria: edit.criteria }),
   ...(edit.difficulty === undefined ? {} : { difficulty: { ...t.difficulty, expected: edit.difficulty } }),
   ...(edit.helpers === undefined ? {} : { helpers: { ...t.helpers, on: onlyHelpers(edit.helpers) } }),
+  ...(edit.testProfile === undefined || edit.testProfile === null ? {} : { testProfile: { id: edit.testProfile, by: 'rohan' as const } }),
 })
+
+const withoutProfile = ({ testProfile: _cleared, ...t }: Task): Task => t
 
 // Changes what a task says about itself. A finished task keeps what it said.
 export const editTaskUseCase = (d: Pick<Deps, 'records'>, taskId: string, edit: TaskEdit) =>
   d.records.update(r => ({
     ...r,
-    tasks: r.tasks.map(t => (t.id === taskId && (t.state === 'queued' || t.state === 'current') ? edited(t, edit) : t)),
+    tasks: r.tasks.map(t => (t.id === taskId && (t.state === 'queued' || t.state === 'current') ? edited(edit.testProfile === null ? withoutProfile(t) : t, edit) : t)),
   }))

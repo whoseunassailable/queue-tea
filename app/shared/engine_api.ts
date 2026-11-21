@@ -4,7 +4,7 @@ import type { NoteBookmark } from './note_bookmarks'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
-import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskActivity } from '../../types'
+import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskActivity, TestProfile, TestProfileId } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -55,6 +55,8 @@ export type QuestRow = {
   acceptance: string[]
   // The helpers Claude is asked to use on it.
   helpers: HelperId[]
+  // How much checking it gets; null until Tea-DD or Rohan picks.
+  testProfile: TestProfile | null
 }
 
 export type BoardEntry =
@@ -76,6 +78,7 @@ export type ActiveQuest = {
   review: Task['review']
   criteria: string[]
   helpers: HelperId[]
+  testProfile: TestProfile | null
   // What an open session has been asked to do and hasn't yet.
   asking: AppRequest['kind'] | null
   // When it went to Codex; null while Claude Code has it.
@@ -257,7 +260,8 @@ export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToB
 
 // What has moved under the quest in hand.
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }
-export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[] }
+// testProfile is Rohan's pick; null lets Tea-DD pick again.
+export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[]; testProfile?: TestProfileId | null }
 
 // What keeps a quest from starting. The reason is the engine's own sentence,
 // and a command is only ever text to copy.

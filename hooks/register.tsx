@@ -9,9 +9,9 @@ import { effortState, flush } from './shared/effort/presentation/state_managemen
 import { onViewChange, portsOf } from './core/ports/claude_ports'
 import type { Register } from 'claude-code'
 
-import { DONE_ASKED, DONE_NONE, ERRAND_RUNNING, MENU_OPENED, STEEP_PICK, STEEP_USAGE } from './features/tasks/presentation/constants/tasks_text'
+import { DONE_ASKED, DONE_NONE, ERRAND_RUNNING, MENU_OPENED, PROFILE_TEXT, PROFILE_TOOL, STEEP_PICK, STEEP_USAGE } from './features/tasks/presentation/constants/tasks_text'
 import { toggleMenu } from './app/menu/menu_controller'
-import { askDone, noteHelperRun, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
+import { askDone, noteHelperRun, setTestProfile, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
 import { fileFromCommand } from './features/tasks/presentation/state_management/filing_controller'
 import { runFeature } from './features/tasks/presentation/state_management/queue_controller'
 import { MENU, menuClosed, openMenu } from './core/store/menu'
@@ -65,6 +65,9 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: `mcp__queue-tea__${PROPOSE_TOOL.name}` }, async ($, e) => ({ result: await proposeCommit(portsOf($), e) }))
+
+  on('tool.call', { tool: `mcp__queue-tea__${PROFILE_TOOL.name}` }, async ($, e) =>
+    ({ result: errandState.errand?.isRunning === true ? PROFILE_TEXT.errand : await setTestProfile(portsOf($), e) }))
 
   // Each helper Claude runs, noted on the task; a /brew or /tea errand is outside it.
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {

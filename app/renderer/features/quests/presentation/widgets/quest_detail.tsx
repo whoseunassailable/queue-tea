@@ -15,6 +15,7 @@ import type { QuestEdits } from '../state_management/quest_edits'
 import { ClaudeOut } from './claude_out'
 import { DescriptionFiles, withFileLink } from './description_files'
 import { HelperToggles } from './helper_toggles'
+import { TestProfileControl } from './test_profile_control'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
 
@@ -291,6 +292,8 @@ export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved,
       )}
       <h3>{t.helpers.label}</h3>
       <HelperToggles on={quest.helpers} onChange={helpers => edits.edit(realm, quest, { helpers })} />
+      <h3>{t.testProfile.label}</h3>
+      <TestProfileControl profile={quest.testProfile} onChange={testProfile => edits.edit(realm, quest, { testProfile })} />
       {sagaOf !== null && (
         <>
           <h3>{t.detail.chapters(sagaOf.chapters.length)}</h3>

@@ -6,6 +6,7 @@ import { emptyCheckpoint } from '../../hooks/shared/checkpoints/domain/services/
 import { emptyRecord, projectKey, recordPath } from '../../hooks/shared/records/data/datasources/record_source'
 import { HELP_COMMANDS } from '../../hooks/app/menu/help_view'
 import { GUARD_TEXT, PROPOSAL_TEXT } from '../../hooks/features/commit_guard/presentation/constants/commit_guard_text'
+import { PROFILE_TEXT } from '../../hooks/features/tasks/presentation/constants/tasks_text'
 import type { MenuView, ProjectRecord } from '../../types'
 import { answerHost, makeTask, memoryHost } from '../helpers'
 import type { Run } from '../helpers'
@@ -32,7 +33,7 @@ const BAND = {
   plugin: 'queue-tea',
   component: 'AbovePrompt',
   requestId: 'above-prompt',
-  props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 60, scroll: { offset: 0, bodyRows: 12 }, view: {} },
+  props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 12, bodyColumns: 60, scroll: { offset: 0, bodyRows: 12 }, view: {} },
 } as const
 const COMMAND = { origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 120 } } as const
 const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
@@ -357,7 +358,7 @@ test('a git error at the start still registers the tools and the commands', asyn
   const task = makeTask({ title: 'Now', state: 'current', branch: 'task/now' })
   const { seen } = await startSession($, on, { file: record({ tasks: [task] }), status: 'missing' })
 
-  expect(seen.tools).toEqual(['task_looks_done', 'propose_commit'])
+  expect(seen.tools).toEqual(['task_looks_done', 'propose_commit', 'set_test_profile'])
   expect(seen.commands).toEqual(['queue-tea', 'done', 'steep', 'brew', 'instant', 'tea', 'feature'])
 })
 
@@ -1572,6 +1573,34 @@ test('propose_commit refuses in a Manual realm and saves nothing', async ($, on)
 
   expect(JSON.stringify(answer)).toContain(JSON.stringify(PROPOSAL_TEXT.manual).slice(1, -1))
   expect(recordOf(mem).tasks[0]?.commitProposal).toBeUndefined()
+})
+
+test('set_test_profile saves Tea-DD’s pick on the current task', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [task] }) })
+
+  const answer = await $.tool.call({ tool: 'mcp__queue-tea__set_test_profile', profile: 'deep', reason: 'a new tool' } as never)
+
+  expect(JSON.stringify(answer)).toContain(PROFILE_TEXT.saved('deep'))
+  expect(recordOf(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
+})
+
+test('during a /brew turn set_test_profile records nothing; after it, it records again', async ($, on) => {
+  const task = makeTask({ title: 'Now', state: 'current' })
+  const { mem, clock } = await startSession($, on, { file: record({ tasks: [task] }) })
+  const before = mem.files.get(FILE)
+
+  await $.command.run({ command: 'brew', args: 'start the server', ...COMMAND })
+  await clock.settle()
+  await $.turn.start({ text: 'start the server', turnId: 't1' })
+  const during = await $.tool.call({ tool: 'mcp__queue-tea__set_test_profile', profile: 'deep', reason: 'a new tool' } as never)
+  expect(JSON.stringify(during)).toContain(PROFILE_TEXT.errand)
+  expect(mem.files.get(FILE)).toBe(before)
+
+  await $.turn.complete(TURN as never)
+  await clock.settle()
+  await $.tool.call({ tool: 'mcp__queue-tea__set_test_profile', profile: 'deep', reason: 'a new tool' } as never)
+  expect(recordOf(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
 })
 
 test('the mod lets an ordinary command through', async ($, on) => {

@@ -305,6 +305,33 @@ describe('the rest', () => {
     expect((await stored('a')).helpers.on).toEqual(['tea-dd'])
   })
 
+  it("a profile Rohan picks is saved as his, over Tea-DD's, and the board shows it", async () => {
+    await seed([task({ id: 'a', testProfile: { id: 'standard', by: 'tea-dd', reason: 'one feature' } })])
+
+    const view = viewOf(await api.editQuest(deps, KEY, 'a', { testProfile: 'critical' }))
+
+    expect((await stored('a')).testProfile).toEqual({ id: 'critical', by: 'rohan' })
+    expect(view.ready[0]?.quest.testProfile).toEqual({ id: 'critical', by: 'rohan' })
+  })
+
+  it('a null profile hands the pick back to Tea-DD', async () => {
+    await seed([task({ id: 'a', testProfile: { id: 'quick', by: 'rohan' } })])
+
+    const view = viewOf(await api.editQuest(deps, KEY, 'a', { testProfile: null }))
+
+    expect((await stored('a')).testProfile).toBeUndefined()
+    expect(view.ready[0]?.quest.testProfile).toBeNull()
+  })
+
+  it('an unknown profile is refused and changes nothing', async () => {
+    await seed([task({ id: 'a', testProfile: { id: 'quick', by: 'rohan' } })])
+
+    for (const testProfile of ['huge', 'Deep', 3, {}, '']) {
+      expect(await api.editQuest(deps, KEY, 'a', { testProfile } as never)).toEqual({ ok: false, error: { message: "That value isn't one Queue-tea can use. Pick another." } })
+    }
+    expect((await stored('a')).testProfile).toEqual({ id: 'quick', by: 'rohan' })
+  })
+
   it('an empty description clears it, and a blank title is refused', async () => {
     await seed([task({ id: 'a', description: 'Gone' })])
 

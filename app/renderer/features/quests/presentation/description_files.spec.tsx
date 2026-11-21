@@ -29,7 +29,7 @@ const open = async (description: string | null, over: Partial<EngineApi> = {}) =
   let row: QuestRow = quest({ id: 'first', title: 'First quest', description })
   const view = (): ProjectView => projectView(KEY, { canStart: 1, ready: [{ kind: 'quest', quest: row }] })
   const editQuest = vi.fn(async (_key: string, _id: string, edit: QuestEdit): Promise<Reply<ProjectView>> => {
-    row = { ...row, ...edit }
+    row = { ...row, ...edit, testProfile: row.testProfile }
 
     return { ok: true, data: view() }
   })
@@ -143,7 +143,7 @@ describe("a file in a quest's description", () => {
     const answers: (() => void)[] = []
     const editQuest = vi.fn((_key: string, _id: string, edit: QuestEdit) => new Promise<Reply<ProjectView>>(resolve => {
       answers.push(() => {
-        row = { ...row, ...edit }
+        row = { ...row, ...edit, testProfile: row.testProfile }
         resolve({ ok: true, data: view() })
       })
     }))

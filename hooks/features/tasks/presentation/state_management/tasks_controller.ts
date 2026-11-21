@@ -21,11 +21,13 @@ import { leaveCodexUseCase } from '../../domain/usecases/leave_codex'
 import { putBackUseCase } from '../../domain/usecases/put_back'
 import { saveDocsPathUseCase } from '../../domain/usecases/save_docs_path'
 import { setReviewUseCase } from '../../domain/usecases/set_review'
+import { setTestProfileUseCase } from '../../domain/usecases/set_test_profile'
+import { checkTestPick } from '../../../../shared/records/domain/services/test_profile'
 import { startTaskUseCase } from '../../domain/usecases/start_task'
 import { switchToTaskUseCase } from '../../domain/usecases/switch_to_task'
 import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
-import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
+import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, PROFILE_LINE, PROFILE_TEXT, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
 import { clearHold } from './hold'
 import { gitModeOf } from '../../../../shared/records/domain/services/git_mode'
 
@@ -38,7 +40,11 @@ export const taskSection = (record: ProjectRecord | null) => {
   return {
     id: 'queue-tea:task',
     scope: 'session' as const,
-    text: [TASK_LINE(current.title, gitModeOf(record)), ...HELPER_LINES.filter(([id]) => current.helpers.on.includes(id)).map(([, line]) => line)].join('\n'),
+    text: [
+      TASK_LINE(current.title, gitModeOf(record)),
+      ...HELPER_LINES.filter(([id]) => current.helpers.on.includes(id)).map(([, line]) => line),
+      ...(current.testProfile === undefined ? [] : [PROFILE_LINE(current.testProfile)]),
+    ].join('\n'),
   }
 }
 
@@ -111,6 +117,29 @@ export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<string
   await saveReview(p, { at: 'now', checked: line === '' ? null : line })
 
   return ASKED
+}
+
+// The set_test_profile tool: saves Tea-DD's pick on the current task for the
+// brief and the quest pane. Returns what Claude reads; it never throws.
+export const setTestProfile = async (p: Ports, input: unknown): Promise<string> => {
+  const ctx = live.ctx
+  const record = await p.get('record')
+  const current = record === null || ctx === null ? null : currentTask(record.tasks, ctx)
+  if (ctx === null || current === null) return PROFILE_TEXT.noTask
+  const pick = checkTestPick(input)
+  if (typeof pick === 'string') return PROFILE_TEXT.problems[pick]
+  try {
+    const set = await setTestProfileUseCase(tasksDepsOf(p, ctx), ctx, current.id, pick)
+    if (set.kind === 'rohans') return PROFILE_TEXT.rohans(set.id)
+    if (set.kind !== 'saved') return PROFILE_TEXT[set.kind]
+    await applySaved(p, ctx, set.record)
+
+    return PROFILE_TEXT.saved(pick.id)
+  } catch (err) {
+    debug(p, 'saving the test profile failed', err)
+
+    return PROFILE_TEXT.failed
+  }
 }
 
 // True when the mark is saved; a failed write is logged and Rohan is asked instead.

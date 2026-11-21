@@ -55,6 +55,8 @@ Codex skills use `$skill-name` or the skill picker. **This adapter does not regi
 
 `helper_instructions` returns the selected helper’s shared instructions and companion skill names; it neither starts a model nor records a helper run. `helper_finished` records the helper only after its work is completed, with the same current-task check under the lock. Errands must not call it. The server cannot verify a model’s claims about checks or helper work, so reports must name actual commands and results.
 
+`set_test_profile` records the [test profile](spec.md#test-profiles) Tea-DD picked before it runs the checks. It takes `taskId` from `queue_tea`, `profile` (`quick`, `standard`, `deep`, `critical` or `release`) and a `reason` of 1 to 160 characters once trimmed, and answers “Recorded deep on <taskId>. Run the checks it asks for.” Calling it again replaces Tea-DD’s earlier pick. When Rohan chose the profile in the app, nothing changes and the answer is “Rohan chose quick for this task, so it stands. Run its checks; say in the report if it should differ.” A stale ID or a task belonging to another worktree fails under the record lock, as for `task_looks_done`. The current task `queue_tea` returns carries the saved `testProfile`.
+
 ## Helpers and companion skills
 
 Use `$chai-pter`, `$commit-chai-n`, `$mocha-mockup` and `$tea-dd`. Their skills are generated from `agents/*.md`; Tea-concile comes from `skills/tea-concile/SKILL.md`. There is no second maintained set of personas. A helper runs in the current Codex conversation, or through delegation when that session supports and authorizes it. The Guild Hall’s existing background **Send** flow still launches Claude Code.

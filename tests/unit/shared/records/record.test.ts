@@ -351,3 +351,40 @@ test('version 1 migrates without moving its current task or losing unknown field
   expect(parsed.tasks[0]!.worktreePath).toBeNull()
   expect((parsed as unknown as { future: string }).future).toBe('preserved')
 })
+
+test('a task saved before test profiles reads with no profile', () => {
+  const read = readFirst({ title: 'Old', created: '2026-10-01' })
+
+  expect(read?.testProfile).toBeUndefined()
+  expect(Object.keys(read ?? {})).not.toContain('testProfile')
+})
+
+test("Tea-DD's pick and Rohan's pick survive a write and a read", async () => {
+  const mem = memoryHost()
+  const tasks = [
+    makeTask({ id: 'a', testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } }),
+    makeTask({ id: 'b', testProfile: { id: 'quick', by: 'rohan' } }),
+  ]
+
+  await updateRecord(mem.host, FILE, r => ({ ...r, tasks }), 'p', '/p')
+  const read = await readRecord(mem.host, FILE, 'p', '/p')
+
+  if (read === 'unreadable') throw new Error('should read')
+  expect(read.tasks[0]).toMatchObject({ testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } })
+  expect(read.tasks[1]?.testProfile).toEqual({ id: 'quick', by: 'rohan' })
+})
+
+test('a malformed profile is read as none, and the realm still reads', () => {
+  const profile = (testProfile: unknown) => readFirst({ title: 'Old', created: '2026-10-01', testProfile })?.testProfile
+
+  for (const bad of [null, 'deep', [], { id: 'huge', by: 'tea-dd', reason: 'x' }, { id: 'deep' }, { id: 'deep', by: 'someone' }, { id: 'deep', by: 'tea-dd' }, { id: 'deep', by: 'tea-dd', reason: '   ' }, { id: 'deep', by: 'tea-dd', reason: 7 }]) {
+    expect(profile(bad)).toBeUndefined()
+  }
+})
+
+test("a hand-edited profile is tidied: Rohan's loses a reason, a long reason is cut to 160 characters", () => {
+  const profile = (testProfile: unknown) => readFirst({ title: 'Old', created: '2026-10-01', testProfile })?.testProfile
+
+  expect(profile({ id: 'critical', by: 'rohan', reason: 'ignored' })).toEqual({ id: 'critical', by: 'rohan' })
+  expect(profile({ id: 'deep', by: 'tea-dd', reason: `  ${'x'.repeat(200)}` })).toEqual({ id: 'deep', by: 'tea-dd', reason: 'x'.repeat(160) })
+})

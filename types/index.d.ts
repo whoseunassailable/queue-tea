@@ -50,6 +50,11 @@ export type Checkpoint = {
 export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
 export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
 
+// How much checking a quest's change gets, from a look at the screen to the
+// whole suite. Tea-DD picks one with a reason; Rohan's pick always stands.
+export type TestProfileId = 'quick' | 'standard' | 'deep' | 'critical' | 'release'
+export type TestProfile = { id: TestProfileId; by: 'tea-dd'; reason: string } | { id: TestProfileId; by: 'rohan' }
+
 // What Queue-tea may do with git in a realm. Manual: Rohan does it all.
 // Assisted: Claude proposes a commit, Rohan approves it in the app's Branches.
 export type GitMode = 'manual' | 'assisted'
@@ -97,6 +102,8 @@ export type Task = {
   worktreePath: string | null
   // The latest commit Claude proposed in an Assisted realm; absent for none.
   commitProposal?: CommitProposal
+  // Absent until Tea-DD or Rohan picks one, and in older records.
+  testProfile?: TestProfile
 }
 
 // Who works on a task in progress.

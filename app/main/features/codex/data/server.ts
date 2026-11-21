@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { QUEUE_TEA_COMMANDS } from '../../../../../hooks/core/session/commands'
 import { HELPER_IDS } from '../../../../../hooks/shared/records/domain/services/helpers'
+import { TEST_PROFILE_IDS } from '../../../../../hooks/shared/records/domain/services/test_profile'
 import type { Logger } from '../../../core/logger'
 import { CODEX_LIMITS, CODEX_TEXT } from '../domain/constants'
 import { CodexRefusal, codexOperations } from '../domain/operations'
@@ -40,6 +41,7 @@ export const createCodexServer = (context: CodexContext, log: Logger) => {
   }
   server.registerTool('helper_instructions', { description: 'Read the shared instructions and companion skill names for a Queue-tea helper. Does not launch a model or mark the helper as run.', inputSchema: z.object({ helper }).strict(), annotations: annotations(true) }, ({ helper }) => run(() => ({ instructions: helperInstructions(helper) })))
   server.registerTool('helper_finished', { description: 'Record a helper after its work has actually completed on the supplied current task. Never call for brew/instant/tea errands.', inputSchema: z.object({ taskId, helper }).strict(), annotations: annotations(false) }, ({ taskId, helper }) => run(() => ops.helperFinished(taskId, helper)))
+  server.registerTool('set_test_profile', { description: 'Record the test profile Tea-DD picked for the supplied current task, with the reason, before running its checks. Call again to move up. If Rohan chose the profile, it stands and nothing changes.', inputSchema: z.object({ taskId, profile: z.enum(TEST_PROFILE_IDS as ['quick', 'standard', 'deep', 'critical', 'release']), reason: z.string().trim().min(1).max(CODEX_LIMITS.reason) }).strict(), annotations: annotations(false) }, ({ taskId, profile, reason }) => run(() => ops.testProfile(taskId, { id: profile, reason })))
 
   return server
 }

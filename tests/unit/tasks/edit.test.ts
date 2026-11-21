@@ -118,3 +118,41 @@ test('a finished task keeps its helpers', async () => {
 
   expect(onDisk(mem).tasks[0]?.helpers.on).toEqual(['tea-dd'])
 })
+
+test("picking a profile in an edit makes it Rohan's, over Tea-DD's", async () => {
+  const task = makeTask({ testProfile: { id: 'standard', by: 'tea-dd', reason: 'one feature' } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { testProfile: 'critical' })
+
+  expect(onDisk(mem).tasks[0]?.testProfile).toEqual({ id: 'critical', by: 'rohan' })
+})
+
+test('a null profile lets Tea-DD pick again: the profile is gone', async () => {
+  const task = makeTask({ state: 'current', testProfile: { id: 'quick', by: 'rohan' } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { testProfile: null })
+
+  expect(onDisk(mem).tasks[0]?.testProfile).toBeUndefined()
+  expect(Object.keys(JSON.parse(mem.files.get(CTX.file)!).tasks[0])).not.toContain('testProfile')
+})
+
+test('an edit that names no profile keeps the one there', async () => {
+  const task = makeTask({ testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { title: 'Renamed' })
+
+  expect(onDisk(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
+})
+
+test('a finished task keeps its profile', async () => {
+  const task = makeTask({ state: 'done', testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { testProfile: null })
+  await editTaskUseCase(deps, task.id, { testProfile: 'quick' })
+
+  expect(onDisk(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
+})

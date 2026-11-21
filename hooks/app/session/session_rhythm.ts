@@ -23,6 +23,8 @@ import { recordsRepositoryOf } from '../../shared/records/records_providers'
 import { HEARTBEAT_MS } from '../../shared/sessions/domain/services/session_rules'
 import { isoLocal } from '../../shared/time/domain/services/time'
 import { PROPOSE_TOOL } from '../../features/commit_guard/presentation/constants/commit_guard_text'
+import { PROFILE_TOOL } from '../../features/tasks/presentation/constants/tasks_text'
+import { TEST_PROFILE_IDS } from '../../shared/records/domain/services/test_profile'
 import { loadContext } from './load_context'
 import { beat } from './session_beat'
 
@@ -84,6 +86,19 @@ export async function startSession($: EngineInterface) {
         files: { type: 'array', items: { type: 'string' }, description: PROPOSE_TOOL.files },
       },
       required: ['message', 'files'],
+    },
+    isDeferred: false,
+  })
+  await $.tool.register({
+    name: PROFILE_TOOL.name,
+    description: PROFILE_TOOL.description,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        profile: { type: 'string', enum: [...TEST_PROFILE_IDS], description: PROFILE_TOOL.profile },
+        reason: { type: 'string', description: PROFILE_TOOL.reason },
+      },
+      required: ['profile', 'reason'],
     },
     isDeferred: false,
   })

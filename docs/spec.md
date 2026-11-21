@@ -151,7 +151,7 @@ In the workspace app ([workspace-app.md](workspace-app.md)), a task can run on O
 An errand is work Rohan wants done now without filing it (`/brew`, `/instant`) or a question Rohan wants answered (`/tea`).
 
 - **What Claude reads:** the command leaves a hidden note before the words. It says this is outside the queue, that the current task, its branch and the queue stay as they are, and not to call `task_looks_done`. For `/brew`, it says to do the work rather than describe it and to check it worked (for a server: that it is listening, and its URL). For `/tea`, it says to change no files.
-- **During its turn:** a `task_looks_done` call asks nothing. A fresh conversation past the size waits for the next turn; the handoff note at the allowance mark is still written.
+- **During its turn:** a `task_looks_done` call asks nothing, and a `set_test_profile` call records nothing. A fresh conversation past the size waits for the next turn; the handoff note at the allowance mark is still written.
 - **Time:** goes to the project, as after a quick question, until the next task message.
 - **Guards:** unchanged. Claude's commits and pushes are still refused.
 - **Words that don't reach Claude:** Claude Code takes no prompt from a plugin that starts with `/` (it would run as a command), so such words are not sent: the reply says why, adds no note, and the line goes back in the prompt box. Words refused or dropped for any other reason are not lost either: a toast says so, and the line goes back in the prompt box when nothing has been typed there since.
@@ -321,6 +321,7 @@ Each write first takes a lock, a folder beside the file (`<record>.lock`) that o
 - the feature it is part of (`parentId`), or null
 - created, started and finished dates
 - time, per day
+- its test profile (`testProfile`), absent until Tea-DD or Rohan picks one ([Test profiles](#test-profiles))
 - effort (below)
 - when it went to Codex (`codexSince`), or null while Claude Code has it. A record from before Codex reads as Claude Code's
 
@@ -412,9 +413,29 @@ Each has a logo in `.claude-plugin/helpers/<name>.svg`, drawn alike so they read
 - **Commit Chai-n** (`queue-tea:commit-chai-n`): reads the state of the branch; names branches by the [Branch](#starting-a-task) rules, never renaming one that exists; splits work into atomic commits and writes their messages; drafts pull requests to a file; checks a merge before it happens; when asked, resolves a merge's conflicts with Queue-tea's Tea-concile skill (`queue-tea:tea-concile`). Every command that commits, pushes, merges or pulls goes to Rohan as a line to paste into a terminal, with no leading `!`. It opens a pull request (`gh pr create`) only when asked to in that request, after Rohan pushed.
 - **Mocha Mockup** (`queue-tea:mocha-mockup`): the design stage. The goal and the limits (sizes, old records, the project's rules), two or three options with their trade-offs and a recommendation, mockups at the real size with every state and the keys, interfaces and data flow, acceptance criteria, and open questions each with a suggested answer. It writes no production code.
 - **Chai-pter** (`queue-tea:chai-pter`): writes docs and keeps them true to the code, checking each command, key, path and default it names. Plain writing in the doc's own voice, with an edit pass for vocabulary and one for structure; with `write-like-a-human` in `~/.claude/skills`, it uses that skill's word and pattern lists.
-- **Tea-DD** (`queue-tea:tea-dd`): tests for each feature and fix in the project's own runner and style, at the lowest level that shows the behaviour; for a bug, the failing test first. It runs them and the whole suite and reports the counts. It never skips, deletes or loosens a test to get to green.
+- **Tea-DD** (`queue-tea:tea-dd`): tests for each feature and fix in the project's own runner and style, at the lowest level that shows the behaviour; for a bug, the failing test first. Before running anything it picks a [test profile](#test-profiles) and records it. It runs the new tests and the tests of what changed first, then the rest of the profile's checks, and before writing an end-to-end test it looks for one that already walks the flow to extend. It reports the profile, its reason and who chose it, and the counts. It never skips, deletes or loosens a test to get to green.
 
 Each also follows the project's graphify rule: with `graphify-out/graph.json` present, `graphify query` comes before its first search.
+
+### Test profiles
+
+A change gets as much checking as its risk needs. Tea-DD picks one of five profiles from what the change could break and what it reaches. Each runs everything the ones above it run, plus its own:
+
+| Profile | When | Adds |
+| --- | --- | --- |
+| Quick | Only how it looks, its text or its order | Lint, the type check, and the changed files' own tests or a look at the screen. No end-to-end run |
+| Standard | Logic inside one feature | The unit and component tests of everything the change reaches |
+| Deep | A new shared piece, tool or API; a stored field old data must still read; more than one feature | Integration tests across the boundaries it crosses, and the whole unit suite |
+| Critical | Git, merges, branches, saving or locking stored data, installing and updating | The end-to-end tests that walk the flows it reaches |
+| Release | Publishing a version | Every suite the project has, the full end-to-end run included. Every failure is reported |
+
+The commands for each profile in this repository are in `CLAUDE.md`; Tea-DD's own rules are in `agents/tea-dd.md`. When it can't tell what a change reaches, it goes one profile up. A change in the Critical row is never below Critical. When a check outside the profile fails, or the change reaches further than it thought, it moves up, records the profile again and reruns.
+
+- **Recording it.** The mod registers `set_test_profile` for Claude, as it does `task_looks_done`. It takes `profile` (`quick`, `standard`, `deep`, `critical` or `release`) and `reason`, one line of at most 160 characters, and saves both on the current task. Called again, it replaces Tea-DD's earlier pick. From Claude's next reply its brief carries "Test profile: Deep, chosen by Tea-DD: <reason>", and the quest pane shows the pick.
+- **Rohan's pick stands.** He picks a profile in the quest pane ([section 4.4 of the design](workspace-app-design.md#44-a-tasks-detail-current-queued-and-done)). The brief then says "Test profile: Quick, chosen by Rohan. Tea-DD keeps to it." The tool changes nothing and answers "Rohan chose Quick for this quest, so it stands. Run its checks; say in your report if you think it should differ." The record is read again inside the write, so a pick he made a moment ago stands too.
+- **When nothing is recorded,** the answer says why: no task is current in the folder, a `/brew` or `/tea` errand is running, the profile isn't one of the five, the reason is empty or too long, the task stopped being current, or the record can't be read. A failed write answers "Recording the profile failed. Go on with its checks and name the profile in your report." and goes to the debug log.
+
+On Codex the MCP server has the same tool, which also takes the task's id ([Queue-tea in Codex](codex-integration.md#commands-and-tools)).
 
 ## When things go wrong
 

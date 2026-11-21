@@ -12,6 +12,7 @@ import type { ProjectRecord } from '../../../../../types'
 import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import { makeTask } from '../../tasks/api/fixtures'
+import { CODEX_TEXT } from '../domain/constants'
 import type { CodexContext } from '../domain/operations'
 import { loadCodexContext } from './context'
 import { createCodexServer } from './server'
@@ -125,5 +126,49 @@ describe('Queue-tea MCP operations', () => {
       expect(result.text).toContain('Report any missing skills')
     }
     expect((await read()).tasks.find(t => t.id === 'ours')!.helpers.ran).toEqual([])
+  })
+})
+
+describe('the set_test_profile tool', () => {
+  const ours = async () => (await read()).tasks.find(t => t.id === 'ours')!
+
+  it("records Tea-DD's pick with its reason on the current task", async () => {
+    expect((await client.listTools()).tools.map(t => t.name)).toContain('set_test_profile')
+
+    const result = await call('set_test_profile', { taskId: 'ours', profile: 'deep', reason: ' a new tool ' })
+
+    expect(result.error).toBe(false)
+    expect(JSON.parse(result.text).text).toBe('Recorded deep on ours. Run the checks it asks for.')
+    expect((await ours()).testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
+  })
+
+  it("leaves Rohan's pick standing, and says so", async () => {
+    const record = await read()
+    await seed({ ...record, tasks: record.tasks.map(t => (t.id === 'ours' ? { ...t, testProfile: { id: 'quick', by: 'rohan' } } : t)) })
+
+    expect(JSON.parse((await call('set_test_profile', { taskId: 'ours', profile: 'release', reason: 'x' })).text).text).toBe(CODEX_TEXT.rohansProfile('quick'))
+    expect((await ours()).testProfile).toEqual({ id: 'quick', by: 'rohan' })
+  })
+
+  it('refuses the task current in another worktree, and writes nothing', async () => {
+    const before = await read()
+
+    expect((await call('set_test_profile', { taskId: 'other', profile: 'deep', reason: 'x' })).error).toBe(true)
+    expect(await read()).toEqual(before)
+  })
+
+  it('refuses a stale task, an unknown profile and a blank or long reason, and writes nothing', async () => {
+    const before = await read()
+
+    for (const args of [
+      { taskId: 'stale', profile: 'deep', reason: 'x' },
+      { taskId: 'ours', profile: 'huge', reason: 'x' },
+      { taskId: 'ours', profile: 'deep', reason: '   ' },
+      { taskId: 'ours', profile: 'deep', reason: 'x'.repeat(161) },
+      { taskId: 'ours', profile: 'deep' },
+    ]) {
+      expect((await call('set_test_profile', args)).error).toBe(true)
+    }
+    expect(await read()).toEqual(before)
   })
 })

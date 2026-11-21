@@ -10,6 +10,7 @@ import type { QuestEdits } from '../state_management/quest_edits'
 import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
+import { TestProfileControl } from './test_profile_control'
 
 const Facts = ({ facts }: { facts: ActiveFacts }) => (
   <dl class="facts">
@@ -74,6 +75,8 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
       </div>
       <h3>{t.helpers.label}</h3>
       <HelperToggles on={active.helpers} onChange={helpers => edits.edit(realm, active, { helpers })} />
+      <h3>{t.testProfile.label}</h3>
+      <TestProfileControl profile={active.testProfile} onChange={testProfile => edits.edit(realm, active, { testProfile })} />
       <hr />
       {read.load.status === 'loading' && <p class="hint" role="status"><Spinner />{t.loading.stillReading}</p>}
       {read.load.status === 'failed' && <p class="hint" role="alert">{read.load.message}</p>}

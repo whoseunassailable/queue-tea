@@ -1,5 +1,5 @@
 import type { BadgeId, HelperDoingKind, HoldKind, SessionState, SkyChoice, Stage, TerminalChoice, VictoryKind } from '../../shared/engine_api'
-import type { Difficulty, HelperId, Priority } from '../../../types'
+import type { Difficulty, HelperId, Priority, TestProfileId } from '../../../types'
 
 const DOING: Record<HelperDoingKind, string> = {
   reading: 'Reading',
@@ -1248,6 +1248,21 @@ export const t = {
     } satisfies Record<BadgeId, (have: number, need: number) => string>,
   },
   helpers: { label: 'Helpers', use: (name: string) => `Use ${name} on this quest` },
+  testProfile: {
+    label: 'Test profile',
+    names: { quick: 'Quick', standard: 'Standard', deep: 'Deep', critical: 'Critical', release: 'Release' } satisfies Record<TestProfileId, string>,
+    none: 'Tea-DD picks one from what changed when it tests. Pick one to decide.',
+    teaDds: (name: string, reason: string) => `Tea-DD chose ${name}: ${reason}`,
+    rohans: (name: string) => `You chose ${name}. Tea-DD keeps to it; press it again to let Tea-DD pick.`,
+    saving: 'Saving…',
+    runs: {
+      quick: 'Runs lint, the type check and the changed files’ tests or a look at the screen. No end-to-end run.',
+      standard: 'Adds the unit and component tests of everything the change reaches. No end-to-end run.',
+      deep: 'Adds tests across the boundaries it crosses and the whole unit suite. No end-to-end run.',
+      critical: 'Adds the end-to-end tests that walk the flows it reaches.',
+      release: 'Runs every suite, the full end-to-end run included.',
+    } satisfies Record<TestProfileId, string>,
+  },
   guild: {
     title: 'Guild Hall',
     where: 'Turn helpers on for each quest in its panel, or when you add it.',

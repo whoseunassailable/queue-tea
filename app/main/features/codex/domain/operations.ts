@@ -4,6 +4,8 @@ import { helperToRemind } from '../../../../../hooks/features/tasks/domain/servi
 import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/file_task'
 import { findFeatureUseCase } from '../../../../../hooks/features/tasks/domain/usecases/find_feature'
 import { setFeatureUseCase } from '../../../../../hooks/features/tasks/domain/usecases/set_feature'
+import { setTestProfileUseCase } from '../../../../../hooks/features/tasks/domain/usecases/set_test_profile'
+import type { TestPick } from '../../../../../hooks/shared/records/domain/services/test_profile'
 import { currentTask, orderQueue } from '../../../../../hooks/shared/records/domain/services/queue_rules'
 import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { HelperId, ProjectRecord } from '../../../../../types'
@@ -82,5 +84,15 @@ export const codexOperations = ({ ctx, deps }: CodexContext) => {
     return { text: `Recorded ${helper} on ${taskId}.` }
   }
 
-  return { queue, errand, steep, feature, review, helperFinished }
+  // Tea-DD's pick. Rohan's choice stands, and the answer says so.
+  const testProfile = async (taskId: string, pick: TestPick) => {
+    const set = await setTestProfileUseCase(deps, ctx, taskId, pick)
+    if (set.kind === 'unreadable') throw new CodexRefusal(CODEX_TEXT.unreadable)
+    if (set.kind === 'notCurrent') throw new CodexRefusal(CODEX_TEXT.noTask)
+    if (set.kind === 'rohans') return { text: CODEX_TEXT.rohansProfile(set.id) }
+
+    return { text: `Recorded ${pick.id} on ${taskId}. Run the checks it asks for.` }
+  }
+
+  return { queue, errand, steep, feature, review, helperFinished, testProfile }
 }

@@ -26,6 +26,7 @@ export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   goal: null,
   acceptance: [],
   helpers: ['tea-dd'],
+  testProfile: null,
   ...over,
 })
 
@@ -44,6 +45,7 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   review: null,
   criteria: [],
   helpers: ['tea-dd'],
+  testProfile: null,
   asking: null,
   codexSince: null,
   worktreePath: null,

@@ -217,4 +217,4 @@ Each Realm's daily work time is the union of its eligible work periods. Task mea
 - Checkpoint every 30 seconds and retain the existing 15-minute human idle default. These are initial defaults to verify with representative sessions.
 - Settle the task-level duration and breakdown definitions separately from the confirmed Realm-total rule.
 
-The foreground user-idle signal for external editors and the assistant lifecycle events still need an implementation spike. Verify the capabilities actually exposed by each installed adapter before promising automatic tracking outside the app. Q03's adaptive verification policy is a roadmap prerequisite; reconcile its current status before setting the implementation checks.
+The foreground user-idle signal for external editors and the assistant lifecycle events still need an implementation spike. Verify the capabilities actually exposed by each installed adapter before promising automatic tracking outside the app. Q03's adaptive verification policy is the test profiles in `CLAUDE.md` ([Test profiles](spec.md#test-profiles)); pick the implementation checks from them.

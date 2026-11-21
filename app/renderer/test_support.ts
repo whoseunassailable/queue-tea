@@ -46,6 +46,8 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   criteria: [],
   helpers: ['tea-dd'],
   testProfile: null,
+  testingMinutes: 0,
+  minutesInChecks: 0,
   asking: null,
   codexSince: null,
   worktreePath: null,

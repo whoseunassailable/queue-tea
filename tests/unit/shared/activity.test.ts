@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { live } from '../../../hooks/core/session/live'
-import { beginActivity } from '../../../hooks/shared/activity/presentation/state_management/activity_controller'
+import { beginActivity, finishNotifiedActivity } from '../../../hooks/shared/activity/presentation/state_management/activity_controller'
 import { emptyRecord } from '../../../hooks/shared/records/data/datasources/record_source'
 import type { ProjectRecord } from '../../../types'
 import { CTX, fakePorts, makeTask, memoryHost } from '../../helpers'
@@ -92,4 +92,68 @@ test('records each concurrent session only on the task in its own worktree', asy
     expect(saved().tasks[0]?.activity).toBeUndefined()
     expect(saved().tasks[1]?.activity?.[0]).toMatchObject({ status: 'succeeded', subject: 'npm test' })
   } finally { live.ctx = null }
+})
+
+const notified = (id: string, status: string, summary: string) =>
+  `<task-notification>\n<task-id>${id}</task-id>\n<status>${status}</status>\n<summary>${summary}</summary>\n</task-notification>`
+const LATER = Date.parse('2026-10-21T07:22:00Z')
+
+test('a notification ends the background check on the task it ran on, after a task change, with its span', async () => {
+  const { ports, view, mem, saved } = setup()
+  live.ctx = CTX
+  try {
+    const launched = await beginActivity(ports, 'Bash', { command: 'npm test' })
+    await launched?.({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } })
+    const switched = { ...saved(), tasks: saved().tasks.map(t => ({ ...t, state: t.id === 'first' ? 'queued' as const : 'current' as const })) }
+    mem.files.set(CTX.file, JSON.stringify(switched))
+    view.record = switched
+    ports.now = async () => LATER
+
+    await finishNotifiedActivity(ports, notified('bg-1', 'failed', 'Background command "npm test" failed with exit code 1'))
+
+    expect(saved().tasks[0]?.activity?.[0]).toMatchObject({ status: 'failed', output: 'Background command "npm test" failed with exit code 1', finished: '2026-10-21T09:22:00+02:00' })
+    expect(saved().tasks[0]?.testPeriods).toEqual([{ start: Date.parse('2026-10-21T07:12:00Z'), end: LATER }])
+    expect(saved().tasks[1]?.activity).toBeUndefined()
+  } finally {
+    live.ctx = null
+  }
+})
+
+test('a notification that ends no running step writes nothing', async () => {
+  const { ports, mem, saved } = setup()
+  live.ctx = CTX
+  try {
+    const launched = await beginActivity(ports, 'Bash', { command: 'npm test' })
+    await launched?.({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } })
+    const writes = mem.writes.length
+
+    for (const text of ['hello', notified('bg-9', 'completed', 'exit code 0'), notified('bg-1', 'running', 'still going'), '<task-notification>\n<task-id>bg-1</task-id>\n<event>line</event>\n</task-notification>']) {
+      await finishNotifiedActivity(ports, text)
+    }
+    live.ctx = null
+    await finishNotifiedActivity(ports, notified('bg-1', 'completed', 'exit code 0'))
+
+    expect(mem.writes.length).toBe(writes)
+    expect(saved().tasks[0]?.activity?.[0]?.status).toBe('running')
+  } finally {
+    live.ctx = null
+  }
+})
+
+test('a failure while ending a background step is logged, and the prompt goes on', async () => {
+  const { ports, mem, done } = setup()
+  live.ctx = CTX
+  const original = mem.host.write
+  try {
+    const launched = await beginActivity(ports, 'Bash', { command: 'npm test' })
+    await launched?.({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } })
+    mem.host.write = async () => { throw new Error('disk unavailable') }
+
+    await finishNotifiedActivity(ports, notified('bg-1', 'completed', 'exit code 0'))
+
+    expect(done.logs.some(line => line.includes('finishing a background step failed'))).toBe(true)
+  } finally {
+    live.ctx = null
+    mem.host.write = original
+  }
 })

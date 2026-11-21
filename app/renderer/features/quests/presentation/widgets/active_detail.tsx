@@ -12,10 +12,18 @@ import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
 import { TestProfileControl } from './test_profile_control'
 
-const Facts = ({ facts }: { facts: ActiveFacts }) => (
+// Testing time is the checks' own run; building time is the clock's minutes
+// outside them. Codex's checks aren't timed, so the row waits for Claude Code.
+const Facts = ({ facts, active }: { facts: ActiveFacts; active: ActiveQuest }) => (
   <dl class="facts">
     <dt>{t.notes.timeLabel}</dt>
     <dd>{t.notes.time(formatMinutes(facts.minutes), facts.started === null ? null : dayAndTime(facts.started), formatMinutes(facts.today))}</dd>
+    {active.codexSince === null && (
+      <>
+        <dt>{t.notes.testingLabel}</dt>
+        <dd>{active.testingMinutes === 0 ? t.notes.noChecks : t.notes.testing(formatMinutes(active.testingMinutes), formatMinutes(Math.max(0, facts.minutes - active.minutesInChecks)))}</dd>
+      </>
+    )}
     <dt>{t.notes.effortLabel}</dt>
     <dd>{t.notes.effort(facts.improvingMessages, facts.understandingMessages)}</dd>
     <dt>{t.notes.filesLabel}</dt>
@@ -84,7 +92,7 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
       <button type="button" class="link-btn" disabled={read.isRefreshing || read.load.status === 'loading'} onClick={read.load.status === 'failed' ? read.retry : read.refresh}>
         {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.activity.refreshing : t.activity.refresh}
       </button>
-      {facts?.active != null && <Facts facts={facts.active} />}
+      {facts?.active != null && <Facts facts={facts.active} active={active} />}
       {facts?.active?.git != null && <NotCommitted git={facts.active.git} />}
       {facts !== null && <QuestNotes facts={facts} />}
     </aside>

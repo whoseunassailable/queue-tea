@@ -21,10 +21,16 @@ export const emptyCheckpoint = (): Checkpoint => ({
   seen: null,
 })
 
-// Test runners, type checks, linters and builds: the checks a "done" leans on.
-const TEST = /\b(test|tests|pytest|jest|vitest|mocha|tsc|lint|eslint|analyze|validate|typecheck|check|build)\b/
+// Test runners, type checks and linters: the checks a "done" leans on. A step
+// of the command counts only when it starts with one, once wrappers such as
+// caffeinate, env and npx are set aside, so `ls tests`, `grep e2e` and a build don't.
+// A node script named lint or check, such as tools/check_layers.mjs, is a linter; checkout.mjs isn't.
+const STEPS = /&&|\|\||[;|\n]/
+const WRAPPERS = /^(?:[({!]\s*|(?:do|then|else|time|env|caffeinate(?:\s+-\w+)*|timeout\s+\S+|npx(?:\s+(?:-y|--yes|-p\s+\S+|--package[=\s]\S+))*|\w+=\S*)\s+)+/
+const RUNNER = /^(?:(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|e2e|typecheck|lint|check)(?::[\w-]+)?|vitest|jest|mocha|playwright\s+test|pytest|python3?\s+-m\s+pytest|tsc|eslint|claude\s+plugin\s+(?:test|validate)|node\s+--test|node\s+(?:\S*\/)?(?:lint|check)(?:[_-][\w-]*)?\.[cm]?js|(?:go|cargo|flutter|dart|swift|deno)\s+test|(?:flutter|dart)\s+analyze)(?:[\s)]|$)/
 
-export const isTestCommand = (command: string): boolean => TEST.test(command)
+export const isTestCommand = (command: string): boolean =>
+  command.split(STEPS).some(step => RUNNER.test(step.trim().replace(WRAPPERS, '')))
 
 const lastLine = (text: string) =>
   text

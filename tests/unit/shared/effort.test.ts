@@ -103,3 +103,39 @@ test('parallel sessions charge time and files only to their own quest', () => {
   expect(record.tasks[1]!.files.changed).toEqual(['/worktrees/two/file.ts'])
   expect(record.unassignedMinutesByDay).toEqual({})
 })
+
+const flushed = (testPeriods: { start: number; end: number }[] | undefined, stamps: number[], minutesInChecks?: number) => {
+  const tracker = createTracker(15, 0)
+  for (const at of stamps) tracker.activity(T0 + at * MIN)
+  const current = makeTask({ state: 'current', ...(testPeriods === undefined ? {} : { testPeriods }), ...(minutesInChecks === undefined ? {} : { minutesInChecks }) })
+
+  return applyPending({ ...emptyRecord('p', '/p'), tasks: [current] }, tracker.take()).tasks[0]!
+}
+const span = (from: number, to: number) => ({ start: T0 + from * MIN, end: T0 + to * MIN })
+
+test("the clock's minutes inside a check count as in checks; the rest is building", () => {
+  const task = flushed([span(2, 5)], [0, 10])
+
+  expect(task.minutesByDay).toEqual({ '2026-10-21': 10 })
+  expect(task.minutesInChecks).toBe(3)
+})
+
+test('a long check across an idle gap counts only the minutes the clock kept', () => {
+  // The check runs an hour; the clock skips the 35 idle minutes inside it.
+  const task = flushed([span(0, 60)], [0, 5, 40, 45])
+
+  expect(task.minutesByDay).toEqual({ '2026-10-21': 10 })
+  expect(task.minutesInChecks).toBe(10)
+})
+
+test('minutes in checks add to the earlier turns’ count, to two decimals', () => {
+  const task = flushed([{ start: T0, end: T0 + 20_000 }], [0, 10], 1.5)
+
+  expect(task.minutesInChecks).toBe(1.83)
+})
+
+test('a turn with no check in its time leaves minutes in checks as it was', () => {
+  expect(flushed([span(20, 30)], [0, 10]).minutesInChecks).toBeUndefined()
+  expect(flushed(undefined, [0, 10]).minutesInChecks).toBeUndefined()
+  expect(flushed([span(20, 30)], [0, 10], 4).minutesInChecks).toBe(4)
+})

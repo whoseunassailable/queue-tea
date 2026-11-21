@@ -1,5 +1,6 @@
 import type { Task, TaskActivity } from '../../../../../types'
 import { isTestCommand } from '../../../checkpoints/domain/services/checkpoints'
+import { mergePeriods } from '../../../time/domain/services/realm_time'
 
 export const ACTIVITY_LIMIT = 200
 export const ACTIVITY_TEXT_LIMIT = 8_000
@@ -23,11 +24,22 @@ export const activityEntries = (value: unknown): TaskActivity[] => {
   })
 }
 
+// A finished check's span joins the quest's testing time. Merging keeps a step
+// saved twice, or two checks running at once, from counting twice, and the
+// spans outlive the activity list's limit.
+const checked = (task: Task, entry: TaskActivity): Pick<Task, 'testPeriods'> => {
+  const start = Date.parse(entry.at)
+  const end = entry.kind === 'test' && entry.finished !== null ? Date.parse(entry.finished) : NaN
+
+  return end > start ? { testPeriods: mergePeriods([...task.testPeriods ?? [], { start, end }]) } : {}
+}
+
 export const keepActivity = (task: Task, entry: TaskActivity): Task => ({
   ...task,
   activity: [...activityEntries(task.activity).filter(step => step.id !== entry.id), entry]
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
     .slice(-ACTIVITY_LIMIT),
+  ...checked(task, entry),
 })
 
 export const toolActivity = (tool: string, input: Record<string, unknown>, id: string, at: string): TaskActivity | null => {
@@ -75,3 +87,26 @@ export const finishBackgroundActivity = (entry: TaskActivity, result: unknown, a
 
   return entry
 }
+
+// The background shells a task notification says have ended. One delivery may
+// carry several; anything not a shell's end, such as a Monitor event, is skipped.
+export type Notified = { id: string; isOk: boolean; summary: string }
+const ENDED = ['completed', 'failed', 'killed']
+export const notifiedEnds = (text: string): Notified[] =>
+  [...text.matchAll(/<task-notification>([\s\S]*?)<\/task-notification>/g)].flatMap(([, body]) => {
+    const tag = (name: string) => body!.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1]?.trim() ?? ''
+    const id = tag('task-id')
+    const status = tag('status')
+    const summary = tag('summary')
+    if (id === '' || !ENDED.includes(status)) return []
+
+    return [{ id, isOk: status === 'completed' && !/exit code [1-9]/.test(summary), summary }]
+  })
+
+// Ends the task's still-running steps that a notification names, keeping the span.
+export const finishNotified = (task: Task, ends: Notified[], at: string): Task =>
+  ends.reduce((t, end) => {
+    const step = activityEntries(t.activity).find(s => s.backgroundId === end.id && s.status === 'running')
+
+    return step === undefined ? t : keepActivity(t, finishActivity(step, { isError: !end.isOk, result: end.summary }, at))
+  }, task)

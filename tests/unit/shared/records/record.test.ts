@@ -352,17 +352,19 @@ test('version 1 migrates without moving its current task or losing unknown field
   expect((parsed as unknown as { future: string }).future).toBe('preserved')
 })
 
-test('a task saved before test profiles reads with no profile', () => {
+test('a task saved before test profiles reads with no profile and no testing time', () => {
   const read = readFirst({ title: 'Old', created: '2026-10-01' })
 
   expect(read?.testProfile).toBeUndefined()
+  expect(read?.testPeriods).toBeUndefined()
+  expect(read?.minutesInChecks).toBeUndefined()
   expect(Object.keys(read ?? {})).not.toContain('testProfile')
 })
 
-test("Tea-DD's pick and Rohan's pick survive a write and a read", async () => {
+test("Tea-DD's pick, Rohan's pick and the testing time survive a write and a read", async () => {
   const mem = memoryHost()
   const tasks = [
-    makeTask({ id: 'a', testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } }),
+    makeTask({ id: 'a', testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' }, testPeriods: [{ start: 1_000, end: 61_000 }], minutesInChecks: 0.75 }),
     makeTask({ id: 'b', testProfile: { id: 'quick', by: 'rohan' } }),
   ]
 
@@ -370,7 +372,7 @@ test("Tea-DD's pick and Rohan's pick survive a write and a read", async () => {
   const read = await readRecord(mem.host, FILE, 'p', '/p')
 
   if (read === 'unreadable') throw new Error('should read')
-  expect(read.tasks[0]).toMatchObject({ testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' } })
+  expect(read.tasks[0]).toMatchObject({ testProfile: { id: 'deep', by: 'tea-dd', reason: 'a new tool' }, testPeriods: [{ start: 1_000, end: 61_000 }], minutesInChecks: 0.75 })
   expect(read.tasks[1]?.testProfile).toEqual({ id: 'quick', by: 'rohan' })
 })
 
@@ -387,4 +389,22 @@ test("a hand-edited profile is tidied: Rohan's loses a reason, a long reason is 
 
   expect(profile({ id: 'critical', by: 'rohan', reason: 'ignored' })).toEqual({ id: 'critical', by: 'rohan' })
   expect(profile({ id: 'deep', by: 'tea-dd', reason: `  ${'x'.repeat(200)}` })).toEqual({ id: 'deep', by: 'tea-dd', reason: 'x'.repeat(160) })
+})
+
+test('malformed testing spans and minutes are dropped, and the realm still reads', () => {
+  const task = (over: object) => readFirst({ title: 'Old', created: '2026-10-01', ...over })
+
+  for (const testPeriods of ['x', {}, [{ start: 5, end: 1 }], [{ start: 1, end: 1 }], [{ start: '1', end: 2 }], [{ start: 1, end: 2 }, null]]) {
+    expect(task({ testPeriods })?.testPeriods).toBeUndefined()
+  }
+  for (const minutesInChecks of [-1, '3', null, Number.NaN]) {
+    expect(task({ minutesInChecks })?.minutesInChecks).toBeUndefined()
+  }
+  expect(task({ minutesInChecks: 0 })?.minutesInChecks).toBe(0)
+})
+
+test('testing spans saved overlapping read back merged, in order', () => {
+  const read = readFirst({ title: 'Old', created: '2026-10-01', testPeriods: [{ start: 50, end: 90 }, { start: 10, end: 30 }, { start: 20, end: 40 }] })
+
+  expect(read?.testPeriods).toEqual([{ start: 10, end: 40 }, { start: 50, end: 90 }])
 })

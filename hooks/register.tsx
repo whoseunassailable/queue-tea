@@ -1,5 +1,5 @@
 import { beat, endBeat } from './app/session/session_beat'
-import { beginActivity } from './shared/activity/presentation/state_management/activity_controller'
+import { beginActivity, finishNotifiedActivity } from './shared/activity/presentation/state_management/activity_controller'
 import { afterClear, afterEachTurn, checkTyped, runErrand, saveBeforeClear, startSession } from './app/session/session_rhythm'
 import { errandState } from './features/errands/presentation/state_management/errands_controller'
 import { commitGuardState, guardText, proposeCommit } from './features/commit_guard/presentation/state_management/commit_guard_controller'
@@ -43,6 +43,8 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     effortState.tracker?.activity(await $.clock.now())
+    // The engine stamps the origin, so typed text can't pass for a notification.
+    if (e.origin.kind === 'task-notification') await finishNotifiedActivity(portsOf($), e.text)
     if (!shouldCheck(e)) return next(e)
 
     return (await checkTyped($, e.text)) === 'pass' ? next(e) : { drop: HELD_TEXT }

@@ -1603,6 +1603,41 @@ test('during a /brew turn set_test_profile records nothing; after it, it records
   expect(recordOf(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
 })
 
+const NOTIFIED = '<task-notification>\n<task-id>bg-1</task-id>\n<status>completed</status>\n<summary>Background command "Run the tests" completed (exit code 0)</summary>\n</task-notification>'
+const launchCheck = async ($: Engine, on: On) => {
+  on('tool.call', () => ({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } }) as never)
+  const started = await startSession($, on, { file: record({ tasks: [makeTask({ title: 'Now', state: 'current' })] }) })
+  await $.tool.call({ tool: 'Bash', command: 'npm test', run_in_background: true } as never)
+  expect(recordOf(started.mem).tasks[0]?.activity?.[0]).toMatchObject({ kind: 'test', status: 'running', backgroundId: 'bg-1' })
+
+  return started
+}
+
+test('a background check ends when its notification arrives, and the minutes waited count as in checks', async ($, on) => {
+  const { mem, clock } = await launchCheck($, on)
+
+  await clock.advance(10 * 60_000)
+  await $.prompt.submit({ text: NOTIFIED, wait: false, origin: { kind: 'task-notification' } })
+  await runTurn($, clock, NOTIFIED)
+
+  const task = recordOf(mem).tasks[0]!
+  expect(task.activity?.[0]).toMatchObject({ status: 'succeeded', finished: '2026-10-21T09:22:00+02:00' })
+  expect(task.minutesByDay).toEqual({ [DAY_ONE]: 10 })
+  expect(task.minutesInChecks).toBe(10)
+})
+
+test("a typed prompt with a notification's text ends no background check", async ($, on) => {
+  const { mem, clock } = await launchCheck($, on)
+
+  await clock.advance(10 * 60_000)
+  await $.prompt.submit({ text: NOTIFIED, wait: false, origin: { kind: 'composer' } })
+  await clock.settle()
+
+  const task = recordOf(mem).tasks[0]!
+  expect(task.activity?.[0]).toMatchObject({ status: 'running', finished: null })
+  expect(task.testPeriods).toBeUndefined()
+})
+
 test('the mod lets an ordinary command through', async ($, on) => {
   on('tool.call', () => ({ result: 'ok' }) as never)
   await startSession($, on)

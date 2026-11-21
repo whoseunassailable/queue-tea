@@ -215,6 +215,6 @@ Each Realm's daily work time is the union of its eligible work periods. Task mea
 
 - Use a shared interval ledger with a one-time legacy baseline. Daily totals remain readable, with their historical uncertainty visible.
 - Checkpoint every 30 seconds and retain the existing 15-minute human idle default. These are initial defaults to verify with representative sessions.
-- Settle the task-level duration and breakdown definitions separately from the confirmed Realm-total rule.
+- Settle the task-level duration and breakdown definitions separately from the confirmed Realm-total rule. One breakdown exists: a task's testing and building time ([Time](spec.md#time)), kept on the task and left out of the Realm total.
 
 The foreground user-idle signal for external editors and the assistant lifecycle events still need an implementation spike. Verify the capabilities actually exposed by each installed adapter before promising automatic tracking outside the app. Q03's adaptive verification policy is the test profiles in `CLAUDE.md` ([Test profiles](spec.md#test-profiles)); pick the implementation checks from them.

@@ -79,6 +79,9 @@ export type ActiveQuest = {
   criteria: string[]
   helpers: HelperId[]
   testProfile: TestProfile | null
+  // Minutes its checks ran, and the part of `minutes` that fell inside them.
+  testingMinutes: number
+  minutesInChecks: number
   // What an open session has been asked to do and hasn't yet.
   asking: AppRequest['kind'] | null
   // When it went to Codex; null while Claude Code has it.

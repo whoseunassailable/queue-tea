@@ -14,6 +14,14 @@ export const mergePeriods = (periods: WorkPeriod[]): WorkPeriod[] => {
   return merged
 }
 
+// The minutes of `periods` that fall inside `within`, each minute once.
+export const overlapMinutes = (periods: WorkPeriod[], within: WorkPeriod[]): number => {
+  const inside = mergePeriods(within)
+
+  return mergePeriods(periods).reduce((sum, p) =>
+    sum + inside.reduce((more, w) => more + Math.max(0, Math.min(p.end, w.end) - Math.max(p.start, w.start)), 0), 0) / TIME.minute
+}
+
 const minutesOf = (periods: WorkPeriod[]): number =>
   mergePeriods(periods).reduce((sum, period) => sum + (period.end - period.start) / TIME.minute, 0)
 

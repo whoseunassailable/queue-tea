@@ -115,6 +115,8 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   criteria: task.criteria,
   helpers: task.helpers.on,
   testProfile: task.testProfile ?? null,
+  testingMinutes: (task.testPeriods ?? []).reduce((sum, p) => sum + p.end - p.start, 0) / 60_000,
+  minutesInChecks: task.minutesInChecks ?? 0,
   asking: requests.find(q => q.taskId === task.id)?.kind ?? null,
   codexSince: task.codexSince,
   worktreePath: task.worktreePath,

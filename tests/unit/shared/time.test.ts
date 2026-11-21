@@ -1,5 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
+import { overlapMinutes } from '../../../hooks/shared/time/domain/services/realm_time'
 import { accrue, addMinutes, dayKey, formatMinutes, isoLocal, mergeMinutes, minutesOfStamps, parseOffset } from '../../../hooks/shared/time/domain/services/time'
 
 const MIN = 60_000
@@ -77,4 +78,33 @@ test('minutesOfStamps counts nothing for no stamps, one stamp, or the same momen
   expect(minutesOfStamps([], 15, 120)).toEqual({})
   expect(minutesOfStamps([t0], 15, 120)).toEqual({})
   expect(minutesOfStamps([t0, t0], 15, 120)).toEqual({})
+})
+
+test('overlapMinutes counts the minutes that fall inside the checks, each once', () => {
+  const at = (from: number, to: number) => ({ start: from * MIN, end: to * MIN })
+
+  expect(overlapMinutes([at(0, 10)], [at(2, 5)])).toBe(3)
+  expect(overlapMinutes([at(0, 10)], [at(8, 30)])).toBe(2)
+  expect(overlapMinutes([at(3, 4)], [at(0, 60)])).toBe(1)
+  // Two checks running at once, and a span the clock took twice.
+  expect(overlapMinutes([at(0, 10), at(0, 10)], [at(2, 6), at(4, 8)])).toBe(6)
+  expect(overlapMinutes([at(0, 5), at(10, 15)], [at(3, 12)])).toBe(4)
+})
+
+test('overlapMinutes counts nothing when the spans only touch, or either side is empty', () => {
+  const at = (from: number, to: number) => ({ start: from * MIN, end: to * MIN })
+
+  expect(overlapMinutes([at(0, 5)], [at(5, 9)])).toBe(0)
+  expect(overlapMinutes([], [at(0, 9)])).toBe(0)
+  expect(overlapMinutes([at(0, 9)], [])).toBe(0)
+})
+
+test('overlapMinutes leaves the spans it was given as they were', () => {
+  const periods = [{ start: 4 * MIN, end: 9 * MIN }, { start: 0, end: 6 * MIN }]
+  const within = [{ start: 5 * MIN, end: 7 * MIN }, { start: 2 * MIN, end: 6 * MIN }]
+  const copies = JSON.stringify([periods, within])
+
+  overlapMinutes(periods, within)
+
+  expect(JSON.stringify([periods, within])).toBe(copies)
 })

@@ -3,7 +3,7 @@ import type { Ctx } from '../../../../core/env/env'
 import { noteSeen } from '../../../checkpoints/domain/services/checkpoints'
 import { currentTask } from '../../../records/domain/services/queue_rules'
 import { accrue, addMinutes, dayKey, mergeMinutes as merge } from '../../../time/domain/services/time'
-import { recordRealmTime } from '../../../time/domain/services/realm_time'
+import { overlapMinutes, recordRealmTime } from '../../../time/domain/services/realm_time'
 
 const READS: Record<string, string> = { Read: 'file_path', Grep: 'path', Glob: 'path' }
 const CHANGES: Record<string, string> = { Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' }
@@ -114,9 +114,13 @@ export const applyPending = (
     read: pending.files.read.reduce(once, current.files.read),
     changed: pending.files.changed.reduce(once, current.files.changed),
   }
+  // The clock skips long idle gaps, so building time is the clock's minutes
+  // less those that fell inside a check, not less every check's whole run.
+  const inChecks = overlapMinutes(pending.taskPeriods, current.testPeriods ?? [])
   const counted: Task = {
     ...current,
     minutesByDay: merge(current.minutesByDay, pending.minutes),
+    ...(inChecks > 0 ? { minutesInChecks: Math.round(((current.minutesInChecks ?? 0) + inChecks) * 100) / 100 } : {}),
     files,
     effort: {
       ...current.effort,

@@ -673,8 +673,16 @@ This is the right pane in 4.2, shown for a feature.
 │ run.                              │
 ```
 
+While Claude Code has the quest, the in-progress panel's facts have a Testing line under Time:
+
+```
+│ Testing 12m of checks · 31m       │
+│         building                  │
+```
+
 - **Helpers** are four toggle chips, each with its logo and name. A pressed chip (double brackets) means Claude uses that helper on this quest. A click saves, like the priority control; a change on the task in progress reaches Claude on its next reply. If saving fails, the chip goes back and a message says so, as for a failed description edit.
 - **Test profile** is five chips, lightest first ([Test profiles](spec.md#test-profiles)). None is pressed until Tea-DD or Rohan picks one, and the hint says "Tea-DD picks one from what changed when it tests. Pick one to decide." Tea-DD's pick reads "Tea-DD chose Deep: <its reason>". Pressing a chip makes the profile Rohan's: "You chose Deep. Tea-DD keeps to it; press it again to let Tea-DD pick." Pressing his chip again clears it, so Tea-DD picks the next time it tests. Either line ends with what the profile runs. While the pick saves, a spinner and "Saving…" take the hint's place; if saving fails, the saved profile shows again and a message says so. A change on the task in progress reaches Claude's brief on its next reply.
+- **Testing** gives how long the quest's checks ran, then its building time: Time less the minutes that fell inside a check. With no check finished yet it says "No checks timed yet". A check's whole run counts while the clock skips idle gaps, so testing and building need not add up to Time ([Time](spec.md#time)). The line is hidden while Codex has the quest, since Codex's checks aren't timed.
 - **The checkpoint card** uses `checkpointSections`: numbered, collapsible, Remaining and Next action shown as ☐, Changes made as ✓. A plain handoff note that is newer shows as 1 Overview … 5 Next steps (`cardNote`).
 - **Lines.** The app measures them itself: `diffSince(startCommit)` when the pane opens, then every 30 s while it is visible.
 - **"Branch when it starts"** comes from `slugBranch(title, listBranches())`. The name shown is real: the engine gives `task/fix-cut-off-text`.
@@ -1381,6 +1389,8 @@ The record writes version 2 and still reads version 1. New fields get defaults i
 | `ProjectRecord.requests: { id; kind: 'begin' \| 'putBack'; taskId; at }[]` | `[]` | what the app asks an open session to do; the mod removes one when it's handled (from the plan) |
 | `Task.codexSince: string \| null` | `null` | when the quest went to Codex; null while Claude Code has it (added 2026-11-03, 4.19) |
 | `Task.testProfile?: { id; by: 'tea-dd'; reason } \| { id; by: 'rohan' }` | absent | the quest's test profile, Tea-DD's pick with its reason or Rohan's, which stands; a malformed one reads as none (added 2026-11-20, 4.4) |
+| `Task.testPeriods?: { start; end }[]` | absent | when the quest's checks ran, in milliseconds, merged; a malformed list is dropped (added 2026-11-20) |
+| `Task.minutesInChecks?: number` | absent | how many of the quest's minutes fell inside its checks; Time less this is building time (added 2026-11-20) |
 
 The game layer adds no fields: XP, levels, the stage, the streak, gold and badges are worked out from the fields above each time.
 

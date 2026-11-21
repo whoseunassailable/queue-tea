@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { checkLines, checkpointPrompt, codexBrief, commandRun, emptyCheckpoint, firstMessage, latestNote, noteSeen, parseCheckpoint } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
+import { checkLines, checkpointPrompt, codexBrief, commandRun, emptyCheckpoint, firstMessage, isTestCommand, latestNote, noteSeen, parseCheckpoint } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { FIRST_MESSAGE_LABELS } from '../../../hooks/shared/checkpoints/domain/constants/checkpoints_text'
 import { checkNowUseCase } from '../../../hooks/shared/checkpoints/domain/usecases/check_now'
 import type { GitRepository } from '../../../hooks/shared/git/domain/repositories/git_repository'
@@ -270,4 +270,72 @@ test('git failing while checking gives no check, and the failure is logged', asy
 
   expect(await checkNowUseCase(git, text => logs.push(text), makeTask({ handoff: { text: 'x', written: AT } }))).toBeNull()
   expect(logs).toEqual(['checking the repository failed: git broke'])
+})
+
+test('a command counts as a check when one of its steps runs a test runner, type check or linter', () => {
+  for (const command of [
+    'npm test',
+    'npm run test:unit',
+    'pnpm test -- --watch=false',
+    'yarn lint',
+    'bun run typecheck',
+    'npm run check',
+    'cd app && npm test',
+    'cd app; npm run typecheck',
+    'npm test 2>&1 | tail -40',
+    'npx vitest related --run a.ts',
+    'npx -y -p typescript@5.9 tsc -p .',
+    'npx --package=typescript tsc',
+    'caffeinate -i npm run e2e -- flows.e2e.ts',
+    'CI=1 npm test',
+    'env FORCE_COLOR=0 jest',
+    'timeout 60 pytest -q',
+    'time vitest',
+    '(cd app && npm run lint)',
+    '! npm test',
+    'for f in a b; do npx vitest $f; done',
+    'claude plugin test .',
+    'claude plugin validate .',
+    "node --test 'tools/*.test.mjs'",
+    'node tools/check_layers.mjs',
+    'cd app && node scripts/lint.cjs --fix',
+    'npx playwright test',
+    'python3 -m pytest tests',
+    'go test ./...',
+    'cargo test',
+    'flutter test',
+    'dart analyze',
+    'eslint .',
+    'mocha',
+  ]) {
+    expect([command, isTestCommand(command)]).toEqual([command, true])
+  }
+})
+
+test('looking at tests, building, installing or naming a runner in text is not a check', () => {
+  for (const command of [
+    'ls tests',
+    'cat test.txt',
+    'grep -rn e2e src',
+    'cat package.json | grep test',
+    'echo npm test',
+    'git commit -m "fixed the test"',
+    'mkdir -p tests/unit',
+    'npm run build',
+    'npm install',
+    'cargo build',
+    'npm run testing',
+    'tscx',
+    'vitest-ui',
+    'playwright show-report',
+    'node tools/version.mjs',
+    'node tools/checkout.mjs',
+    'node tools/push.mjs origin main',
+    'node tools/check_layers.ts',
+    'node eslint-check.js',
+    'node server.js',
+    '',
+  ]) {
+    expect([command, isTestCommand(command)]).toEqual([command, false])
+  }
 })

@@ -104,6 +104,10 @@ export type Task = {
   commitProposal?: CommitProposal
   // Absent until Tea-DD or Rohan picks one, and in older records.
   testProfile?: TestProfile
+  // When the quest's checks ran, merged, and how many of its clock minutes fell
+  // inside them; the rest is building time. Absent before any check finished.
+  testPeriods?: WorkPeriod[]
+  minutesInChecks?: number
 }
 
 // Who works on a task in progress.

@@ -1,5 +1,6 @@
-import type { LoadError, OtherProject, ProjectRecord, Task } from '../../../../../types'
+import type { LoadError, OtherProject, ProjectRecord, Task, WorkPeriod } from '../../../../../types'
 import type { Host } from '../../../../core/host/host'
+import { mergePeriods } from '../../../time/domain/services/realm_time'
 import { readHelpers } from '../../domain/services/helpers'
 import { readTestProfile } from '../../domain/services/test_profile'
 
@@ -54,7 +55,7 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
 // A record written before a field existed gets the field's empty value. A
 // task without an id gets one from its creation and title, the same at every
 // read until it is written back.
-const withDefaults = ({ testProfile, ...t }: Partial<Task>): Task => {
+const withDefaults = ({ testProfile, testPeriods, minutesInChecks, ...t }: Partial<Task>): Task => {
   const profile = readTestProfile(testProfile)
 
   return {
@@ -71,7 +72,10 @@ const withDefaults = ({ testProfile, ...t }: Partial<Task>): Task => {
     worktreePath: null,
     ...t,
     helpers: readHelpers(t.helpers),
+    // Testing time is optional and hand-editable: a malformed field is dropped, never the realm.
     ...(profile === undefined ? {} : { testProfile: profile }),
+    ...(arePeriods(testPeriods) ? { testPeriods: mergePeriods(testPeriods) } : {}),
+    ...(typeof minutesInChecks === 'number' && Number.isFinite(minutesInChecks) && minutesInChecks >= 0 ? { minutesInChecks } : {}),
   } as Task
 }
 
@@ -85,7 +89,7 @@ const isDay = (day: string): boolean =>
 const areMinutes = (value: unknown): boolean => isObject(value) &&
   Object.entries(value).every(([day, minutes]) => isDay(day) && typeof minutes === 'number' && Number.isFinite(minutes) && minutes >= 0)
 
-const arePeriods = (value: unknown): boolean => Array.isArray(value) && value.every(period =>
+const arePeriods = (value: unknown): value is WorkPeriod[] => Array.isArray(value) && value.every(period =>
   isObject(period) && typeof period.start === 'number' && typeof period.end === 'number' &&
   Number.isFinite(new Date(period.start).getTime()) && Number.isFinite(new Date(period.end).getTime()) && period.end > period.start)
 

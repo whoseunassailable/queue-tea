@@ -17,6 +17,7 @@ import { GithubChip } from '../features/github/presentation/widgets/github_chip'
 import { GuildPage } from '../features/guild/presentation/pages/guild_page'
 import { HoardPage } from '../features/hoard/presentation/pages/hoard_page'
 import { HomePage } from '../features/home/presentation/pages/home_page'
+import { CalendarPage } from '../features/calendar/presentation/pages/calendar_page'
 import { LibraryPage } from '../features/library/presentation/pages/library_page'
 import { ManaPage } from '../features/mana/presentation/pages/mana_page'
 import type { PaletteInput } from '../features/palette/domain/palette'
@@ -60,6 +61,7 @@ const TABS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.chronicle, label: t.nav.chronicle },
   { route: ROUTES.mana, label: t.nav.mana },
   { route: ROUTES.notes, label: t.nav.notes },
+  { route: ROUTES.calendar, label: t.nav.calendar },
 ]
 
 const MORE_PAGES: readonly { route: Route; label: string }[] = [
@@ -137,6 +139,20 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
         realm={view}
         isCovered={isCovered}
         onProject={next => workspace.adopt(view.key, next)}
+        onOpenQuest={id => {
+          workspace.openQuest(view.key, id)
+          window.location.hash = hrefOf(ROUTES.quests)
+        }}
+        onSay={(text, tone = 'success') => workspace.say({ tone, text })}
+      />
+    )
+  }
+  if (route === ROUTES.calendar) {
+    return (
+      <CalendarPage
+        key={view.key}
+        engine={engine}
+        realm={view}
         onOpenQuest={id => {
           workspace.openQuest(view.key, id)
           window.location.hash = hrefOf(ROUTES.quests)

@@ -7,6 +7,7 @@ import { dayAndTime, formatMinutes } from '../../../../core/domain/format'
 import { t } from '../../../../l10n/en'
 import { Spinner } from '../../../../core/widgets/states'
 import type { QuestEdits } from '../state_management/quest_edits'
+import { DueControl } from './due_control'
 import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
@@ -85,6 +86,7 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
       <HelperToggles on={active.helpers} onChange={helpers => edits.edit(realm, active, { helpers })} />
       <h3>{t.testProfile.label}</h3>
       <TestProfileControl profile={active.testProfile} onChange={testProfile => edits.edit(realm, active, { testProfile })} />
+      <DueControl key={active.id} due={active.due} onChange={due => edits.edit(realm, active, { due })} />
       <hr />
       {read.load.status === 'loading' && <p class="hint" role="status"><Spinner />{t.loading.stillReading}</p>}
       {read.load.status === 'failed' && <p class="hint" role="alert">{read.load.message}</p>}

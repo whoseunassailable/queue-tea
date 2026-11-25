@@ -332,6 +332,27 @@ describe('the rest', () => {
     expect((await stored('a')).testProfile).toEqual({ id: 'quick', by: 'rohan' })
   })
 
+  it('a due date is saved on the quest, the board shows it, and null clears it', async () => {
+    await seed([task({ id: 'a' })])
+
+    const view = viewOf(await api.editQuest(deps, KEY, 'a', { due: '2026-12-01' }))
+    expect((await stored('a')).due).toBe('2026-12-01')
+    expect(view.ready[0]?.quest.due).toBe('2026-12-01')
+
+    const cleared = viewOf(await api.editQuest(deps, KEY, 'a', { due: null }))
+    expect((await stored('a')).due).toBeUndefined()
+    expect(cleared.ready[0]?.quest.due).toBeNull()
+  })
+
+  it('a due date that is not a day is refused and changes nothing', async () => {
+    await seed([task({ id: 'a', due: '2026-12-01' })])
+
+    for (const due of ['2026-02-30', 'tomorrow', '2026-12-01T09:00', '', 20261201, {}]) {
+      expect(await api.editQuest(deps, KEY, 'a', { due } as never)).toEqual({ ok: false, error: { message: 'Pick a due date from the calendar, or clear it.' } })
+    }
+    expect((await stored('a')).due).toBe('2026-12-01')
+  })
+
   it('an empty description clears it, and a blank title is refused', async () => {
     await seed([task({ id: 'a', description: 'Gone' })])
 

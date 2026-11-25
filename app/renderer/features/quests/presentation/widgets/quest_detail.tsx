@@ -14,6 +14,7 @@ import { titleError } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
 import { ClaudeOut } from './claude_out'
 import { DescriptionFiles, withFileLink } from './description_files'
+import { DueControl } from './due_control'
 import { HelperToggles } from './helper_toggles'
 import { TestProfileControl } from './test_profile_control'
 import { PriorityControl } from './priority_control'
@@ -294,6 +295,7 @@ export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved,
       <HelperToggles on={quest.helpers} onChange={helpers => edits.edit(realm, quest, { helpers })} />
       <h3>{t.testProfile.label}</h3>
       <TestProfileControl profile={quest.testProfile} onChange={testProfile => edits.edit(realm, quest, { testProfile })} />
+      <DueControl key={quest.id} due={quest.due} onChange={due => edits.edit(realm, quest, { due })} />
       {sagaOf !== null && (
         <>
           <h3>{t.detail.chapters(sagaOf.chapters.length)}</h3>

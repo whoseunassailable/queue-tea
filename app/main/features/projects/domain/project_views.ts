@@ -77,6 +77,7 @@ const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, s
   acceptance: task.checkpoint?.acceptance ?? [],
   helpers: task.helpers.on,
   testProfile: task.testProfile ?? null,
+  due: task.due ?? null,
 })
 
 const entryOf = (entry: Entry, tasks: Task[], nowMs: number, ranked: Ranked[], playNext: string | null): BoardEntry => {
@@ -115,6 +116,7 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   criteria: task.criteria,
   helpers: task.helpers.on,
   testProfile: task.testProfile ?? null,
+  due: task.due ?? null,
   testingMinutes: (task.testPeriods ?? []).reduce((sum, p) => sum + p.end - p.start, 0) / 60_000,
   minutesInChecks: task.minutesInChecks ?? 0,
   asking: requests.find(q => q.taskId === task.id)?.kind ?? null,

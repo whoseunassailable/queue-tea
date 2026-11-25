@@ -11,19 +11,21 @@ import type { QuestFlow, ReadableView } from '../../../workspace/state_managemen
 import { BRANCH_POLL_MS } from '../../domain/constants'
 import { BranchGraph } from '../widgets/branch_graph'
 import { BranchReview } from '../widgets/branch_review'
+import { FreeSpace } from '../widgets/free_space'
 
 export const BranchesPage = ({ view, actions, engine, flow, onOpen }: { view: ReadableView; actions: QuestActions; engine: EngineApi; flow: QuestFlow | undefined; onOpen: (id: string) => void }) => {
   const [selected, setSelected] = useState<string | null>(null)
   const [filter, setFilter] = useState<BranchState | 'all'>('all')
+  const [isFreeing, setFreeing] = useState(false)
   const read = useEngineRead(engine, () => engine.readBranches(view.key), [view.key])
-  useEffect(() => { if (selected) return; const timer = window.setInterval(read.refresh, BRANCH_POLL_MS); return () => window.clearInterval(timer) }, [read.refresh, selected])
-  useEffect(() => setSelected(null), [view.key])
+  useEffect(() => { if (selected || isFreeing) return; const timer = window.setInterval(read.refresh, BRANCH_POLL_MS); return () => window.clearInterval(timer) }, [read.refresh, selected, isFreeing])
+  useEffect(() => { setSelected(null); setFreeing(false) }, [view.key])
   return <main class="branch-page">
     <header class="panel branch-heading">
       <div class="sec-row"><h1>{t.branches.title}</h1><button type="button" class="btn" onClick={read.refresh}>{t.branches.refresh}</button></div>
       <p>{t.branches.line}</p>
       <p class="hint">{t.branches.active(view.activeQuests.length)}</p>
-      <a class="btn" href={hrefOf(ROUTES.quests)}>{t.nav.quests}</a>
+      <div class="q-actions"><a class="btn" href={hrefOf(ROUTES.quests)}>{t.nav.quests}</a><button type="button" class="btn" onClick={() => setFreeing(true)}>{t.branches.space.open}</button></div>
     </header>
     {flow && <FlowCard flow={flow} actions={actions} />}
     <ReadView read={read} line={t.branches.reading}>{graph => <>
@@ -50,6 +52,7 @@ export const BranchesPage = ({ view, actions, engine, flow, onOpen }: { view: Re
         {!graph.tasks.some(q => filter === 'all' || q.state === filter) && <p>{t.branches.noMatch}</p>}
       </>}
     </>}</ReadView>
+    {isFreeing && <FreeSpace engine={engine} realm={view.key} onClose={() => { setFreeing(false); read.refresh() }} />}
     {selected && <BranchReview key={selected} engine={engine} realm={view.key} id={selected} onClose={() => { setSelected(null); read.refresh() }} />}
   </main>
 }

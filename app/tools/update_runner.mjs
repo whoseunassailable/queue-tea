@@ -15,7 +15,7 @@ const STALLED_MS = 15_000
 const ACTIVE = ['queued', 'checking', 'building', 'verifying', 'installing']
 const FAILURE = 'The update could not finish. Check ~/Library/Logs/Queue-tea/refresh.log, fix the build or local dependencies, then retry.'
 const tools = typeof __dirname === 'string' ? __dirname : dirname(fileURLToPath(import.meta.url))
-export const updateFolder = () => join(homedir(), 'Library/Logs/Queue-tea')
+export const updateFolder = (home = homedir()) => join(home, 'Library/Logs/Queue-tea')
 const readJson = async path => {
   try { return JSON.parse(await readFile(path, 'utf8')) } catch (err) { if (err.code === 'ENOENT') return null; throw err }
 }

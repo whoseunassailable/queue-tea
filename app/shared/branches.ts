@@ -28,3 +28,10 @@ export type CommitRequest = MergeRequest & { files: string[]; message: string }
 export type ResolveRequest = { operationId: string; path: string; choice: 'base' | 'target' | 'source' | 'edited'; text?: string }
 export type CompleteRequest = { operationId: string; approval: string; message: string; idleConfirmed: boolean }
 export type PushPreview = { operationId: string; remote: string; branch: string; head: string; remoteHead: string | null; commits: GraphCommit[]; fingerprint: string }
+// A quest's own folder on the Free space sheet. `held` names who is working
+// there, and such a folder is never touched. Sizes are in bytes.
+export type TaskFolder = {
+  taskId: string; title: string; branch: string; path: string; bytes: number; freeable: number; folders: string[];
+  held: 'current' | 'session' | null; merged: boolean; changed: ChangedFile[]; removable: boolean;
+}
+export type FolderSpace = { at: number; folders: TaskFolder[] }

@@ -40,7 +40,7 @@ export const pendingGit = async (d: TasksDeps, path: string) => {
 }
 // A graph can span hundreds of retained tasks. Bound the disk/Git work while
 // keeping result order stable. A failure stops workers from taking more tasks.
-const taskReads = async <T, R>(items: T[], read: (item: T) => Promise<R>): Promise<R[]> => {
+export const taskReads = async <T, R>(items: T[], read: (item: T) => Promise<R>): Promise<R[]> => {
   const result: R[] = []; let next = 0; let stopped = false
   const workers = await Promise.allSettled(Array.from({ length: Math.min(items.length, BRANCH_LIMITS.graphWorkers) }, async () => {
     while (!stopped && next < items.length) {

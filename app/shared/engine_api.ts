@@ -3,7 +3,7 @@ import type { NoteAttachment, NoteUpload } from './note_attachments'
 import type { NoteBookmark } from './note_bookmarks'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
-import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
+import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskActivity, TestProfile, TestProfileId } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
@@ -440,6 +440,9 @@ export type EngineApi = {
   commitBranchFiles: (key: string, request: CommitRequest) => Promise<Reply<BranchReview>>
   readPush: (key: string, operationId: string, remote: string) => Promise<Reply<PushPreview>>
   pushMerge: (key: string, preview: PushPreview) => Promise<Reply<MergeWorkspace>>
+  readFolderSpace: (key: string) => Promise<Reply<FolderSpace>>
+  freeFolderSpace: (key: string, paths: string[]) => Promise<Reply<FolderSpace>>
+  removeTaskFolder: (key: string, taskId: string) => Promise<Reply<FolderSpace>>
   checkStart: (key: string, taskId: string) => Promise<Reply<StartCheck>>
   startQuest: (key: string, taskId: string, platform: Platform) => Promise<Reply<StartOutcome>>
   openClaude: (key: string, taskId?: string) => Promise<Reply<Handover>>
@@ -551,6 +554,9 @@ export const CHANNELS = {
   commitBranchFiles: 'engine:commit-branch-files',
   readPush: 'engine:read-push',
   pushMerge: 'engine:push-merge',
+  readFolderSpace: 'engine:read-folder-space',
+  freeFolderSpace: 'engine:free-folder-space',
+  removeTaskFolder: 'engine:remove-task-folder',
   checkStart: 'engine:check-start',
   startQuest: 'engine:start-quest',
   openClaude: 'engine:open-claude',

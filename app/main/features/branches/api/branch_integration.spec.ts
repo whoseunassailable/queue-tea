@@ -11,6 +11,7 @@ import { nodeHost } from '../../../core/node_host'
 import { makeTask } from '../../tasks/api/fixtures'
 import { nodeUserGit } from '../data/user_git'
 import { workspacePath } from '../data/merge_workspace'
+import { BRANCH_TEXT } from '../domain/constants'
 import { completeMerge, prepareMerge, readBranch, readBranches, readMergeWorkspace, resolveMergeFile, abandonMerge } from './branch_api'
 import type { BranchDeps } from './branch_api'
 import { commitBranchFiles } from './commit_api'
@@ -252,6 +253,63 @@ integration('user-approved branch workflow in disposable repositories', () => {
     expect(await readFile(join(taskPath, 'node_modules/fixture-dependency/index.js'), 'utf8')).toBe("console.log('LOCAL DEPENDENCY')")
     expect(result.approval).toBe(prepared.approval)
     expect(await git(taskPath, 'status', '--porcelain')).toBe('')
+  })
+
+  describe('build folders after an approved merge', () => {
+    const withBuildOutput = async () => {
+      await taskCommit('.gitignore', 'node_modules/\n.env\n')
+      await mkdir(join(taskPath, 'node_modules/pkg'), { recursive: true }); await writeFile(join(taskPath, 'node_modules/pkg/index.js'), 'module')
+      await writeFile(join(taskPath, '.env'), 'SECRET=1')
+    }
+    const setState = async (state: 'current' | 'done') => {
+      const path = join(folder, `.queue-tea/projects/${KEY}.json`); const record = JSON.parse(await readFile(path, 'utf8'))
+      record.tasks[0].state = state; await writeFile(path, JSON.stringify(record))
+    }
+    it('clears a finished task\'s build folders, keeps .env, and logs it among the merge\'s events', async () => {
+      await withBuildOutput(); await setState('done')
+      const prepared = await prepare(); const completed = data(await finish(prepared.operation.id, prepared.approval!))
+      expect(completed.operation.stage).toBe('merged')
+      expect(await d.host.exists(join(taskPath, 'node_modules'))).toBe(false)
+      expect(await readFile(join(taskPath, '.env'), 'utf8')).toBe('SECRET=1')
+      expect(completed.operation.events.at(-1)).toMatchObject({ command: BRANCH_TEXT.clearedAfterMerge(['node_modules']), status: 'succeeded' })
+    })
+    it('keeps a finished task\'s build folders while an app update is building, and says so among the merge\'s events', async () => {
+      await withBuildOutput(); await setState('done')
+      const updates = join(folder, 'Library/Logs/Queue-tea'); await mkdir(join(updates, 'refresh.lock'), { recursive: true })
+      await writeFile(join(updates, 'state.json'), JSON.stringify({ phase: 'building', commit: 'a'.repeat(40), repository: join(repo, '.git'), detail: null, updatedAt: Date.now() }))
+      await writeFile(join(updates, 'refresh.lock/pid'), String(process.pid))
+      const prepared = await prepare(); const completed = data(await finish(prepared.operation.id, prepared.approval!))
+      expect(completed.operation.stage).toBe('merged')
+      expect(await readFile(join(taskPath, 'node_modules/pkg/index.js'), 'utf8')).toBe('module')
+      expect(completed.operation.events.at(-1)).toMatchObject({ command: BRANCH_TEXT.keptForUpdate })
+    })
+    it('keeps the build folders of a task still current, and says so among the merge\'s events', async () => {
+      await withBuildOutput()
+      const prepared = await prepare(); const completed = data(await finish(prepared.operation.id, prepared.approval!))
+      expect(completed.operation.stage).toBe('merged')
+      expect(await readFile(join(taskPath, 'node_modules/pkg/index.js'), 'utf8')).toBe('module')
+      expect(completed.operation.events.at(-1)).toMatchObject({ command: BRANCH_TEXT.keptAfterMerge })
+    })
+    it('keeps a still-current task\'s build folders and sweeps an earlier merged quest\'s, logging both in that order', async () => {
+      await withBuildOutput()
+      const old = join(folder, 'old'); const path = join(folder, `.queue-tea/projects/${KEY}.json`)
+      await git(repo, 'worktree', 'add', '-b', 'task/old', old, 'main')
+      await writeFile(join(old, '.gitignore'), 'node_modules/\n.env\n'); await writeFile(join(old, 'old.txt'), 'old\n')
+      await git(old, 'add', '.'); await git(old, 'commit', '-m', 'Old work'); await git(repo, 'merge', '--no-ff', '--no-edit', 'task/old')
+      await mkdir(join(old, 'node_modules/pkg'), { recursive: true }); await writeFile(join(old, 'node_modules/pkg/index.js'), 'module'); await writeFile(join(old, '.env'), 'OLD=1')
+      const record = JSON.parse(await readFile(path, 'utf8'))
+      record.tasks.push(makeTask({ id: 'old', state: 'done', branch: 'task/old', baseBranch: 'main', startCommit: record.tasks[0].startCommit, worktreePath: old }))
+      await writeFile(path, JSON.stringify(record))
+
+      const prepared = await prepare(); const completed = data(await finish(prepared.operation.id, prepared.approval!))
+
+      expect(completed.operation.stage).toBe('merged')
+      expect(completed.operation.events.slice(-2).map(e => e.command)).toEqual([BRANCH_TEXT.keptAfterMerge, BRANCH_TEXT.clearedMergedAfterMerge(1)])
+      expect(await readFile(join(taskPath, 'node_modules/pkg/index.js'), 'utf8')).toBe('module')
+      expect(await d.host.exists(join(old, 'node_modules'))).toBe(false)
+      expect(await readFile(join(old, '.env'), 'utf8')).toBe('OLD=1')
+      expect(await git(old, 'status', '--porcelain')).toBe('')
+    })
   })
 
   it('releases a stale committed preparation without changing the destination or discarding its commit', async () => {

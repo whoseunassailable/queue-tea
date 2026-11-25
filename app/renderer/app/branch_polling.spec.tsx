@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/preact'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { BranchGraph, BranchReview, MergeWorkspace } from '../../shared/branches'
 import type { Reply } from '../../shared/engine_api'
@@ -47,4 +47,24 @@ it('bounds reads with graph, review and checks open, refreshes final output and 
   expect(review.read).toHaveBeenCalledTimes(reviewCalls)
   expect(merge.read).toHaveBeenCalledTimes(mergeCalls)
   expect(engine.cancelMergeChecks).not.toHaveBeenCalled()
+})
+
+it('opens Free space from the page, holds the graph timer while it is open, and rereads the graph when it closes', async () => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  const { engine } = fakeEngine({ readBranches: vi.fn(async () => ({ ok: true as const, data: branchGraph() })) })
+  const view = projectView('a-000001')
+  if (view.kind !== 'readable') throw new Error('Expected readable fixture')
+  await act(async () => { render(<BranchesPage engine={engine} view={view} actions={{} as QuestActions} flow={undefined} onOpen={() => {}} />) })
+  await screen.findByRole('button', { name: 'Review work' })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Free space' })) })
+  const sheet = await screen.findByRole('dialog', { name: 'Free space' })
+  expect(engine.readFolderSpace).toHaveBeenCalledWith('a-000001')
+  await act(async () => { vi.advanceTimersByTime(5000) })
+  expect(engine.readBranches).toHaveBeenCalledTimes(1)
+  expect(engine.readFolderSpace).toHaveBeenCalledTimes(1)
+  await act(async () => { fireEvent.click(within(sheet).getByRole('button', { name: 'Close' })) })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  await vi.waitFor(() => expect(engine.readBranches).toHaveBeenCalledTimes(2))
+  await act(async () => { vi.advanceTimersByTime(1000) })
+  await vi.waitFor(() => expect(engine.readBranches).toHaveBeenCalledTimes(3))
 })

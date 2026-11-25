@@ -17,6 +17,7 @@ import { readCommitProgress } from '../data/commit_progress'
 import { liveOutput } from '../data/live_output'
 import { pendingRead } from '../data/pending_reads'
 import type { UserGit, UserGitAction } from '../data/user_git'
+import { clearAfterMerge } from './space_api'
 
 export type BranchDeps = TasksDeps & { userGit: UserGit; reveal?: (path: string) => void; published?: (repo: string, remote: string, branch: string, commit: string) => Promise<void> }
 export const requestOf = (input: unknown): MergeRequest => {
@@ -181,6 +182,9 @@ export const completeMerge = (d: BranchDeps, key: unknown, input: unknown): Prom
     }
     if (!(await ancestor(d, scope.ctx.projectPath, op.commit!, await headOf(d, scope.ctx.projectPath, op.target)))) throw new Refusal(BRANCH_TEXT.action)
     op.stage = 'merged'; await saveOperation(d, op)
+    const cleared = await clearAfterMerge(d, key, op.taskId)
+    for (const line of cleared) op.events.push({ at: d.now(), command: line, status: 'succeeded', output: '' })
+    if (cleared.length) await saveOperation(d, op)
     return workspaceOf(d, scope.ctx.projectPath, op)
   })
 })

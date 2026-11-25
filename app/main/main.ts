@@ -42,6 +42,7 @@ import { readQuestFacts } from './features/tasks/api/detail_api'
 import * as finish from './features/tasks/api/finish_api'
 import * as live from './features/tasks/api/live_api'
 import * as branches from './features/branches/api/branch_api'
+import * as space from './features/branches/api/space_api'
 import { runMergeChecks, cancelMergeChecks } from './features/branches/api/checks_api'
 import { commitBranchFiles } from './features/branches/api/commit_api'
 import { readPush, pushMerge } from './features/branches/api/push_api'
@@ -278,6 +279,9 @@ const serveEngine = () => {
   handle(CHANNELS.commitBranchFiles, (_, key, request) => commitBranchFiles(branchActions, key, request))
   handle(CHANNELS.readPush, (_, key, id, remote) => readPush(quests, key, id, remote))
   handle(CHANNELS.pushMerge, (_, key, request) => pushMerge(branchActions, key, request))
+  handle(CHANNELS.readFolderSpace, (_, key) => space.readFolderSpace(quests, key))
+  handle(CHANNELS.freeFolderSpace, (_, key, paths) => space.freeFolderSpace(quests, key, paths))
+  handle(CHANNELS.removeTaskFolder, (_, key, id) => space.removeTaskFolder(quests, key, id))
   handle(CHANNELS.checkStart, (_, key: unknown, taskId: unknown) => setOut.checkStart(quests, key, taskId))
   handle(CHANNELS.startQuest, (_, key: unknown, taskId: unknown, platform: unknown) => setOut.startQuest(quests, key, taskId, platform))
   handle(CHANNELS.openClaude, (_, key: unknown, taskId?: unknown) => setOut.openClaude(quests, key, taskId))

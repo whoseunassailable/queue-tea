@@ -55,7 +55,7 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
 // A record written before a field existed gets the field's empty value. A
 // task without an id gets one from its creation and title, the same at every
 // read until it is written back.
-const withDefaults = ({ testProfile, testPeriods, minutesInChecks, ...t }: Partial<Task>): Task => {
+const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, ...t }: Partial<Task>): Task => {
   const profile = readTestProfile(testProfile)
 
   return {
@@ -76,6 +76,8 @@ const withDefaults = ({ testProfile, testPeriods, minutesInChecks, ...t }: Parti
     ...(profile === undefined ? {} : { testProfile: profile }),
     ...(arePeriods(testPeriods) ? { testPeriods: mergePeriods(testPeriods) } : {}),
     ...(typeof minutesInChecks === 'number' && Number.isFinite(minutesInChecks) && minutesInChecks >= 0 ? { minutesInChecks } : {}),
+    // A due date is hand-editable too: one that isn't a real day is dropped.
+    ...(typeof due === 'string' && isDay(due) ? { due } : {}),
   } as Task
 }
 

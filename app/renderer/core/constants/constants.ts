@@ -107,3 +107,11 @@ export const CANVAS_CASCADE_PX = 30
 export const CANVAS_CURVE_PX = 120
 export const CANVAS_EXCERPT = 240
 export const CANVAS_CARD_SIZE = { note: { width: 280, height: 160 }, quest: { width: 280, height: 100 }, link: { width: 300, height: 140 }, file: { width: 300, height: 240 } } as const
+
+// The calendar: how tall an hour is in the week grid, the hour it opens
+// scrolled to, how many items a month's day shows before "+N more", and how
+// often the now line and today move.
+export const CALENDAR_HOUR_PX = 44
+export const CALENDAR_OPEN_HOUR = 8
+export const CALENDAR_MONTH_ITEMS = 3
+export const CALENDAR_CLOCK_MS = 60_000

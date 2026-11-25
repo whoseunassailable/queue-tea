@@ -25,6 +25,7 @@ import { readChronicle } from './features/chronicle/api/chronicle_api'
 import { readGame, readHoard } from './features/game/api/game_api'
 import { readMana } from './features/mana/api/mana_api'
 import { githubApi } from './features/github/api/github_api'
+import { calendarApi } from './features/calendar/api/calendar_api'
 import { libraryApi } from './features/library/api/library_api'
 import { notesApi } from './features/notes/api/notes_api'
 import { noteFileResponse } from './features/notes/api/note_protocol'
@@ -135,6 +136,7 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
+const calendar = calendarApi({ ...projects, newId: () => `e-${randomBytes(4).toString('hex')}` })
 const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path), pickFolder: places.pickFolder,
   saveNoteFile: async (name, bytes) => {
     const window = BrowserWindow.getFocusedWindow()
@@ -244,6 +246,9 @@ const serveEngine = () => {
   handle(CHANNELS.readBookmark, (_, url: unknown) => notes.readBookmark(url))
   handle(CHANNELS.readCanvas, (_, key: unknown) => notes.readCanvas(key))
   handle(CHANNELS.saveCanvas, (_, key: unknown, canvas: unknown, stamp: unknown) => notes.saveCanvas(key, canvas, stamp))
+  handle(CHANNELS.readCalendar, (_, key: unknown) => calendar.readCalendar(key))
+  handle(CHANNELS.saveCalendarEvent, (_, key: unknown, id: unknown, event: unknown) => calendar.saveCalendarEvent(key, id, event))
+  handle(CHANNELS.removeCalendarEvent, (_, key: unknown, id: unknown) => calendar.removeCalendarEvent(key, id))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
   handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
   handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))

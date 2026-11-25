@@ -108,6 +108,9 @@ export type Task = {
   // inside them; the rest is building time. Absent before any check finished.
   testPeriods?: WorkPeriod[]
   minutesInChecks?: number
+  // The day it's due, as YYYY-MM-DD on Rohan's own calendar; absent for none
+  // and in older records. The realm calendar shows it on that day.
+  due?: string
 }
 
 // Who works on a task in progress.

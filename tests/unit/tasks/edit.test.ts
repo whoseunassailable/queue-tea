@@ -156,3 +156,41 @@ test('a finished task keeps its profile', async () => {
 
   expect(onDisk(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'tea-dd', reason: 'a new tool' })
 })
+
+test('a due date is set, moved and cleared, and clearing leaves no field behind', async () => {
+  const task = makeTask({ title: 'Ship' })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { due: '2026-12-01' })
+  expect(onDisk(mem).tasks[0]?.due).toBe('2026-12-01')
+
+  await editTaskUseCase(deps, task.id, { title: 'Ship it' })
+  expect(onDisk(mem).tasks[0]).toMatchObject({ title: 'Ship it', due: '2026-12-01' })
+
+  await editTaskUseCase(deps, task.id, { due: '2026-12-08' })
+  expect(onDisk(mem).tasks[0]?.due).toBe('2026-12-08')
+
+  await editTaskUseCase(deps, task.id, { due: null })
+  expect(Object.keys(onDisk(mem).tasks[0] ?? {})).not.toContain('due')
+})
+
+test('clearing a due date keeps the test profile, and the other way round', async () => {
+  const task = makeTask({ due: '2026-12-01', testProfile: { id: 'deep', by: 'rohan' } })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { due: null })
+  expect(onDisk(mem).tasks[0]?.testProfile).toEqual({ id: 'deep', by: 'rohan' })
+
+  await editTaskUseCase(deps, task.id, { due: '2026-12-02', testProfile: null })
+  expect(onDisk(mem).tasks[0]).toMatchObject({ due: '2026-12-02' })
+  expect(onDisk(mem).tasks[0]?.testProfile).toBeUndefined()
+})
+
+test('a finished task keeps its due date', async () => {
+  const task = makeTask({ state: 'done', due: '2026-11-01' })
+  const { mem, deps } = setup([task])
+
+  await editTaskUseCase(deps, task.id, { due: '2026-12-01' })
+
+  expect(onDisk(mem).tasks[0]?.due).toBe('2026-11-01')
+})

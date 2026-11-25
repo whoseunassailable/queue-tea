@@ -403,6 +403,31 @@ test('malformed testing spans and minutes are dropped, and the realm still reads
   expect(task({ minutesInChecks: 0 })?.minutesInChecks).toBe(0)
 })
 
+test('a task saved before due dates reads with none', () => {
+  const read = readFirst({ title: 'Old', created: '2026-10-01' })
+
+  expect(Object.keys(read ?? {})).not.toContain('due')
+})
+
+test('a due date survives a write and a read', async () => {
+  const mem = memoryHost()
+
+  await updateRecord(mem.host, FILE, r => ({ ...r, tasks: [makeTask({ id: 'a', due: '2026-12-01' })] }), 'p', '/p')
+  const read = await readRecord(mem.host, FILE, 'p', '/p')
+
+  if (read === 'unreadable') throw new Error('should read')
+  expect(read.tasks[0]?.due).toBe('2026-12-01')
+})
+
+test('a malformed due date is dropped, and the realm still reads', () => {
+  const due = (value: unknown) => readFirst({ title: 'Old', created: '2026-10-01', due: value })
+
+  for (const bad of [null, 7, '', 'soon', '2026-13-01', '2026-02-30', '2026-12-01T09:00', ' 2026-12-01', ['2026-12-01']]) {
+    expect(Object.keys(due(bad) ?? {})).not.toContain('due')
+  }
+  expect(due('2028-02-29')?.due).toBe('2028-02-29')
+})
+
 test('testing spans saved overlapping read back merged, in order', () => {
   const read = readFirst({ title: 'Old', created: '2026-10-01', testPeriods: [{ start: 50, end: 90 }, { start: 10, end: 30 }, { start: 20, end: 40 }] })
 

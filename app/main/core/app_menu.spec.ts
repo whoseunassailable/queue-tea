@@ -77,6 +77,7 @@ describe('the menu bar', () => {
       ['Chronicle', 'CmdOrCtrl+5'],
       ['Mana & time', 'CmdOrCtrl+6'],
       ['Notes', 'CmdOrCtrl+7'],
+      ['Calendar', 'CmdOrCtrl+8'],
     ])
   })
 

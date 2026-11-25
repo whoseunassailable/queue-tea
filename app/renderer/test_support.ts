@@ -4,6 +4,7 @@ import { vi } from 'vitest'
 import type { DesignsView } from '../shared/designs'
 import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 import type { Note, NotesView } from '../shared/notes'
+import type { CalendarEventInput, CalendarView } from '../shared/calendar'
 import type { CanvasSave, CanvasView } from '../shared/note_canvas'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
@@ -27,6 +28,7 @@ export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   acceptance: [],
   helpers: ['tea-dd'],
   testProfile: null,
+  due: null,
   ...over,
 })
 
@@ -46,6 +48,7 @@ export const activeQuest = (over: Partial<ActiveQuest> = {}): ActiveQuest => ({
   criteria: [],
   helpers: ['tea-dd'],
   testProfile: null,
+  due: null,
   testingMinutes: 0,
   minutesInChecks: 0,
   asking: null,
@@ -275,6 +278,9 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readBookmark: vi.fn(async (url: string) => ({ ok: true as const, data: { url, title: 'Example page', description: 'What the page is about.', site: 'Example' } })),
     readCanvas: vi.fn(async () => ({ ok: true as const, data: { canvas: { nodes: [], edges: [] }, stamp: null } as CanvasView })),
     saveCanvas: vi.fn(async () => ({ ok: true as const, data: { kind: 'saved' as const, stamp: 'c-2' } as CanvasSave })),
+    readCalendar: vi.fn(async () => ({ ok: true as const, data: { events: [], unreadable: 0 } as CalendarView })),
+    saveCalendarEvent: vi.fn(async (_key: string, id: string | null, event: CalendarEventInput) => ({ ok: true as const, data: { events: [{ id: id ?? 'e-1', ...event }], unreadable: 0 } as CalendarView })),
+    removeCalendarEvent: vi.fn(async () => ({ ok: true as const, data: { events: [], unreadable: 0 } as CalendarView })),
     createNote: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, id: 'n-00000001' } })),
     saveNote: vi.fn(async (_key: string, id: string, change: Pick<Note, 'title' | 'folder' | 'tags' | 'body'>) => ({ ok: true as const, data: { kind: 'saved' as const, view: NOTES, note: note({ id, ...change, stamp: 's-2' }), relinked: 0 } })),
     archiveNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),

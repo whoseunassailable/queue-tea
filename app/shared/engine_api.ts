@@ -1,6 +1,7 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
 import type { NoteAttachment, NoteUpload } from './note_attachments'
 import type { NoteBookmark } from './note_bookmarks'
+import type { CalendarEventInput, CalendarView } from './calendar'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
@@ -57,6 +58,8 @@ export type QuestRow = {
   helpers: HelperId[]
   // How much checking it gets; null until Tea-DD or Rohan picks.
   testProfile: TestProfile | null
+  // The day it's due, as YYYY-MM-DD; null for none.
+  due: string | null
 }
 
 export type BoardEntry =
@@ -79,6 +82,7 @@ export type ActiveQuest = {
   criteria: string[]
   helpers: HelperId[]
   testProfile: TestProfile | null
+  due: string | null
   // Minutes its checks ran, and the part of `minutes` that fell inside them.
   testingMinutes: number
   minutesInChecks: number
@@ -264,7 +268,8 @@ export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToB
 // What has moved under the quest in hand.
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }
 // testProfile is Rohan's pick; null lets Tea-DD pick again.
-export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[]; testProfile?: TestProfileId | null }
+// due is a day such as 2026-12-01; null clears it.
+export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[]; testProfile?: TestProfileId | null; due?: string | null }
 
 // What keeps a quest from starting. The reason is the engine's own sentence,
 // and a command is only ever text to copy.
@@ -404,6 +409,10 @@ export type EngineApi = {
   readBookmark: (url: string) => Promise<Reply<NoteBookmark>>
   readCanvas: (key: string) => Promise<Reply<CanvasView>>
   saveCanvas: (key: string, canvas: NoteCanvas, stamp: string | null) => Promise<Reply<CanvasSave>>
+  readCalendar: (key: string) => Promise<Reply<CalendarView>>
+  // id null adds the event.
+  saveCalendarEvent: (key: string, id: string | null, event: CalendarEventInput) => Promise<Reply<CalendarView>>
+  removeCalendarEvent: (key: string, id: string) => Promise<Reply<CalendarView>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
   saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
@@ -518,6 +527,9 @@ export const CHANNELS = {
   readBookmark: 'engine:read-bookmark',
   readCanvas: 'engine:read-canvas',
   saveCanvas: 'engine:save-canvas',
+  readCalendar: 'engine:read-calendar',
+  saveCalendarEvent: 'engine:save-calendar-event',
+  removeCalendarEvent: 'engine:remove-calendar-event',
   createNote: 'engine:create-note',
   saveNote: 'engine:save-note',
   archiveNote: 'engine:archive-note',

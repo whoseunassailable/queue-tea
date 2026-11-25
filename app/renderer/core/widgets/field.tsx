@@ -7,6 +7,8 @@ type FieldProps = {
   error?: string | undefined
   isRequired?: boolean
   isLong?: boolean
+  // A date or time field takes YYYY-MM-DD or HH:MM; empty while unfinished.
+  type?: 'text' | 'date' | 'time'
   // The id of a datalist of suggestions.
   list?: string
   // The label is still read out, but not shown, where a column heads the fields.
@@ -17,7 +19,7 @@ type FieldProps = {
 }
 
 // A labelled text field with its error directly under it.
-export const Field = ({ label, value, error, isRequired, isLong, list, isLabelHidden, onInput, onBlur, onEnter }: FieldProps) => {
+export const Field = ({ label, value, error, isRequired, isLong, type = 'text', list, isLabelHidden, onInput, onBlur, onEnter }: FieldProps) => {
   const id = useId()
   const errorId = `${id}-error`
   const shared = {
@@ -41,7 +43,7 @@ export const Field = ({ label, value, error, isRequired, isLong, list, isLabelHi
       ) : (
         <input
           {...shared}
-          type="text"
+          type={type}
           list={list}
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.metaKey && onEnter !== undefined) {

@@ -7,7 +7,7 @@ Spec for **Notes 1**, the first slice of Rohan's Notes workspace epic. Mocha Moc
 
 ## What the user can do
 
-Open **Notes** (the last realm tab, ⌘7) and keep notes for the selected realm. Jot an idea in one line and it becomes a note in Inbox. Write longer notes in Markdown, file them in folders, tag them, and link them to each other with `[[Note title]]`, or to one of the realm's quests. The inspector shows each note's links, the notes that link back to it, and the quests filed from it. **BrewQuest**, a small robot in the editor's corner, turns a note's open checklist lines into quests in the realm's queue. You check the proposal before anything is filed. A note you no longer need is archived, not deleted. Only an archived note can be deleted forever.
+Open **Notes** (after Mana & time, ⌘7) and keep notes for the selected realm. Jot an idea in one line and it becomes a note in Inbox. Write longer notes in Markdown, file them in folders, tag them, and link them to each other with `[[Note title]]`, or to one of the realm's quests. The inspector shows each note's links, the notes that link back to it, and the quests filed from it. **BrewQuest**, a small robot in the editor's corner, turns a note's open checklist lines into quests in the realm's queue. You check the proposal before anything is filed. A note you no longer need is archived, not deleted. Only an archived note can be deleted forever.
 
 ```mermaid
 flowchart LR
@@ -196,7 +196,7 @@ Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook` and `pale
 
 ## Acceptance checks
 
-1. Notes is the last realm tab, at `/notes`, and opens with ⌘7. The View menu and the palette list it. Its notes belong to the selected realm.
+1. Notes sits after Mana & time, at `/notes`, and opens with ⌘7. The View menu and the palette list it. Its notes belong to the selected realm.
 2. Return in the capture line makes a note in Inbox, and an empty line shows "Type an idea first.". A file with the note's front matter appears in `~/.queue-tea/notes/<realm key>/`, and nothing changes in the realm's folder.
 3. A note opened, edited and left alone for 800 ms is saved. Reading the file back gives the same title, folder, tags and body, and front-matter lines Queue-tea doesn't own are kept.
 4. A file with no front matter, as Obsidian makes them, lists with its file name as the title. The front matter is added when it's first saved.

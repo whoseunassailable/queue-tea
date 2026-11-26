@@ -1,0 +1,159 @@
+"use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var promises_1 = require("node:fs/promises");
+var node_os_1 = require("node:os");
+var node_path_1 = require("node:path");
+var vitest_1 = require("vitest");
+var codex_events_1 = require("./codex_events");
+var codex_source_1 = require("./codex_source");
+var logger_1 = require("../../../core/logger");
+var now = Date.now();
+var row = function (type, payload, ms) {
+    if (ms === void 0) { ms = now; }
+    return JSON.stringify({ timestamp: new Date(ms).toISOString(), type: type, payload: payload });
+};
+(0, vitest_1.it)('observes a nested command and its later background result as one step, keeping no output', function () {
+    var start = row('event_msg', { type: 'task_started' });
+    var cmd = { type: 'CommandExecution', id: 'native-1', command: ['/bin/zsh', '-lc', 'npm test'], process_id: '42', exit_code: null, status: 'in_progress', aggregated_output: 'START' };
+    var first = row('event_msg', { type: 'item_completed', item: cmd });
+    var running = (0, codex_events_1.codexEvents)(start + '\n' + first, now - 1, now).step;
+    (0, vitest_1.expect)(running).toMatchObject({ status: 'running', subject: 'npm test' });
+    (0, vitest_1.expect)(running).not.toHaveProperty('output');
+    var end = row('event_msg', { type: 'item_completed', item: __assign(__assign({}, cmd), { id: 'native-poll', aggregated_output: 'START\nFAIL', exit_code: 1, status: 'completed' }) });
+    var final = (0, codex_events_1.codexEvents)([start, first, end].join('\n'), now - 1, now);
+    (0, vitest_1.expect)(final.step).toMatchObject({ id: running.id, kind: 'test', subject: 'npm test', status: 'failed' });
+    (0, vitest_1.expect)(JSON.stringify(final)).not.toContain('FAIL');
+});
+(0, vitest_1.it)('records native additions, edits and deletions without copying file contents', function () {
+    var change = function (changes) { return (0, codex_events_1.codexEvents)(row('event_msg', { type: 'item_completed', item: { type: 'FileChange', id: 'patch', status: 'completed', changes: changes } }), now - 1, now); };
+    (0, vitest_1.expect)(change({ 'a.ts': { type: 'add', content: 'secret' } }).step).toEqual({ id: 'codex-file-patch:a.ts', at: new Date(now).toISOString(), finished: new Date(now).toISOString(), kind: 'write', status: 'succeeded', subject: 'a.ts' });
+    (0, vitest_1.expect)(change({ 'b.ts': { type: 'update' } }).step).toMatchObject({ kind: 'edit', subject: 'b.ts', status: 'succeeded' });
+    var all = change({ 'a.ts': { type: 'add', content: 'secret' }, 'b.ts': { type: 'update' }, 'c.ts': { type: 'delete' } });
+    (0, vitest_1.expect)(all.step).toMatchObject({ kind: 'edit', subject: 'c.ts', status: 'succeeded' });
+    (0, vitest_1.expect)(JSON.stringify(all)).not.toContain('secret');
+});
+(0, vitest_1.it)('stops pulsing for a question, completion, or stale evidence', function () {
+    var start = row('event_msg', { type: 'task_started' });
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(start, now - 1, now).state).toBe('working');
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(start, now - 1, now + 100000).state).toBe('unobserved');
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(start + '\n' + row('response_item', { type: 'function_call', name: 'request_user_input', call_id: 'question', arguments: '{}' }), now - 1, now).state).toBe('needsYou');
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(start + '\n' + row('event_msg', { type: 'task_complete' }), now - 1, now).state).toBe('review');
+});
+(0, vitest_1.it)('finds a resumed old session and incrementally reads appended events for two different tasks', function () { return __awaiter(void 0, void 0, void 0, function () {
+    var home, _a, dir, first, second, d, _b, _c, _d;
+    return __generator(this, function (_e) {
+        switch (_e.label) {
+            case 0:
+                _a = promises_1.realpath;
+                return [4 /*yield*/, (0, promises_1.mkdtemp)((0, node_path_1.join)((0, node_os_1.tmpdir)(), 'queue-tea-codex-observe-'))];
+            case 1: return [4 /*yield*/, _a.apply(void 0, [_e.sent()])];
+            case 2:
+                home = _e.sent();
+                _e.label = 3;
+            case 3:
+                _e.trys.push([3, , 11, 13]);
+                dir = (0, node_path_1.join)(home, '.codex/sessions/2024/01/01');
+                return [4 /*yield*/, (0, promises_1.mkdir)(dir, { recursive: true })];
+            case 4:
+                _e.sent();
+                first = (0, node_path_1.join)(dir, 'old.jsonl');
+                second = (0, node_path_1.join)(dir, 'other.jsonl');
+                return [4 /*yield*/, (0, promises_1.writeFile)(first, row('session_meta', { cwd: '/task-a' }) + '\n' + row('event_msg', { type: 'task_started' }) + '\n')];
+            case 5:
+                _e.sent();
+                return [4 /*yield*/, (0, promises_1.writeFile)(second, row('session_meta', { cwd: '/task-b' }) + '\n' + row('event_msg', { type: 'task_started' }) + '\n')];
+            case 6:
+                _e.sent();
+                d = { home: home, now: function () { return now; }, log: (0, logger_1.createLogger)('dev', function () { }) };
+                _b = vitest_1.expect;
+                return [4 /*yield*/, (0, codex_source_1.readCodexSession)(d, '/task-a', now - 1)];
+            case 7:
+                _b.apply(void 0, [(_e.sent()).state]).toBe('working');
+                _c = vitest_1.expect;
+                return [4 /*yield*/, (0, codex_source_1.readCodexSession)(d, '/task-b', now - 1)];
+            case 8:
+                _c.apply(void 0, [(_e.sent()).state]).toBe('working');
+                return [4 /*yield*/, (0, promises_1.appendFile)(first, row('event_msg', { type: 'task_complete' }) + '\n')];
+            case 9:
+                _e.sent();
+                _d = vitest_1.expect;
+                return [4 /*yield*/, (0, codex_source_1.readCodexSession)(d, '/task-a', now - 1)];
+            case 10:
+                _d.apply(void 0, [(_e.sent()).state]).toBe('review');
+                return [3 /*break*/, 13];
+            case 11: return [4 /*yield*/, (0, promises_1.rm)(home, { recursive: true, force: true })];
+            case 12:
+                _e.sent();
+                return [7 /*endfinally*/];
+            case 13: return [2 /*return*/];
+        }
+    });
+}); });
+(0, vitest_1.it)('keeps identical concurrent commands separate and records failed file changes honestly', function () {
+    var item = { type: 'CommandExecution', command: ['bash', '-lc', 'npm test'], exit_code: null, status: 'in_progress', aggregated_output: '' };
+    var commands = [row('event_msg', { type: 'item_completed', item: __assign(__assign({}, item), { id: 'a', process_id: '10' }) }), row('event_msg', { type: 'item_completed', item: __assign(__assign({}, item), { id: 'b', process_id: '20' }) }), row('event_msg', { type: 'item_completed', item: __assign(__assign({}, item), { id: 'c', process_id: '10', exit_code: 0 }) })];
+    // The end of the command on process 10 leaves the one on process 20 running.
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(commands.join('\n'), now - 1, now).step).toMatchObject({ id: 'codex-item-b', kind: 'test', status: 'running' });
+    var failed = row('event_msg', { type: 'item_completed', item: { type: 'FileChange', id: 'bad', status: 'Failed', changes: { 'a.ts': { type: 'update' } } } });
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(__spreadArray(__spreadArray([], commands, true), [failed], false).join('\n'), now - 1, now).step).toMatchObject({ subject: 'a.ts', status: 'failed' });
+});
+(0, vitest_1.it)('a long native session shows its last step', function () {
+    var input = Array.from({ length: 350 }, function (_, i) { return row('event_msg', { type: 'item_completed', item: { type: 'CommandExecution', id: "command-".concat(i), command: ['echo', String(i)], exit_code: 0, aggregated_output: '' } }, now - 350 + i); }).join('\n');
+    (0, vitest_1.expect)((0, codex_events_1.codexEvents)(input, now - 1000, now).step).toMatchObject({ subject: 'echo 349', status: 'succeeded' });
+});

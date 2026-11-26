@@ -18,7 +18,7 @@ test('branch graph and review show actual local history through IPC', async ({},
     const folder = join(home, '.queue-tea/projects')
     await mkdir(folder, { recursive: true })
     const task = makeTask({ id: 'branch-ui', title: 'Branch and merge GUI', state: 'current', branch: 'task/task-description', baseBranch: 'main', worktreePath: repo,
-      activity: [{ id: 'test', at: new Date().toISOString(), finished: new Date().toISOString(), kind: 'test', status: 'succeeded', subject: 'Example observed check', output: 'This output is a test fixture.', truncated: false }] })
+      step: { id: 'test', at: new Date().toISOString(), finished: new Date().toISOString(), kind: 'test', status: 'succeeded', subject: 'Example observed check' } })
     const record = { ...emptyRecord('Branch review demo', repo), version: 2, tasks: [task] }
     await writeFile(join(folder, 'branches-abc123.json'), JSON.stringify(record))
     app = await electron.launch({ args: [join(__dirname, '../out/main/main.js')], cwd: join(__dirname, '..'), env: { ...process.env, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' } })
@@ -36,10 +36,9 @@ test('branch graph and review show actual local history through IPC', async ({},
     const review = page.getByRole('dialog', { name: 'Review work' })
     await expect(review.getByText('task/task-description → main', { exact: true })).toBeVisible()
     await expect(review.getByRole('button', { name: 'Prepare merge for review' })).toBeDisabled()
+    await expect(review.getByLabel('Current step')).toContainText('Example observed check')
     await review.getByRole('tab', { name: 'Checks' }).click()
-    await expect(review.getByText('Example observed check', { exact: true })).toBeVisible()
-    await review.getByText('Command output', { exact: true }).click()
-    await expect(review.locator('pre')).toContainText('This output is a test fixture.')
+    await expect(review.getByText('No checks were observed. Prepare the merge below and run its checks there.', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('branch-review.png'), fullPage: true })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     expect(await page.locator('.observed-working').count()).toBe(0)

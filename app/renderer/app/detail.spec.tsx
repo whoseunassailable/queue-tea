@@ -127,7 +127,7 @@ describe('the active quest\'s details', () => {
     await showIt()
     await within(pane()).findByText(t.activity.empty)
     readQuestFacts.mockImplementation(facts({ active: ACTIVE, activity: {
-      steps: [{ id: 'run', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', subject: 'npm test', status: 'running', output: '', truncated: false }],
+      step: { id: 'run', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', subject: 'npm test', status: 'running' },
       commits: [], gitUnavailable: false,
     } }))
     await act(async () => fire())

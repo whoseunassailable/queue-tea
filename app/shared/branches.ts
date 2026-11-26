@@ -1,4 +1,4 @@
-import type { CommitProposal, TaskActivity } from '../../types'
+import type { CommitProposal, TaskStep } from '../../types'
 
 export type BranchState = 'queued' | 'working' | 'needsYou' | 'review' | 'paused' | 'unobserved' | 'merged'
 export type BranchTip = { id: string; title: string; branch: string; base: string | null; head: string | null; fork: string | null; merged: boolean; state: BranchState; latest: string | null; seenAt: number | null; changed: number | null; commits: number | null }
@@ -18,9 +18,11 @@ export type CheckRun = { id: string; checkId: string; name: string; command: str
 export type CommitProgress = { command: string; message: string; at: number; finished: number | null; status: 'running' | 'succeeded' | 'failed' | 'interrupted'; output: string; exitCode: number | null; truncated: boolean }
 export type RunChecksRequest = { operationId: string; approval: string; checkIds: string[] }
 export type MergeWorkspace = { availableChecks?: CheckChoice[]; checks?: CheckRun[]; checksCurrent?: boolean; operation: MergeOperation; conflicts: ConflictFile[]; diff: string; truncated: boolean; approval: string | null }
+// `step` is what the task is on now, or did last. `checks` are the latest run
+// of each check from the in-app check runner, on the prepared merge.
 export type BranchReview = {
   taskId: string; source: string; target: string; targets: string[]; sourceHead: string; targetHead: string; fingerprint: string;
-  files: ChangedFile[]; diff: string; truncated: boolean; commits: GraphCommit[]; steps: TaskActivity[];
+  files: ChangedFile[]; diff: string; truncated: boolean; commits: GraphCommit[]; step: TaskStep | null; checks: CheckRun[];
   commitProgress?: CommitProgress | null; proposal?: CommitProposal | null; state: BranchState; blocked: string | null; merged: boolean; operation: MergeOperation | null; remotes: string[];
 }
 export type MergeRequest = { taskId: string; target: string; fingerprint: string; idleConfirmed: boolean }

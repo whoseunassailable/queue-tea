@@ -22,6 +22,15 @@ export type Host = {
   open: (url: string) => Promise<RunResult>
 }
 
+// A file too large for the host to write at once. The mod's host throws it
+// before Claude Code would refuse the write, so a caller can tell this apart.
+export class FileTooLarge extends Error {
+  constructor(readonly path: string, readonly bytes: number, readonly limit: number) {
+    super(`${path} is ${bytes} bytes, over the ${limit}-byte limit`)
+    this.name = 'FileTooLarge'
+  }
+}
+
 // The file moves, as commands. Mac only for now: Windows gets its own here.
 export const unixFiles = (run: Host['run']): Pick<Host, 'move' | 'makeDir' | 'makeDirs' | 'removeDir' | 'remove'> => ({
   move: (from, to) => run(['mv', '-f', from, to]),

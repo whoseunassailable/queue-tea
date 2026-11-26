@@ -42,6 +42,9 @@ export const readChecks = async (d: TasksDeps, op: MergeOperation): Promise<Chec
   }
   return runs
 }
+// The latest run of each check, in the order they were first run.
+export const latestChecks = (runs: CheckRun[]): CheckRun[] => [...new Map(runs.map(run => [run.checkId, run])).values()]
+
 export const checksPassed = (runs: CheckRun[], tree: string, choices: CheckChoice[]) => {
   const latest = new Map<string, CheckRun>()
   for (const run of runs) if (run.tree === tree && choices.some(c => c.id === run.checkId)) latest.set(run.checkId, run)

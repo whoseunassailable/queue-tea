@@ -57,7 +57,8 @@ export async function loadRecord(p: Ports) {
     await p.set('load', 'ready')
   } catch (err) {
     debug(p, 'reading the record failed', err)
-    await p.set('load', 'failed')
+    // Says why when it can: Claude Code wouldn't open the file, say.
+    await markUnreadable(p, ctx)
 
     return
   }

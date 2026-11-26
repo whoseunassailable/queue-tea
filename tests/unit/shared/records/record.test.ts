@@ -1,5 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
+import { FileTooLarge } from '../../../../hooks/core/host/host'
+import { RECORD_TEXT } from '../../../../hooks/shared/records/domain/constants/record_text'
 import { backupPath, carryOverRecords, emptyRecord, parseRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
 import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../hooks/shared/records/domain/services/helpers'
 import { newTask } from '../../../../hooks/shared/records/domain/services/queue_rules'
@@ -432,4 +434,82 @@ test('testing spans saved overlapping read back merged, in order', () => {
   const read = readFirst({ title: 'Old', created: '2026-10-01', testPeriods: [{ start: 50, end: 90 }, { start: 10, end: 30 }, { start: 20, end: 40 }] })
 
   expect(read?.testPeriods).toEqual([{ start: 10, end: 40 }, { start: 50, end: 90 }])
+})
+
+// An entry of the step log records kept before the one-step line.
+const logged = (id: string, at: string, extra: Record<string, unknown> = {}) => ({
+  id, at, finished: at, kind: 'test', status: 'succeeded', subject: 'npm test', output: `output of ${id}`, truncated: false, ...extra,
+})
+
+test("an older record's step log is dropped: the task keeps its latest step, and the checks it still waits on, without output", () => {
+  const task = {
+    ...makeTask({ title: 'A' }),
+    activity: [
+      logged('s2', '2026-10-21T09:20:00+02:00', { kind: 'edit', subject: '/p/a.ts' }),
+      logged('s1', '2026-10-21T09:10:00+02:00', { status: 'running', finished: null, backgroundId: 'bg-1' }),
+      { id: 'bad', at: 'never' },
+    ],
+  }
+  const read = parseRecord(JSON.stringify({ ...emptyRecord('p', '/p'), tasks: [task] }))
+  if (read === 'unreadable') throw new Error('unreadable')
+  const kept = read.tasks[0] as Task & { activity?: unknown }
+
+  expect(kept.activity).toBeUndefined()
+  expect(kept.step).toEqual({ id: 's2', at: '2026-10-21T09:20:00+02:00', finished: '2026-10-21T09:20:00+02:00', kind: 'edit', status: 'succeeded', subject: '/p/a.ts' })
+  expect(kept.waiting).toEqual([{ id: 's1', at: '2026-10-21T09:10:00+02:00', finished: null, kind: 'test', status: 'running', subject: 'npm test', backgroundId: 'bg-1' }])
+  expect(JSON.stringify(read)).not.toContain('output of')
+})
+
+test('a hand-edited step that is malformed is dropped, never the record', () => {
+  const read = parseRecord(JSON.stringify({ ...emptyRecord('p', '/p'), tasks: [{ ...makeTask(), step: { id: 's1', kind: 'dance' }, waiting: 'soon' }] }))
+  if (read === 'unreadable') throw new Error('unreadable')
+
+  expect(read.tasks[0]?.step).toBeUndefined()
+  expect(read.tasks[0]?.waiting).toBeUndefined()
+})
+
+test('a record too large to keep as it read is kept as its last good copy without the old step log', async () => {
+  const task = { ...makeTask({ title: 'A' }), activity: [logged('s1', '2026-10-21T09:10:00+02:00')] }
+  const before = JSON.stringify({ ...emptyRecord('p', '/p'), tasks: [task] })
+  const mem = memoryHost({ files: { [FILE]: before } })
+  const write = mem.host.write
+  mem.host.write = async (path, text) => {
+    if (text === before) throw new FileTooLarge(path, text.length, text.length - 1)
+    await write(path, text)
+  }
+
+  await updateRecord(mem.host, FILE, r => r, 'p', '/p')
+
+  const copy = parseRecord(mem.files.get(backupPath(FILE))!)
+  if (copy === 'unreadable') throw new Error('unreadable')
+  expect(copy.tasks[0]?.title).toBe('A')
+  expect(mem.files.get(backupPath(FILE))).not.toContain('output of')
+  expect(mem.files.get(FILE)).not.toContain('"activity"')
+})
+
+test('any other failure to keep the last good copy stops the write', async () => {
+  const before = json({ ...emptyRecord('p', '/p'), tasks: [makeTask({ title: 'A' })] })
+  const mem = memoryHost({ files: { [FILE]: before } })
+  const write = mem.host.write
+  mem.host.write = async (path, text) => {
+    if (path === backupPath(FILE)) throw new Error('disk full')
+    await write(path, text)
+  }
+
+  let failed = ''
+  try {
+    await updateRecord(mem.host, FILE, r => ({ ...r, tasks: [] }), 'p', '/p')
+  } catch (err) {
+    failed = err instanceof Error ? err.message : String(err)
+  }
+
+  expect(failed).toBe('disk full')
+  expect(mem.files.get(FILE)).toBe(before)
+})
+
+test('a record the host will not open says so, and what to check, with no copy offered', async () => {
+  const mem = memoryHost({ files: { [FILE]: json(emptyRecord('p', '/p')) } })
+  mem.host.read = async () => { throw new Error('EACCES: permission denied') }
+
+  expect(await readProblem(mem.host, FILE)).toEqual({ reason: RECORD_TEXT.cannotOpen, canRestore: false, fix: RECORD_TEXT.cannotOpenFix(FILE) })
 })

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Host } from '../../../../../hooks/core/host/host'
-import { ACTIVITY_LIMIT, ACTIVITY_TEXT_LIMIT, activityEntries, finishActivity, finishNotified, keepActivity, notifiedEnds, toolActivity } from '../../../../../hooks/shared/activity/domain/services/activity'
+import { finishNotified, finishStep, fromOldLog, keepStep, latestStep, notifiedEnds, stepOf, toolStep } from '../../../../../hooks/shared/activity/domain/services/activity'
+import { STEP_SUBJECT_LIMIT, WAITING_LIMIT } from '../../../../../hooks/shared/activity/domain/constants/step_limits'
+import { parseRecord } from '../../../../../hooks/shared/records/data/datasources/record_source'
 import { emptyCheckpoint } from '../../../../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { makeTask } from '../api/fixtures'
 import { readActivity } from '../data/activity_source'
@@ -9,20 +11,22 @@ import { createLogger } from '../../../core/logger'
 
 const AT = '2026-11-04T12:00:00Z'
 const END = '2026-11-04T12:01:00Z'
-const step = () => toolActivity('Bash', { command: 'npm test' }, 'run-1', AT)!
+const step = () => toolStep('Bash', { command: 'npm test' }, 'run-1', AT)!
 const log = createLogger('dev', () => {})
 const ok = (stdout: string) => ({ exitCode: 0, stdout, stderr: '' })
 
-describe('recorded tool steps', () => {
-  it('ignores malformed stored entries without losing valid history', () => {
-    expect(activityEntries({ steps: [] })).toEqual([])
-    expect(activityEntries([null, { ...step(), kind: 'unexpected' }, { ...step(), at: 'bad date' }, step()])).toEqual([step()])
+describe('the step a task is on', () => {
+  it('reads a stored step, keeping only its own fields, and drops a malformed one', () => {
+    expect(stepOf({ ...step(), output: '24 passed', truncated: true })).toEqual(step())
+    for (const bad of [null, { steps: [] }, { ...step(), kind: 'unexpected' }, { ...step(), at: 'bad date' }, { ...step(), id: '' }]) expect(stepOf(bad)).toBeNull()
   })
-  it('names the command and starts without claiming success', () => {
-    expect(step()).toMatchObject({ subject: 'npm test', kind: 'test', status: 'running', finished: null })
-    expect(toolActivity('Edit', { file_path: 'test/a.spec.ts' }, 'edit', AT)).toMatchObject({ kind: 'edit', subject: 'test/a.spec.ts' })
-    expect(toolActivity('Read', {}, 'read', AT)).toBeNull()
-    expect(toolActivity('Unknown', {}, 'other', AT)).toBeNull()
+
+  it('names the command by its first line, cut to the limit, and starts without claiming success', () => {
+    expect(step()).toEqual({ id: 'run-1', at: AT, finished: null, kind: 'test', status: 'running', subject: 'npm test' })
+    expect(toolStep('Bash', { command: `${'x'.repeat(STEP_SUBJECT_LIMIT + 50)}\necho done` }, 'long', AT)!.subject).toHaveLength(STEP_SUBJECT_LIMIT)
+    expect(toolStep('Edit', { file_path: 'test/a.spec.ts' }, 'edit', AT)).toMatchObject({ kind: 'edit', subject: 'test/a.spec.ts' })
+    expect(toolStep('Read', {}, 'read', AT)).toBeNull()
+    expect(toolStep('Unknown', {}, 'other', AT)).toBeNull()
   })
 
   it.each([
@@ -32,41 +36,62 @@ describe('recorded tool steps', () => {
     [{ result: { interrupted: true } }, 'failed'],
     [{ isError: true }, 'failed'],
     [{ deny: 'Commits belong to you' }, 'blocked'],
-  ] as const)('records the actual outcome of %j', (result, status) => {
-    expect(finishActivity(step(), result, END)).toMatchObject({ status, finished: END })
-  })
-
-  it('retains output, bounds it, and never saves read file contents', () => {
-    expect(finishActivity(step(), { result: { stdout: 'Tests', stderr: 'Failed' } }, END).output).toBe('Tests\nFailed')
-    const large = finishActivity(step(), { result: 'x'.repeat(ACTIVITY_TEXT_LIMIT) + 'last line' }, END)
-    expect(large.output).toHaveLength(ACTIVITY_TEXT_LIMIT)
-    expect(large.output.endsWith('last line')).toBe(true)
-    expect(large.truncated).toBe(true)
-    const read = toolActivity('Read', { file_path: 'private.txt' }, 'read', AT)!
-    expect(finishActivity(read, { result: 'file contents' }, END).output).toBe('')
+  ] as const)('records the actual outcome of %j, and none of its output', (result, status) => {
+    const ended = finishStep(step(), result, END)
+    expect(ended).toMatchObject({ status, finished: END })
+    expect(JSON.stringify(ended)).not.toMatch(/passed|1 failed|Commits belong/)
   })
 
   it('does not count a background launch as a passing check', () => {
-    expect(finishActivity(step(), { result: { stdout: 'Starting…', backgroundTaskId: 'bg-1' } }, END)).toMatchObject({ status: 'running', finished: null })
+    expect(finishStep(step(), { result: { stdout: 'Starting…', backgroundTaskId: 'bg-1' } }, END)).toMatchObject({ status: 'running', finished: null, backgroundId: 'bg-1' })
   })
 
-  it('updates a started step without duplication and bounds retained history', () => {
+  it('keeps one step: the newest replaces the last, and a task keeps no history', () => {
     const task = makeTask({ id: 'one' })
-    const started = keepActivity(task, step())
-    const finished = keepActivity(started, finishActivity(step(), { result: 'passed' }, END))
-    expect(finished.activity).toHaveLength(1)
-    expect(finished.activity![0]!.status).toBe('succeeded')
-    expect(task.activity).toBeUndefined()
-    let many = task
-    for (let index = 0; index <= ACTIVITY_LIMIT; index++) many = keepActivity(many, { ...step(), id: String(index) })
-    expect(many.activity).toHaveLength(ACTIVITY_LIMIT)
-    expect(many.activity![0]!.id).toBe('1')
+    const finished = keepStep(keepStep(task, step()), finishStep(step(), { result: 'passed' }, END))
+    expect(finished.step).toMatchObject({ id: 'run-1', status: 'succeeded' })
+    const next = keepStep(finished, toolStep('Edit', { file_path: 'a.ts' }, 'edit', END)!)
+    expect(next.step).toMatchObject({ id: 'edit', kind: 'edit' })
+    expect(task.step).toBeUndefined()
+    expect(Object.keys(next)).not.toContain('activity')
+  })
+
+  it('the later of two steps is the one started last', () => {
+    const later = { ...step(), id: 'later', at: END }
+    expect(latestStep(step(), later, null, undefined)).toBe(later)
+    expect(latestStep(later, step())).toBe(later)
+    expect(latestStep()).toBeNull()
   })
 })
 
-describe('activity from local git and earlier records', () => {
+describe("an older record's step log", () => {
+  const entry = (id: string, at: string, extra: Record<string, unknown> = {}) =>
+    ({ ...step(), id, at, finished: at, status: 'succeeded', output: 'x'.repeat(8_000), truncated: true, ...extra })
+
+  it('leaves its latest step and the background checks still waiting, without output', () => {
+    const old = fromOldLog([entry('b', END, { kind: 'edit', subject: 'a.ts' }), entry('a', AT, { status: 'running', finished: null, backgroundId: 'bg-1' }), 'junk'])
+    expect(old.step).toEqual({ id: 'b', at: END, finished: END, kind: 'edit', status: 'succeeded', subject: 'a.ts' })
+    expect(old.waiting?.map(s => s.backgroundId)).toEqual(['bg-1'])
+    expect(JSON.stringify(old)).not.toContain('xxxx')
+    expect(fromOldLog(undefined)).toEqual({})
+  })
+
+  it('is gone once the record is read, and a record of 300 long steps comes back small', () => {
+    const steps = Array.from({ length: 300 }, (_, i) => entry(`s-${i}`, new Date(Date.parse(AT) + i * 1000).toISOString()))
+    const text = JSON.stringify({ version: 2, project: { name: 'p', path: '/p' }, docsLogPath: null, playNext: null, feature: null, tasks: [{ ...makeTask({ id: 'one' }), activity: steps }], unassignedMinutesByDay: {}, requests: [] })
+    expect(text.length).toBeGreaterThan(2_000_000)
+    const read = parseRecord(text)
+    if (read === 'unreadable') throw new Error('unreadable')
+    const saved = JSON.stringify(read, null, 2)
+    expect(saved.length).toBeLessThan(10_000)
+    expect(saved).not.toContain('"activity"')
+    expect(read.tasks[0]!.step?.id).toBe('s-299')
+  })
+})
+
+describe('activity from local git', () => {
   const COMMIT = 'a'.repeat(40)
-  const task = () => makeTask({ id: 'one', branch: 'task/one', startCommit: 'b'.repeat(40), activity: [step()] })
+  const task = () => makeTask({ id: 'one', branch: 'task/one', startCommit: 'b'.repeat(40), step: step() })
   const host = () => ({ run: vi.fn(async (argv: string[]) => ok(argv[1] === 'log' ? `${COMMIT}\0${END}\0added task activity\n` : 'refs/remotes/origin/main\nrefs/remotes/origin/HEAD\n')) })
 
   it('reads the task branch, commit message, and containing remote refs without any mutation or network command', async () => {
@@ -77,9 +102,9 @@ describe('activity from local git and earlier records', () => {
     expect(h.run.mock.calls[0]![0]).toContain(`${'b'.repeat(40)}..refs/heads/task/one`)
   })
 
-  it('keeps tool steps when git fails', async () => {
+  it('keeps the step when git fails', async () => {
     const h = { run: vi.fn(async () => { throw new Error('folder moved') }) }
-    expect(await readActivity(h as unknown as Host, log, '/repo', task())).toMatchObject({ steps: [step()], gitUnavailable: true })
+    expect(await readActivity(h as unknown as Host, log, '/repo', task())).toMatchObject({ step: step(), gitUnavailable: true })
   })
 
   it('does not call unverified remote state a push or fail the rest of the history', async () => {
@@ -88,21 +113,12 @@ describe('activity from local git and earlier records', () => {
     expect((await readActivity(h as unknown as Host, log, '/repo', task())).commits[0]!.remotes).toBeNull()
   })
 
-  it('handles an old task with no branch or activity without invoking git', async () => {
+  it('handles an old task with no branch or step without invoking git, and shows no checkpoint commands as steps', async () => {
     const h = host()
-    expect(await readActivity(h as unknown as Host, log, '/repo', makeTask({ id: 'old' }))).toEqual({ steps: [], commits: [], gitUnavailable: false })
-    expect(h.run).not.toHaveBeenCalled()
-  })
-
-  it('exposes checkpoint summaries once, including a command finished during a recorded step', async () => {
     const command = { command: 'npm test', isTest: true, isOk: true, at: END, summary: '24 passed' }
     const old = makeTask({ id: 'old', checkpoint: { ...emptyCheckpoint(), seen: { at: END, files: [], git: null, commands: [command] } } })
-    const h = host() as unknown as Host
-    const before = await readActivity(h, log, '/repo', old)
-    expect(before.steps).toHaveLength(1)
-    expect(before.steps[0]).toMatchObject({ output: '24 passed', truncated: true })
-    old.activity = [finishActivity(step(), { result: '24 passed' }, END)]
-    expect((await readActivity(h, log, '/repo', old)).steps).toHaveLength(1)
+    expect(await readActivity(h as unknown as Host, log, '/repo', old)).toEqual({ step: null, commits: [], gitUnavailable: false })
+    expect(h.run).not.toHaveBeenCalled()
   })
 })
 
@@ -110,39 +126,39 @@ describe("a quest's testing time", () => {
   const span = (at: string, finished: string) => ({ start: Date.parse(at), end: Date.parse(finished) })
 
   it('a finished check adds its span once, though the step is saved twice', () => {
-    const started = keepActivity(makeTask({ id: 'one' }), step())
+    const started = keepStep(makeTask({ id: 'one' }), step())
     expect(started.testPeriods).toBeUndefined()
 
-    const finished = keepActivity(started, finishActivity(step(), { result: { stdout: '1 failed', exitCode: 1 } }, END))
-    const again = keepActivity(finished, finishActivity(step(), { result: { stdout: '1 failed', exitCode: 1 } }, END))
+    const finished = keepStep(started, finishStep(step(), { result: { stdout: '1 failed', exitCode: 1 } }, END))
+    const again = keepStep(finished, finishStep(step(), { result: { stdout: '1 failed', exitCode: 1 } }, END))
 
     expect(finished.testPeriods).toEqual([span(AT, END)])
     expect(again.testPeriods).toEqual([span(AT, END)])
   })
 
   it('two checks running at once count their time once', () => {
-    const other = { ...toolActivity('Bash', { command: 'npx vitest' }, 'run-2', '2026-11-04T12:00:30Z')! }
-    let task = keepActivity(makeTask({ id: 'one' }), finishActivity(step(), { result: 'passed' }, END))
-    task = keepActivity(task, finishActivity(other, { result: 'passed' }, '2026-11-04T12:01:30Z'))
+    const other = { ...toolStep('Bash', { command: 'npx vitest' }, 'run-2', '2026-11-04T12:00:30Z')! }
+    let task = keepStep(makeTask({ id: 'one' }), finishStep(step(), { result: 'passed' }, END))
+    task = keepStep(task, finishStep(other, { result: 'passed' }, '2026-11-04T12:01:30Z'))
 
     expect(task.testPeriods).toEqual([span(AT, '2026-11-04T12:01:30Z')])
   })
 
   it('a command or an edit adds no testing time', () => {
-    const ls = toolActivity('Bash', { command: 'ls tests' }, 'ls', AT)!
-    const edit = toolActivity('Edit', { file_path: 'a.ts' }, 'edit', AT)!
-    let task = keepActivity(makeTask({ id: 'one' }), finishActivity(ls, { result: 'a.test.ts' }, END))
-    task = keepActivity(task, finishActivity(edit, { result: 'ok' }, END))
+    const ls = toolStep('Bash', { command: 'ls tests' }, 'ls', AT)!
+    const edit = toolStep('Edit', { file_path: 'a.ts' }, 'edit', AT)!
+    let task = keepStep(makeTask({ id: 'one' }), finishStep(ls, { result: 'a.test.ts' }, END))
+    task = keepStep(task, finishStep(edit, { result: 'ok' }, END))
 
     expect(ls.kind).toBe('command')
     expect(task.testPeriods).toBeUndefined()
   })
 
-  it('the testing time outlives the steps the activity list lets go', () => {
-    let task = keepActivity(makeTask({ id: 'one' }), finishActivity(step(), { result: 'passed' }, END))
-    for (let index = 0; index <= ACTIVITY_LIMIT; index++) task = keepActivity(task, { ...toolActivity('Bash', { command: 'ls' }, `ls-${index}`, END)! })
+  it('the testing time outlives the step it came from', () => {
+    let task = keepStep(makeTask({ id: 'one' }), finishStep(step(), { result: 'passed' }, END))
+    task = keepStep(task, toolStep('Bash', { command: 'ls' }, 'ls', END)!)
 
-    expect(task.activity!.some(entry => entry.id === 'run-1')).toBe(false)
+    expect(task.step?.id).toBe('ls')
     expect(task.testPeriods).toEqual([span(AT, END)])
   })
 })
@@ -153,7 +169,7 @@ describe('a background shell ending by notification', () => {
   const PASSED = 'Background command "Run the tests" completed (exit code 0)'
 
   it('a completed run with exit code 0 is a pass', () => {
-    expect(notifiedEnds(note('bg-1', 'completed', PASSED))).toEqual([{ id: 'bg-1', isOk: true, summary: PASSED }])
+    expect(notifiedEnds(note('bg-1', 'completed', PASSED))).toEqual([{ id: 'bg-1', isOk: true }])
   })
 
   it.each([
@@ -162,7 +178,7 @@ describe('a background shell ending by notification', () => {
     ['completed', 'Background command "Run the tests" completed (exit code 2)'],
     ['completed', 'Background command "Run the tests" completed (exit code 10)'],
   ])('a %s run reading "%s" is a failure', (status, summary) => {
-    expect(notifiedEnds(note('bg-1', status, summary))).toEqual([{ id: 'bg-1', isOk: false, summary }])
+    expect(notifiedEnds(note('bg-1', status, summary))).toEqual([{ id: 'bg-1', isOk: false }])
   })
 
   it('one delivery with two blocks gives both ends, in order', () => {
@@ -182,31 +198,32 @@ describe('a background shell ending by notification', () => {
   })
 
   const launched = (id: string, command = 'npm test') =>
-    finishActivity(toolActivity('Bash', { command }, `run-${id}`, AT)!, { result: { stdout: 'Starting…', backgroundTaskId: id } }, AT)
-  const ended = (id: string, isOk = true) => [{ id, isOk, summary: isOk ? PASSED : 'failed with exit code 1' }]
+    finishStep(toolStep('Bash', { command }, `run-${id}`, AT)!, { result: { stdout: 'Starting…', backgroundTaskId: id } }, AT)
+  const ended = (id: string, isOk = true) => [{ id, isOk }]
 
-  it('ends only the running step with that id, with the summary as its output', () => {
-    const task = keepActivity(keepActivity(makeTask({ id: 'one' }), launched('bg-1')), launched('bg-2'))
-
-    const step = (t: typeof task, id: string) => t.activity!.find(entry => entry.backgroundId === id)
+  it('ends only the waiting step with that id; the line stays on the step started last', () => {
+    const task = keepStep(keepStep(makeTask({ id: 'one' }), launched('bg-1')), launched('bg-2'))
+    expect(task.waiting?.map(s => s.backgroundId)).toEqual(['bg-1', 'bg-2'])
 
     const after = finishNotified(task, ended('bg-1'), END)
 
-    expect(after.activity).toHaveLength(2)
-    expect(step(after, 'bg-1')).toMatchObject({ status: 'succeeded', finished: END, output: PASSED })
-    expect(step(after, 'bg-2')).toMatchObject({ status: 'running', finished: null })
-    expect(step(finishNotified(task, ended('bg-2', false), END), 'bg-2')).toMatchObject({ status: 'failed', finished: END })
+    expect(after.waiting?.map(s => s.backgroundId)).toEqual(['bg-2'])
+    expect(after.step).toMatchObject({ id: 'run-bg-2', status: 'running' })
+    const last = finishNotified(after, ended('bg-2', false), END)
+    expect(last.step).toMatchObject({ id: 'run-bg-2', status: 'failed', finished: END })
+    expect(last.waiting).toBeUndefined()
   })
 
   it('a step GetTask already ended stays as it is, and the same task comes back', () => {
-    const done = keepActivity(makeTask({ id: 'one' }), finishActivity(launched('bg-1'), { result: '12 passed' }, END))
+    const done = keepStep(keepStep(makeTask({ id: 'one' }), launched('bg-1')), finishStep(launched('bg-1'), { result: '12 passed' }, END))
 
+    expect(done.waiting).toBeUndefined()
     expect(finishNotified(done, ended('bg-1', false), '2026-11-04T12:05:00Z')).toBe(done)
-    expect(done.activity![0]).toMatchObject({ status: 'succeeded', output: '12 passed', finished: END })
+    expect(done.step).toMatchObject({ status: 'succeeded', finished: END })
   })
 
   it('with nothing to end, the same task comes back', () => {
-    const task = keepActivity(makeTask({ id: 'one' }), launched('bg-1'))
+    const task = keepStep(makeTask({ id: 'one' }), launched('bg-1'))
     const empty = makeTask({ id: 'two' })
 
     expect(finishNotified(task, ended('bg-9'), END)).toBe(task)
@@ -214,12 +231,20 @@ describe('a background shell ending by notification', () => {
     expect(finishNotified(empty, ended('bg-1'), END)).toBe(empty)
   })
 
+  it('waits on at most the limit of background shells, the newest', () => {
+    let task = makeTask({ id: 'one' })
+    for (let i = 0; i <= WAITING_LIMIT; i++) task = keepStep(task, launched(`bg-${i}`))
+
+    expect(task.waiting).toHaveLength(WAITING_LIMIT)
+    expect(task.waiting![0]!.backgroundId).toBe('bg-1')
+  })
+
   it("a check's span joins the testing time; a command's adds none", () => {
-    const check = finishNotified(keepActivity(makeTask({ id: 'one' }), launched('bg-1')), ended('bg-1', false), END)
-    const server = finishNotified(keepActivity(makeTask({ id: 'two' }), launched('bg-2', 'npm run dev')), ended('bg-2'), END)
+    const check = finishNotified(keepStep(makeTask({ id: 'one' }), launched('bg-1')), ended('bg-1', false), END)
+    const server = finishNotified(keepStep(makeTask({ id: 'two' }), launched('bg-2', 'npm run dev')), ended('bg-2'), END)
 
     expect(check.testPeriods).toEqual([{ start: Date.parse(AT), end: Date.parse(END) }])
-    expect(server.activity![0]).toMatchObject({ kind: 'command', status: 'succeeded' })
+    expect(server.step).toMatchObject({ kind: 'command', status: 'succeeded' })
     expect(server.testPeriods).toBeUndefined()
   })
 })

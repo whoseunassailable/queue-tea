@@ -128,9 +128,22 @@ export const memoryHost = (
   return { files, dirs, runs, writes, git, host }
 }
 
+// What Claude Code's $.fs.read and $.fs.write take at once, in bytes. A read
+// past it is refused unless it asks for a range; a write past it is refused.
+export const ENGINE_FILE_CAP = 4_194_304
+
+const toBase64 = (bytes: Uint8Array): string => {
+  let text = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+
+  return btoa(text)
+}
+
 // Answers the plugin's $.fs and $.process.run from a memory host, for tests
-// that raise events.
-export const answerHost = (on: On, mem: ReturnType<typeof memoryHost>) => {
+// that raise events, the way Claude Code answers them, its file cap included.
+// `refused` lists files the engine won't open, as when the disk refuses them.
+export const answerHost = (on: On, mem: ReturnType<typeof memoryHost>, options: { refused?: string[] } = {}) => {
+  const refuse = (event: string, path: string, why: string) => new Error(`queue-tea: $.fs.${event}: ${path} refused: ${why}`)
   // A folder exists while it holds a file.
   on('fs.exists', async (_, e) => ({
     value: (await mem.host.exists(e.path)) || [...mem.files.keys()].some(path => path.startsWith(`${e.path}/`)),
@@ -138,14 +151,36 @@ export const answerHost = (on: On, mem: ReturnType<typeof memoryHost>) => {
   on('fs.list', async (_, e) => ({
     value: (await mem.host.list(e.path)).map(name => ({ name, kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false })),
   }))
-  on('fs.read', async (_, e) => ({ value: await mem.host.read(e.path) }))
+  on('fs.read', async (_, e) => {
+    if (options.refused?.includes(e.path)) throw refuse('read', e.path, 'permission denied')
+    const read = e as typeof e & { as?: 'text' | 'bytes'; offset?: number; length?: number }
+    const bytes = new TextEncoder().encode(await mem.host.read(e.path))
+    if (read.offset === undefined && read.length === undefined) {
+      if (bytes.length > ENGINE_FILE_CAP) throw refuse('read', e.path, `the file is over the ${ENGINE_FILE_CAP}-byte limit`)
+
+      return { value: read.as === 'bytes' ? { base64: toBase64(bytes) } : new TextDecoder().decode(bytes) } as never
+    }
+    const offset = read.offset ?? 0
+    if (read.length === undefined && bytes.length - offset > ENGINE_FILE_CAP) {
+      throw refuse('read', e.path, `what follows offset ${offset} is over the ${ENGINE_FILE_CAP}-byte limit; pass length`)
+    }
+    const part = bytes.subarray(offset, offset + Math.min(read.length ?? Infinity, ENGINE_FILE_CAP))
+
+    return { value: read.as === 'bytes' ? { base64: toBase64(part) } : new TextDecoder().decode(part) } as never
+  })
   on('session.id', () => ({ value: 's-test' }))
-  on('fs.write', async (_, e) => ({ value: await mem.host.write(e.path, e.text) }))
+  on('fs.write', async (_, e) => {
+    const bytes = new TextEncoder().encode(e.text).length
+    if (bytes > ENGINE_FILE_CAP) throw refuse('write', e.path, `${bytes} bytes is over the ${ENGINE_FILE_CAP}-byte limit`)
+
+    return { value: await mem.host.write(e.path, e.text) }
+  })
   on('fs.stat', async (_, e) => {
     const mtimeMs = await mem.host.modifiedAt(e.path)
     if (mtimeMs === null) throw new Error(`ENOENT: ${e.path}`)
+    const text = mem.files.get(e.path)
 
-    return { value: { kind: 'file' as const, size: 0, mtimeMs, isLink: false } as never }
+    return { value: { kind: 'file' as const, size: text === undefined ? 0 : new TextEncoder().encode(text).length, mtimeMs, isLink: false } as never }
   })
   on('process.run', async (_, e) => ({
     value: { ...(await mem.host.run([...e.argv])), isStdoutTruncated: false, isStderrTruncated: false },

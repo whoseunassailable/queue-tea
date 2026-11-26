@@ -44,12 +44,11 @@ describe('Codex event evidence', () => {
   it('records an explicit failing command output and never treats prose as a passed test', () => {
     const text = [row('response_item', { type: 'function_call', name: 'exec_command', call_id: 'a', arguments: JSON.stringify({ cmd: 'npm test' }) }), row('response_item', { type: 'function_call_output', call_id: 'a', output: 'Process exited with code 1\nTests failed' }), row('response_item', { type: 'message', role: 'assistant', content: 'All tests pass' })].join('\n')
     const observed = codexEvents(text, now - 1000, now)
-    expect(observed.steps).toHaveLength(1)
-    expect(observed.steps[0]).toMatchObject({ kind: 'test', status: 'failed', subject: 'npm test' })
+    expect(observed.step).toMatchObject({ kind: 'test', status: 'failed', subject: 'npm test' })
   })
   it('does not call a background launch successful or accept future timestamps', () => {
     const text = [row('response_item', { type: 'function_call', name: 'exec_command', call_id: 'a', arguments: JSON.stringify({ cmd: 'npm test' }) }), row('response_item', { type: 'function_call_output', call_id: 'a', output: 'Process running with session ID 42' }), row('event_msg', { type: 'task_started' }, now + 10000)].join('\n')
-    expect(codexEvents(text + '\n{"unfinished', now - 1000, now).steps[0]!.status).toBe('running')
+    expect(codexEvents(text + '\n{"unfinished', now - 1000, now).step!.status).toBe('running')
   })
 })
 

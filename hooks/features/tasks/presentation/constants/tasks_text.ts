@@ -1,4 +1,4 @@
-import type { GitMode, HelperId, TestProfile, TestProfileId } from '../../../../../types'
+import type { GitMode, HelperId, TaskStep, TestProfile, TestProfileId } from '../../../../../types'
 import { TEST_PROFILE_LIMITS } from '../../../../shared/records/domain/services/test_profile'
 
 // Claude's brief names what the realm's Git mode lets it do.
@@ -84,3 +84,29 @@ export const CHECKPOINT_FAILED = "Couldn't save a checkpoint, so Start will begi
 export const BACK_IN_BACKLOG = (title: string): string => `Back in the backlog: ${title}`
 export const BLOCKED = (title: string): string => `Blocked: ${title}`
 export const WRONG_BRANCH = (on: string | null, expected: string | null): string => `You're on ${on ?? 'a detached HEAD'}; this task is on ${expected}.`
+
+// The step the task in progress is on, as one line: what is running now, or,
+// between steps, the last one and how it ended.
+const STEP_DOING: Record<TaskStep['kind'], string> = {
+  read: 'reading',
+  edit: 'editing',
+  write: 'writing',
+  command: 'running',
+  test: 'running checks',
+  branchCreated: 'creating branch',
+  branchSwitched: 'switching to branch',
+}
+const STEP_DONE: Record<TaskStep['kind'], string> = {
+  read: 'read',
+  edit: 'edited',
+  write: 'wrote',
+  command: 'ran',
+  test: 'ran checks',
+  branchCreated: 'created branch',
+  branchSwitched: 'switched to branch',
+}
+
+export const STEP_LINE = (step: TaskStep): string =>
+  step.status === 'running'
+    ? `Now: ${STEP_DOING[step.kind]} · ${step.subject}`
+    : `Last step: ${STEP_DONE[step.kind]} · ${step.subject}${step.status === 'succeeded' ? '' : ` · ${step.status}`}`

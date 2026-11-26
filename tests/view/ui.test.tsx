@@ -51,6 +51,8 @@ const startSession = async (
     tokens?: number
     // Set, a prompt the plugin submits does not enter, for this reason.
     drop?: string
+    // Files the engine refuses to open.
+    refused?: string[]
   } = {},
 ) => {
   const mem = memoryHost({
@@ -90,7 +92,7 @@ const startSession = async (
 
     return { text: '' }
   })
-  answerHost(on, mem)
+  answerHost(on, mem, { refused: options.refused })
   on('session.cwd', () => ({ value: '/p' }))
   on('tool.register', (_, e) => {
     seen.tools.push(e.name)
@@ -218,6 +220,63 @@ test('a newer Queue-tea’s record says to update, with no copy to go back to', 
 
   expect(await ui.find({ type: 'Text', text: /newer Queue-tea \(record version 3\); update Queue-tea to read it\.$/ })).toBeDefined()
   expect(await ui.find({ key: 'restore' })).toBeUndefined()
+  expect(await ui.find({ key: 'retry' })).toBeDefined()
+  await ui.unmount()
+})
+
+// A current task with the old step log: many steps, each with long output.
+const oldLog = (steps: number, outputChars: number) => Array.from({ length: steps }, (_, i) => ({
+  id: `old-${i}`, at: `2026-10-21T08:${String(i % 60).padStart(2, '0')}:00+02:00`, finished: `2026-10-21T08:${String(i % 60).padStart(2, '0')}:30+02:00`,
+  kind: i % 2 === 0 ? 'test' : 'command', status: 'succeeded', subject: `npm test -- step ${i}`, output: 'é'.repeat(outputChars), truncated: true,
+}))
+
+test('a record over the 4 MiB Claude Code reads at once still loads, and its next save drops the old step log', async ($, on) => {
+  const task = makeTask({ title: 'Long task', state: 'current', branch: 'task/long' })
+  const file = record({ tasks: [{ ...task, activity: oldLog(300, 8_000) } as never] })
+  expect(new TextEncoder().encode(file).length).toBeGreaterThan(4_194_304)
+  on('tool.call', () => ({ result: { stdout: 'On branch task/long', exitCode: 0 } }) as never)
+  const { mem } = await startSession($, on, { file })
+  const ui = await mountView($, 'terminal', 'current')
+
+  expect(await ui.find({ type: 'Text', text: "Couldn't read your task record" })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Long task/ })).toBeDefined()
+  await ui.unmount()
+
+  await $.tool.call({ tool: 'Bash', command: 'git status' } as never)
+  const saved = mem.files.get(FILE)!
+  expect(new TextEncoder().encode(saved).length).toBeLessThan(100_000)
+  expect(saved).not.toContain('"activity"')
+  expect(saved).not.toContain('éééé')
+  expect(recordOf(mem).tasks[0]?.step).toMatchObject({ kind: 'command', subject: 'git status', status: 'succeeded' })
+})
+
+test('the task in progress shows one line with the step it is on now', async ($, on) => {
+  let seen: string | undefined
+  on('tool.call', async () => {
+    const ui = await mountView($, 'terminal', 'current')
+    seen = (await ui.find({ type: 'Text', text: /^ {2}Now: / }))?.text
+    await ui.unmount()
+
+    return { result: { stdout: '3 pass', exitCode: 0 } } as never
+  })
+  const { mem } = await startSession($, on, { file: record({ tasks: [makeTask({ title: 'Now', state: 'current' })] }) })
+
+  await $.tool.call({ tool: 'Bash', command: 'npm test\necho done' } as never)
+  expect(seen).toBe('  Now: running checks · npm test')
+  const ui = await mountView($, 'terminal', 'current')
+  expect((await ui.find({ type: 'Text', text: /^ {2}Last step: / }))?.text).toBe('  Last step: ran checks · npm test')
+  expect(await ui.find({ type: 'Text', text: /3 pass/ })).toBeUndefined()
+  await ui.unmount()
+  expect(mem.files.get(FILE)).not.toContain('3 pass')
+})
+
+test('a record the engine will not open says why and what to do, not only that it could not be read', async ($, on) => {
+  await startSession($, on, { file: record(), refused: [FILE] })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+
+  expect(await ui.find({ type: 'Text', text: "Couldn't read your task record" })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Claude Code could not open the file.' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Check that .+ is there and that you can read it, then try again\. The debug log has the details\.$/ })).toBeDefined()
   expect(await ui.find({ key: 'retry' })).toBeDefined()
   await ui.unmount()
 })
@@ -1608,7 +1667,8 @@ const launchCheck = async ($: Engine, on: On) => {
   on('tool.call', () => ({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } }) as never)
   const started = await startSession($, on, { file: record({ tasks: [makeTask({ title: 'Now', state: 'current' })] }) })
   await $.tool.call({ tool: 'Bash', command: 'npm test', run_in_background: true } as never)
-  expect(recordOf(started.mem).tasks[0]?.activity?.[0]).toMatchObject({ kind: 'test', status: 'running', backgroundId: 'bg-1' })
+  expect(recordOf(started.mem).tasks[0]?.step).toMatchObject({ kind: 'test', status: 'running', backgroundId: 'bg-1' })
+  expect(recordOf(started.mem).tasks[0]?.waiting).toHaveLength(1)
 
   return started
 }
@@ -1621,7 +1681,8 @@ test('a background check ends when its notification arrives, and the minutes wai
   await runTurn($, clock, NOTIFIED)
 
   const task = recordOf(mem).tasks[0]!
-  expect(task.activity?.[0]).toMatchObject({ status: 'succeeded', finished: '2026-10-21T09:22:00+02:00' })
+  expect(task.step).toMatchObject({ status: 'succeeded', finished: '2026-10-21T09:22:00+02:00' })
+  expect(task.waiting).toBeUndefined()
   expect(task.minutesByDay).toEqual({ [DAY_ONE]: 10 })
   expect(task.minutesInChecks).toBe(10)
 })
@@ -1634,7 +1695,7 @@ test("a typed prompt with a notification's text ends no background check", async
   await clock.settle()
 
   const task = recordOf(mem).tasks[0]!
-  expect(task.activity?.[0]).toMatchObject({ status: 'running', finished: null })
+  expect(task.step).toMatchObject({ status: 'running', finished: null })
   expect(task.testPeriods).toBeUndefined()
 })
 

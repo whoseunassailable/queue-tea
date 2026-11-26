@@ -1,8 +1,11 @@
 import type { LoadError, OtherProject, ProjectRecord, Task, WorkPeriod } from '../../../../../types'
+import { FileTooLarge } from '../../../../core/host/host'
 import type { Host } from '../../../../core/host/host'
+import { fromOldLog, stepOf, waitingOf } from '../../../activity/domain/services/activity'
 import { mergePeriods } from '../../../time/domain/services/realm_time'
 import { readHelpers } from '../../domain/services/helpers'
 import { readTestProfile } from '../../domain/services/test_profile'
+import { RECORD_TEXT } from '../../domain/constants/record_text'
 
 // FNV-1a, 32 bits: a short, stable code for a path.
 const fnv1a = (text: string): string => {
@@ -54,9 +57,15 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
 
 // A record written before a field existed gets the field's empty value. A
 // task without an id gets one from its creation and title, the same at every
-// read until it is written back.
-const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, ...t }: Partial<Task>): Task => {
+// read until it is written back. An older record's step log, with the output
+// of every command, is dropped: only the step it was on, and the background
+// shells it still waited on, are kept.
+type StoredTask = Partial<Task> & { activity?: unknown }
+const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, activity, step, waiting, ...t }: StoredTask): Task => {
   const profile = readTestProfile(testProfile)
+  const old = fromOldLog(activity)
+  const now = stepOf(step) ?? old.step
+  const waits = waiting === undefined ? old.waiting ?? [] : waitingOf(waiting)
 
   return {
     id: `t-${fnv1a(`${t.created ?? ''}|${t.title ?? ''}`)}`,
@@ -78,6 +87,9 @@ const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, ...t }: 
     ...(typeof minutesInChecks === 'number' && Number.isFinite(minutesInChecks) && minutesInChecks >= 0 ? { minutesInChecks } : {}),
     // A due date is hand-editable too: one that isn't a real day is dropped.
     ...(typeof due === 'string' && isDay(due) ? { due } : {}),
+    // So are the step and the shells it waits on: a malformed one is no step.
+    ...(now === null || now === undefined ? {} : { step: now }),
+    ...(waits.length === 0 ? {} : { waiting: waits }),
   } as Task
 }
 
@@ -141,10 +153,18 @@ export const whyUnreadable = (text: string): { reason: string; isNewer: boolean 
 }
 
 // What the menu says about a record that can't be read: why, and whether
-// the last good copy can take its place. Null when it reads after all.
+// the last good copy can take its place. Null when it reads after all. A file
+// Claude Code won't open says so, with what to check, since Try again alone
+// can't fix that; the error itself goes to the debug log from the caller.
 export const readProblem = async (host: Host, file: string): Promise<LoadError | null> => {
-  if (!(await host.exists(file))) return null
-  const text = await host.read(file)
+  let text: string
+  try {
+    if (!(await host.exists(file))) return null
+    text = await host.read(file)
+  } catch {
+    // The reading that failed first has logged why; this only says what to do.
+    return { reason: RECORD_TEXT.cannotOpen, canRestore: false, fix: RECORD_TEXT.cannotOpenFix(file) }
+  }
   if (parseRecord(text) !== 'unreadable') return null
   const why = whyUnreadable(text)
   const bak = backupPath(file)
@@ -217,6 +237,17 @@ const withLock = async <T>(host: Host, file: string, work: () => Promise<T>): Pr
   }
 }
 
+// The text that read, as the last good copy. One too large to write at once,
+// an older record full of step output, is kept as it read without that output.
+const keepBackup = async (host: Host, file: string, text: string, read: ProjectRecord): Promise<void> => {
+  try {
+    await host.write(backupPath(file), text)
+  } catch (err) {
+    if (!(err instanceof FileTooLarge)) throw err
+    await host.write(backupPath(file), JSON.stringify(read, null, 2))
+  }
+}
+
 // Reads the file again right before writing, so another session's changes
 // survive, and keeps what it read as the last good copy before replacing it.
 // An unreadable file is never overwritten.
@@ -233,7 +264,7 @@ export const updateRecord = (
     if (fresh === 'unreadable') return 'unreadable'
 
     const changed = change(fresh)
-    if (text !== null) await host.write(backupPath(file), text)
+    if (text !== null) await keepBackup(host, file, text, fresh)
     await replaceWith(host, file, JSON.stringify(changed, null, 2))
 
     return changed

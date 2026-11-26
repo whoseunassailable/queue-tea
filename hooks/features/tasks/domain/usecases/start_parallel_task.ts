@@ -4,7 +4,7 @@ import { blockedText, isBlocked } from '../../../../shared/backlog/domain/servic
 import type { WorktreesRepository } from '../../../../shared/git/domain/repositories/worktrees_repository'
 import { slugBranch } from '../../../../shared/git/domain/services/branch_rules'
 import { isoLocal } from '../../../../shared/time/domain/services/time'
-import { keepActivity } from '../../../../shared/activity/domain/services/activity'
+import { keepStep } from '../../../../shared/activity/domain/services/activity'
 import type { Deps } from './deps'
 import type { StartResult } from './start_task'
 import { startTaskUseCase } from './start_task'
@@ -64,8 +64,8 @@ export const startParallelTaskUseCase = async (d: ParallelDeps, ctx: Ctx, taskId
     const at = isoLocal(await d.env.now(), ctx.offsetMinutes)
     const kinds = existing ? [] : [...(!resumed ? ['branchCreated' as const] : []), 'branchSwitched' as const]
     if (kinds.length) {
-      const entries = kinds.map(kind => ({ id: d.env.newId(), at, finished: at, kind, status: 'succeeded' as const, subject: startedTask.branch!, output: '', truncated: false }))
-      const recorded = await d.records.update(r => ({ ...r, tasks: r.tasks.map(t => t.id === taskId ? entries.reduce(keepActivity, t) : t) }))
+      const steps = kinds.map(kind => ({ id: d.env.newId(), at, finished: at, kind, status: 'succeeded' as const, subject: startedTask.branch! }))
+      const recorded = await d.records.update(r => ({ ...r, tasks: r.tasks.map(t => t.id === taskId ? steps.reduce(keepStep, t) : t) }))
       if (recorded !== 'unreadable') withActivity = recorded
     }
   } catch (err) {

@@ -34,17 +34,17 @@ const setup = (over: Partial<Task> = {}) => {
 }
 
 describe('branch activity', () => {
-  it('records both creation and switching after a new branch succeeds', async () => {
+  it('shows switching to a new branch as the step once it is created', async () => {
     const { d, record } = setup()
     expect((await startTaskUseCase(d, ctx, 'one')).kind).toBe('started')
-    expect(record().tasks[0]!.activity?.map(step => step.kind)).toEqual(['branchCreated', 'branchSwitched'])
-    expect(record().tasks[0]!.activity?.every(step => step.status === 'succeeded' && step.subject === 'task/task-activity')).toBe(true)
+    expect(record().tasks[0]!.step).toMatchObject({ kind: 'branchSwitched', status: 'succeeded', subject: 'task/task-activity' })
+    expect(record().tasks[0]!.step).not.toHaveProperty('output')
   })
 
   it('records only switching when resuming an existing branch', async () => {
     const { d, record } = setup({ branch: 'task/resumed' })
     await startTaskUseCase(d, ctx, 'one')
-    expect(record().tasks[0]!.activity?.map(step => step.kind)).toEqual(['branchSwitched'])
+    expect(record().tasks[0]!.step).toMatchObject({ kind: 'branchSwitched', subject: 'task/resumed' })
     expect(d.git.make).not.toHaveBeenCalled()
   })
 
@@ -53,7 +53,7 @@ describe('branch activity', () => {
     vi.mocked(d.git.make).mockRejectedValue(new Error('git failed'))
     expect((await startTaskUseCase(d, ctx, 'one')).kind).toBe('branch_failed')
     expect(record().tasks[0]).toMatchObject({ state: 'queued', branch: null })
-    expect(record().tasks[0]!.activity).toBeUndefined()
+    expect(record().tasks[0]!.step).toBeUndefined()
   })
 
   it('does not repeat a successful branch operation if recording its activity fails', async () => {

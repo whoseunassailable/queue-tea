@@ -10,6 +10,7 @@ import { BRANCH_LIMITS, BRANCH_TEXT } from '../domain/constants'
 import { isBranch, proposalFor } from '../domain/git_rules'
 import { gitModeOf } from '../../../../../hooks/shared/records/domain/services/git_mode'
 import { ancestor, gitIn, graphOf, headOf, reviewOf } from '../data/branch_source'
+import { latestChecks, readChecks } from '../data/checks_source'
 import { conflictEntries, safeResolutionPath, workspaceOf, workspacePath } from '../data/merge_workspace'
 import { loadOperation, operationsOf, saveOperation, withBranchLock } from '../data/operation_store'
 import { argvOf } from '../data/user_git'
@@ -69,6 +70,8 @@ export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unkn
   review.proposal = gitModeOf(scope.record) === 'assisted' ? proposalFor(task.commitProposal, review.sourceHead, review.files) : null
   const ops = await operationsOf(d, scope.key)
   review.operation = ops.find(o => o.taskId === task.id && o.target === selected && o.stage !== 'abandoned') ?? null
+  // Checks come from the in-app check runner, on the prepared merge.
+  review.checks = review.operation ? latestChecks(await readChecks(d, review.operation)) : []
   return review
 }))
 export const readMergeWorkspace = (d: TasksDeps, key: unknown, id: unknown): Promise<Reply<MergeWorkspace>> => pendingRead(d, ['merge', key, id], () => reply(d.log, BRANCH_TEXT.read, async () => {

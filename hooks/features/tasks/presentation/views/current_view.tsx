@@ -9,6 +9,7 @@ import { cardNote } from '../../../../shared/checkpoints/domain/services/card_no
 import { formatMinutes } from '../../../../shared/time/domain/services/time'
 import { pressBlock } from '../state_management/queue_controller'
 import { pressBackToQueue, pressCheckAgain, pressContinue, pressDoneNotYet, pressDoneYes, pressStartNext, pressSwitch } from '../state_management/tasks_controller'
+import { STEP_LINE } from '../constants/tasks_text'
 import { familyButtons } from '../widgets/family_buttons'
 
 export async function drawCurrent(c: MenuContext): Promise<RenderElement> {
@@ -83,6 +84,9 @@ export async function drawCurrent(c: MenuContext): Promise<RenderElement> {
               cols,
             )}
           </Text>
+          {current.step !== undefined && (
+            <Text dimColor={current.step.status !== 'running'}>{cut(`  ${STEP_LINE(current.step)}`, cols)}</Text>
+          )}
           {currentFamily !== null && <Text dimColor>{cut(`  ◆ ${currentFamily}`, cols)}</Text>}
           {drift.map(line => (
             <Text color="warning">{cut(`! ${line}`, cols)}</Text>

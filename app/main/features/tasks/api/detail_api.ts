@@ -10,6 +10,7 @@ import { scopeOf } from './scope'
 import type { Scope, TasksDeps } from './scope'
 import { readActivity } from '../data/activity_source'
 import { observeTask } from '../../branches/data/observation'
+import { latestStep } from '../../../../../hooks/shared/activity/domain/services/activity'
 
 const SHORT_COMMIT = 7
 
@@ -91,7 +92,7 @@ export const readQuestFacts = (d: TasksDeps, key: unknown, taskId: unknown): Pro
 
     const activity = await readActivity(d.host, d.log, scope.ctx.projectPath, task)
     const observed = await observeTask(d, scope.ctx.projectPath, task)
-    activity.steps = [...new Map([...activity.steps, ...observed.steps].map(step => [step.id, step])).values()].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).slice(-200)
+    activity.step = latestStep(activity.step, observed.step)
 
     return {
       note: cardNote(task),

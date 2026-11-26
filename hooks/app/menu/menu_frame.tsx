@@ -19,6 +19,7 @@ import { pressMenu } from './menu_controller'
 import { pressRestore } from '../session/session_rhythm'
 import { pressDismissWarning } from '../../features/commit_guard/presentation/state_management/commit_guard_controller'
 import { loadRecord } from '../../shared/records/presentation/state_management/records_controller'
+import { RECORD_TEXT } from '../../shared/records/domain/constants/record_text'
 import { activeFeature } from '../../shared/backlog/domain/services/families'
 import { live } from '../../core/session/live'
 import { blockedTasks, rankBacklog } from '../../shared/backlog/domain/services/ranking'
@@ -56,16 +57,14 @@ export async function renderMenu($: EngineInterface, e: RenderInput<'Pane'>): Pr
 
     return (
       <Box flexDirection="column">
-        <Text>Couldn't read your task record</Text>
+        <Text>{RECORD_TEXT.failed}</Text>
         {problem !== null && <Text color="warning">{capital(problem.reason)}.</Text>}
-        <Text dimColor>
-          {`It is left as it is. ${canRestore ? 'Use the last good copy, try again,' : 'Try again,'} or look at the file in ~/.queue-tea/projects.`}
-        </Text>
+        <Text dimColor>{problem?.fix ?? RECORD_TEXT.leftAsItIs(canRestore)}</Text>
         <Box>
           {canRestore && (
-            <Button key="restore" label="Use the last good copy" hotkey={KEYS.restore} onPress={() => void pressRestore(portsOf($))} />
+            <Button key="restore" label={RECORD_TEXT.restore} hotkey={KEYS.restore} onPress={() => void pressRestore(portsOf($))} />
           )}
-          <Button key="retry" label="Try again" hotkey={KEYS.retry} onPress={() => void loadRecord(portsOf($))} />
+          <Button key="retry" label={RECORD_TEXT.retry} hotkey={KEYS.retry} onPress={() => void loadRecord(portsOf($))} />
         </Box>
       </Box>
     )

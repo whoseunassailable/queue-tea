@@ -4,6 +4,7 @@ import { StringDecoder } from 'node:string_decoder'
 import type { TasksDeps } from '../../tasks/api/scope'
 import { CodexEvents } from './codex_events'
 import type { CodexObservation } from './codex_events'
+import { latestStep } from '../../../../../hooks/shared/activity/domain/services/activity'
 
 const READ_CHUNK = 256_000
 const DISCOVER_MS = 1_000
@@ -28,7 +29,7 @@ export const readCodexSession = async (d: TasksDeps, folder: string, since: numb
       })))
       list = { at: now, files: files.filter((file): file is Session => file !== null) }
       catalog.set(root, list)
-    } catch (err) { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { state: 'unobserved', seenAt: null, steps: [] }; throw err }
+    } catch (err) { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { state: 'unobserved', seenAt: null, step: null }; throw err }
   }
   const observations: CodexObservation[] = []
   for (const { path: file, mtimeMs, size: listed } of list.files) {
@@ -70,8 +71,9 @@ export const readCodexSession = async (d: TasksDeps, folder: string, since: numb
     if (reader.cwd === folder) observations.push(reader.events.snapshot(now, since))
   }
   observations.sort((a, b) => (b.seenAt ?? 0) - (a.seenAt ?? 0))
-  const latest = observations[0] ?? { state: 'unobserved' as const, seenAt: null, steps: [] }
-  // Several sessions can contribute history. An executing older session still
-  // blocks merging even when a newer, idle session wrote the latest message.
-  return { ...latest, state: observations.some(o => o.state === 'working') ? 'working' : latest.state, steps: observations.flatMap(o => o.steps).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).slice(-200) }
+  const latest = observations[0] ?? { state: 'unobserved' as const, seenAt: null, step: null }
+  // Several sessions can each have a step; the one started last is the task's.
+  // An executing older session still blocks merging even when a newer, idle
+  // session wrote the latest message.
+  return { ...latest, state: observations.some(o => o.state === 'working') ? 'working' : latest.state, step: latestStep(...observations.map(o => o.step)) }
 }

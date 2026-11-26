@@ -5,7 +5,7 @@ import type { CalendarEventInput, CalendarView } from './calendar'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
-import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskActivity, TestProfile, TestProfileId } from '../../types'
+import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskStep, TestProfile, TestProfileId } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
 
@@ -258,8 +258,10 @@ export type ActiveFacts = {
   lines: ManaLines | null
   git: { branch: string | null; head: string | null; uncommitted: string[]; uncommittedCount: number } | null
 }
+// The step the quest is on now, or did last, and its commits. No command
+// output is kept.
 export type QuestActivity = {
-  steps: TaskActivity[]
+  step: TaskStep | null
   commits: { id: string; at: string; message: string; remotes: string[] | null }[]
   gitUnavailable: boolean
 }

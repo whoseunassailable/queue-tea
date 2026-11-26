@@ -227,7 +227,7 @@ Each view starts with the header, the lines under it, and **‹ Menu** (`m`).
 - **Header:** "Queue-tea · <project>" with the allowance on the right.
 - **Lines under it, while they apply:** a warning about a commit made during a turn (with **OK**), the message check running, work in progress ("Saving a handoff note…"), a notice.
 - **Brew now:** a field; what is typed goes as `/brew` does (see [Errands](#errands)): the note in a row only Claude reads, then the words as Rohan's. The menu closes so the answer shows.
-- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far; then, for a task under a feature, "◆ part of <feature> · 1/2 done ▰▰▰▱▱", or for a feature, how far its tasks are. Under it, in the warning colour, what has moved under the task since it started ("! The branch task/now is gone.", a start commit no longer on its branch, the base branch ahead). Then, while they apply:
+- **Current task** (In progress): a solid bar, then the current task's priority tag (coloured by priority), its title cut with "…" to fit, and a dim line: expected difficulty, branch, time so far; then the step the task is on ("Now: running · npm test"), or dim once it has ended ("Last step: ran checks · npm test · failed"); then, for a task under a feature, "◆ part of <feature> · 1/2 done ▰▰▰▱▱", or for a feature, how far its tasks are. Under it, in the warning colour, what has moved under the task since it started ("! The branch task/now is gone.", a start commit no longer on its branch, the base branch ahead). Then, while they apply:
   - the git check's hold, with **Check again**; a branch mismatch, with **Switch**;
   - "Is this done for now?" with **Yes** and **Not yet**, and "Claude checked: …" when Claude said;
   - the handoff card and **Continue** (below);
@@ -281,7 +281,7 @@ States:
 | --- | --- |
 | Loading | A turning character (the terminal has no circular spinner) and "Reading your queue…" |
 | Empty | "Nothing queued yet. Tell me what you're working on and it becomes the first task." |
-| Failed | What went wrong in plain words ("Couldn't read your task record"), and why: it isn't valid JSON, a newer Queue-tea wrote it, or it isn't a record. **Try again**, and **Use the last good copy** when there is one. The error goes to the debug log |
+| Failed | What went wrong in plain words ("Couldn't read your task record"), and why: it isn't valid JSON, a newer Queue-tea wrote it, it isn't a record, or Claude Code could not open the file, with what to check. **Try again**, and **Use the last good copy** when there is one. The error goes to the debug log |
 | Working | A turning character and what is happening: "Checking your message…", "Saving a handoff note…" |
 
 ### The band above the prompt
@@ -314,6 +314,8 @@ One file per project: `~/.queue-tea/projects/<folder>-<hash>.json`, where `<fold
 
 Each write first takes a lock, a folder beside the file (`<record>.lock`) that only one session can make, so two sessions in the same project don't undo each other. A lock still there after two seconds is from a session that stopped mid-write, and is taken over. The mod then reads the file again and changes only the task it is working on. A write never leaves a half-written file behind, and the record it replaces is kept as `<record>.bak`, the last good copy.
 
+Claude Code lets a mod read or write a file in one go only up to 4 MiB (4,194,304 bytes); that is the limit the Gait-feedback record hit on 2026-11-12. The mod reads a larger record in parts, so an old record that grew past it still loads. Its `.bak` is then the record as read, without the old step log, because the whole file can't be written back.
+
 ### What a task holds
 
 - id, title, priority, expected and actual difficulty
@@ -326,6 +328,7 @@ Each write first takes a lock, a folder beside the file (`<record>.lock`) that o
 - its test profile (`testProfile`), absent until Tea-DD or Rohan picks one ([Test profiles](#test-profiles))
 - effort (below)
 - when it went to Codex (`codexSince`), or null while Claude Code has it. A record from before Codex reads as Claude Code's
+- the step it is on now, or did last (`step`): its kind, what it acts on (cut to 200 characters), when it started and ended, and how it went; and the background checks it waits on (`waiting`, up to 10). No command or test output is kept, and no list of past steps. A record that still holds the old step log (`activity`) loses it on its next save, from the mod or the app
 
 An example with made-up values:
 
@@ -366,7 +369,7 @@ An example with made-up values:
 
 The time between two moments of activity (a message of Rohan's, a turn of Claude's starting or ending, a tool call) counts when the gap is 15 minutes or less, and not at all when it is longer. It goes to the current task, by day, so a week adds up across days. Quick questions, and anything while no task is current, count toward the project (`unassignedMinutesByDay`) and no task.
 
-A task's time splits into testing and building. Each check Claude runs on the task is saved as a test step with its start and finish, and that span joins the task's `testPeriods`, merged so two checks at once, or a step saved twice, count once. A command is a check when one of its steps (split at `&&`, `||`, `;`, `|` and new lines) starts with a test runner, type check or linter once `caffeinate`, `env`, `time`, `timeout`, `npx` and `NAME=value` in front are set aside. A `node` script named `lint` or `check`, alone or followed by `_` or `-` and more, and ending `.js`, `.mjs` or `.cjs`, counts as a linter. So `cd app && npm test`, `caffeinate -i npm run e2e`, `npx -y -p typescript@5.9 tsc -p .`, `claude plugin test .` and `node tools/check_layers.mjs` are checks; `npm run build`, `node tools/push.mjs`, `node tools/checkout.mjs`, `ls tests` and `grep e2e` are not. The full list is `isTestCommand` in `hooks/shared/checkpoints/domain/services/checkpoints.ts`.
+A task's time splits into testing and building. Each check Claude runs on the task is timed from its start to its finish, and that span joins the task's `testPeriods`, merged so two checks at once, or a step saved twice, count once. A command is a check when one of its steps (split at `&&`, `||`, `;`, `|` and new lines) starts with a test runner, type check or linter once `caffeinate`, `env`, `time`, `timeout`, `npx` and `NAME=value` in front are set aside. A `node` script named `lint` or `check`, alone or followed by `_` or `-` and more, and ending `.js`, `.mjs` or `.cjs`, counts as a linter. So `cd app && npm test`, `caffeinate -i npm run e2e`, `npx -y -p typescript@5.9 tsc -p .`, `claude plugin test .` and `node tools/check_layers.mjs` are checks; `npm run build`, `node tools/push.mjs`, `node tools/checkout.mjs`, `ls tests` and `grep e2e` are not. The full list is `isTestCommand` in `hooks/shared/checkpoints/domain/services/checkpoints.ts`.
 
 Building time is the task's minutes less the ones that fell inside a check (`minutesInChecks`). A check's span counts in full, while the clock skips gaps over 15 minutes, so testing and building need not add up to the task's time: a 20-minute end-to-end run with nothing else happening is 20 minutes of testing and adds nothing to the clock. A check run in the background ends when Claude Code delivers its task notification, or when Claude reads its result with `GetTask`, whichever comes first, and its span then joins testing time. The notification's status decides the result: `completed` passes unless its summary names a non-zero exit code, and `failed` or `killed` fails. Only Claude Code can mark a prompt as a task notification, so typed text that looks like one ends nothing. While Claude waits idle for the check, the waited minutes fall inside it and come out of building time; a wait over 15 minutes was never on the clock. Work Claude did in an earlier turn while the check ran stays building time, since Claude was building then. Codex's checks aren't timed, so a task's time on Codex counts as building. The app's quest pane shows both while Claude Code has the task ([section 4.4 of the design](workspace-app-design.md#44-a-tasks-detail-current-queued-and-done)); the mod's menu doesn't.
 

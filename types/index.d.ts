@@ -16,16 +16,16 @@ export type Effort = {
 // One shell command Claude ran during a task, as Queue-tea saw it.
 export type CommandRun = { command: string; isOk: boolean; isTest: boolean; at: string; summary: string }
 
-// Observed steps, saved as they start and finish. Older records have none.
-export type TaskActivity = {
+// The step a task is on: what Claude or Codex is doing now, or did last, as
+// one line. It keeps no command output. A background shell keeps its id
+// until its end is reported.
+export type TaskStep = {
   id: string
   at: string
   finished: string | null
   kind: 'branchCreated' | 'branchSwitched' | 'read' | 'edit' | 'write' | 'command' | 'test'
   status: 'running' | 'succeeded' | 'failed' | 'blocked'
   subject: string
-  output: string
-  truncated: boolean
   backgroundId?: string
 }
 
@@ -92,7 +92,12 @@ export type Task = {
   criteria: string[]
   // Set when Claude says the task looks done, cleared by Rohan's answer.
   review: { at: string; checked: string | null } | null
-  activity?: TaskActivity[]
+  // The step it is on now; absent before its first. Older records kept every
+  // step, with its output, in `activity`, which is dropped when they are read.
+  step?: TaskStep
+  // Background shells still running, so a background check's time counts as
+  // testing when its end arrives. At most ten; absent for none.
+  waiting?: TaskStep[]
   // Which helpers Claude works with on this task, which have run, and whether Claude has had its one reminder at done.
   helpers: TaskHelpers
   // When the task went to the Codex CLI; null while Claude Code has it. Codex
@@ -173,7 +178,8 @@ export type Band =
 export type OtherProject = { name: string; waiting: number; next: string | null }
 
 // Why the record can't be read, and whether its last good copy can take its place.
-export type LoadError = { reason: string; canRestore: boolean }
+// Why the record can't be read, and, when the usual Try again won't do, what to do.
+export type LoadError = { reason: string; canRestore: boolean; fix?: string }
 
 export type Allowance = { percent: number; resetsAt: string | null }
 

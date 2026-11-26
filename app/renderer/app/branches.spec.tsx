@@ -98,13 +98,32 @@ it('shows stale approval failures and retains the prepared merge for review', as
   expect(engine.pushMerge).not.toHaveBeenCalled()
 })
 
-it('renders observed check output without treating missing checks as passing', async () => {
-  await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ steps: [{ id: 'test', at: '2026-11-04T12:00:00Z', finished: '2026-11-04T12:00:01Z', kind: 'test', status: 'failed', subject: 'npm test', output: '1 test failed', truncated: false }] }) }) })
+it("lists the in-app check runner's latest result for each check, without its output", async () => {
+  const run = { id: 'run', checkId: 'test', name: 'test', command: 'npm run test — vitest run', tree: mergeOperation().tree!, at: 1, finished: 2, owner: 1, status: 'failed' as const, output: '1 test failed', exitCode: 1, truncated: false }
+  await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ checks: [run] }) }) })
   await click(await screen.findByRole('tab', { name: 'Checks' }))
-  expect(screen.getByText('npm test')).toBeTruthy()
-  expect(screen.getByText('1 test failed')).toBeTruthy()
-  expect(screen.getByText('Failed')).toBeTruthy()
-  expect(screen.getByText(/not certified against the current commit/)).toBeTruthy()
+  const panel = screen.getByRole('tabpanel', { name: 'Checks' })
+  expect(within(panel).getByText('npm run test — vitest run')).toBeTruthy()
+  expect(within(panel).getByText('Failed')).toBeTruthy()
+  expect(within(panel).getByText(t.branches.exitCode(1))).toBeTruthy()
+  expect(within(panel).queryByText('1 test failed')).toBeNull()
+  expect(within(panel).getByText(t.branches.checkHint)).toBeTruthy()
+})
+
+it('says no checks were observed when the check runner has none, and has no step log', async () => {
+  await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ checks: [] }) }) })
+  await click(await screen.findByRole('tab', { name: 'Checks' }))
+  expect(screen.getByText(t.branches.noChecks)).toBeTruthy()
+  expect(screen.queryByRole('tab', { name: 'Activity' })).toBeNull()
+})
+
+it("shows the step the task is on in the review's overview", async () => {
+  const step = { id: 'run', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test' as const, status: 'running' as const, subject: 'npm test' }
+  await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ state: 'working', step }) }) })
+  const line = await screen.findByLabelText(t.activity.stepLabel)
+  expect(line.textContent).toContain(t.activity.now)
+  expect(line.textContent).toContain(t.activity.doing.test)
+  expect(line.textContent).toContain('npm test')
 })
 
 it('shows dependency setup instructions, keeps merging blocked, and lets the user retry checks', async () => {

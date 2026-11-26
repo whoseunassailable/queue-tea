@@ -10,7 +10,7 @@ import { makeTask } from '../main/features/tasks/api/fixtures'
 
 // The record lives in a temporary home. No real git operations or terminal
 // sessions are needed to verify the watcher → IPC → activity pane flow.
-test('a task shows a running check, then its output as the record changes', async () => {
+test('a task shows the check it is running, then how it ended, as the record changes', async () => {
   const home = await realpath(await mkdtemp(join(tmpdir(), 'queue-tea-activity-')))
   let app: ElectronApplication | undefined
   try {
@@ -18,9 +18,8 @@ test('a task shows a running check, then its output as the record changes', asyn
     const repo = join(home, 'demo')
     await mkdir(folder, { recursive: true })
     await mkdir(repo)
-    const record = { ...emptyRecord('Activity demo', repo), tasks: [makeTask({ id: 'active', title: 'Show task activity', state: 'current', activity: [
-      { id: 'check', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', status: 'running', subject: 'npm test', output: '', truncated: false },
-    ] })] }
+    const record = { ...emptyRecord('Activity demo', repo), tasks: [makeTask({ id: 'active', title: 'Show task activity', state: 'current',
+      step: { id: 'check', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', status: 'running', subject: 'npm test' } })] }
     const file = join(folder, 'activity-abc123.json')
     await writeFile(file, JSON.stringify(record))
     app = await electron.launch({ args: [join(__dirname, '../out/main/main.js')], cwd: join(__dirname, '..'),
@@ -30,17 +29,17 @@ test('a task shows a running check, then its output as the record changes', asyn
     await page.getByRole('link', { name: 'Quests', exact: true }).click()
     await page.getByRole('button', { name: 'Show the details of Show task activity' }).click()
     const feed = page.getByRole('region', { name: 'Task activity' })
-    await expect(feed.getByText('Awaiting result')).toBeVisible()
-    const step = record.tasks[0]!.activity![0]!
+    const line = feed.getByLabel('Current step')
+    await expect(line).toContainText('Now')
+    await expect(line).toContainText('Running checks')
+    const step = record.tasks[0]!.step!
     step.status = 'failed'
     step.finished = '2026-11-04T12:01:00Z'
-    step.output = '1 test failed\nExpected 2, received 1'
     await writeFile(`${file}.tmp`, JSON.stringify(record))
     await rename(`${file}.tmp`, file)
-    await expect(feed.getByText('Failed', { exact: true })).toBeVisible()
-    await feed.getByText('Command output', { exact: true }).click()
-    await expect(feed.locator('pre')).toContainText('Expected 2, received 1')
-    await expect(feed.locator('li')).toHaveCount(1)
+    await expect(line).toContainText('Last step')
+    await expect(line.getByText('Failed', { exact: true })).toBeVisible()
+    await expect(feed.locator('pre')).toHaveCount(0)
   } finally {
     await app?.close()
     await rm(home, { recursive: true, force: true })

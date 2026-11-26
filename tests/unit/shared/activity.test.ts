@@ -15,18 +15,19 @@ const setup = () => {
   return { ...fake, mem, saved }
 }
 
-test('saves a started tool and its failed result to the same task across a task change', async () => {
+test('saves a started tool and how it ended to the same task across a task change, without its output', async () => {
   const { ports, view, mem, saved } = setup()
   live.ctx = CTX
   try {
     const finish = await beginActivity(ports, 'Bash', { command: 'npm test' })
-    expect(saved().tasks[0]?.activity?.[0]?.status).toBe('running')
+    expect(saved().tasks[0]?.step?.status).toBe('running')
     const switched = { ...saved(), tasks: saved().tasks.map(t => ({ ...t, state: t.id === 'first' ? 'queued' as const : 'current' as const })) }
     mem.files.set(CTX.file, JSON.stringify(switched))
     view.record = switched
     await finish?.({ result: { stdout: '1 failed', exitCode: 1 } })
-    expect(saved().tasks[0]?.activity?.[0]).toMatchObject({ status: 'failed', output: '1 failed' })
-    expect(saved().tasks[1]?.activity).toBeUndefined()
+    expect(saved().tasks[0]?.step).toMatchObject({ kind: 'test', status: 'failed', subject: 'npm test' })
+    expect(mem.files.get(CTX.file)).not.toContain('1 failed')
+    expect(saved().tasks[1]?.step).toBeUndefined()
   } finally {
     live.ctx = null
   }
@@ -54,7 +55,7 @@ test('a recording failure is logged without stopping the tool', async () => {
   mem.host.write = async () => { throw new Error('disk unavailable') }
   try {
     expect(await beginActivity(ports, 'Bash', { command: 'npm test' })).toBeNull()
-    expect(done.logs.some(line => line.includes('saving a started activity failed'))).toBe(true)
+    expect(done.logs.some(line => line.includes('saving a started step failed'))).toBe(true)
   } finally {
     live.ctx = null
     mem.host.write = original
@@ -62,19 +63,21 @@ test('a recording failure is logged without stopping the tool', async () => {
 })
 
 test('a background check keeps waiting until its own task result is retrieved', async () => {
-  const { ports, saved } = setup()
+  const { ports, mem, saved } = setup()
   live.ctx = CTX
   try {
     const launched = await beginActivity(ports, 'Bash', { command: 'npm test' })
     await launched?.({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } })
-    expect(saved().tasks[0]?.activity?.[0]?.status).toBe('running')
+    expect(saved().tasks[0]?.step).toMatchObject({ status: 'running', backgroundId: 'bg-1' })
+    expect(saved().tasks[0]?.waiting).toHaveLength(1)
     expect(await beginActivity(ports, 'GetTask', { taskId: 'other' })).toBeNull()
     const poll = await beginActivity(ports, 'GetTask', { taskId: 'bg-1' })
     await poll?.({ isError: true })
-    expect(saved().tasks[0]?.activity?.[0]?.status).toBe('running')
+    expect(saved().tasks[0]?.step?.status).toBe('running')
     await poll?.({ result: { taskId: 'bg-1', status: 'completed', result: { isError: false, content: [{ type: 'text', text: '12 passed' }] } } })
-    expect(saved().tasks[0]?.activity).toHaveLength(1)
-    expect(saved().tasks[0]?.activity?.[0]).toMatchObject({ status: 'succeeded', output: '12 passed' })
+    expect(saved().tasks[0]?.step).toMatchObject({ status: 'succeeded', subject: 'npm test' })
+    expect(saved().tasks[0]?.waiting).toBeUndefined()
+    expect(mem.files.get(CTX.file)).not.toContain('12 passed')
   } finally {
     live.ctx = null
   }
@@ -89,8 +92,8 @@ test('records each concurrent session only on the task in its own worktree', asy
   try {
     const finish = await beginActivity(ports, 'Bash', { command: 'npm test' })
     await finish?.({ result: { stdout: 'passed', exitCode: 0 } })
-    expect(saved().tasks[0]?.activity).toBeUndefined()
-    expect(saved().tasks[1]?.activity?.[0]).toMatchObject({ status: 'succeeded', subject: 'npm test' })
+    expect(saved().tasks[0]?.step).toBeUndefined()
+    expect(saved().tasks[1]?.step).toMatchObject({ status: 'succeeded', subject: 'npm test' })
   } finally { live.ctx = null }
 })
 
@@ -111,9 +114,10 @@ test('a notification ends the background check on the task it ran on, after a ta
 
     await finishNotifiedActivity(ports, notified('bg-1', 'failed', 'Background command "npm test" failed with exit code 1'))
 
-    expect(saved().tasks[0]?.activity?.[0]).toMatchObject({ status: 'failed', output: 'Background command "npm test" failed with exit code 1', finished: '2026-10-21T09:22:00+02:00' })
+    expect(saved().tasks[0]?.step).toMatchObject({ status: 'failed', finished: '2026-10-21T09:22:00+02:00' })
+    expect(saved().tasks[0]?.waiting).toBeUndefined()
     expect(saved().tasks[0]?.testPeriods).toEqual([{ start: Date.parse('2026-10-21T07:12:00Z'), end: LATER }])
-    expect(saved().tasks[1]?.activity).toBeUndefined()
+    expect(saved().tasks[1]?.step).toBeUndefined()
   } finally {
     live.ctx = null
   }
@@ -134,7 +138,7 @@ test('a notification that ends no running step writes nothing', async () => {
     await finishNotifiedActivity(ports, notified('bg-1', 'completed', 'exit code 0'))
 
     expect(mem.writes.length).toBe(writes)
-    expect(saved().tasks[0]?.activity?.[0]?.status).toBe('running')
+    expect(saved().tasks[0]?.step?.status).toBe('running')
   } finally {
     live.ctx = null
   }
@@ -155,5 +159,39 @@ test('a failure while ending a background step is logged, and the prompt goes on
   } finally {
     live.ctx = null
     mem.host.write = original
+  }
+})
+
+test('a background check that ends after the next step leaves the line on that step, and stops waiting', async () => {
+  const { ports, saved } = setup()
+  live.ctx = CTX
+  try {
+    const launched = await beginActivity(ports, 'Bash', { command: 'npm test' })
+    await launched?.({ result: { stdout: 'Starting tests', backgroundTaskId: 'bg-1' } })
+    const edit = await beginActivity(ports, 'Edit', { file_path: '/p/src/a.ts' })
+    await edit?.({ result: 'ok' })
+    ports.now = async () => LATER
+
+    await finishNotifiedActivity(ports, notified('bg-1', 'completed', 'exit code 0'))
+
+    expect(saved().tasks[0]?.step).toMatchObject({ kind: 'edit', status: 'succeeded', subject: '/p/src/a.ts' })
+    expect(saved().tasks[0]?.waiting).toBeUndefined()
+    expect(saved().tasks[0]?.testPeriods).toEqual([{ start: Date.parse('2026-10-21T07:12:00Z'), end: LATER }])
+  } finally {
+    live.ctx = null
+  }
+})
+
+test("a step's line is the command's first line, cut to 200 characters", async () => {
+  const { ports, saved } = setup()
+  live.ctx = CTX
+  try {
+    await beginActivity(ports, 'Bash', { command: `  ${'x'.repeat(300)}\necho done` })
+    const subject = saved().tasks[0]?.step?.subject ?? ''
+    expect(subject.length).toBe(200)
+    expect(subject.endsWith('…')).toBe(true)
+    expect(subject).not.toContain('echo')
+  } finally {
+    live.ctx = null
   }
 })

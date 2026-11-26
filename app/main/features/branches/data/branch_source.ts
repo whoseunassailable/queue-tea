@@ -69,7 +69,7 @@ export const graphOf = async (d: TasksDeps, scope: Scope): Promise<BranchGraph> 
     const folder = checkouts.find(w => w.branch === task.branch)?.path
     const changed = folder ? parseStatus(await gitIn(d, folder)(['status', '--porcelain=v1', '-z', '--untracked-files=all'])).length : null
     return { id: task.id, title: task.title, branch: task.branch!, base: task.baseBranch, head, fork: forkResult?.exitCode === 0 ? forkResult.stdout.trim() : null,
-      merged, state: merged ? 'merged' as const : observation.state, latest: observation.steps.at(-1)?.subject ?? null, seenAt: observation.seenAt,
+      merged, state: merged ? 'merged' as const : observation.state, latest: observation.step?.subject ?? null, seenAt: observation.seenAt,
       changed, commits: head && base ? Number((await git(['rev-list', '--count', `${base}..${head}`])).trim()) : null }
   })
   return { at: d.now(), integration, heads, commits, tasks, limited: commits.length === BRANCH_LIMITS.graph }
@@ -114,6 +114,6 @@ export const reviewOf = async (d: TasksDeps, scope: Scope, task: Task, target: s
   const blocked = observation.state === 'working' || targetWorking || sessionWriter ? BRANCH_TEXT.writer : sourcePending || targetPending ? BRANCH_TEXT.pending : files.length || targetStatus ? BRANCH_TEXT.dirty : merged ? BRANCH_TEXT.noMerge : null
   return { taskId: task.id, source: task.branch, target, targets: heads.map(h => h.branch).filter(b => b !== task.branch), sourceHead, targetHead,
     fingerprint: digest(sourceHead + targetHead + working.fingerprint + targetStatus), files, diff: diff.slice(0, BRANCH_LIMITS.diff), truncated: diff.length > BRANCH_LIMITS.diff,
-    commits: parseLog(await git(['log', '--format=%H%x00%P%x00%s', `${targetHead}..${sourceHead}`, '--'])), steps: observation.steps, state: observation.state, blocked, merged, operation: null,
+    commits: parseLog(await git(['log', '--format=%H%x00%P%x00%s', `${targetHead}..${sourceHead}`, '--'])), step: observation.step, checks: [], state: observation.state, blocked, merged, operation: null,
     remotes: (await git(['remote'])).trim().split('\n').filter(Boolean) }
 }

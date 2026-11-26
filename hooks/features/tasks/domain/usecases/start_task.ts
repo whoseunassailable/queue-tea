@@ -5,7 +5,7 @@ import { holdReason, slugBranch } from '../../../../shared/git/domain/services/b
 import type { Saved } from '../../../../shared/records/domain/repositories/records_repository'
 import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
 import { isoLocal } from '../../../../shared/time/domain/services/time'
-import { keepActivity } from '../../../../shared/activity/domain/services/activity'
+import { keepStep } from '../../../../shared/activity/domain/services/activity'
 import type { Deps } from './deps'
 
 const NOT_A_REPO = 'Not a git repository, so no branches are made'
@@ -143,8 +143,8 @@ export const startTaskUseCase = async (d: Deps, ctx: Ctx, taskId: string, platfo
     if (steps.length > 0) {
       const recorded = await d.records.update(r => ({
         ...r,
-        tasks: r.tasks.map(t => t.id !== taskId ? t : steps.reduce((task, step) => keepActivity(task, {
-          ...step, at, finished: at, status: 'succeeded', subject: branch!, output: '', truncated: false,
+        tasks: r.tasks.map(t => t.id !== taskId ? t : steps.reduce((task, step) => keepStep(task, {
+          ...step, at, finished: at, status: 'succeeded', subject: branch!,
         }), t)),
       }))
       if (recorded !== 'unreadable') withActivity = recorded

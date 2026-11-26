@@ -9,6 +9,7 @@ import { Loading } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import { BRANCH_POLL_MS, MESSAGE_LIMIT } from '../../domain/constants'
 import { MergeReview } from './merge_review'
+import { StepLine } from '../../../../core/widgets/step_line'
 
 type Tab = keyof typeof t.branches.tabs
 const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }: { engine: EngineApi; realm: string; review: Review; onTarget: (target: string) => void; onRefresh: () => void; onAdopt: (review: Review) => void }) => {
@@ -43,7 +44,6 @@ const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }:
   // Ticks outlive a reread; only files that are no longer changed drop out.
   const chosen = selected.filter(path => review.files.some(file => file.path === path))
   const isAllChosen = review.files.length > 0 && chosen.length === review.files.length
-  const steps = tab === 'checks' ? review.steps.filter(s => s.kind === 'test') : review.steps
   return <>
     <p class="branch-direction mono">{review.source} → {review.target}</p>
     <label>{t.branches.destination}<select value={review.target} disabled={!!busy} onChange={e => onTarget(e.currentTarget.value)}>{review.targets.map(branch => <option key={branch} value={branch}>{branch}</option>)}</select></label>
@@ -60,6 +60,7 @@ const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }:
     <section role="tabpanel" aria-label={t.branches.tabs[tab]}>
       {tab === 'overview' && <>
         <p><strong>{t.branches.states[review.state]}</strong></p>
+        {review.step && <StepLine step={review.step} />}
         <dl class="branch-refs"><dt>{t.branches.source}</dt><dd class="mono">{review.sourceHead}</dd><dt>{t.branches.target}</dt><dd class="mono">{review.targetHead}</dd></dl>
         <p class="hint">{t.branches.localOnly}</p>
         <h3>{t.branches.commits}</h3>
@@ -86,15 +87,14 @@ const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }:
         <details open><summary>{t.branches.diff}</summary><pre class="branch-diff">{review.diff}</pre></details>
         {review.truncated && <p role="status">{t.branches.truncated}</p>}
       </>}
-      {(tab === 'checks' || tab === 'activity') && <>
-        <p class="hint">{tab === 'checks' ? t.branches.checkHint : t.branches.activityHint}</p>
-        {!steps.length && <p>{tab === 'checks' ? t.branches.noChecks : t.branches.noActivity}</p>}
-        <ol class="activity-list">{steps.map(step => <li key={step.id}>
-          <time>{new Date(step.at).toLocaleString()}</time><strong>{t.activity.kind[step.kind]}</strong> <span class={`activity-status ${step.status}`}>{t.activity.status[step.status]}</span>
-          <code class="activity-subject">{step.subject}</code>
-          {step.output && <details><summary>{t.branches.output}</summary><pre>{step.output}</pre></details>}
-          {step.truncated && <p class="hint">{t.activity.excerpt}</p>}
-        </li>)}</ol>
+      {tab === 'checks' && <>
+        <p class="hint">{t.branches.checkHint}</p>
+        {review.checks.length === 0 ? <p>{t.branches.noChecks}</p> : <ol class="activity-list">{review.checks.map(run => <li key={run.id}>
+          <time>{new Date(run.at).toLocaleString()}</time><strong>{run.name}</strong> <span class={`activity-status ${run.status === 'succeeded' ? 'succeeded' : run.status === 'running' ? 'running' : 'failed'}`}>{t.branches.checkStatus[run.status]}</span>
+          <code class="activity-subject">{run.command}</code>
+          <p class="hint">{t.branches.checkedTree(run.tree.slice(0, 7))}{review.operation?.tree && run.tree !== review.operation.tree ? ` · ${t.branches.staleChecks}` : ''}</p>
+          {run.exitCode !== null && <p>{t.branches.exitCode(run.exitCode)}</p>}
+        </li>)}</ol>}
       </>}
     </section>
     {operationId ? <MergeReview key={operationId} engine={engine} realm={realm} id={operationId} remotes={review.remotes} onChanged={onRefresh} /> : <div class="merge-start">

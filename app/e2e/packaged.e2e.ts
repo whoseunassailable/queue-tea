@@ -99,7 +99,7 @@ test('the art bundled from outside the app folder is there', async () => {
 test('git works from the PATH the Finder gives it: Start makes the branch', async () => {
   await page.getByRole('button', { name: 'Start ★ Packaged quest' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Packaged quest' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Packaged quest', level: 1 })).toBeVisible()
   expect(await git('branch', '--show-current')).toBe('task/packaged-quest')
   expect((JSON.parse(await readFile(file, 'utf8')) as ProjectRecord).requests.map(q => q.kind)).toEqual(['begin'])
 })

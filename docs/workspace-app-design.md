@@ -456,6 +456,8 @@ In plain terms:
 
 ### 4.1 Home
 
+Since 26 November 2026 (Q06), Home is a list of the realm's quests in groups beside the picked quest's details; [home-dashboard.md](home-dashboard.md) has the design. The drawing below is the first Home, kept for its history.
+
 ```
 ┌───────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────┐
 │ ● ● ●             [⊟] │ [*Home*|Tasks|History|Usage & time]         ≋ Working · 5h 62% · 19:40   [⌕ Search ]  [+] │

@@ -1,5 +1,7 @@
-// How many quests Home shows before the link to the board.
-export const HOME_BOARD_ROWS = 3
+// How many cards a group on Home shows before Show more, and how long Home
+// waits after the last pick or fold before it saves them.
+export const HOME_GROUP_PAGE = 60
+export const HOME_SAVE_MS = 400
 export const HOME_BADGES = 4
 
 // How often the sky looks at the clock. Hours are all it needs.

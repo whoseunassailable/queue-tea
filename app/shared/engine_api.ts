@@ -231,8 +231,13 @@ export type SkyChoice = 'auto' | 'morning' | 'day' | 'evening' | 'night'
 export type TerminalChoice = 'terminal' | 'iterm' | 'vscode'
 // Folds are the sagas folded, by realm.
 export type ChronicleScope = 'realm' | 'all'
+// Home's quest groups, and what Home remembers of them per realm: the quest
+// picked and the groups folded.
+export type HomeGroup = 'active' | 'ready' | 'sealed'
+export type HomeNav = { open: string | null; folded: HomeGroup[] }
 // realmAccounts says which GitHub account each realm belongs to, by realm.
-export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string> }
+// homeNav is Home's by realm; a settings file from before it has none.
+export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string>; homeNav?: Record<string, HomeNav> }
 
 // What the Settings page shows beside the app's own settings.
 export type RealmLine = { key: string; name: string; path: string; file: string; hasCopy: boolean; logPath: string | null; gitMode: GitMode; isReadable: boolean }

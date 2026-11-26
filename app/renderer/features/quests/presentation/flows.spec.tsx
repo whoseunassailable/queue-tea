@@ -57,10 +57,16 @@ describe('Start from Home', () => {
     await waitFor(() => expect(engine.checkStart).toHaveBeenCalledWith(KEY, 'first'))
   })
 
-  it('leaves the arrow keys to scroll Home', async () => {
+  it('picks the quest below and above with the arrow keys', async () => {
     await open(BOARD)
+    expect(button(t.actions.editTitle('First quest'))).toBeTruthy()
 
-    expect(fireEvent.keyDown(document.body, { key: 'ArrowDown' })).toBe(true)
+    await key('ArrowDown')
+    expect(button(t.actions.editTitle('Second quest'))).toBeTruthy()
+    expect(button(t.home.pick('Second quest')).getAttribute('aria-current')).toBe('true')
+
+    await key('ArrowUp')
+    expect(button(t.actions.editTitle('First quest'))).toBeTruthy()
   })
 
   it('shows nothing to press with nothing on the board', async () => {
@@ -189,7 +195,8 @@ describe('the git hold', () => {
     await press(t.flow.copy)
 
     await waitFor(() => expect(engine.copyText).toHaveBeenCalledWith('git push'))
-    for (const control of screen.getAllByRole('button')) {
+    // The hold's own buttons; the quest's details keep their helpers' names.
+    for (const control of within(document.querySelector<HTMLElement>('.mcard')!).getAllByRole('button')) {
       expect(`${control.textContent ?? ''} ${control.getAttribute('aria-label') ?? ''}`).not.toMatch(/\b(commit|push|merge|pull)\b/i)
     }
   })

@@ -1,4 +1,4 @@
-import type { BadgeId, HelperDoingKind, HoldKind, SessionState, SkyChoice, Stage, TerminalChoice, VictoryKind } from '../../shared/engine_api'
+import type { BadgeId, HelperDoingKind, HoldKind, HomeGroup, SessionState, SkyChoice, Stage, TerminalChoice, VictoryKind } from '../../shared/engine_api'
 import type { Difficulty, HelperId, Priority, TestProfileId } from '../../../types'
 
 const DOING: Record<HelperDoingKind, string> = {
@@ -1079,6 +1079,41 @@ export const t = {
     branch: 'Branch',
     noBranch: 'Made when it starts',
     filed: 'Filed',
+  },
+  home: {
+    list: (realm: string) => `${realm}'s quests`,
+    counts: (active: number, canStart: number, sealed: number) => `${active} active · ${canStart} can start · ${sealed} sealed`,
+    nextUp: 'Next up',
+    nextUpCodex: (title: string) => `Start ${title} in Codex`,
+    startNext: (title: string) => `Start ${title}, next up`,
+    groups: { active: 'Active', ready: 'Up next', sealed: 'Sealed' } satisfies Record<HomeGroup, string>,
+    group: (label: string, count: number) => `${label} · ${count}`,
+    noneActive: 'Nothing is in hand right now.',
+    noneSealed: 'Nothing is sealed.',
+    more: (count: number) => `Show ${count} more`,
+    pick: (title: string) => `Show ${title}`,
+    back: '‹ Home',
+    pause: 'Pause',
+    pauseNamed: (title: string) => `Pause ${title}`,
+    start: 'Start',
+    startNamed: (title: string) => `Start ${title}`,
+    resume: 'Resume',
+    resumeNamed: (title: string) => `Resume ${title}`,
+    so: (minutes: string) => `⏱ ${minutes}`,
+    about: (minutes: string) => `~${minutes}`,
+    chapters: (done: number, total: number) => `${done} of ${total} chapters`,
+    status: {
+      working: 'Claude is on it',
+      open: 'Waiting for you',
+      none: 'No session open',
+      several: 'Several sessions open',
+      judgement: 'Asks whether it’s done',
+      codex: 'With Codex',
+      checkpoint: 'Waiting for its checkpoint',
+      canStart: 'Can start',
+      resumes: 'Resumes on its branch',
+      saga: 'Saga',
+    },
   },
   glory: {
     title: 'Glory',

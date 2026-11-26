@@ -200,7 +200,28 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
     )
   }
 
-  return <HomePage engine={engine} onSwitch={branch => flows.switchBranch(view.key, branch)} view={view} game={game} flow={flow} actions={actions} isSheetOpen={isCovered} letterKeys={state.settings.letterKeys} onPet={onPet} onNewQuest={() => onSheet({ kind: 'new', parentId: null })} />
+  return (
+    <HomePage
+      key={view.key}
+      engine={engine}
+      view={view}
+      game={game}
+      flow={flow}
+      actions={actions}
+      edits={edits}
+      questNotes={state.questNotes}
+      savedQuest={state.savedQuest}
+      nav={state.settings.homeNav?.[view.key]}
+      folds={state.settings.folds[view.key] ?? []}
+      isSheetOpen={isCovered}
+      letterKeys={state.settings.letterKeys}
+      onNav={nav => workspace.rememberHomeNav(view.key, nav)}
+      onFold={id => void workspace.toggleFold(view.key, id)}
+      onPet={onPet}
+      onSheet={onSheet}
+      onSwitch={branch => flows.switchBranch(view.key, branch)}
+    />
+  )
 }
 
 type SheetProps = { sheet: Sheet; view: ReadableView; engine: EngineApi; edits: QuestEdits; flows: QuestFlows; onClose: () => void }

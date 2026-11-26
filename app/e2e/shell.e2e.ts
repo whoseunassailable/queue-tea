@@ -229,7 +229,7 @@ test('below 900 px the sidebar goes, the tabs are a menu and the detail is a pag
 test('below 900 px Home stacks, and every section stays reachable', async () => {
   await page.getByRole('combobox', { name: 'Go to a section' }).selectOption('/home')
 
-  await expect(page.getByRole('heading', { name: 'Quest board' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /'s quests$/ })).toBeVisible()
   await page.waitForTimeout(100)
   await shot('narrow-home')
   await page.getByRole('combobox', { name: 'Go to a section' }).selectOption('/quests')

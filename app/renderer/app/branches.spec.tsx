@@ -253,11 +253,12 @@ it('does not contact a remote until requested and keeps the local merge after pu
   expect(await screen.findByText(/Merged locally into main/)).toBeTruthy()
 })
 
-it('keeps both active cards usable on Home', async () => {
+it('keeps both active quests usable on Home', async () => {
   window.location.hash = '#/home'
   const { engine } = await open()
-  expect(screen.getByRole('heading', { name: one.title })).toBeTruthy()
-  expect(screen.getByRole('heading', { name: two.title })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: one.title, level: 1 })).toBeTruthy()
+  await click(screen.getByRole('button', { name: t.home.pick(two.title) }))
+  expect(screen.getByRole('heading', { name: two.title, level: 1 })).toBeTruthy()
   await click(await screen.findByRole('button', { name: 'Show Codex' }))
   expect(engine.openClaude).toHaveBeenCalledWith(KEY, 'two')
 })

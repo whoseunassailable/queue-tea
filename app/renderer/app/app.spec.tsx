@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/preact'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { HelperId } from '../../../types'
@@ -45,7 +45,7 @@ describe('every view shows where it is', () => {
     render(<App workspace={workspace} engine={engine} />)
     void workspace.start()
 
-    await waitFor(() => expect(screen.getByText(t.board.title)).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: t.home.list('Gait') })).toBeTruthy())
     expect(screen.getByText(t.loading.game)).toBeTruthy()
   })
 
@@ -73,7 +73,7 @@ describe('every view shows where it is', () => {
     await open({ readGame: async () => fail('Could not work out your level.') })
 
     expect(screen.getByRole('alert').textContent).toContain('Could not work out your level.')
-    expect(screen.getByText(t.board.title)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /quests$/ })).toBeTruthy()
   })
 
   it('an unreadable realm says why, in plain words', async () => {
@@ -103,10 +103,11 @@ describe('Home', () => {
   it('shows the active quest with its reward and time', async () => {
     await open(withView(projectView('a-000001', { active, session: { state: 'working', allowance: null } })))
 
-    expect(screen.getByRole('heading', { name: 'The boss' })).toBeTruthy()
-    expect(screen.getByText(t.quest.boss)).toBeTruthy()
-    expect(screen.getByText('In progress · 43m so far · started 20 Oct 22:17')).toBeTruthy()
-    expect(screen.getByText(t.session.working)).toBeTruthy()
+    const card = within(screen.getByRole('region', { name: 'The boss' }))
+    expect(card.getByRole('heading', { name: 'The boss', level: 1 })).toBeTruthy()
+    expect(card.getByText(t.quest.boss)).toBeTruthy()
+    expect(card.getByText('In progress · 43m so far · started 20 Oct 22:17')).toBeTruthy()
+    expect(card.getByText(t.session.working)).toBeTruthy()
     expect(document.querySelector('.rm')?.className).toContain('m-working')
   })
 

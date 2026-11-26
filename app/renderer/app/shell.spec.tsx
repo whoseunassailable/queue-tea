@@ -39,7 +39,7 @@ const open = async (route: string, view: ProjectView = BOARD, over: Partial<Engi
 const key = (name: string, over: KeyboardEventInit = {}) => act(() => void fireEvent.keyDown(document.body, { key: name, ...over }))
 const palette = () => key('k', { metaKey: true })
 const type = (text: string) => act(() => void fireEvent.input(screen.getByRole('combobox', { name: t.palette.placeholder }), { target: { value: text } }))
-const options = () => screen.getAllByRole('option').map(option => option.textContent)
+const options = () => within(screen.getByRole('listbox', { name: t.palette.label })).getAllByRole('option').map(option => option.textContent)
 const resize = (width: number) =>
   act(() => {
     window.innerWidth = width
@@ -57,7 +57,7 @@ describe('the command palette', () => {
 
     await palette()
 
-    expect(document.activeElement).toBe(screen.getByRole('combobox'))
+    expect(document.activeElement).toBe(screen.getByRole('combobox', { name: t.palette.placeholder }))
     expect(options()[0]).toContain(t.actions.startNamed('Fix the docs'))
   })
 
@@ -84,7 +84,7 @@ describe('the command palette', () => {
     const { engine } = await open('/home')
     await palette()
 
-    await act(() => void fireEvent.keyDown(screen.getByRole('combobox'), { key: 's' }))
+    await act(() => void fireEvent.keyDown(screen.getByRole('combobox', { name: t.palette.placeholder }), { key: 's' }))
     await key('s')
 
     expect(engine.checkStart).not.toHaveBeenCalled()

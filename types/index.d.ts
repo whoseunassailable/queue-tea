@@ -47,7 +47,7 @@ export type Checkpoint = {
   seen: { at: string; files: string[]; commands: CommandRun[]; git: GitFacts | null } | null
 }
 
-export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
+export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd' | 'tea-concile'
 export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
 
 // How much checking a quest's change gets, from a look at the screen to the

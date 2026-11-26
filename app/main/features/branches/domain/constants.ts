@@ -1,6 +1,6 @@
 export const CHECK_BIN_DIRS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'] as const
 export const checkPath = (home: string, inherited: string | undefined) => [inherited ?? '', `${home}/.local/bin`, `${home}/.volta/bin`, `${home}/.asdf/shims`, ...CHECK_BIN_DIRS].filter(Boolean).join(':')
-export const BRANCH_LIMITS = { graph: 160, graphWorkers: 4, diff: 120_000, conflict: 120_000, output: 8_000, message: 2_000, recentMs: 90_000, codexDays: 14, streamMs: 120, checksMs: 900_000, checkChoices: 64 } as const
+export const BRANCH_LIMITS = { graph: 160, graphWorkers: 4, diff: 120_000, conflict: 120_000, output: 8_000, message: 2_000, recentMs: 90_000, codexDays: 14, streamMs: 120, checksMs: 900_000, checkChoices: 64, previews: 64 } as const
 export const operationsFolder = (home: string, key: string) => `${home}/.queue-tea/integrations/${key}`
 export const BRANCH_TEXT = {
   read: 'The branch history could not be read. Check that the project folder is available, then try again.',
@@ -35,6 +35,8 @@ export const BRANCH_TEXT = {
   dependencyUnreadable: 'Dependency files are missing, unreadable or incomplete. Check folder permissions and the last installation result.',
   dependencySetup: (reason: string, folder: string, command: string | null) => `Dependency setup required. ${reason}\nPackage folder: ${folder}\n${command ? `After approving dependency installation, use the locked setup command in this integration folder:\n${command}\nThis command can run package install scripts. Review them and any network access they need before approving.` : 'Resolve the lockfile or shared-path problem above before installing dependencies.'}\nIf the offline cache is incomplete, setup has failed; approve network access separately before retrying npm ci without --offline. Queue-tea does not install packages or retry online automatically. Leave other worktrees alone. After successful setup, refresh the review and run the check again.`,
   noMerge: 'There are no new commits to merge into this destination.',
+  notResolved: 'This file has no resolution to undo in this merge. Refresh the review and try again.',
+  restored: (path: string) => `Put the conflict in ${path} back`,
   spaceRead: 'The task folders could not be measured. Check that the project folder is available, then try again.',
   spaceFree: 'Some build folders could not be cleared. Everything else in the folders is kept. Refresh and try again.',
   spaceRemove: 'The folder could not be removed, so it is kept with everything in it. Refresh, check its changes and try again.',

@@ -417,6 +417,7 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 .rm .member{--m:#0E7490;--mb:#E0F7FA;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
 .rm .member.git,.rm .helper-chip.git,.rm .bench-bot.git{--m:#0E7490;--mb:#E0F7FA}.rm .member.design,.rm .helper-chip.design,.rm .bench-bot.design{--m:#047857;--mb:#E3F8EF}.rm .member.docs,.rm .helper-chip.docs,.rm .bench-bot.docs{--m:#8A5300;--mb:#FEF6D8}.rm .member.tests,.rm .helper-chip.tests,.rm .bench-bot.tests{--m:#6D28D9;--mb:#F1ECFE}
 .rm.t-night .member.git,.rm.t-night .helper-chip.git,.rm.t-night .bench-bot.git{--m:#67E8F9;--mb:#0E3440}.rm.t-night .member.design,.rm.t-night .helper-chip.design,.rm.t-night .bench-bot.design{--m:#6EE7B7;--mb:#0F3A2E}.rm.t-night .member.docs,.rm.t-night .helper-chip.docs,.rm.t-night .bench-bot.docs{--m:#FCD34D;--mb:#3A3112}.rm.t-night .member.tests,.rm.t-night .helper-chip.tests,.rm.t-night .bench-bot.tests{--m:#C4B5FD;--mb:#2E2650}
+.rm .member.reconcile,.rm .helper-chip.reconcile,.rm .bench-bot.reconcile{--m:#BE123C;--mb:#FFE4E8}.rm.t-night .member.reconcile,.rm.t-night .helper-chip.reconcile,.rm.t-night .bench-bot.reconcile{--m:#FDA4AF;--mb:#3F1A22}
 .rm .m-top{display:flex;align-items:flex-end;gap:16px;margin-top:-104px}
 .rm .m-top>div{padding-bottom:6px}
 .rm .portrait{flex:none;display:block}
@@ -463,6 +464,9 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 .rm .bot .prop{fill:none;stroke:var(--m);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .rm .bot .prop ellipse{stroke-width:3}
 .rm .bot .prop .paper{fill:var(--bot-shell)}.rm .bot .prop .tint{fill:var(--m);stroke:none;opacity:.55}
+/* Tea-Concile's pixel prop: the target's strand, the task's paler one, and the stem they join into */
+.rm .bot .prop .px{fill:var(--m);stroke:none}.rm .bot .prop .px.b{opacity:.55}
+.rm .bot.asking .prop .px.j,.rm .bot.failed .prop .px.j,.rm .bot.stopped .prop .px.j{opacity:.25}
 .rm .bot .whole,.rm .bot .wave,.rm .bot .hold,.rm .bot .antenna{transform-box:view-box}
 .rm .bot .whole{transform-origin:56px 122px}.rm .bot .wave{transform-origin:27px 75px}.rm .bot .hold{transform-origin:85px 75px}.rm .bot .antenna{transform-origin:56px 27px}
 @keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
@@ -474,6 +478,8 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 @keyframes gsway{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
 @keyframes gwave{0%,100%{transform:rotate(115deg)}50%{transform:rotate(150deg)}}
 @keyframes gbusy{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+@keyframes gpixel{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes gtilt{0%,100%{transform:rotate(0)}30%{transform:rotate(-7deg)}60%{transform:rotate(3deg)}}
 @media (prefers-reduced-motion: no-preference){
 .rm .bot .whole{animation:gfloat 4s ease-in-out infinite}
 .rm .bot .eye{animation:gblink 5s linear infinite}
@@ -486,6 +492,10 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 .rm .steam i:nth-child(2){animation-delay:.6s!important}.rm .steam i:nth-child(3){animation-delay:1.2s!important}
 .rm .bot.done .whole{animation:ghop .9s ease-out 1,gfloat 4s ease-in-out .9s infinite}
 .rm .bot.failed .whole,.rm .bot.stopped .whole{animation:gshake .5s ease-in-out 1}
+.rm .reconcile .bot.idle *{animation-delay:-5.2s}
+.rm .bot.working .prop .px.a{animation:gpixel .8s steps(2,jump-none) infinite}
+.rm .bot.working .prop .px.b{animation:gpixel .8s steps(2,jump-none) .4s infinite}
+.rm .bot.asking .whole{animation:gtilt 2.4s ease-in-out infinite}
 }
 .rm .bench-bot:active .bot .whole{transform:scale(1.06,.9)}
 
@@ -500,6 +510,15 @@ font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
 .rm .bench-bot:active{cursor:grabbing}
 .rm .bench-now{display:flex;align-items:center;gap:8px;font-weight:700}
 .rm .bench-reply{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.rm .concile-decision{--m:#BE123C;--mb:#FFE4E8;display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--mb);box-shadow:inset 3px 0 0 var(--m);color:var(--ink)}
+.rm.t-night .concile-decision{--m:#FDA4AF;--mb:#3F1A22}
+.rm .concile-decision p,.rm .concile-decision ul{margin:0}
+.rm .concile-decision ul{padding-left:18px}
+.rm .merge-resolved{display:flex;flex-direction:column;gap:6px;margin:0 0 18px}
+.rm .merge-resolved p,.rm .merge-resolved ul{margin:0}
+.rm .merge-resolved ul{display:flex;flex-direction:column;gap:6px;padding:0;list-style:none}
+.rm .merge-resolved li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.rm .merge-preview{margin:0;padding-left:18px}
 
 /* settings */
 .rm .set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px;align-items:start}

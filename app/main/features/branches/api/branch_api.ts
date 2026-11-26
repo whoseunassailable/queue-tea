@@ -1,17 +1,17 @@
 import { randomUUID } from 'node:crypto'
 import { worktreesRepositoryImpl } from '../../../../../hooks/shared/git/data/repositories/worktrees_repository_impl'
-import type { BranchGraph, BranchReview, CompleteRequest, MergeOperation, MergeRequest, MergeWorkspace, ResolveRequest } from '../../../../shared/branches'
+import type { BranchGraph, BranchReview, CompleteRequest, MergeOperation, MergeRequest, MergeWorkspace, ResolveRequest, RestoreRequest } from '../../../../shared/branches'
 import type { Reply } from '../../../../shared/engine_api'
 import { Refusal, reply } from '../../../core/reply'
 import { questIdOf } from '../../tasks/domain/task_input'
 import { scopeOf } from '../../tasks/api/scope'
 import type { TasksDeps, Scope } from '../../tasks/api/scope'
 import { BRANCH_LIMITS, BRANCH_TEXT } from '../domain/constants'
-import { isBranch, proposalFor } from '../domain/git_rules'
+import { isBranch, isFile, proposalFor } from '../domain/git_rules'
 import { gitModeOf } from '../../../../../hooks/shared/records/domain/services/git_mode'
 import { ancestor, gitIn, graphOf, headOf, reviewOf } from '../data/branch_source'
 import { latestChecks, readChecks } from '../data/checks_source'
-import { conflictEntries, safeResolutionPath, workspaceOf, workspacePath } from '../data/merge_workspace'
+import { conflictEntries, mergePreview, safeResolutionPath, safeRestorePath, workspaceOf, workspacePath } from '../data/merge_workspace'
 import { loadOperation, operationsOf, saveOperation, withBranchLock } from '../data/operation_store'
 import { argvOf } from '../data/user_git'
 import { readCommitProgress } from '../data/commit_progress'
@@ -72,6 +72,8 @@ export const readBranch = (d: TasksDeps, key: unknown, id: unknown, target: unkn
   review.operation = ops.find(o => o.taskId === task.id && o.target === selected && o.stage !== 'abandoned') ?? null
   // Checks come from the in-app check runner, on the prepared merge.
   review.checks = review.operation ? latestChecks(await readChecks(d, review.operation)) : []
+  // Before a merge is prepared, which files it would conflict in.
+  review.preview = review.operation === null && !review.merged ? await mergePreview(d, scope.ctx.projectPath, review.targetHead, review.sourceHead) : null
   return review
 }))
 export const readMergeWorkspace = (d: TasksDeps, key: unknown, id: unknown): Promise<Reply<MergeWorkspace>> => pendingRead(d, ['merge', key, id], () => reply(d.log, BRANCH_TEXT.read, async () => {
@@ -131,6 +133,35 @@ export const resolveMergeFile = (d: BranchDeps, key: unknown, input: unknown): P
       }
     }
     op.events.push({ at: d.now(), command: `Resolved ${file.path} (${r.choice})`, status: 'succeeded', output: '' })
+    const next = await workspaceOf(d, initial.ctx.projectPath, op)
+    await saveOperation(d, next.operation)
+    return next
+  })
+})
+
+// Puts a file resolved in this merge back to its conflict, markers and all, so
+// it can be resolved again. Only before the merge is committed, and only for a
+// file git still holds the conflict of.
+export const restoreConflict = (d: BranchDeps, key: unknown, input: unknown): Promise<Reply<MergeWorkspace>> => reply(d.log, BRANCH_TEXT.action, async () => {
+  const initial = await scopeOf(d, key); const r = input as Partial<RestoreRequest> | null
+  if (!r || typeof r.operationId !== 'string' || !isFile(r.path)) throw new Refusal(BRANCH_TEXT.invalid)
+  const path = r.path
+  return withBranchLock(d, initial.key, async () => {
+    const saved = await loadOperation(d, initial.key, r.operationId)
+    const workspace = await workspaceOf(d, initial.ctx.projectPath, saved); const op = workspace.operation
+    if (!['conflicts', 'ready'].includes(op.stage) || op.commit) throw new Refusal(BRANCH_TEXT.stale)
+    if (!workspace.resolved?.includes(path)) throw new Refusal(BRANCH_TEXT.notResolved)
+    const folder = workspacePath(d, op); const git = gitIn(d, folder)
+    await safeRestorePath(folder, path)
+    // Git's record of the conflict goes back into the index, then the file: with
+    // its markers when both sides have it, or the side that kept it when the
+    // other deleted it (checkout -m can't write that one).
+    await git(['update-index', '--unresolve', '--', path])
+    const stages = conflictEntries(await git(['--literal-pathspecs', 'ls-files', '-u', '-z', '--', path])).filter(e => e.path === path).map(e => e.stage)
+    if (!stages.includes(2) && !stages.includes(3)) throw new Refusal(BRANCH_TEXT.notResolved)
+    if (stages.includes(2) && stages.includes(3)) await git(['--literal-pathspecs', 'checkout', '-m', '--', path])
+    else await git(['--literal-pathspecs', 'checkout-index', '-f', `--stage=${stages.includes(2) ? 2 : 3}`, '--', path])
+    op.events.push({ at: d.now(), command: BRANCH_TEXT.restored(path), status: 'succeeded', output: '' })
     const next = await workspaceOf(d, initial.ctx.projectPath, op)
     await saveOperation(d, next.operation)
     return next

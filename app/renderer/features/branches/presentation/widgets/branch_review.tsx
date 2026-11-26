@@ -7,7 +7,7 @@ import { Dialog } from '../../../../core/widgets/dialog'
 import { ReadView } from '../../../../core/widgets/read_view'
 import { Loading } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
-import { BRANCH_POLL_MS, MESSAGE_LIMIT } from '../../domain/constants'
+import { BRANCH_POLL_MS, MESSAGE_LIMIT, PREVIEW_SHOWN } from '../../domain/constants'
 import { MergeReview } from './merge_review'
 import { StepLine } from '../../../../core/widgets/step_line'
 
@@ -99,6 +99,13 @@ const ReviewContents = ({ engine, realm, review, onTarget, onRefresh, onAdopt }:
     </section>
     {operationId ? <MergeReview key={operationId} engine={engine} realm={realm} id={operationId} remotes={review.remotes} onChanged={onRefresh} /> : <div class="merge-start">
       {review.blocked && <p role="status">{review.blocked}</p>}
+      {review.preview && review.preview.length === 0 && <p role="status">{t.branches.previewClean(review.target)}</p>}
+      {review.preview && review.preview.length > 0 && <div role="status">
+        <p>{t.branches.preview(review.preview.length, review.target)}</p>
+        <ul class="merge-preview">{review.preview.slice(0, PREVIEW_SHOWN).map(path => <li key={path} class="mono">{path}</li>)}</ul>
+        {review.preview.length > PREVIEW_SHOWN && <p class="hint">{t.branches.previewMore(review.preview.length - PREVIEW_SHOWN)}</p>}
+        <p class="hint">{t.branches.previewHint}</p>
+      </div>}
       <label class="branch-confirm"><input type="checkbox" checked={idle} disabled={disabled} onChange={e => setIdleFor(e.currentTarget.checked ? review.fingerprint : null)} />{t.branches.idle}</label>
       <button type="button" class="btn primary" disabled={disabled || !!review.blocked || !idle} onClick={async () => {
         setBusy(t.branches.preparing); setError(null)

@@ -4,7 +4,7 @@ import type { NoteBookmark } from './note_bookmarks'
 import type { CalendarEventInput, CalendarExport, CalendarImport, CalendarImportPreview, CalendarView, ImportItem } from './calendar'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
-import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
+import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RestoreRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskStep, TestProfile, TestProfileId } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
 import type { Progress } from '../../hooks/shared/backlog/domain/services/families'
@@ -473,6 +473,7 @@ export type EngineApi = {
   readMergeWorkspace: (key: string, operationId: string) => Promise<Reply<MergeWorkspace>>
   prepareMerge: (key: string, request: MergeRequest) => Promise<Reply<MergeWorkspace>>
   resolveMergeFile: (key: string, request: ResolveRequest) => Promise<Reply<MergeWorkspace>>
+  restoreConflict: (key: string, request: RestoreRequest) => Promise<Reply<MergeWorkspace>>
   completeMerge: (key: string, request: CompleteRequest) => Promise<Reply<MergeWorkspace>>
   abandonMerge: (key: string, operationId: string) => Promise<Reply<MergeWorkspace>>
   runMergeChecks: (key: string, request: RunChecksRequest) => Promise<Reply<MergeWorkspace>>
@@ -593,6 +594,7 @@ export const CHANNELS = {
   readMergeWorkspace: 'engine:read-merge-workspace',
   prepareMerge: 'engine:prepare-merge',
   resolveMergeFile: 'engine:resolve-merge-file',
+  restoreConflict: 'engine:restore-merge-conflict',
   completeMerge: 'engine:complete-merge',
   abandonMerge: 'engine:abandon-merge',
   runMergeChecks: 'engine:run-merge-checks',

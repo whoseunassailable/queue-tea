@@ -298,6 +298,7 @@ const serveEngine = () => {
   handle(CHANNELS.readMergeWorkspace, (_, key, id) => branches.readMergeWorkspace(quests, key, id))
   handle(CHANNELS.prepareMerge, (_, key, request) => branches.prepareMerge(branchActions, key, request))
   handle(CHANNELS.resolveMergeFile, (_, key, request) => branches.resolveMergeFile(branchActions, key, request))
+  handle(CHANNELS.restoreConflict, (_, key, request) => branches.restoreConflict(branchActions, key, request))
   handle(CHANNELS.completeMerge, (_, key, request) => branches.completeMerge(branchActions, key, request))
   handle(CHANNELS.abandonMerge, (_, key, id) => branches.abandonMerge(branchActions, key, id))
   handle(CHANNELS.runMergeChecks, (_, key, request) => runMergeChecks(branchActions, key, request))

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import type { HelperId } from '../../../../../../types'
 import type { ConflictFile, MergeWorkspace, PushPreview } from '../../../../../shared/branches'
 import type { EngineApi, Reply } from '../../../../../shared/engine_api'
@@ -8,29 +8,45 @@ import { ReadView } from '../../../../core/widgets/read_view'
 import { Loading } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import { useHelperJobs } from '../../../guild/presentation/state_management/helper_jobs'
+import { concileReport, type ConcileDecision } from '../../domain/concile_report'
 import { MERGE_POLL_MS, MESSAGE_LIMIT, HELPER_DRAG } from '../../domain/constants'
 import { HelperBench, helperDropped } from './helper_bench'
 import { MergeChecks } from './merge_checks'
 
-const ConflictEditor = ({ file, source, target, busy, onResolve }: { file: ConflictFile; source: string; target: string; busy: boolean; onResolve: (choice: 'base' | 'source' | 'target' | 'edited', text?: string) => void }) => {
+// The choice Tea-Concile left on this file: what the two quests do
+// differently, and what it recommends. The recommended button is the primary one.
+const Decision = ({ decision, source, target }: { decision: ConcileDecision; source: string; target: string }) => <div class="concile-decision" role="group" aria-label={t.branches.decision}>
+  <p><b>{t.branches.decision}</b></p>
+  <p>{decision.question}</p>
+  <ul>
+    {decision.target && <li><span class="mono">{target}</span>: {decision.target}</li>}
+    {decision.source && <li><span class="mono">{source}</span>: {decision.source}</li>}
+  </ul>
+  <p>{decision.recommend === null ? t.branches.noRecommendation : t.branches.recommends(t.branches.recommendChoice[decision.recommend])} {decision.why}</p>
+</div>
+
+const ConflictEditor = ({ file, source, target, decision, busy, onResolve }: { file: ConflictFile; source: string; target: string; decision: ConcileDecision | null; busy: boolean; onResolve: (choice: 'base' | 'source' | 'target' | 'edited', text?: string) => void }) => {
   const [text, setText] = useState(file.result ?? file.target ?? file.source ?? '')
   const [error, setError] = useState<string | null>(null)
-  return <section class="conflict-file" aria-label={file.path}>
+  const recommended = decision?.recommend ?? null
+  const kind = (choice: 'target' | 'source' | 'result') => recommended === choice || (choice === 'result' && recommended === null) ? 'btn primary' : 'btn'
+  return <section class={`conflict-file${decision ? ' asked' : ''}`} aria-label={file.path}>
     <h4 class="mono">{file.path}</h4>
+    {decision && <Decision decision={decision} source={source} target={target} />}
     <div class="three-way">{(['base', 'target', 'source'] as const).map(side => <details key={side} open>
       <summary>{side === 'base' ? t.branches.base : side === 'target' ? target : source}</summary>
       <pre>{file[side] ?? t.branches.absent}</pre>
     </details>)}</div>
     {!file.editable && <p class="hint">{t.branches.binary}</p>}
     <div class="q-actions">
-      <button type="button" class="btn" disabled={busy} onClick={() => onResolve('target')}>{t.branches.useTarget}</button>
-      <button type="button" class="btn" disabled={busy} onClick={() => onResolve('source')}>{t.branches.useSource}</button>
+      <button type="button" class={kind('target')} disabled={busy} onClick={() => onResolve('target')}>{t.branches.useTarget}</button>
+      <button type="button" class={kind('source')} disabled={busy} onClick={() => onResolve('source')}>{t.branches.useSource}</button>
       <button type="button" class="btn" disabled={busy} onClick={() => onResolve('base')}>{t.branches.useBase}</button>
     </div>
     {file.editable && <>
       <label>{t.branches.result}<textarea class="conflict-result mono" value={text} disabled={busy} onInput={e => { setText(e.currentTarget.value); setError(null) }} /></label>
       {error && <p role="alert">{error}</p>}
-      <button type="button" class="btn primary" disabled={busy} onClick={() => {
+      <button type="button" class={kind('result')} disabled={busy} onClick={() => {
         if (/^(<{7}|={7}|>{7}|\|{7})( |$)/m.test(text)) setError(t.branches.markers)
         else onResolve('edited', text)
       }}>{t.branches.saveResolution}</button>
@@ -54,6 +70,10 @@ export const MergeReview = ({ engine, realm, id, remotes, onChanged }: { engine:
   const helpers = useHelperJobs(engine)
   // A helper resolving this merge edits its folder, so nothing else may until it is done.
   const isHelperAtWork = helpers.jobs.some(job => job.merge === id && job.status === 'working')
+  // The choices Tea-Concile left last time it finished here, shown on their files.
+  const lastConcile = helpers.jobs.filter(job => job.merge === id && job.helper === 'tea-concile' && job.status === 'done').sort((a, b) => b.started - a.started)[0] ?? null
+  const concile = useMemo(() => concileReport(lastConcile?.reply ?? null), [lastConcile?.reply])
+  useEffect(() => { if (concile.problem !== null) engine.log('warn', `Tea-Concile's choices for merge ${id} did not read: ${concile.problem}`) }, [concile.problem, engine, id])
   const held = !!busy || isHelperAtWork
   const [isDropping, setDropping] = useState(false)
   const canSendHelper = read.load.status === 'ready' && read.load.data.operation.stage === 'conflicts' && !held
@@ -89,13 +109,21 @@ export const MergeReview = ({ engine, realm, id, remotes, onChanged }: { engine:
         <p class="mono">{op.source} → {op.target}</p>
         <p class="hint">{t.branches.isolation}</p>
         <p class="hint">{t.branches.checkIntegration}</p>
-        {(op.stage === 'conflicts' || helpers.jobs.some(job => job.merge === op.id)) && <HelperBench jobs={helpers.jobs} mergeId={op.id} canSend={canSendHelper}
+        {(op.stage === 'conflicts' || helpers.jobs.some(job => job.merge === op.id)) && <HelperBench jobs={helpers.jobs} mergeId={op.id} open={workspace.conflicts.map(file => file.path)} canSend={canSendHelper}
           onSend={helper => void sendHelper(helper)} onStop={helper => void helpers.stop(helper).then(tell)} onRetry={job => void helpers.retry(job).then(tell)} />}
         <button type="button" class="btn" disabled={held} onClick={async () => {
           const opened = await ask(engine, () => engine.openMergeFolder(realm, op.id))
           if (!opened.ok) setError(opened.message)
         }}>{t.branches.openIntegration}</button>
-        {workspace.conflicts.map(file => <ConflictEditor key={file.path} file={file} source={op.source} target={op.target} busy={held} onResolve={(choice, text) => void run(t.branches.resolving, () => engine.resolveMergeFile(realm, { operationId: op.id, path: file.path, choice, ...(text === undefined ? {} : { text }) }))} />)}
+        {workspace.conflicts.map(file => <ConflictEditor key={file.path} file={file} source={op.source} target={op.target} decision={concile.decisions.find(one => one.file === file.path) ?? null} busy={held} onResolve={(choice, text) => void run(t.branches.resolving, () => engine.resolveMergeFile(realm, { operationId: op.id, path: file.path, choice, ...(text === undefined ? {} : { text }) }))} />)}
+        {!!workspace.resolved?.length && <section class="merge-resolved" aria-label={t.branches.resolvedHere}>
+          <h4>{t.branches.resolvedHere}</h4>
+          <p class="hint">{t.branches.resolvedHint}</p>
+          <ul>{workspace.resolved.map(path => <li key={path}>
+            <span class="mono">{path}</span>
+            <button type="button" class="btn" disabled={held} aria-label={t.branches.restoreNamed(path)} onClick={() => void run(t.branches.restoring, () => engine.restoreConflict(realm, { operationId: op.id, path }))}>{t.branches.restore}</button>
+          </li>)}</ul>
+        </section>}
         {op.stage === 'ready' || op.stage === 'applying' ? <>
           <details open><summary>{t.branches.diff}</summary><pre class="branch-diff">{workspace.diff}</pre></details>
           {workspace.truncated && <p role="status">{t.branches.truncated}</p>}

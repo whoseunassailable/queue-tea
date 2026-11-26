@@ -91,6 +91,7 @@ const engine: EngineApi = {
   readMergeWorkspace: (key, operationId) => ipcRenderer.invoke(CHANNELS.readMergeWorkspace, key, operationId),
   prepareMerge: (key, request) => ipcRenderer.invoke(CHANNELS.prepareMerge, key, request),
   resolveMergeFile: (key, request) => ipcRenderer.invoke(CHANNELS.resolveMergeFile, key, request),
+  restoreConflict: (key, request) => ipcRenderer.invoke(CHANNELS.restoreConflict, key, request),
   completeMerge: (key, request) => ipcRenderer.invoke(CHANNELS.completeMerge, key, request),
   abandonMerge: (key, operationId) => ipcRenderer.invoke(CHANNELS.abandonMerge, key, operationId),
   runMergeChecks: (key, request) => ipcRenderer.invoke(CHANNELS.runMergeChecks, key, request),

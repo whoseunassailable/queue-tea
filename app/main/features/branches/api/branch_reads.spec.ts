@@ -3,13 +3,13 @@ import type { BranchGraph, BranchReview, MergeWorkspace } from '../../../../shar
 import { createLogger } from '../../../core/logger'
 import { scopeOf, type TasksDeps } from '../../tasks/api/scope'
 import { graphOf, reviewOf } from '../data/branch_source'
-import { workspaceOf } from '../data/merge_workspace'
+import { mergePreview, workspaceOf } from '../data/merge_workspace'
 import { readBranch, readBranches, readMergeWorkspace } from './branch_api'
 import { branchReview, SOURCE, TARGET } from '../../../../renderer/features/branches/test_fixtures'
 
 vi.mock('../../tasks/api/scope', () => ({ scopeOf: vi.fn(async (_d, key) => ({ key, ctx: { projectPath: '/repo' }, record: { tasks: [{ id: 'one', branch: 'task/one', baseBranch: 'main' }] } })) }))
 vi.mock('../data/branch_source', () => ({ graphOf: vi.fn(), reviewOf: vi.fn() }))
-vi.mock('../data/merge_workspace', () => ({ workspaceOf: vi.fn() }))
+vi.mock('../data/merge_workspace', () => ({ workspaceOf: vi.fn(), mergePreview: vi.fn(async () => []) }))
 vi.mock('../data/commit_progress', () => ({ readCommitProgress: async () => null }))
 vi.mock('../data/operation_store', () => ({ loadOperation: async (_d: unknown, _key: string, id: string) => ({ id }), operationsOf: async () => [] }))
 const pending = <T>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done }); return { promise, resolve } }
@@ -48,6 +48,22 @@ it('releases failed reads for retry and keeps engines separate', async () => {
   expect(await readBranches(deps, 'realm')).toMatchObject({ ok: true })
   await readBranches(d(), 'realm')
   expect(graphOf).toHaveBeenCalledTimes(3)
+})
+
+describe('the conflict preview in a branch review', () => {
+  it('works out which files a merge would conflict in, from the two heads, before one is prepared', async () => {
+    vi.mocked(reviewOf).mockResolvedValueOnce(branchReview({ sourceHead: SOURCE, targetHead: TARGET }))
+    vi.mocked(mergePreview).mockResolvedValueOnce(['a.ts'])
+    const answer = await readBranch(d(), 'realm', 'one', 'main')
+    expect(answer).toMatchObject({ ok: true, data: { preview: ['a.ts'] } })
+    expect(mergePreview).toHaveBeenCalledWith(expect.anything(), '/repo', TARGET, SOURCE)
+  })
+
+  it('works none out for a branch that is already merged', async () => {
+    vi.mocked(reviewOf).mockResolvedValueOnce(branchReview({ merged: true }))
+    expect(await readBranch(d(), 'realm', 'one', 'main')).toMatchObject({ ok: true, data: { preview: null } })
+    expect(mergePreview).not.toHaveBeenCalled()
+  })
 })
 
 describe('Claude\'s proposal in a branch review', () => {

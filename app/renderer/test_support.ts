@@ -314,6 +314,7 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readMergeWorkspace: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     prepareMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     resolveMergeFile: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
+    restoreConflict: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     completeMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     abandonMerge: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),
     runMergeChecks: vi.fn(async () => ({ ok: true as const, data: mergeWorkspace() })),

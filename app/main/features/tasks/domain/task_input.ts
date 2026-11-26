@@ -3,7 +3,7 @@ import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/t
 import { NEW_PARENT } from '../../../../../hooks/features/tasks/domain/usecases/file_task'
 import { isDay } from '../../../../shared/calendar'
 import type { NewQuest, QuestEdit, Seal } from '../../../../shared/engine_api'
-import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../../hooks/shared/records/domain/services/helpers'
+import { defaultHelpers, isQuestHelperId, onlyHelpers } from '../../../../../hooks/shared/records/domain/services/helpers'
 import { isTestProfileId } from '../../../../../hooks/shared/records/domain/services/test_profile'
 import { MESSAGES } from '../../../core/messages'
 import { Refusal } from '../../../core/reply'
@@ -70,7 +70,8 @@ const criteriaOf = (value: unknown): string[] => {
 }
 
 const helpersOf = (value: unknown): HelperId[] => {
-  if (!Array.isArray(value) || !value.every(isHelperId)) throw new Refusal(MESSAGES.badValue)
+  // Tea-Concile works on merges, so a quest can't turn it on.
+  if (!Array.isArray(value) || !value.every(isQuestHelperId)) throw new Refusal(MESSAGES.badValue)
 
   return onlyHelpers(value)
 }

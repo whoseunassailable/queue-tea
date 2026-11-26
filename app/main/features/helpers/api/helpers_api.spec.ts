@@ -16,12 +16,13 @@ import type { ProcessRequest } from '../../../core/stream_process'
 import { mergeOperation } from '../../../../renderer/features/branches/test_fixtures'
 import { makeTask } from '../../tasks/api/fixtures'
 import { HELPER_LIMITS } from '../domain/helper_stream'
+import { CONCILE_ONLY } from '../domain/concile_brief'
 import { helpersApi } from './helpers_api'
 
 const KEY = 'demo-abc123'
 const NOW = Date.parse('2026-11-06T09:00:00Z')
 const line = (event: object) => `${JSON.stringify(event)}\n`
-const INIT = line({ type: 'system', subtype: 'init', agents: ['claude', 'queue-tea:tea-dd', 'queue-tea:chai-pter'] })
+const INIT = line({ type: 'system', subtype: 'init', agents: ['claude', 'queue-tea:tea-dd', 'queue-tea:chai-pter', 'queue-tea:tea-concile'] })
 const READ = line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: '/x/timer.ts' } }] } })
 const DONE = line({ type: 'result', subtype: 'success', is_error: false, result: 'Added three tests.' })
 const ran = (exitCode: number, stderr = ''): RunResult => ({ exitCode, stdout: '', stderr })
@@ -200,29 +201,42 @@ describe('sending a helper to resolve a merge', () => {
     await writeFile(join(integration(), `${OP}.json`), JSON.stringify(mergeOperation({ key: KEY, id: OP, stage, source: 'task/guild', target: 'main' })))
   }
 
-  it("runs the helper in that merge's own folder with the Tea-concile order", async () => {
+  it("runs Tea-Concile in that merge's own folder, with what both quests were for", async () => {
+    await seed([
+      makeTask({ id: 'one', title: 'Calm timer', branch: 'task/guild', description: 'A timer that never flashes', criteria: ['The timer fades in'] }),
+      makeTask({ id: 'two', title: 'Main line', branch: 'main', description: 'Keep the release line green' }),
+    ])
     await prepare()
 
-    const job = data(await api.concileMerge(KEY, 'chai-pter', OP))
+    const job = data(await api.concileMerge(KEY, 'tea-concile', OP))
 
-    expect(job).toMatchObject({ helper: 'chai-pter', realm: KEY, merge: OP, folder: join(integration(), OP, 'worktree'), status: 'working' })
+    expect(job).toMatchObject({ helper: 'tea-concile', realm: KEY, merge: OP, folder: join(integration(), OP, 'worktree'), status: 'working' })
     expect(job.order).toContain('queue-tea:tea-concile')
     expect(job.order).toContain('task/guild into main')
-    await vi.waitFor(() => expect(jobOf('chai-pter')?.status).toBe('done'))
+    for (const intent of ['Calm timer', 'A timer that never flashes', 'The timer fades in', 'Main line', 'Keep the release line green']) expect(job.order).toContain(intent)
+    await vi.waitFor(() => expect(jobOf('tea-concile')?.status).toBe('done'))
     expect(requests[0]).toMatchObject({ cwd: join(integration(), OP, 'worktree') })
-    expect(requests[0]?.argv.slice(0, 4)).toEqual(['claude', '-p', '--agent', 'queue-tea:chai-pter'])
+    expect(requests[0]?.argv.slice(0, 4)).toEqual(['claude', '-p', '--agent', 'queue-tea:tea-concile'])
+  })
+
+  it('sends only Tea-Concile to a merge', async () => {
+    await prepare()
+
+    expect(await api.concileMerge(KEY, 'commit-chai-n', OP)).toEqual({ ok: false, error: { message: CONCILE_ONLY } })
+    expect(await api.concileMerge(KEY, 'tea-dd', OP)).toEqual({ ok: false, error: { message: CONCILE_ONLY } })
+    expect(requests).toEqual([])
   })
 
   it('refuses a merge with no conflicts left, one it cannot find, and a busy helper', async () => {
     await prepare('ready')
-    expect(await api.concileMerge(KEY, 'tea-dd', OP)).toEqual({ ok: false, error: { message: MESSAGES.helperNoConflicts } })
-    expect(await api.concileMerge(KEY, 'tea-dd', '../escape')).toMatchObject({ ok: false })
+    expect(await api.concileMerge(KEY, 'tea-concile', OP)).toEqual({ ok: false, error: { message: MESSAGES.helperNoConflicts } })
+    expect(await api.concileMerge(KEY, 'tea-concile', '../escape')).toMatchObject({ ok: false })
     expect(await api.concileMerge(KEY, 'not-one', OP)).toEqual({ ok: false, error: { message: MESSAGES.badValue } })
     await prepare()
     script = untilStopped
-    data(await api.sendHelper(KEY, 'tea-dd', 'Test it'))
-    expect(await api.concileMerge(KEY, 'tea-dd', OP)).toEqual({ ok: false, error: { message: MESSAGES.helperBusy } })
-    data(await api.stopHelper('tea-dd'))
+    data(await api.sendHelper(KEY, 'tea-concile', 'Reconcile the open merge'))
+    expect(await api.concileMerge(KEY, 'tea-concile', OP)).toEqual({ ok: false, error: { message: MESSAGES.helperBusy } })
+    data(await api.stopHelper('tea-concile'))
     expect(requests).toHaveLength(1)
   })
 

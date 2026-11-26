@@ -1,5 +1,5 @@
 import { QUEUE_TEA_COMMANDS } from '../../../../../hooks/core/session/commands'
-import { HELPER_IDS } from '../../../../../hooks/shared/records/domain/services/helpers'
+import { HELPER_IDS, isHelperId } from '../../../../../hooks/shared/records/domain/services/helpers'
 import type { HelperId } from '../../../../../types'
 import { CODEX_TEXT } from '../domain/constants'
 
@@ -45,9 +45,22 @@ const workflows: Record<string, string> = {
 const skill = (name: string, description: string, body: string) =>
   `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${CODEX_TEXT.skillMarker}\n\n${body}\n`
 
+const helperBody = (id: HelperId) =>
+  `${helperInstructions(id)}\n\nFor current-task work, read queue_tea before starting and call helper_finished with this helper id and that taskId only after completing and reporting the work. For an errand or standalone helper request, do not mark a task. If delegation is available and authorized, give a subagent these instructions; otherwise perform the role in this conversation.`
+
 // Generated from the command catalog and agent sources; no second set of personas.
-export const codexSkills = (): Record<string, string> => Object.fromEntries([
-  ...QUEUE_TEA_COMMANDS.map(command => [command.name, skill(command.name, `Queue-tea ${command.name} workflow, also called /${command.name}. ${command.description}.`, `${workflows[command.name]}\n\nUse the Queue-tea MCP tools. If they are unavailable, report that setup is needed; do not claim a queue mutation succeeded. Rohan commits, pushes and merges.`)]),
-  ...HELPER_IDS.map(id => [id, skill(id, helperDefinition(id).description, `${helperInstructions(id)}\n\nFor current-task work, read queue_tea before starting and call helper_finished with this helper id and that taskId only after completing and reporting the work. For an errand or standalone helper request, do not mark a task. If delegation is available and authorized, give a subagent these instructions; otherwise perform the role in this conversation.`)]),
-  ...Object.entries(skills).map(([path, body]) => [path.split('/').at(-2)!, `${body}\n\n${CODEX_TEXT.skillMarker}\n\nIn Codex, use the current execution tool and its approval flow. Claude’s /add-dir and git guard are not present. Existing user authorization takes precedence over generic ask-first instructions. Never commit, merge, push, rebase, reset, revert, cherry-pick or tag.\n`]),
-])
+// A helper named like a bundled skill (Tea-Concile and its tea-concile skill)
+// is one Codex skill: the procedure, then the helper's role on top of it.
+export const codexSkills = (): Record<string, string> => {
+  const bundled = Object.entries(skills).map(([path, body]) => [path.split('/').at(-2)!, body] as const)
+  const names = new Set(bundled.map(([name]) => name))
+
+  return Object.fromEntries([
+    ...QUEUE_TEA_COMMANDS.map(command => [command.name, skill(command.name, `Queue-tea ${command.name} workflow, also called /${command.name}. ${command.description}.`, `${workflows[command.name]}\n\nUse the Queue-tea MCP tools. If they are unavailable, report that setup is needed; do not claim a queue mutation succeeded. Rohan commits, pushes and merges.`)]),
+    ...HELPER_IDS.filter(id => !names.has(id)).map(id => [id, skill(id, helperDefinition(id).description, helperBody(id))]),
+    ...bundled.map(([name, body]) => [
+      name,
+      `${body}\n\n${CODEX_TEXT.skillMarker}\n\nIn Codex, use the current execution tool and its approval flow. Claude’s /add-dir and git guard are not present. Existing user authorization takes precedence over generic ask-first instructions. Never commit, merge, push, rebase, reset, revert, cherry-pick or tag.\n${isHelperId(name) ? `\n## As the ${name} helper\n\n${helperBody(name)}\n` : ''}`,
+    ]),
+  ])
+}

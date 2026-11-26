@@ -3,8 +3,16 @@ import type { JSX } from 'preact'
 import type { HelperId } from '../../../../../../types'
 
 // What each helper holds, after its pun: Commit Chai-n swings a chain of
-// commits, Mocha Mockup holds up a mockup, Chai-pter reads a chapter, and
-// Tea-DD shakes a test flask. The hand that holds it is drawn over it.
+// commits, Mocha Mockup holds up a mockup, Chai-pter reads a chapter, Tea-DD
+// shakes a test flask, and Tea-Concile holds up two branches joined into one,
+// drawn in pixels. The hand that holds it is drawn over it.
+// Tea-Concile's prop, cell by cell on a 4px grid: [part, column, row].
+const PIXELS: readonly (readonly ['a' | 'b' | 'j', number, number])[] = [
+  ['a', 0, 0], ['a', 0, 1], ['a', 1, 2], ['a', 2, 3],
+  ['b', 6, 0], ['b', 6, 1], ['b', 5, 2], ['b', 4, 3],
+  ['j', 3, 4], ['j', 3, 5], ['j', 3, 6], ['j', 3, 7],
+]
+
 const PROPS: Record<HelperId, JSX.Element> = {
   'commit-chai-n': (
     <g class="prop">
@@ -32,6 +40,16 @@ const PROPS: Record<HelperId, JSX.Element> = {
       <path class="tint" d="M93.5 96h19l2 4q2 5-3 5H94q-5 0-3-5z" />
       <circle class="tint" cx="101" cy="90" r="1.6" />
       <circle class="tint" cx="105" cy="85" r="1.2" />
+    </g>
+  ),
+  // The target's strand (a), the task's strand (b) and what they become (j).
+  // At work the two strands blink in turn; while a choice waits for Rohan the
+  // joined stem stays dim.
+  'tea-concile': (
+    <g class="prop pixels" shape-rendering="crispEdges">
+      {PIXELS.map(([part, col, row]) => (
+        <rect key={`${col}-${row}`} class={`px ${part}`} x={90 + col * 4} y={56 + row * 4} width="4" height="4" />
+      ))}
     </g>
   ),
 }

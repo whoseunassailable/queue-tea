@@ -176,6 +176,7 @@ describe('filing', () => {
     [{ title: 'x'.repeat(201) }, 'Title must be 200 characters or fewer.'],
     [{ parent: { kind: 'new' as const, title: ' ' } }, 'Title is required.'],
     [{ helpers: ['general-purpose'] }, "That value isn't one Queue-tea can use. Pick another."],
+    [{ helpers: ['tea-dd', 'tea-concile'] }, "That value isn't one Queue-tea can use. Pick another."],
     [{ helpers: 'tea-dd' }, "That value isn't one Queue-tea can use. Pick another."],
   ])('refuses %j', async (over, message) => {
     await seed([])

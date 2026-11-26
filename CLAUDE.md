@@ -9,7 +9,7 @@ Queue-tea keeps one task per working folder, with parallel tasks in separate Git
 | `hooks/core/`               | Used everywhere: files and processes, the engine as one object, the view state, the logger, widgets                                                                |
 | `hooks/shared/`             | What two or more features use: records, backlog, git, assistant, checkpoints, effort, time, sessions                                                               |
 | `hooks/features/`           | One folder per feature, each with `data/`, `domain/` and `presentation/`. `docs/architecture.md` has the rules                                                     |
-| `agents/`                   | The four helpers: Commit Chai-n, Mocha Mockup, Chai-pter, Tea-DD                                                                                                   |
+| `agents/`                   | The five helpers: Commit Chai-n, Mocha Mockup, Chai-pter, Tea-DD, and Tea-Concile for merges with conflicts                                                        |
 | `skills/`                   | The plugin's own skills: Tea-concile, which reconciles conflicting branches                                                                                        |
 | `tools/`                    | `check_layers.mjs`, which reads every import under `hooks/` and fails on a broken layer rule; `version.mjs` and `hooks/`, which run after every commit             |
 | `tests/`                    | The mod's tests, `*.test.ts(x)`, run with `claude plugin test .` from the repository root                                                                          |

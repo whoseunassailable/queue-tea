@@ -59,7 +59,7 @@ Codex skills use `$skill-name` or the skill picker. **This adapter does not regi
 
 ## Helpers and companion skills
 
-Use `$chai-pter`, `$commit-chai-n`, `$mocha-mockup` and `$tea-dd`. Their skills are generated from `agents/*.md`; Tea-concile comes from `skills/tea-concile/SKILL.md`. There is no second maintained set of personas. A helper runs in the current Codex conversation, or through delegation when that session supports and authorizes it. The Guild Hall’s existing background **Send** flow still launches Claude Code.
+Use `$chai-pter`, `$commit-chai-n`, `$mocha-mockup`, `$tea-dd` and `$tea-concile`. Their skills are generated from `agents/*.md`. Tea-Concile's helper shares its name with the bundled skill, so `$tea-concile` is `skills/tea-concile/SKILL.md` with the helper's definition added as a section. There is no second maintained set of personas. A helper runs in the current Codex conversation, or through delegation when that session supports and authorizes it. The Guild Hall’s existing background **Send** flow still launches Claude Code.
 
 There are **eight external companion skills**, in addition to the bundled Tea-concile:
 

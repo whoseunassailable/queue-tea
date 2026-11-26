@@ -10,6 +10,8 @@ import { workspacePath } from '../../branches/data/merge_workspace'
 import { checkPath } from '../../branches/domain/constants'
 import { scopeOf } from '../../tasks/api/scope'
 import type { TasksDeps } from '../../tasks/api/scope'
+import { concileSides } from '../data/concile_sides'
+import { CONCILE_HELPER, CONCILE_ONLY, concileBrief } from '../domain/concile_brief'
 import { HELPER_LIMITS, lineReader, orderOf, seenIn } from '../domain/helper_stream'
 import type { Seen } from '../domain/helper_stream'
 
@@ -77,16 +79,19 @@ export const helpersApi = (d: HelpersDeps) => {
       return start(helper, scope.key, folder, order.order, null)
     })
 
-  // A helper dropped on a prepared merge: it runs Tea-concile in that merge's own
-  // folder, which only the merge uses, and stages what it resolves for Rohan to approve.
+  // Tea-Concile sent to a prepared merge: it runs in that merge's own folder,
+  // which only the merge uses, with what both quests were for, and stages what
+  // it resolves for Rohan to approve. Only Tea-Concile reconciles merges.
   const concileMerge = (key: unknown, helper: unknown, operationId: unknown): Promise<Reply<HelperJob>> =>
     reply(d.log, MESSAGES.concileMerge, async () => {
       if (!isHelperId(helper)) throw new Refusal(MESSAGES.badValue)
+      if (helper !== CONCILE_HELPER) throw new Refusal(CONCILE_ONLY)
       const scope = await scopeOf(d, key)
       const op = await loadOperation(d, scope.key, operationId)
       if (op.stage !== 'conflicts') throw new Refusal(MESSAGES.helperNoConflicts)
+      const brief = concileBrief(await concileSides(d, scope, op))
 
-      return start(helper, scope.key, workspacePath(d, op), MESSAGES.concileOrder(op.source, op.target), op.id)
+      return start(helper, scope.key, workspacePath(d, op), `${MESSAGES.concileOrder(op.source, op.target)}\n\n${brief}`, op.id)
     })
 
   const start = async (helper: HelperId, realm: string, folder: string, order: string, merge: string | null): Promise<HelperJob> => {

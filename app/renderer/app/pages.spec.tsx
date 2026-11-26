@@ -311,10 +311,12 @@ describe('Hoard', () => {
 })
 
 describe('Guild Hall', () => {
-  it('reads all four helpers from the agents folder', () => {
-    expect(HELPERS.map(h => h.id)).toEqual(['commit-chai-n', 'mocha-mockup', 'chai-pter', 'tea-dd'])
-    expect(HELPERS[0]).toMatchObject({ name: 'Commit Chai-n', role: 'Git', mention: '@queue-tea:commit-chai-n', kind: 'git', skills: ['git-workflow-and-versioning', 'tea-concile'] })
+  it('reads all five helpers from the agents folder', () => {
+    expect(HELPERS.map(h => h.id)).toEqual(['commit-chai-n', 'mocha-mockup', 'chai-pter', 'tea-dd', 'tea-concile'])
+    expect(HELPERS[0]).toMatchObject({ name: 'Commit Chai-n', role: 'Git', mention: '@queue-tea:commit-chai-n', kind: 'git', skills: ['git-workflow-and-versioning'] })
     expect(HELPERS[1]!.skills.length).toBeGreaterThan(1)
+    expect(HELPERS[4]).toMatchObject({ name: 'Tea-Concile', role: 'Merges', mention: '@queue-tea:tea-concile', kind: 'reconcile', skills: ['tea-concile'] })
+    expect(HELPERS[4]!.summary.startsWith('Use when')).toBe(true)
   })
 
   it('drops the sentence that only names the helper', () => {
@@ -344,8 +346,9 @@ describe('Guild Hall', () => {
     await open('/guild')
 
     expect(await screen.findByText(t.guild.idle['tea-dd'])).toBeTruthy()
-    expect(screen.getAllByRole('textbox')).toHaveLength(4)
-    expect(document.querySelectorAll('.portrait.idle')).toHaveLength(4)
+    expect(screen.getByText(t.guild.idle['tea-concile'])).toBeTruthy()
+    expect(screen.getAllByRole('textbox')).toHaveLength(5)
+    expect(document.querySelectorAll('.portrait.idle')).toHaveLength(5)
   })
 
   it('says where orders go once a realm is picked', async () => {

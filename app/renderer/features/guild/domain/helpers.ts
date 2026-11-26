@@ -1,4 +1,4 @@
-import { HELPER_IDS } from '../../../../../hooks/shared/records/domain/services/helpers'
+import { HELPER_IDS, QUEST_HELPER_IDS } from '../../../../../hooks/shared/records/domain/services/helpers'
 import type { HelperId } from '../../../../../types'
 import { t } from '../../../l10n/en'
 
@@ -7,7 +7,7 @@ import { t } from '../../../l10n/en'
 const FILES = import.meta.glob('../../../../../agents/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
 const LOGOS = import.meta.glob('../../../../../.claude-plugin/helpers/*.svg', { query: '?url', import: 'default', eager: true }) as Record<string, string>
 
-const KINDS: Record<HelperId, string> = { 'commit-chai-n': 'git', 'mocha-mockup': 'design', 'chai-pter': 'docs', 'tea-dd': 'tests' }
+const KINDS: Record<HelperId, string> = { 'commit-chai-n': 'git', 'mocha-mockup': 'design', 'chai-pter': 'docs', 'tea-dd': 'tests', 'tea-concile': 'reconcile' }
 
 export type Helper = { id: HelperId; name: string; role: string; kind: string; summary: string; skills: string[]; mention: string; logo: string }
 
@@ -41,3 +41,8 @@ const helperOf = (id: HelperId): Helper => {
 }
 
 export const HELPERS: readonly Helper[] = HELPER_IDS.map(helperOf)
+
+// The helpers a quest can be given; Tea-Concile works on merges instead.
+export const QUEST_HELPERS: readonly Helper[] = HELPERS.filter(helper => QUEST_HELPER_IDS.includes(helper.id))
+
+export const TEA_CONCILE: Helper = HELPERS.find(helper => helper.id === 'tea-concile')!

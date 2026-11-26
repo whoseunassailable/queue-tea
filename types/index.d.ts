@@ -47,7 +47,7 @@ export type Checkpoint = {
   seen: { at: string; files: string[]; commands: CommandRun[]; git: GitFacts | null } | null
 }
 
-export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
+export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd' | 'tea-concile'
 export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
 
 // A helper's runs on one quest, for the helper performance audit. `timed` and

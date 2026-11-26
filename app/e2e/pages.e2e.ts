@@ -150,10 +150,10 @@ test('the Hoard counts every realm that reads', async () => {
   await shot('hoard')
 })
 
-test('the Guild Hall shows the four helpers with their logos', async () => {
+test('the Guild Hall shows the five helpers with their logos', async () => {
   await page.getByRole('link', { name: 'Guild Hall' }).click()
 
-  await expect(page.locator('.member')).toHaveCount(4)
+  await expect(page.locator('.member')).toHaveCount(5)
   for (const img of await page.locator('.portrait img').all()) {
     expect(await img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true)
   }

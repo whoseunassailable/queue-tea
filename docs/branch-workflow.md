@@ -75,6 +75,9 @@ An agent's permission to edit a task never grants it permission to commit, merge
 - Keep conflict resolution in an isolated integration worktree. Do not overwrite the task's working copy or another agent's files.
 - Stage only user-resolved files. Show unresolved markers and remaining conflicts. After resolution, run the agreed checks and present the final merge message before completion.
 - Offer a clear Abandon merge action with a concrete explanation of which merge-resolution changes will be discarded. Never auto-stash, reset, force-push, or delete branches.
+- Before preparing, say which files the merge would conflict in (`git merge-tree --write-tree`, git 2.38 or later), or that it merges clean.
+- Send Tea-Concile, the one helper beside a merge with conflicts, to reconcile it. Its order carries both quests' intent, and each choice it leaves comes back marked on its file with its recommendation ([tea-concile.md](tea-concile.md)).
+- Until the merge is committed, any resolved file can go back to its conflict (`git update-index --unresolve`, then the file with its markers), whether it was resolved in the app or staged by Tea-Concile.
 - On restart or IPC failure, inspect Git and the saved operation record before offering Retry. A completed merge must not be executed a second time merely because its response was lost.
 - Reopening an unmerged task resumes its retained branch and history. If its work has already merged, offer a follow-up branch from the destination and keep the previous merge visible.
 

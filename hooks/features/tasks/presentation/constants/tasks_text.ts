@@ -15,6 +15,7 @@ export const HELPER_NAMES: Record<HelperId, string> = {
   'mocha-mockup': 'Mocha Mockup',
   'chai-pter': 'Chai-pter',
   'tea-dd': 'Tea-DD',
+  'tea-concile': 'Tea-Concile',
 }
 
 // In work order.

@@ -27,7 +27,7 @@ export const createCodexServer = (context: CodexContext, log: Logger) => {
   const annotations = (readOnlyHint: boolean) => ({ readOnlyHint, destructiveHint: false, openWorldHint: false })
   const message = z.string().trim().min(1).max(CODEX_LIMITS.message)
   const taskId = z.string().trim().min(1).max(200)
-  const helper = z.enum(HELPER_IDS as ['commit-chai-n', 'mocha-mockup', 'chai-pter', 'tea-dd'])
+  const helper = z.enum(HELPER_IDS as ['commit-chai-n', 'mocha-mockup', 'chai-pter', 'tea-dd', 'tea-concile'])
   const reviewInput = z.object({ taskId, checked: z.string().trim().max(CODEX_LIMITS.checked).default('') }).strict()
 
   server.registerTool('queue_tea', { description: 'Read Queue-tea’s current task, feature and priority queue in this folder. Use the desktop app for the interactive menu.', inputSchema: z.object({}).strict(), annotations: annotations(true) }, () => run(ops.queue))

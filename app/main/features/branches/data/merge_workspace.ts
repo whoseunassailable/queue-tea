@@ -29,6 +29,62 @@ export const safeResolutionPath = async (folder: string, path: string) => {
   }
   return join(parent, file.slice(file.lastIndexOf('/') + 1))
 }
+// The files resolved in this merge that can go back to their conflict. Git
+// keeps each one's sides in the index (resolve-undo) until the commit, so the
+// conflict can be put back. Without that list nothing is offered, and the
+// merge still reads.
+const resolvedIn = async (d: TasksDeps, path: string, conflicts: ConflictFile[]): Promise<string[]> => {
+  try {
+    const names = conflictEntries(await gitIn(d, path)(['ls-files', '--resolve-undo', '-z'])).map(e => e.path)
+    return [...new Set(names)].filter(name => isFile(name) && !conflicts.some(f => f.path === name)).sort()
+  } catch (err) {
+    d.log.warn(`Resolved files unavailable: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
+    return []
+  }
+}
+// The files a merge of `source` into `target` would conflict in, worked out
+// without touching a folder: [] when it merges clean, null when this git can't
+// tell (merge-tree --write-tree needs git 2.38) or the merge can't be worked out.
+// The answer for two commits never changes, and a review rereads every second,
+// so each pair is worked out once.
+const previews = new Map<string, string[]>()
+export const mergePreview = async (d: TasksDeps, root: string, target: string, source: string): Promise<string[] | null> => {
+  const key = `${root}\0${target}\0${source}`
+  const known = previews.get(key)
+  if (known !== undefined) return known
+  try {
+    const r = await d.host.run(['git', '--no-optional-locks', 'merge-tree', '-z', '--write-tree', '--name-only', '--no-messages', target, source], root)
+    if (r.exitCode !== 0 && r.exitCode !== 1) { d.log.warn(`Merge preview unavailable (${r.exitCode}): ${r.stderr}`); return null }
+    const files = r.exitCode === 0 ? [] : [...new Set(r.stdout.split('\0').slice(1).filter(Boolean))].filter(isFile)
+    if (previews.size >= BRANCH_LIMITS.previews) previews.delete(previews.keys().next().value!)
+    previews.set(key, files)
+    return files
+  } catch (err) {
+    d.log.warn(`Merge preview unavailable: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
+    return null
+  }
+}
+// The folder a file goes back into, checked the way safeResolutionPath checks
+// one: inside the merge folder, through no symlink. A file git removed may have
+// taken its folder with it, so the nearest folder that still exists is checked.
+export const safeRestorePath = async (folder: string, path: string) => {
+  try {
+    return await safeResolutionPath(folder, path)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
+  }
+  const root = await realpath(folder)
+  for (let dir = dirname(resolve(root, path)); dir !== root && dir.startsWith(root + '/'); dir = dirname(dir)) {
+    const stat = await lstat(dir).catch((err: NodeJS.ErrnoException) => { if (err.code === 'ENOENT') return null; throw err })
+    if (stat === null) continue
+    // A symlink or a file where the folder was: never write through it.
+    if (!stat.isDirectory()) throw new Refusal(BRANCH_TEXT.unsafePath)
+    const real = await realpath(dir)
+    if (real !== root && !real.startsWith(root + '/')) throw new Refusal(BRANCH_TEXT.unsafePath)
+    break
+  }
+  return resolve(root, path)
+}
 export const workspaceOf = async (d: TasksDeps, root: string, saved: MergeOperation): Promise<MergeWorkspace> => {
   const op = { ...saved }; const path = workspacePath(d, op)
   if (!(await d.host.exists(path)) || op.stage === 'abandoned') return { operation: op, conflicts: [], diff: '', truncated: false, approval: null }
@@ -71,6 +127,7 @@ export const workspaceOf = async (d: TasksDeps, root: string, saved: MergeOperat
     if (mergeHead.exitCode === 0 && mergeHead.stdout.trim() === op.sourceHead) op.stage = conflicts.length ? 'conflicts' : 'ready'
     else op.stage = 'failed'
   }
+  const resolved = ['conflicts', 'ready'].includes(op.stage) && !op.commit ? await resolvedIn(d, path, conflicts) : []
   const diff = await git(['diff', '--no-ext-diff', '--no-textconv', op.targetHead, '--'])
   const unstaged = await git(['diff', '--no-ext-diff', '--no-textconv', '--'])
   let untracked = (await git(['ls-files', '--others', '--exclude-standard', '--directory', '-z'])).split('\0').filter(Boolean)
@@ -113,6 +170,6 @@ export const workspaceOf = async (d: TasksDeps, root: string, saved: MergeOperat
   const availableChecks = tree ? await discoverChecks(d, path, tree) : []
   const checks = await readChecks(d, op)
   const checksCurrent = tree !== null && checksPassed(checks, tree, availableChecks)
-  return { availableChecks, checks, checksCurrent, operation: op, conflicts, diff: diff.slice(0, BRANCH_LIMITS.diff), truncated: diff.length > BRANCH_LIMITS.diff,
+  return { availableChecks, checks, checksCurrent, operation: op, conflicts, resolved, diff: diff.slice(0, BRANCH_LIMITS.diff), truncated: diff.length > BRANCH_LIMITS.diff,
     approval: (op.stage === 'ready' || op.stage === 'applying') && tree && !unstaged && !untracked.length && (!committedTree || committedTree === tree) ? digest(op.id + op.sourceHead + op.targetHead + tree + (op.commit ?? '')) : null }
 }

@@ -5,7 +5,7 @@ description: Use when a merge has conflicts and Rohan asks Claude to resolve the
 
 # Tea-concile
 
-Resolve a merge so the result does what **both** branches meant, then hand it back for review. Rohan approves and commits the merge; Queue-tea's guard refuses `git commit`, `git merge` (and `--continue`/`--abort`) anyway.
+Resolve a merge so the result does what **both** branches meant, then hand it back for review. Rohan approves and commits the merge; Queue-tea's guard refuses `git commit`, `git merge` (and `--continue`/`--abort`) anyway. Queue-tea's Tea-Concile helper (`queue-tea:tea-concile`) runs this skill when Rohan sends it to a merge from Branches.
 
 ## 1. Find the merge
 
@@ -21,7 +21,8 @@ For each file in `git diff --name-only --diff-filter=U`, with `B=$(git merge-bas
 
 - `git log --format='%h %s' $B..HEAD -- <file>` and `$B..MERGE_HEAD -- <file>`: why each side changed it.
 - `git diff $B HEAD -- <file>` and `git diff $B MERGE_HEAD -- <file>`: each change on its own, clearer than the markers.
-- The task: in `~/.queue-tea/projects/<project key>.json`, the task whose `id` is the record's `taskId`; its `title`, `description` and `criteria` say what the task branch is for.
+- The quests. An order from Branches carries them: the task quest's title, description, criteria and checkpoint decisions, the target's quest when the target is a quest branch, and the quests that reached the target since the task branched. Otherwise read `~/.queue-tea/projects/<project key>.json`: the task whose `id` is the record's `taskId`; its `title`, `description`, `criteria` and `checkpoint.decisions` say what the task branch is for.
+- Before editing, write one line per file: what the target side wanted, and what the task side wanted. A change neither side's commits nor quests explain is a question, not a guess.
 
 ## 3. Resolve by kind
 
@@ -37,7 +38,7 @@ For each file in `git diff --name-only --diff-filter=U`, with `B=$(git merge-bas
 | Added on both sides | One file when they serve the same purpose; otherwise ask |
 | Binary, symlink, submodule | Don't edit. `git checkout --ours -- <file>` (target) or `--theirs` (task) only when the intent is plain; otherwise ask |
 
-**Ask instead of choosing** when the two sides set one thing to different values for different reasons (a timeout, a wording, a colour), or when you can't tell from the commits and the task what a side meant. Show both versions and your recommendation, leave that file unresolved, and resolve the rest.
+**Ask instead of choosing** when the two sides set one thing to different values for different reasons (a timeout, a wording, a colour), or when you can't tell from the commits and the quests what a side meant. Leave that file unresolved (unstaged), resolve the rest, and add the file to the decisions block (step 5). If you would recommend a combined version, write it into the file without markers and still don't stage it: Branches shows it in the file's result box for Rohan to save or replace.
 
 ## 4. Find what git didn't flag
 
@@ -46,18 +47,19 @@ Clean hunks can still break together: one side removed or renamed a function, ty
 ## 5. Hand it back
 
 1. No markers left: `grep -nE '^(<{7}|={7}|>{7}|\|{7})( |$)' <files>` prints nothing.
-2. Stage each resolved file, and anything else you changed (a regenerated lockfile or graph, a fix from step 4), with `git add -- <file>`. Delete any files your checks created. `git status --porcelain` must show no unstaged or untracked lines: the app won't offer approval while one remains.
-3. Tell Rohan the next step: in Branches, read the merge's diff, run its checks and press **Merge `<source>` into `<target>`**. For a merge run by hand, give `git -C '<folder>' commit --no-edit` to paste, with no leading `!`.
+2. Stage each resolved file, and anything else you changed (a regenerated lockfile or graph, a fix from step 4), with `git add -- <file>`. Delete any files your checks created. Apart from the files you left for Rohan, `git status --porcelain` must show no unstaged or untracked lines: the app won't offer approval while one remains.
+3. Tell Rohan the next step: in Branches, answer the decisions you left, read the merge's diff, run its checks and press **Merge `<source>` into `<target>`**. A file resolved wrongly can go back to its conflict with **Put the conflict back**; **Abandon preparation** drops the attempt and keeps both branches. For a merge run by hand, give `git -C '<folder>' commit --no-edit` to paste, with no leading `!`.
+4. End the report with the decisions block: a fenced block whose info string is `tea-concile-decisions`, holding a JSON list with one object per file left for Rohan, `[]` when there are none. Each object has `file` (the path), `question` (the choice in one sentence), `target` and `source` (what each side does and why, by branch name), `recommend` (`"target"`, `"source"`, `"result"` for a combined version written into the file, or `null`) and `why` (one sentence). Every field stays under 600 characters, in plain JSON. Queue-tea shows each entry on its file in Branches.
 
 ## Report
 
-Per file: what the target did, what the task did, how you combined them, and whether it was a judgment call. Then the open questions, each check you ran with its result, and the next step.
+Per file: what the target did, what the task did, how you combined them, and whether it was a judgment call. Then each check you ran with its result, the next step, and the decisions block last.
 
 ## Common mistakes
 
 | Mistake | Instead |
 | --- | --- |
-| Taking one whole side to clear the markers | It silently drops the other branch's work: combine them |
+| Taking one whole side to clear the markers | It silently drops the other branch's work: combine them, or leave the choice to Rohan in the decisions block |
 | Swapping ours and theirs | In the app's folder, ours is the target and theirs is the task branch |
 | Editing the task's own folder or the main checkout | Only the merge folder |
 | Hand-merging lockfile hashes or `graph.json` | Regenerate them |

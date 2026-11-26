@@ -9,10 +9,12 @@ import type { Reply } from '../../../../shared/engine_api'
 import { createLogger } from '../../../core/logger'
 import { nodeHost } from '../../../core/node_host'
 import { makeTask } from '../../tasks/api/fixtures'
+import { scopeOf } from '../../tasks/api/scope'
+import { concileSides } from '../../helpers/data/concile_sides'
 import { nodeUserGit } from '../data/user_git'
 import { workspacePath } from '../data/merge_workspace'
 import { BRANCH_TEXT } from '../domain/constants'
-import { completeMerge, prepareMerge, readBranch, readBranches, readMergeWorkspace, resolveMergeFile, abandonMerge } from './branch_api'
+import { completeMerge, prepareMerge, readBranch, readBranches, readMergeWorkspace, resolveMergeFile, restoreConflict, abandonMerge } from './branch_api'
 import type { BranchDeps } from './branch_api'
 import { commitBranchFiles } from './commit_api'
 import { runMergeChecks, cancelMergeChecks } from './checks_api'
@@ -92,6 +94,57 @@ integration('user-approved branch workflow in disposable repositories', () => {
     data(await finish(prepared.operation.id, resolved.approval!))
     expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('combined\n')
     expect(await readFile(join(taskPath, 'a.txt'), 'utf8')).toBe('task side\n')
+  })
+  it('previews the conflicts before preparing, and puts a resolved conflict back until the merge is committed', async () => {
+    expect((await review()).preview).toEqual([])
+    await taskCommit('a.txt', 'task side\n')
+    await writeFile(join(repo, 'a.txt'), 'main side\n'); await git(repo, 'commit', '-am', 'Main change')
+    expect((await review()).preview).toEqual(['a.txt'])
+    const prepared = await prepare(); const id = prepared.operation.id
+    expect((await review()).preview).toBeNull()
+    expect(prepared.resolved).toEqual([])
+    expect(await restoreConflict(d, KEY, { operationId: id, path: 'a.txt' })).toMatchObject({ ok: false, error: { message: BRANCH_TEXT.notResolved } })
+    // Resolved the way Tea-Concile does it: in the merge's folder, with git add.
+    const merge = workspacePath(d, prepared.operation)
+    await writeFile(join(merge, 'a.txt'), 'by the helper\n'); await git(merge, 'add', '--', 'a.txt')
+    expect(data(await readMergeWorkspace(d, KEY, id))).toMatchObject({ operation: { stage: 'ready' }, resolved: ['a.txt'] })
+    expect(await restoreConflict(d, KEY, { operationId: id, path: '../a.txt' })).toMatchObject({ ok: false, error: { message: BRANCH_TEXT.invalid } })
+    const restored = data(await restoreConflict(d, KEY, { operationId: id, path: 'a.txt' }))
+    expect(restored).toMatchObject({ operation: { stage: 'conflicts' }, resolved: [], approval: null })
+    expect(restored.conflicts[0]).toMatchObject({ path: 'a.txt', target: 'main side\n', source: 'task side\n' })
+    expect(restored.conflicts[0]!.result).toContain('<<<<<<<')
+    expect(restored.operation.events.at(-1)?.command).toBe(BRANCH_TEXT.restored('a.txt'))
+    const again = data(await resolveMergeFile(d, KEY, { operationId: id, path: 'a.txt', choice: 'edited', text: 'combined\n' }))
+    const merged = data(await finish(id, again.approval!))
+    expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('combined\n')
+    expect(merged.resolved).toEqual([])
+    expect(await restoreConflict(d, KEY, { operationId: id, path: 'a.txt' })).toMatchObject({ ok: false, error: { message: BRANCH_TEXT.stale } })
+  })
+  it('puts back the conflict of a file git removed along with its folder', async () => {
+    await mkdir(join(repo, 'old')); await writeFile(join(repo, 'old/x.txt'), 'base\n'); await git(repo, 'add', 'old/x.txt'); await git(repo, 'commit', '-m', 'Old file')
+    await git(taskPath, 'merge', '-q', '--no-edit', 'main')
+    await git(taskPath, 'rm', '-q', 'old/x.txt'); await git(taskPath, 'commit', '-m', 'Task removed it')
+    await writeFile(join(repo, 'old/x.txt'), 'main changed it\n'); await git(repo, 'commit', '-am', 'Main changed it')
+    const prepared = await prepare(); const id = prepared.operation.id
+    expect(prepared.conflicts.map(file => file.path)).toEqual(['old/x.txt'])
+    const removed = data(await resolveMergeFile(d, KEY, { operationId: id, path: 'old/x.txt', choice: 'source' }))
+    expect(removed).toMatchObject({ operation: { stage: 'ready' }, resolved: ['old/x.txt'] })
+    const restored = data(await restoreConflict(d, KEY, { operationId: id, path: 'old/x.txt' }))
+    expect(restored.conflicts[0]).toMatchObject({ path: 'old/x.txt', target: 'main changed it\n', source: null })
+  })
+  it("tells Tea-Concile which quests reached the target after the task branched", async () => {
+    await git(repo, 'branch', 'task/old')
+    await git(repo, 'checkout', '-q', '-b', 'task/two'); await writeFile(join(repo, 'two.txt'), 'two\n'); await git(repo, 'add', 'two.txt'); await git(repo, 'commit', '-m', 'Two')
+    await git(repo, 'checkout', '-q', 'main'); await git(repo, 'merge', '--no-ff', '-m', 'Merge task/two', 'task/two')
+    await git(repo, 'checkout', '-q', '-b', 'task/three'); await writeFile(join(repo, 'three.txt'), 'three\n'); await git(repo, 'add', 'three.txt'); await git(repo, 'commit', '-m', 'Three')
+    await git(repo, 'checkout', '-q', 'main')
+    const record = JSON.parse(await readFile(join(folder, `.queue-tea/projects/${KEY}.json`), 'utf8'))
+    record.tasks.push(makeTask({ id: 'two', title: 'Second quest', branch: 'task/two' }), makeTask({ id: 'three', branch: 'task/three' }), makeTask({ id: 'old', branch: 'task/old' }))
+    await writeFile(join(folder, `.queue-tea/projects/${KEY}.json`), JSON.stringify(record))
+    const prepared = await prepare()
+    const sides = await concileSides(d, await scopeOf(d, KEY), prepared.operation)
+    expect(sides).toMatchObject({ source: 'task/one', target: 'main', sourceQuest: { id: 'one' }, targetQuest: null })
+    expect(sides.landed?.map(task => task.id)).toEqual(['two'])
   })
   it('abandons only the isolated preparation and permits a new one', async () => {
     const prepared = await prepare()

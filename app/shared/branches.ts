@@ -17,17 +17,23 @@ export type CheckChoice = { id: string; name: string; folder: string; command: s
 export type CheckRun = { id: string; checkId: string; name: string; command: string; tree: string; at: number; finished: number | null; owner: number; status: 'running' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted' | 'setupRequired'; output: string; exitCode: number | null; truncated: boolean }
 export type CommitProgress = { command: string; message: string; at: number; finished: number | null; status: 'running' | 'succeeded' | 'failed' | 'interrupted'; output: string; exitCode: number | null; truncated: boolean }
 export type RunChecksRequest = { operationId: string; approval: string; checkIds: string[] }
-export type MergeWorkspace = { availableChecks?: CheckChoice[]; checks?: CheckRun[]; checksCurrent?: boolean; operation: MergeOperation; conflicts: ConflictFile[]; diff: string; truncated: boolean; approval: string | null }
+// `resolved` is the files resolved in this merge that can still go back to
+// their conflict, until the merge is committed.
+export type MergeWorkspace = { availableChecks?: CheckChoice[]; checks?: CheckRun[]; checksCurrent?: boolean; operation: MergeOperation; conflicts: ConflictFile[]; resolved?: string[]; diff: string; truncated: boolean; approval: string | null }
 // `step` is what the task is on now, or did last. `checks` are the latest run
 // of each check from the in-app check runner, on the prepared merge.
 export type BranchReview = {
   taskId: string; source: string; target: string; targets: string[]; sourceHead: string; targetHead: string; fingerprint: string;
   files: ChangedFile[]; diff: string; truncated: boolean; commits: GraphCommit[]; step: TaskStep | null; checks: CheckRun[];
   commitProgress?: CommitProgress | null; proposal?: CommitProposal | null; state: BranchState; blocked: string | null; merged: boolean; operation: MergeOperation | null; remotes: string[];
+  // The files a merge into `target` would conflict in, worked out before one is
+  // prepared: [] merges clean, null when it couldn't be worked out.
+  preview?: string[] | null;
 }
 export type MergeRequest = { taskId: string; target: string; fingerprint: string; idleConfirmed: boolean }
 export type CommitRequest = MergeRequest & { files: string[]; message: string }
 export type ResolveRequest = { operationId: string; path: string; choice: 'base' | 'target' | 'source' | 'edited'; text?: string }
+export type RestoreRequest = { operationId: string; path: string }
 export type CompleteRequest = { operationId: string; approval: string; message: string; idleConfirmed: boolean }
 export type PushPreview = { operationId: string; remote: string; branch: string; head: string; remoteHead: string | null; commits: GraphCommit[]; fingerprint: string }
 // A quest's own folder on the Free space sheet. `held` names who is working

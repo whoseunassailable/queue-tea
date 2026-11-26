@@ -191,54 +191,117 @@ it('resolves conflicts with branch-labelled sides and rejects remaining markers'
   expect(engine.resolveMergeFile).toHaveBeenCalledWith(KEY, expect.objectContaining({ path: 'a.ts', choice: 'edited', text: 'combined result' }))
 })
 
-describe('a helper on a merge with conflicts', () => {
+describe('Tea-Concile on a merge with conflicts', () => {
   const OP = mergeOperation().id
-  const conflicted = async (over: Partial<EngineApi> = {}) => {
+  const SEND = 'Send Tea-Concile to reconcile these conflicts'
+  const conflicted = async (over: Partial<EngineApi> = {}, resolved: string[] = []) => {
     const conflicts = [{ path: 'a.ts', base: 'base', target: 'main', source: 'feature', result: null, editable: true }]
-    const { engine, tellHelpers } = fakeEngine({ readMergeWorkspace: async () => ({ ok: true, data: mergeWorkspace({ operation: mergeOperation({ stage: 'conflicts' }), approval: null, conflicts }) }), ...over })
+    const { engine, tellHelpers } = fakeEngine({ readMergeWorkspace: async () => ({ ok: true, data: mergeWorkspace({ operation: mergeOperation({ stage: 'conflicts' }), approval: null, conflicts, resolved }) }), ...over })
     await act(async () => { render(<MergeReview engine={engine} realm={KEY} id={OP} remotes={[]} onChanged={() => {}} />) })
-    await screen.findByRole('region', { name: 'Helpers for this merge' })
+    await screen.findByRole('region', { name: t.branches.bench })
     return { engine, tellHelpers }
   }
   const zone = () => document.querySelector('.merge-review') as HTMLElement
   const carrying = (id: string) => ({ types: ['application/x-queue-tea-helper'], getData: (type: string) => (type === 'application/x-queue-tea-helper' ? id : '') })
+  const decisions = (entries: object[]) => `\`\`\`tea-concile-decisions\n${JSON.stringify(entries)}\n\`\`\``
+  const CHOICE = { file: 'a.ts', question: 'Fade or blink?', target: 'main blinks the dot', source: 'The task fades it in', recommend: 'source', why: 'The quest says never flash.' }
 
-  it('resolves the conflicts with the helper dropped on it', async () => {
+  it('is the one helper beside the merge', async () => {
+    await conflicted()
+    const bench = within(screen.getByRole('region', { name: t.branches.bench }))
+    expect(bench.getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual([SEND])
+  })
+
+  it('reconciles the conflicts when it is dropped on the merge', async () => {
     const { engine } = await conflicted()
-    await act(() => void fireEvent.dragOver(zone(), { dataTransfer: carrying('commit-chai-n') }))
+    await act(() => void fireEvent.dragOver(zone(), { dataTransfer: carrying('tea-concile') }))
     expect(zone().classList.contains('dropping')).toBe(true)
-    await act(() => void fireEvent.drop(zone(), { dataTransfer: carrying('commit-chai-n') }))
-    expect(engine.concileMerge).toHaveBeenCalledWith(KEY, 'commit-chai-n', OP)
+    await act(() => void fireEvent.drop(zone(), { dataTransfer: carrying('tea-concile') }))
+    expect(engine.concileMerge).toHaveBeenCalledWith(KEY, 'tea-concile', OP)
     expect(zone().classList.contains('dropping')).toBe(false)
   })
 
-  it('takes a helper pressed from the keyboard, and ignores a drop that carries no helper', async () => {
+  it('takes a press from the keyboard, and ignores a drop that carries no helper', async () => {
     const { engine } = await conflicted()
     await act(() => void fireEvent.drop(zone(), { dataTransfer: carrying('someone') }))
     expect(engine.concileMerge).not.toHaveBeenCalled()
-    await click(screen.getByRole('button', { name: 'Send Tea-DD to resolve these conflicts' }))
-    expect(engine.concileMerge).toHaveBeenCalledWith(KEY, 'tea-dd', OP)
+    await click(screen.getByRole('button', { name: SEND }))
+    expect(engine.concileMerge).toHaveBeenCalledWith(KEY, 'tea-concile', OP)
   })
 
-  it('holds the merge while the helper works, then shows what it said', async () => {
+  it('holds the merge while it works, then shows what it said without its list of choices', async () => {
     const { engine, tellHelpers } = await conflicted()
-    await act(() => tellHelpers([helperJob({ helper: 'chai-pter', merge: OP, doing: { kind: 'editing', target: 'a.ts' } }), helperJob({ helper: 'tea-dd', status: 'working' })]))
-    expect(screen.getByText(/Chai-pter: Editing a.ts/)).toBeTruthy()
+    await act(() => tellHelpers([helperJob({ helper: 'tea-concile', merge: OP, doing: { kind: 'editing', target: 'a.ts' } })]))
+    expect(screen.getByText(/Tea-Concile: Editing a.ts/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Use destination version' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'Send Commit Chai-n to resolve these conflicts' }) as HTMLButtonElement).disabled).toBe(true)
-    await act(() => void fireEvent.drop(zone(), { dataTransfer: carrying('commit-chai-n') }))
+    expect((screen.getByRole('button', { name: SEND }) as HTMLButtonElement).disabled).toBe(true)
+    await act(() => void fireEvent.drop(zone(), { dataTransfer: carrying('tea-concile') }))
     expect(engine.concileMerge).not.toHaveBeenCalled()
     await click(screen.getByRole('button', { name: 'Stop' }))
-    expect(engine.stopHelper).toHaveBeenCalledWith('chai-pter')
-    await act(() => tellHelpers([helperJob({ helper: 'chai-pter', merge: OP, status: 'done', reply: 'Kept both constants.' })]))
+    expect(engine.stopHelper).toHaveBeenCalledWith('tea-concile')
+    await act(() => tellHelpers([helperJob({ helper: 'tea-concile', merge: OP, status: 'done', reply: `Kept both constants.\n\n${decisions([])}` })]))
     expect(screen.getByText('Kept both constants.')).toBeTruthy()
+    expect(document.querySelector('.bench-reply')?.textContent).not.toContain('tea-concile-decisions')
     expect((screen.getByRole('button', { name: 'Use destination version' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('says why a helper could not be sent', async () => {
+  it('marks each choice it left on its file, with its recommendation as the main button', async () => {
+    const { tellHelpers } = await conflicted()
+    await act(() => tellHelpers([helperJob({ helper: 'tea-concile', merge: OP, status: 'done', reply: `Resolved what fit.\n\n${decisions([CHOICE, { ...CHOICE, file: 'gone.ts' }])}` })]))
+    expect(screen.getByText(t.branches.decisionsLeft(1))).toBeTruthy()
+    const file = within(screen.getByRole('region', { name: 'a.ts' }))
+    const choice = within(file.getByRole('group', { name: t.branches.decision }))
+    expect(choice.getByText('Fade or blink?')).toBeTruthy()
+    expect(choice.getByText(/The task fades it in/)).toBeTruthy()
+    expect(choice.getByText(`${t.branches.recommends(t.branches.recommendChoice.source)} The quest says never flash.`)).toBeTruthy()
+    expect(file.getByRole('button', { name: 'Use task version' }).className).toBe('btn primary')
+    expect(file.getByRole('button', { name: 'Save resolved file' }).className).toBe('btn')
+    expect(document.querySelector('.bench-bot .bot')?.classList.contains('asking')).toBe(true)
+  })
+
+  it('says when its list of choices did not read, and logs why', async () => {
+    const { engine, tellHelpers } = await conflicted()
+    await act(() => tellHelpers([helperJob({ helper: 'tea-concile', merge: OP, status: 'done', reply: 'Left one.\n```tea-concile-decisions\n[{ broken\n```' })]))
+    expect(screen.getByText(t.branches.decisionsUnreadable)).toBeTruthy()
+    expect(screen.queryByRole('group', { name: t.branches.decision })).toBeNull()
+    expect(engine.log).toHaveBeenCalledWith('warn', expect.stringContaining("Tea-Concile's choices"))
+  })
+
+  it('says why it could not be sent', async () => {
     await conflicted({ concileMerge: async () => ({ ok: false, error: { message: 'This merge has no conflicts left to resolve.' } }) })
-    await click(screen.getByRole('button', { name: 'Send Tea-DD to resolve these conflicts' }))
+    await click(screen.getByRole('button', { name: SEND }))
     expect((await screen.findByRole('alert')).textContent).toBe('This merge has no conflicts left to resolve.')
+  })
+
+  it('puts a resolved file back to its conflict', async () => {
+    const { engine } = await conflicted({}, ['b.ts'])
+    const resolved = within(screen.getByRole('region', { name: t.branches.resolvedHere }))
+    await click(resolved.getByRole('button', { name: t.branches.restoreNamed('b.ts') }))
+    expect(engine.restoreConflict).toHaveBeenCalledWith(KEY, { operationId: OP, path: 'b.ts' })
+  })
+})
+
+describe('the conflict preview before a merge is prepared', () => {
+  it('lists the files the merge would conflict in', async () => {
+    await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ preview: ['a.ts', 'b.ts'] }) }) })
+    expect(await screen.findByText(t.branches.preview(2, 'main'))).toBeTruthy()
+    expect(screen.getByText('a.ts')).toBeTruthy()
+    expect(screen.getByText(t.branches.previewHint)).toBeTruthy()
+  })
+
+  it('says when it merges clean, and says nothing when it could not tell', async () => {
+    await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ preview: [] }) }) })
+    expect(await screen.findByText(t.branches.previewClean('main'))).toBeTruthy()
+    cleanup()
+    await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ preview: null }) }) })
+    await screen.findByRole('button', { name: 'Prepare merge for review' })
+    expect(screen.queryByText(t.branches.previewClean('main'))).toBeNull()
+  })
+
+  it('shows a few files and counts the rest', async () => {
+    await openReview({ readBranch: async () => ({ ok: true, data: branchReview({ preview: Array.from({ length: 25 }, (_, i) => `f${i}.ts`) }) }) })
+    expect(await screen.findByText(t.branches.previewMore(5))).toBeTruthy()
+    expect(screen.queryByText('f20.ts')).toBeNull()
   })
 })
 

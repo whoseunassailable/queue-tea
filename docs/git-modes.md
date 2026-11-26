@@ -23,7 +23,7 @@ A record from before Git modes has no mode and works as Assisted. The roadmap's 
 | Claude's brief (`tasks_text.ts`) | "Never commit or push: Rohan does." | Adds `propose_commit` in an Assisted realm. |
 | Commit Chai-n (`agents/commit-chai-n.md`) | Hands Rohan the commands. | Proposes with `propose_commit` in an Assisted realm, and never credits Claude in a message. |
 | Codex's brief (`checkpoints_text.ts`) and its skills | Never commit. | Unchanged: Codex has no Queue-tea tools for proposing. |
-| Tea-Concile's order from Branches (`messages.ts`) | Resolve and stage, never commit. | Unchanged: Rohan approves the merge in Branches. |
+| Tea-Concile's order from Branches (`messages.ts`, `concile_brief.ts`) | Resolve and stage, never commit. | Unchanged: Rohan approves the merge in Branches. The order now carries both quests' intent. |
 | The app's process runner (`isForbiddenGit`) | Refuses commit, push, merge and pull for anything but Branches' own approved steps. | Unchanged. |
 | Installed skills, such as finishing a development branch | Tell Claude to commit. | Claude meets the guard; in an Assisted realm the refusal names the tool to use instead. |
 | `spec.md`, `workspace-app.md`, `workspace-app-design.md` | Said the app never commits, merges or pushes. | Corrected: Branches does, when Rohan presses the button. |
@@ -37,4 +37,4 @@ Left for their own child quests:
 1. **Finishing checks the merge (Q02.4, Q02.8).** Finishing a quest doesn't check that its branch merged, so a quest can be done but unmerged. Finishing could warn, or wait for a confirmed merge.
 2. **The mod's start check (Q02.7).** Starting a task in the mod waits on uncommitted or unpushed work and offers only **Check again**. It could say where to commit (Branches) or offer to start in a worktree as the app does.
 3. **Branch dependencies (Q02.6).** A quest records its branch and its base, but not which other quest's branch it builds on.
-4. **Quest intent for Tea-Concile (Q02.9, with Q08.6).** Tea-Concile's order from Branches doesn't carry the two quests' descriptions and criteria.
+4. **Quest intent for Tea-Concile (Q02.9, with Q08.6).** Done in 2.29.0: Tea-Concile's order from Branches carries both quests' descriptions, criteria and checkpoint decisions, and the quests that landed on the target in between ([tea-concile.md](tea-concile.md)).

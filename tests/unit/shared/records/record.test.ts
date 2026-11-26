@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { FileTooLarge } from '../../../../hooks/core/host/host'
 import { RECORD_TEXT } from '../../../../hooks/shared/records/domain/constants/record_text'
 import { backupPath, carryOverRecords, emptyRecord, parseRecord, projectKey, readOthers, readProblem, readRecord, recordPath, restoreRecord, updateRecord, whyUnreadable } from '../../../../hooks/shared/records/data/datasources/record_source'
-import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../hooks/shared/records/domain/services/helpers'
+import { defaultHelpers, isHelperId, isQuestHelperId, onlyHelpers } from '../../../../hooks/shared/records/domain/services/helpers'
 import { newTask } from '../../../../hooks/shared/records/domain/services/queue_rules'
 import type { ProjectRecord, Task } from '../../../../types'
 import { makeTask, memoryHost } from '../../../helpers'
@@ -319,9 +319,19 @@ test('onlyHelpers drops repeats and keeps the list order', () => {
   expect(onlyHelpers(['tea-dd', 'commit-chai-n', 'tea-dd'])).toEqual(['commit-chai-n', 'tea-dd'])
 })
 
-test('isHelperId knows only the four', () => {
+test('isHelperId knows only the five', () => {
   expect(isHelperId('tea-dd')).toBe(true)
+  expect(isHelperId('tea-concile')).toBe(true)
   for (const v of ['general-purpose', '', 3, null]) expect(isHelperId(v)).toBe(false)
+})
+
+test('a quest can turn on every helper but Tea-Concile, which works on merges', () => {
+  expect(isQuestHelperId('tea-dd')).toBe(true)
+  for (const v of ['tea-concile', 'general-purpose', null]) expect(isQuestHelperId(v)).toBe(false)
+})
+
+test('a hand-edited helpers field keeps Tea-Concile off the quest, and still notes its run', () => {
+  expect(readFirst({ title: 'Old', created: '2026-10-01', helpers: { on: ['tea-concile', 'chai-pter'], ran: ['tea-concile'] } })?.helpers).toEqual({ on: ['chai-pter'], ran: ['tea-concile'], reminded: false })
 })
 
 test("a task saved before Codex reads as Claude Code's, and a new task starts with Claude Code", () => {

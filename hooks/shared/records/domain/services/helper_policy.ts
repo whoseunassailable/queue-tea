@@ -12,6 +12,7 @@ export const HELPER_POLICIES: Record<HelperId, Invocation> = {
   'tea-dd': 'automatic',
   'chai-pter': 'conditional',
   'commit-chai-n': 'conditional',
+  'tea-concile': 'manual',
 }
 
 // The helpers a profile has no stage for. A Quick change (only how it looks,

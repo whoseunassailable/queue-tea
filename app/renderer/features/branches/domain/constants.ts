@@ -6,3 +6,5 @@ export const MESSAGE_LIMIT = 2_000
 export const HELPER_DRAG = 'application/x-queue-tea-helper'
 // A merged folder lists this many of its uncommitted files.
 export const CHANGED_SHOWN = 100
+// A merge's conflict preview lists this many of its files.
+export const PREVIEW_SHOWN = 20

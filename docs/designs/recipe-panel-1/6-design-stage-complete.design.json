@@ -1,0 +1,476 @@
+{
+ "format": 1,
+ "name": "6 · Six stages with Mocha, complete",
+ "width": 440,
+ "height": 436,
+ "fill": "#FFFAEE",
+ "nodes": [
+  {
+   "id": "l33",
+   "name": "Quest",
+   "x": 14,
+   "y": 18,
+   "width": 412,
+   "type": "text",
+   "text": "Recipe panel simplification",
+   "font": "Marcellus",
+   "size": 20,
+   "weight": 400,
+   "color": "#2A2218"
+  },
+  {
+   "id": "l34",
+   "name": "Meta",
+   "x": 14,
+   "y": 50,
+   "width": 412,
+   "type": "text",
+   "text": "Urgent · Hard · on task/q07-recipe-panel",
+   "font": "Nunito Sans",
+   "size": 12,
+   "weight": 400,
+   "color": "#54473A"
+  },
+  {
+   "id": "l32",
+   "name": "Recipe",
+   "x": 14,
+   "y": 96,
+   "width": 412,
+   "type": "frame",
+   "height": 290,
+   "fill": "#FFFDF8",
+   "radius": 8,
+   "stroke": {
+    "color": "#DFC69B",
+    "width": 1
+   },
+   "children": [
+    {
+     "id": "l1",
+     "name": "Kicker",
+     "x": 14,
+     "y": 12,
+     "width": 220,
+     "type": "text",
+     "text": "RECIPE · STEP 6 OF 6",
+     "font": "Nunito Sans",
+     "size": 12,
+     "weight": 800,
+     "color": "#54473A"
+    },
+    {
+     "id": "l2",
+     "name": "Status dot",
+     "x": 346,
+     "y": 17,
+     "width": 8,
+     "type": "frame",
+     "height": 8,
+     "fill": "#1B6650",
+     "radius": 999
+    },
+    {
+     "id": "l3",
+     "name": "Status",
+     "x": 356,
+     "y": 12,
+     "width": 56,
+     "type": "text",
+     "text": "Complete",
+     "font": "Nunito Sans",
+     "size": 13,
+     "weight": 700,
+     "color": "#2A2218",
+     "align": "right"
+    },
+    {
+     "id": "l5",
+     "name": "Progress",
+     "x": 14,
+     "y": 36,
+     "width": 384,
+     "type": "frame",
+     "height": 6,
+     "fill": "#F7EBD5",
+     "radius": 999,
+     "children": [
+      {
+       "id": "l4",
+       "name": "Filled",
+       "x": 0,
+       "y": 0,
+       "width": 384,
+       "type": "frame",
+       "height": 6,
+       "fill": "#2E9C7E",
+       "radius": 999
+      }
+     ]
+    },
+    {
+     "id": "l12",
+     "name": "Depth chips",
+     "x": 14,
+     "y": 52,
+     "width": 384,
+     "type": "frame",
+     "height": 26,
+     "children": [
+      {
+       "id": "l7",
+       "name": "Chip · Compact (pressed)",
+       "x": 0,
+       "y": 0,
+       "width": 77,
+       "type": "frame",
+       "height": 26,
+       "fill": "#D7F0E3",
+       "radius": 999,
+       "stroke": {
+        "color": "#54473A",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l6",
+         "name": "Label",
+         "x": 0,
+         "y": 5,
+         "width": 77,
+         "type": "text",
+         "text": "Compact",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 700,
+         "color": "#2A2218",
+         "align": "center"
+        }
+       ]
+      },
+      {
+       "id": "l9",
+       "name": "Chip · Detailed",
+       "x": 83,
+       "y": 0,
+       "width": 84,
+       "type": "frame",
+       "height": 26,
+       "radius": 999,
+       "stroke": {
+        "color": "#DFC69B",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l8",
+         "name": "Label",
+         "x": 0,
+         "y": 5,
+         "width": 84,
+         "type": "text",
+         "text": "Detailed",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 600,
+         "color": "#54473A",
+         "align": "center"
+        }
+       ]
+      },
+      {
+       "id": "l11",
+       "name": "Chip · Technical",
+       "x": 173,
+       "y": 0,
+       "width": 91,
+       "type": "frame",
+       "height": 26,
+       "radius": 999,
+       "stroke": {
+        "color": "#DFC69B",
+        "width": 1
+       },
+       "children": [
+        {
+         "id": "l10",
+         "name": "Label",
+         "x": 0,
+         "y": 5,
+         "width": 91,
+         "type": "text",
+         "text": "Technical",
+         "font": "Nunito Sans",
+         "size": 12,
+         "weight": 600,
+         "color": "#54473A",
+         "align": "center"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "l15",
+     "name": "Stage · Set out on the branch",
+     "x": 14,
+     "y": 86,
+     "width": 384,
+     "type": "frame",
+     "height": 24,
+     "radius": 6,
+     "children": [
+      {
+       "id": "l13",
+       "name": "Mark",
+       "x": 8,
+       "y": 4,
+       "width": 14,
+       "type": "text",
+       "text": "✓",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 800,
+       "color": "#1B6650",
+       "align": "center"
+      },
+      {
+       "id": "l14",
+       "name": "Label",
+       "x": 30,
+       "y": 4,
+       "width": 344,
+       "type": "text",
+       "text": "Set out on the branch",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A"
+      }
+     ]
+    },
+    {
+     "id": "l18",
+     "name": "Stage · Understand the problem",
+     "x": 14,
+     "y": 114,
+     "width": 384,
+     "type": "frame",
+     "height": 24,
+     "radius": 6,
+     "children": [
+      {
+       "id": "l16",
+       "name": "Mark",
+       "x": 8,
+       "y": 4,
+       "width": 14,
+       "type": "text",
+       "text": "✓",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 800,
+       "color": "#1B6650",
+       "align": "center"
+      },
+      {
+       "id": "l17",
+       "name": "Label",
+       "x": 30,
+       "y": 4,
+       "width": 344,
+       "type": "text",
+       "text": "Understand the problem",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A"
+      }
+     ]
+    },
+    {
+     "id": "l21",
+     "name": "Stage · Design the solution",
+     "x": 14,
+     "y": 142,
+     "width": 384,
+     "type": "frame",
+     "height": 24,
+     "radius": 6,
+     "children": [
+      {
+       "id": "l19",
+       "name": "Mark",
+       "x": 8,
+       "y": 4,
+       "width": 14,
+       "type": "text",
+       "text": "✓",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 800,
+       "color": "#1B6650",
+       "align": "center"
+      },
+      {
+       "id": "l20",
+       "name": "Label",
+       "x": 30,
+       "y": 4,
+       "width": 344,
+       "type": "text",
+       "text": "Design the solution",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A"
+      }
+     ]
+    },
+    {
+     "id": "l24",
+     "name": "Stage · Build the change",
+     "x": 14,
+     "y": 170,
+     "width": 384,
+     "type": "frame",
+     "height": 24,
+     "radius": 6,
+     "children": [
+      {
+       "id": "l22",
+       "name": "Mark",
+       "x": 8,
+       "y": 4,
+       "width": 14,
+       "type": "text",
+       "text": "✓",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 800,
+       "color": "#1B6650",
+       "align": "center"
+      },
+      {
+       "id": "l23",
+       "name": "Label",
+       "x": 30,
+       "y": 4,
+       "width": 344,
+       "type": "text",
+       "text": "Build the change",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A"
+      }
+     ]
+    },
+    {
+     "id": "l27",
+     "name": "Stage · Verify the change",
+     "x": 14,
+     "y": 198,
+     "width": 384,
+     "type": "frame",
+     "height": 24,
+     "radius": 6,
+     "children": [
+      {
+       "id": "l25",
+       "name": "Mark",
+       "x": 8,
+       "y": 4,
+       "width": 14,
+       "type": "text",
+       "text": "✓",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 800,
+       "color": "#1B6650",
+       "align": "center"
+      },
+      {
+       "id": "l26",
+       "name": "Label",
+       "x": 30,
+       "y": 4,
+       "width": 344,
+       "type": "text",
+       "text": "Verify the change",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A"
+      }
+     ]
+    },
+    {
+     "id": "l30",
+     "name": "Stage · Review & complete",
+     "x": 14,
+     "y": 226,
+     "width": 384,
+     "type": "frame",
+     "height": 24,
+     "radius": 6,
+     "children": [
+      {
+       "id": "l28",
+       "name": "Mark",
+       "x": 8,
+       "y": 4,
+       "width": 14,
+       "type": "text",
+       "text": "✓",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 800,
+       "color": "#1B6650",
+       "align": "center"
+      },
+      {
+       "id": "l29",
+       "name": "Label",
+       "x": 30,
+       "y": 4,
+       "width": 344,
+       "type": "text",
+       "text": "Review & complete",
+       "font": "Nunito Sans",
+       "size": 13,
+       "weight": 400,
+       "color": "#54473A"
+      }
+     ]
+    },
+    {
+     "id": "l31",
+     "name": "Verification",
+     "x": 14,
+     "y": 260,
+     "width": 384,
+     "type": "text",
+     "text": "Verification: Deep · Unit and integration tests  · 2 checks passed",
+     "font": "Nunito Sans",
+     "size": 12,
+     "weight": 400,
+     "color": "#54473A"
+    }
+   ]
+  },
+  {
+   "id": "l35",
+   "name": "Below",
+   "x": 14,
+   "y": 400,
+   "width": 412,
+   "type": "text",
+   "text": "Time, Git, Helpers and Test profile follow, as today.",
+   "font": "Nunito Sans",
+   "size": 12,
+   "weight": 400,
+   "color": "#665848"
+  }
+ ]
+}

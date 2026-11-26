@@ -100,31 +100,32 @@ describe('a quest on the board', () => {
   })
 })
 
-describe('the note it carries on from', () => {
-  it('lists a checkpoint\'s sections', async () => {
+describe('the recipe it carries', () => {
+  it('builds a checkpoint\'s goal and steps into the recipe', async () => {
     await seed({ tasks: [makeTask({ id: 'one', checkpoint: { ...emptyCheckpoint(), written: '2026-10-26T16:35:00+01:00', goal: 'Fix the docs', remaining: ['The diagrams'] } })] })
 
-    expect(data(await readQuestFacts(deps, KEY, 'one')).note).toEqual({
-      title: 'Checkpoint',
-      written: '2026-10-26T16:35:00+01:00',
-      text: '',
-      sections: [
-        { heading: 'Goal', lines: ['Fix the docs'] },
-        { heading: 'Remaining', lines: ['- The diagrams'] },
-      ],
-    })
+    const recipe = data(await readQuestFacts(deps, KEY, 'one')).recipe
+    expect(recipe).toMatchObject({ phase: 'paused', goal: 'Fix the docs', steps: [{ text: 'The diagrams', mark: 'next' }], written: { kind: 'checkpoint', at: '2026-10-26T16:35:00+01:00' } })
   })
 
-  it('keeps a plain handoff note as text', async () => {
+  it('keeps a plain handoff note whole', async () => {
     await seed({ tasks: [makeTask({ id: 'one', handoff: { text: 'Carry on with the diagrams.', written: '2026-10-26T16:35:00+01:00' } })] })
 
-    expect(data(await readQuestFacts(deps, KEY, 'one')).note).toMatchObject({ title: 'Handoff note', text: 'Carry on with the diagrams.', sections: null })
+    expect(data(await readQuestFacts(deps, KEY, 'one')).recipe?.notes).toEqual([{ kind: 'note', heading: null, lines: ['Carry on with the diagrams.'] }])
   })
 
   it('has none for a quest never worked on', async () => {
     await seed({ tasks: [makeTask({ id: 'one' })] })
 
-    expect(data(await readQuestFacts(deps, KEY, 'one')).note).toBeNull()
+    expect(data(await readQuestFacts(deps, KEY, 'one')).recipe).toBeNull()
+  })
+
+  it('follows the quest in hand to the stage its step shows', async () => {
+    const step = { id: 's-1', at: '2026-10-27T17:40:00Z', finished: null, kind: 'test' as const, status: 'running' as const, subject: 'npm test' }
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current', branch: 'main', started: '2026-10-27T17:00:00Z', step })] })
+
+    const recipe = data(await readQuestFacts(deps, KEY, 'one')).recipe
+    expect(recipe?.stages.find(stage => stage.mark === 'now')?.id).toBe('verify')
   })
 })
 

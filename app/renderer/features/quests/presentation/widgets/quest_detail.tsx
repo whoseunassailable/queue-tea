@@ -20,6 +20,7 @@ import { HelperToggles } from './helper_toggles'
 import { TestProfileControl } from './test_profile_control'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
+import { RecipePanel } from './recipe_panel'
 
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
@@ -224,6 +225,7 @@ const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: stri
 
   return (
     <>
+      {facts?.recipe != null && <RecipePanel engine={engine} recipe={facts.recipe} session="none" isWithCodex={false} />}
       {facts !== null && <QuestNotes facts={facts} />}
       {read.load.status === 'loading' && <p class="hint" role="status"><Spinner />{t.loading.stillReading}</p>}
       {failure !== null && <p class="hint" role="alert">{failure}</p>}

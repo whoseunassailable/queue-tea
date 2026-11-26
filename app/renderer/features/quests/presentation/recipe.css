@@ -1,0 +1,44 @@
+/* A quest's recipe, on its detail pane. Only the theme's own tokens. */
+.rm .recipe { margin-block: 12px 16px; padding: 12px 14px; border-radius: 8px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.rm .recipe-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.rm .recipe-kicker { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); }
+.rm .recipe-status { margin: 0; font-weight: 700; color: var(--ink); }
+.rm .recipe-status::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ink3); vertical-align: 1px; }
+.rm .recipe-status.brewing::before { background: var(--xp); }
+.rm .recipe-status.needsYou { color: var(--hi-t); }
+.rm .recipe-status.needsYou::before { background: var(--hi-t); }
+.rm .recipe-status.complete::before { background: var(--xp-t); }
+
+.rm .recipe-bar { height: 6px; margin: 8px 0 10px; border-radius: 999px; background: var(--hov); overflow: hidden; }
+.rm .recipe-bar span { display: block; height: 100%; border-radius: inherit; background: var(--xp); }
+
+/* What needs Rohan shows at every depth, above the stages. */
+.rm .recipe-attention { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.rm .recipe-attention li { padding: 6px 10px; border-radius: 6px; background: var(--hi-b); color: var(--hi-t); overflow-wrap: anywhere; }
+.rm .recipe-attention li.blocker { background: var(--urg-b); color: var(--urg-t); }
+
+.rm .recipe-depths { margin: 0 0 10px; }
+.rm .recipe-depths .helper-chip { --m: var(--ink2); --mb: var(--sel); padding: 3px 12px; }
+
+.rm .recipe-stages, .rm .recipe-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.rm .recipe-stages li, .rm .recipe-steps li { display: flex; gap: 8px; align-items: baseline; padding: 3px 8px; border-radius: 6px; color: var(--ink2); overflow-wrap: anywhere; }
+.rm .recipe-stages li::before, .rm .recipe-steps li::before { flex: none; width: 1em; text-align: center; font-weight: 800; }
+.rm .recipe-stages li.done::before, .rm .recipe-steps li.done::before { content: '✓'; color: var(--xp-t); }
+.rm .recipe-stages li.now::before, .rm .recipe-steps li.now::before { content: '▶'; color: var(--ink); }
+.rm .recipe-stages li.next::before, .rm .recipe-steps li.next::before { content: '○'; color: var(--ink3); }
+.rm .recipe-stages li.now, .rm .recipe-steps li.now { background: var(--sel); color: var(--ink); font-weight: 700; }
+.rm .recipe-stages li.next { color: var(--ink3); }
+
+.rm .recipe-verify { margin: 10px 0 0; color: var(--ink2); font-size: 12px; }
+.rm .recipe-tally { color: var(--xp-t); font-weight: 700; }
+.rm .recipe-tally.failed { color: var(--urg-t); }
+
+.rm .recipe-more { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.rm .recipe-more h4 { margin: 10px 0 4px; font-size: 12px; color: var(--ink2); }
+.rm .recipe-more h4:first-child { margin-top: 0; }
+.rm .recipe-lines { margin: 0; padding-left: 18px; }
+.rm .recipe-lines li { margin: 2px 0; overflow-wrap: anywhere; }
+.rm .recipe-checks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.rm .recipe-checks li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; overflow-wrap: anywhere; }
+.rm .recipe-result { font-weight: 700; color: var(--xp-t); }
+.rm .recipe-checks li.failed .recipe-result { color: var(--urg-t); }

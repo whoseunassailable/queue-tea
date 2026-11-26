@@ -1,10 +1,10 @@
 import type { Task } from '../../../../../types'
-import { cardNote } from '../../../../../hooks/shared/checkpoints/domain/services/card_note'
 import { slugBranch } from '../../../../../hooks/shared/git/domain/services/branch_rules'
 import { dayKey } from '../../../../../hooks/shared/time/domain/services/time'
 import type { ActiveFacts, ManaLines, QuestFacts, Reply } from '../../../../shared/engine_api'
 import { MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
+import { recipeOf } from '../domain/recipe'
 import { questIdOf } from '../domain/task_input'
 import { scopeOf } from './scope'
 import type { Scope, TasksDeps } from './scope'
@@ -95,7 +95,7 @@ export const readQuestFacts = (d: TasksDeps, key: unknown, taskId: unknown): Pro
     activity.step = latestStep(activity.step, observed.step)
 
     return {
-      note: cardNote(task),
+      recipe: recipeOf(task, activity.step),
       messages: task.messages,
       branchToBe: await branchToBe(d, scope, task),
       active: task.state === 'current' ? await activeOf(d, scope, task) : null,

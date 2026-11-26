@@ -1,4 +1,4 @@
-import type { BadgeId, HelperDoingKind, HoldKind, SessionState, SkyChoice, Stage, TerminalChoice, VictoryKind } from '../../shared/engine_api'
+import type { BadgeId, HelperDoingKind, HoldKind, RecipeDetail, RecipeMark, RecipeStageId, SessionState, SkyChoice, Stage, TerminalChoice, VictoryKind } from '../../shared/engine_api'
 import type { Difficulty, HelperId, Priority, TestProfileId } from '../../../types'
 
 const DOING: Record<HelperDoingKind, string> = {
@@ -1474,6 +1474,60 @@ export const t = {
       critical: 'Adds the end-to-end tests that walk the flows it reaches.',
       release: 'Runs every suite, the full end-to-end run included.',
     } satisfies Record<TestProfileId, string>,
+  },
+  recipe: {
+    label: 'Recipe',
+    step: (at: number, of: number) => `Recipe · Step ${at} of ${of}`,
+    progress: (at: number, of: number) => `Stage ${at} of ${of}`,
+    stages: {
+      setOut: 'Set out on the branch',
+      understand: 'Understand the problem',
+      design: 'Design the solution',
+      build: 'Build the change',
+      verify: 'Verify the change',
+      review: 'Review & complete',
+    } satisfies Record<RecipeStageId, string>,
+    marks: { done: 'Done', now: 'Now', next: 'Next' } satisfies Record<RecipeMark, string>,
+    status: {
+      brewing: 'Brewing',
+      waiting: 'Waiting for your next message',
+      needsYou: 'Waiting on you',
+      withCodex: 'With Codex',
+      paused: 'Paused · no Claude Code session is open',
+      shelved: 'Paused · back in the queue',
+      complete: 'Complete',
+    },
+    detailLabel: 'How much of the recipe to show',
+    details: { compact: 'Compact', detailed: 'Detailed', technical: 'Technical' } satisfies Record<RecipeDetail, string>,
+    savingDetail: 'Keeping this choice…',
+    detailNotSaved: (message: string) => `Shown now, but not kept for next time. ${message}`,
+    attentionLabel: 'Needs you',
+    attention: {
+      looksDone: 'Claude says this quest looks done. Check it, then answer on its card.',
+      blocker: 'Blocked',
+      question: 'Asks you',
+    },
+    verification: (profile: string, scope: string) => `Verification: ${profile} · ${scope}`,
+    noProfile: 'Verification: Tea-DD picks a profile when it tests',
+    scope: {
+      quick: 'Lint, the type check and the changed files’ tests',
+      standard: 'Unit and component tests of what it reaches',
+      deep: 'Unit and integration tests',
+      critical: 'Unit, integration and end-to-end tests',
+      release: 'Every suite, end to end',
+    } satisfies Record<TestProfileId, string>,
+    tally: (passed: number, failed: number) =>
+      failed === 0 ? (passed === 1 ? '1 check passed' : `${passed} checks passed`) : `${passed} passed · ${failed} failed`,
+    goal: 'Goal',
+    steps: 'Steps',
+    noSteps: 'No steps written yet. They come with the next checkpoint or handoff note.',
+    doneWhen: 'Done when',
+    notes: { decisions: 'Decisions', rejected: 'Approaches rejected', files: 'Files changed', note: 'Handoff note', section: 'Note' },
+    checks: 'Checks run',
+    noChecks: 'No checks seen yet.',
+    checkResult: { passed: 'Passed', failed: 'Failed' },
+    written: { checkpoint: (at: string) => `From the checkpoint of ${at}`, handoff: (at: string) => `From the handoff note of ${at}` },
+    nothingTechnical: 'Nothing more to show: Claude hasn’t written a checkpoint or handoff note on this quest yet.',
   },
   guild: {
     title: 'Guild Hall',

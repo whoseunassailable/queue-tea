@@ -232,7 +232,7 @@ export type TerminalChoice = 'terminal' | 'iterm' | 'vscode'
 // Folds are the sagas folded, by realm.
 export type ChronicleScope = 'realm' | 'all'
 // realmAccounts says which GitHub account each realm belongs to, by realm.
-export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string> }
+export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string>; recipeDetail?: RecipeDetail }
 
 // What the Settings page shows beside the app's own settings.
 export type RealmLine = { key: string; name: string; path: string; file: string; hasCopy: boolean; logPath: string | null; gitMode: GitMode; isReadable: boolean }
@@ -259,9 +259,35 @@ export type Choices = { features: QuestChoice[]; lone: QuestChoice[]; parents: Q
 export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[]; criteriaByParent: Record<string, string[]> | null; helpers: HelperId[] }
 export type Seal = { waitFor: string } | { reason: string }
 
+// A quest's recipe: what Queue-tea is doing on it, shown at three depths. The
+// stages come from what the record saw; the steps and notes from the
+// checkpoint or handoff note Claude wrote. Nothing is stored for it, so every
+// record reads. Blockers and asks stay in attention, which every depth shows.
+export type RecipeDetail = 'compact' | 'detailed' | 'technical'
+export type RecipeStageId = 'setOut' | 'understand' | 'design' | 'build' | 'verify' | 'review'
+export type RecipeMark = 'done' | 'now' | 'next'
+export type RecipeStage = { id: RecipeStageId; mark: RecipeMark }
+export type RecipeStep = { text: string; mark: RecipeMark }
+// looksDone has no text of its own: the app says it.
+export type RecipeAttention = { kind: 'blocker' | 'question'; text: string } | { kind: 'looksDone'; text: null }
+export type RecipeCheck = { command: string; isOk: boolean; at: string; summary: string }
+// A section of a handoff note keeps Claude's heading; the rest are named by kind.
+export type RecipeNote = { kind: 'decisions' | 'rejected' | 'files' | 'note' | 'section'; heading: string | null; lines: string[] }
+export type Recipe = {
+  phase: 'active' | 'paused' | 'complete'
+  stages: RecipeStage[]
+  goal: string | null
+  steps: RecipeStep[]
+  doneWhen: string[]
+  attention: RecipeAttention[]
+  profile: TestProfile | null
+  checks: RecipeCheck[]
+  notes: RecipeNote[]
+  written: { kind: 'checkpoint' | 'handoff'; at: string } | null
+}
+
 // What a quest carries, for its detail pane. active is only set for the quest
 // in hand; a figure that can't be had is null and the rest stands.
-export type QuestNote = { title: string; written: string; text: string; sections: { heading: string; lines: string[] }[] | null }
 export type ActiveFacts = {
   minutes: number
   today: number
@@ -280,7 +306,7 @@ export type QuestActivity = {
   commits: { id: string; at: string; message: string; remotes: string[] | null }[]
   gitUnavailable: boolean
 }
-export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToBe: string | null; active: ActiveFacts | null; activity: QuestActivity }
+export type QuestFacts = { recipe: Recipe | null; messages: string[]; branchToBe: string | null; active: ActiveFacts | null; activity: QuestActivity }
 
 // What has moved under the quest in hand.
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }

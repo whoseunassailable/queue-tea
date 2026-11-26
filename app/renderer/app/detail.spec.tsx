@@ -2,7 +2,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { EngineApi, ProjectView, QuestFacts, Reply } from '../../shared/engine_api'
+import type { EngineApi, ProjectView, QuestFacts, Recipe, Reply } from '../../shared/engine_api'
+import { forgetRecipeDetail } from '../features/quests/presentation/state_management/recipe_detail'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
 import { activeQuest, fakeEngine, projectView, QUEST_FACTS, quest } from '../test_support'
@@ -26,6 +27,28 @@ const ACTIVE: QuestFacts['active'] = {
   git: { branch: 'task/held', head: '7a2ecc7 changed the homepage', uncommitted: ['a.md', 'b.md'], uncommittedCount: 2 },
 }
 
+const RECIPE: Recipe = {
+  phase: 'active',
+  stages: [
+    { id: 'setOut', mark: 'done' },
+    { id: 'understand', mark: 'done' },
+    { id: 'build', mark: 'now' },
+    { id: 'verify', mark: 'next' },
+    { id: 'review', mark: 'next' },
+  ],
+  goal: 'Fix the docs',
+  steps: [
+    { text: 'Get it testable', mark: 'now' },
+    { text: 'The diagrams', mark: 'next' },
+  ],
+  doneWhen: [],
+  attention: [],
+  profile: null,
+  checks: [],
+  notes: [],
+  written: { kind: 'checkpoint', at: '2026-10-26T16:35:00+01:00' },
+}
+
 const open = async (view: ProjectView = BOARD, over: Partial<EngineApi> = {}) => {
   window.location.hash = '#/quests'
   const { engine, fire } = fakeEngine({ readProject: async () => ({ ok: true, data: view }), ...over })
@@ -46,6 +69,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  forgetRecipeDetail()
 })
 
 describe('a quest\'s details on the board', () => {
@@ -83,18 +107,38 @@ describe('a quest\'s details on the board', () => {
     expect(within(pane()).queryByText(/Filed with/)).toBeNull()
   })
 
-  it('shows a checkpoint with its sections', async () => {
-    const { pane } = await open(BOARD, { readQuestFacts: facts({ note: { title: 'Checkpoint', written: '2026-10-26T16:35:00+01:00', text: '', sections: [{ heading: 'Goal', lines: ['Fix the docs'] }, { heading: 'Remaining', lines: ['- The diagrams'] }] } }) })
+  it('shows the recipe of a quest put back, compact, and opens it up when asked', async () => {
+    const recipe = { ...RECIPE, phase: 'paused' as const }
+    const { pane, engine } = await open(BOARD, { readQuestFacts: facts({ recipe }) })
+    const panel = await within(pane()).findByRole('region', { name: t.recipe.label })
 
-    expect(await within(pane()).findByText(t.notes.note('Checkpoint', '26 Oct 16:35'))).toBeTruthy()
-    expect(within(pane()).getByText('Goal')).toBeTruthy()
-    expect(within(pane()).getByText('The diagrams')).toBeTruthy()
+    expect(within(panel).getByText(t.recipe.step(3, 5))).toBeTruthy()
+    expect(within(panel).getByText(t.recipe.status.shelved)).toBeTruthy()
+    expect(within(panel).getByText(t.recipe.stages.build).closest('li')!.getAttribute('aria-current')).toBe('step')
+    expect(within(panel).queryByText('The diagrams')).toBeNull()
+
+    await act(() => void fireEvent.click(within(panel).getByRole('button', { name: t.recipe.details.detailed })))
+
+    expect(within(panel).getByText('Fix the docs')).toBeTruthy()
+    expect(within(panel).getByText('The diagrams')).toBeTruthy()
+    await waitFor(() => expect(engine.saveSettings).toHaveBeenCalledWith({ recipeDetail: 'detailed' }))
   })
 
-  it('shows a plain note as it is', async () => {
-    const { pane } = await open(BOARD, { readQuestFacts: facts({ note: { title: 'Handoff note', written: '2026-10-26T16:35:00+01:00', text: 'Carry on with the diagrams.', sections: null } }) })
+  it('keeps a plain handoff note whole in the technical recipe', async () => {
+    const recipe = { ...RECIPE, phase: 'paused' as const, notes: [{ kind: 'note' as const, heading: null, lines: ['Carry on with the diagrams.'] }] }
+    const { pane } = await open(BOARD, { readQuestFacts: facts({ recipe }) })
+    const panel = await within(pane()).findByRole('region', { name: t.recipe.label })
 
-    expect(await within(pane()).findByText('Carry on with the diagrams.')).toBeTruthy()
+    await act(() => void fireEvent.click(within(panel).getByRole('button', { name: t.recipe.details.technical })))
+
+    expect(within(panel).getByText('Carry on with the diagrams.')).toBeTruthy()
+  })
+
+  it('has no recipe for a quest never worked on', async () => {
+    const { pane, engine } = await open()
+
+    await waitFor(() => expect(engine.readQuestFacts).toHaveBeenCalled())
+    expect(within(pane()).queryByRole('region', { name: t.recipe.label })).toBeNull()
   })
 
   it('follows the quest when another is picked', async () => {
@@ -199,11 +243,21 @@ describe('the active quest\'s details', () => {
     expect(within(pane()).queryByText(t.notes.linesLabel)).toBeNull()
   })
 
-  it('shows the note it carries on from', async () => {
-    const { pane } = await held({ readQuestFacts: facts({ active: ACTIVE, note: { title: 'Checkpoint', written: '2026-10-26T16:35:00+01:00', text: '', sections: [{ heading: 'Goal', lines: ['Get it testable'] }] } }) })
+  it('shows the recipe of the quest in hand with its session, at the depth picked before', async () => {
+    const view = projectView(KEY, { ready: [{ kind: 'quest', quest: FIRST }], canStart: 1, active: activeQuest({ id: 'held', title: 'The quest in hand', priority: 'urgent', difficulty: 'hard', session: { state: 'working', allowance: null } }) })
+    const { pane } = await open(view, { readQuestFacts: facts({ active: ACTIVE, recipe: RECIPE }) })
     await showIt()
+    const panel = await within(pane()).findByRole('region', { name: t.recipe.label })
+    await act(() => void fireEvent.click(within(panel).getByRole('button', { name: t.recipe.details.detailed })))
+    cleanup()
 
-    expect(await within(pane()).findByText('Get it testable')).toBeTruthy()
+    const again = await open(view, { readQuestFacts: facts({ active: ACTIVE, recipe: RECIPE }) })
+    await showIt()
+    const shown = await within(again.pane()).findByRole('region', { name: t.recipe.label })
+
+    expect(within(shown).getByText(t.recipe.status.brewing)).toBeTruthy()
+    expect(within(shown).getByText('Get it testable')).toBeTruthy()
+    expect(within(shown).getByText(t.recipe.details.detailed).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('changes the priority from the pane', async () => {

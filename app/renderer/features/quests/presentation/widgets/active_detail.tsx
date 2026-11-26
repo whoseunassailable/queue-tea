@@ -11,6 +11,7 @@ import { DueControl } from './due_control'
 import { HelperToggles } from './helper_toggles'
 import { PriorityControl } from './priority_control'
 import { QuestNotes } from './quest_notes'
+import { RecipePanel } from './recipe_panel'
 import { TestProfileControl } from './test_profile_control'
 
 // Testing time is the checks' own run; building time is the clock's minutes
@@ -94,6 +95,7 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
       <button type="button" class="link-btn" disabled={read.isRefreshing || read.load.status === 'loading'} onClick={read.load.status === 'failed' ? read.retry : read.refresh}>
         {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.activity.refreshing : t.activity.refresh}
       </button>
+      {facts?.recipe != null && <RecipePanel engine={engine} recipe={facts.recipe} session={active.session?.state ?? 'none'} isWithCodex={active.codexSince !== null} />}
       {facts?.active != null && <Facts facts={facts.active} active={active} />}
       {facts?.active?.git != null && <NotCommitted git={facts.active.git} />}
       {facts !== null && <QuestNotes facts={facts} />}

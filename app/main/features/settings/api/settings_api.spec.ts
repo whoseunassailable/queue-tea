@@ -68,6 +68,19 @@ describe('settings', () => {
     expect(await readSettings(deps)).toEqual({ ok: true, data: DEFAULT_SETTINGS })
   })
 
+  it('keeps the recipe detail a quest pane was last left at', async () => {
+    await saveSettings(deps, { recipeDetail: 'technical' })
+
+    expect(await readSettings(deps)).toMatchObject({ data: { recipeDetail: 'technical' } })
+  })
+
+  it('reads a settings file from before the recipe detail as compact, and refuses a depth it doesn\'t know', async () => {
+    await writeFile(deps.file, JSON.stringify({ sky: 'day' }))
+    expect(await readSettings(deps)).toMatchObject({ data: { sky: 'day', recipeDetail: 'compact' } })
+
+    expect(await saveSettings(deps, { recipeDetail: 'everything' })).toMatchObject({ ok: false })
+  })
+
   it('a field with a bad value falls back and the rest are kept', async () => {
     await writeFile(deps.file, JSON.stringify({ sky: 'purple', isCalm: true }))
 

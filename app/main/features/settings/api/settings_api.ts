@@ -1,5 +1,5 @@
 import type { Host } from '../../../../../hooks/core/host/host'
-import type { ChronicleScope, Reply, Settings, SkyChoice, TerminalChoice } from '../../../../shared/engine_api'
+import type { ChronicleScope, RecipeDetail, Reply, Settings, SkyChoice, TerminalChoice } from '../../../../shared/engine_api'
 import type { Logger } from '../../../core/logger'
 import { MESSAGES } from '../../../core/messages'
 import { reply } from '../../../core/reply'
@@ -7,14 +7,16 @@ import { isGithubLogin } from '../../github/domain/accounts'
 
 export type SettingsDeps = { host: Host; file: string; log: Logger }
 
-export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} }
+export const DEFAULT_SETTINGS: Settings = { sky: 'auto', isCalm: false, lastProject: null, folds: {}, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {}, recipeDetail: 'compact' }
 
 const SKIES: readonly SkyChoice[] = ['auto', 'morning', 'day', 'evening', 'night']
 const TERMINALS: readonly TerminalChoice[] = ['terminal', 'iterm', 'vscode']
+const RECIPE_DETAILS: readonly RecipeDetail[] = ['compact', 'detailed', 'technical']
 
 const isSky = (value: unknown): value is SkyChoice => SKIES.includes(value as SkyChoice)
 const isTerminal = (value: unknown): value is TerminalChoice => TERMINALS.includes(value as TerminalChoice)
 const isScope = (value: unknown): value is ChronicleScope => value === 'realm' || value === 'all'
+const isRecipeDetail = (value: unknown): value is RecipeDetail => RECIPE_DETAILS.includes(value as RecipeDetail)
 const isLastProject = (value: unknown): value is string | null => value === null || typeof value === 'string'
 const isFolds = (value: unknown): value is Settings['folds'] =>
   typeof value === 'object' &&
@@ -38,6 +40,7 @@ export const cleanSettings = (value: unknown): Partial<Settings> => {
     ...(isScope(v.chronicleScope) ? { chronicleScope: v.chronicleScope } : {}),
     ...(typeof v.letterKeys === 'boolean' ? { letterKeys: v.letterKeys } : {}),
     ...(isRealmAccounts(v.realmAccounts) ? { realmAccounts: v.realmAccounts } : {}),
+    ...(isRecipeDetail(v.recipeDetail) ? { recipeDetail: v.recipeDetail } : {}),
   }
 }
 

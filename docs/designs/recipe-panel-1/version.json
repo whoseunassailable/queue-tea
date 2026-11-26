@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "label": "Recipe panel 1",
+  "made": "2026-11-26T10:47:10.681Z",
+  "by": "claude",
+  "from": null,
+  "designs": [
+    "1-compact-brewing",
+    "2-compact-needs-you",
+    "3-detailed",
+    "4-technical",
+    "5-depth-not-kept",
+    "6-design-stage-complete"
+  ]
+}

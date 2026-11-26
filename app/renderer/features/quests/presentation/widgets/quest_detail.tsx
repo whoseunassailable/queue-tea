@@ -1,11 +1,12 @@
+import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 
 import type { Allowance, Difficulty, Platform } from '../../../../../../types'
-import type { EngineApi } from '../../../../../shared/engine_api'
+import type { EngineApi, QuestEdit, QuestRow } from '../../../../../shared/engine_api'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { dayOf, formatSpan } from '../../../../core/domain/format'
 import { AttachmentInput } from '../../../../core/widgets/attachment_input'
-import { Field } from '../../../../core/widgets/field'
+import { Field, Pick } from '../../../../core/widgets/field'
 import { GoldReward, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
 import { Spinner } from '../../../../core/widgets/states'
@@ -179,6 +180,40 @@ const Criteria = ({ lines, onSave }: { lines: string[]; onSave: (lines: string[]
   )
 }
 
+// Part of two or more sagas, a quest has one set of criteria for every saga
+// or a set for each. A set for each starts from the shared lines, and one
+// set again keeps every line once.
+const SagaCriteria = ({ quest, onEdit }: { quest: QuestRow; onEdit: (edit: QuestEdit) => void }) => {
+  const sets = quest.criteriaByParent
+  const toEach = () => onEdit({ criteria: [], criteriaByParent: Object.fromEntries(quest.parents.map(parent => [parent.id, quest.criteria])) })
+  const toOne = () => onEdit({ criteria: [...new Set([...quest.criteria, ...(sets ?? []).flatMap(set => set.lines)])], criteriaByParent: null })
+
+  return (
+    <>
+      <fieldset class="form-group">
+        <legend class="sr">{t.form.criteriaSets}</legend>
+        <div class="segments">
+          <Pick name={`criteria-mode-${quest.id}`} label={t.form.criteriaOne} isPicked={sets === null} onPick={toOne} />
+          <Pick name={`criteria-mode-${quest.id}`} label={t.form.criteriaEach} isPicked={sets !== null} onPick={toEach} />
+        </div>
+      </fieldset>
+      {sets === null && <Criteria lines={quest.criteria} onSave={criteria => onEdit({ criteria })} />}
+      {sets !== null && quest.criteria.length > 0 && (
+        <>
+          <h4>{t.detail.criteriaEvery}</h4>
+          <Criteria lines={quest.criteria} onSave={criteria => onEdit({ criteria })} />
+        </>
+      )}
+      {sets?.map(set => (
+        <Fragment key={set.parent.id}>
+          <h4>{t.detail.criteriaFor(set.parent.title)}</h4>
+          <Criteria lines={set.lines} onSave={lines => onEdit({ criteriaByParent: { [set.parent.id]: lines } })} />
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
 // Read apart from the board: the pane stands without it, and its own failure
 // stays on its own line.
 const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: string; row: Row; filedOn: string }) => {
@@ -285,8 +320,12 @@ export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved,
         </button>
       )}
       <h3>{t.detail.criteria}</h3>
-      <Criteria lines={quest.criteria} onSave={criteria => void edits.edit(realm, quest, { criteria })} />
-      {quest.criteria.length === 0 && quest.acceptance.length > 0 && (
+      {quest.parents.length >= 2 ? (
+        <SagaCriteria quest={quest} onEdit={edit => void edits.edit(realm, quest, edit)} />
+      ) : (
+        <Criteria lines={quest.criteria} onSave={criteria => void edits.edit(realm, quest, { criteria })} />
+      )}
+      {quest.criteriaByParent === null && quest.criteria.length === 0 && quest.acceptance.length > 0 && (
         <button type="button" class="link-btn" onClick={() => void edits.edit(realm, quest, { criteria: quest.acceptance })}>
           {t.detail.useAcceptance(quest.acceptance.length)}
         </button>
@@ -298,10 +337,15 @@ export const QuestDetail = ({ engine, realm, row, isBusy, isActiveSaga, isSaved,
       <DueControl key={quest.id} due={quest.due} onChange={due => edits.edit(realm, quest, { due })} />
       {sagaOf !== null && (
         <>
-          <h3>{t.detail.chapters(sagaOf.chapters.length)}</h3>
+          <h3>{t.detail.chapters(sagaOf.chapters.length + sagaOf.shared.length)}</h3>
           <ul class="chapters">
             {sagaOf.chapters.map(chapter => (
               <li key={chapter.id}>{chapter.title}</li>
+            ))}
+            {sagaOf.shared.map(chapter => (
+              <li key={chapter.id}>
+                ↔ {chapter.title} · {t.quest.listedUnder(chapter.listedUnder)}
+              </li>
             ))}
           </ul>
         </>

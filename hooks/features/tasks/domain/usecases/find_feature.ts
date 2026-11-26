@@ -1,4 +1,4 @@
-import { activeFeature, parentOf } from '../../../../shared/backlog/domain/services/families'
+import { activeFeature, parentsOf } from '../../../../shared/backlog/domain/services/families'
 import type { Deps } from './deps'
 
 export type FeatureFound = { kind: 'say'; text: string } | { kind: 'set'; taskId: string | null }
@@ -24,7 +24,7 @@ export const findFeatureUseCase = async (d: Deps, args: string): Promise<Feature
   if (/^(off|clear|none)$/i.test(words)) return { kind: 'set', taskId: null }
 
   const said = words.toLowerCase()
-  const open = record.tasks.filter(t => (t.state === 'queued' || t.state === 'current') && parentOf(t, record.tasks) === null)
+  const open = record.tasks.filter(t => (t.state === 'queued' || t.state === 'current') && parentsOf(t, record.tasks).length === 0)
   const byId = open.filter(t => t.id === words)
   const exact = open.filter(t => t.title.toLowerCase() === said)
   const found = byId.length > 0 ? byId : exact.length > 0 ? exact : open.filter(t => t.title.toLowerCase().includes(said))

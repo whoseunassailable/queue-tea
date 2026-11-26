@@ -106,10 +106,10 @@ test('a message the check ties to a task on its own is offered under it; saved, 
   await fileTask(ports, CTX, { ...ARROWS, title: 'Homepage parts', parent: { kind: 'task', id: docs.id } })
   await settle()
   const saved = stored(mem)
-  expect(saved.tasks.map(t => [t.title, t.state, t.parentId])).toEqual([
-    ['Insole bridge', 'current', null],
-    ['Fix the documentation', 'queued', null],
-    ['Homepage parts', 'queued', docs.id],
+  expect(saved.tasks.map(t => [t.title, t.state, t.parentIds])).toEqual([
+    ['Insole bridge', 'current', []],
+    ['Fix the documentation', 'queued', []],
+    ['Homepage parts', 'queued', [docs.id]],
   ])
   expect(saved.feature).toBeNull()
   expect(mem.runs.filter(isGitWrite)).toEqual([])
@@ -126,9 +126,9 @@ test('filing a task under the current one keeps the current task, its branch and
   await settle()
 
   const tasks = stored(mem).tasks
-  expect(tasks.map(t => [t.title, t.state, t.branch, t.parentId])).toEqual([
-    ['Menu parity', 'current', 'task/menu-parity', null],
-    ['Arrow keys', 'queued', null, menu.id],
+  expect(tasks.map(t => [t.title, t.state, t.branch, t.parentIds])).toEqual([
+    ['Menu parity', 'current', 'task/menu-parity', []],
+    ['Arrow keys', 'queued', null, [menu.id]],
   ])
   expect(tasks[1]!.title).toBe('Arrow keys')
   expect(mem.runs.filter(isGitWrite)).toEqual([])
@@ -144,8 +144,8 @@ test('a new feature is filed with its first task; with nothing current, the task
   await settle()
 
   const [feature, arrows] = stored(mem).tasks
-  expect([feature?.title, feature?.state, feature?.parentId, feature?.priority]).toEqual(['Menu parity', 'queued', null, 'high'])
-  expect([arrows?.title, arrows?.state, arrows?.branch, arrows?.parentId]).toEqual(['Arrow keys', 'current', 'task/arrow-keys', feature?.id])
+  expect([feature?.title, feature?.state, feature?.parentIds, feature?.priority]).toEqual(['Menu parity', 'queued', [], 'high'])
+  expect([arrows?.title, arrows?.state, arrows?.branch, arrows?.parentIds]).toEqual(['Arrow keys', 'current', 'task/arrow-keys', [feature?.id]])
 })
 
 test('a new feature with no name files nothing', async () => {
@@ -175,7 +175,7 @@ test('two sessions filing at once: each task is kept, with its feature', async (
   const { ports } = fakePorts(mem)
 
   // Another session files a task between this one's read and its write.
-  const other = makeTask({ title: 'From the other session', parentId: menu.id })
+  const other = makeTask({ title: 'From the other session', parentIds: [menu.id] })
   const read = mem.host.read
   let isFirst = true
   mem.host.read = async path => {
@@ -191,16 +191,16 @@ test('two sessions filing at once: each task is kept, with its feature', async (
   }
   await fileTask(ports, CTX, { ...ARROWS, parent: { kind: 'task', id: menu.id } })
 
-  expect(stored(mem).tasks.map(t => [t.title, t.parentId])).toEqual([
-    ['Menu parity', null],
-    ['From the other session', menu.id],
-    ['Arrow keys', menu.id],
+  expect(stored(mem).tasks.map(t => [t.title, t.parentIds])).toEqual([
+    ['Menu parity', []],
+    ['From the other session', [menu.id]],
+    ['Arrow keys', [menu.id]],
   ])
 })
 
 test('a write from another session after this one keeps the parent and the feature', async () => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys', parentIds: [menu.id] })
   const mem = repo(recordOf([menu, keys], menu.id))
 
   // A change that knows nothing of features, as an older Queue-tea's, spreads
@@ -208,34 +208,34 @@ test('a write from another session after this one keeps the parent and the featu
   await updateRecord(mem.host, CTX.file, r => ({ ...r, tasks: r.tasks.map(t => ({ ...t, priority: 'low' as const })) }), 'p', '/p')
 
   expect(stored(mem).feature).toBe(menu.id)
-  expect(stored(mem).tasks.map(t => [t.priority, t.parentId])).toEqual([
-    ['low', null],
-    ['low', menu.id],
+  expect(stored(mem).tasks.map(t => [t.priority, t.parentIds])).toEqual([
+    ['low', []],
+    ['low', [menu.id]],
   ])
 })
 
 test('Part of…: a task moves under a feature and back; deeper nesting is refused with why', async () => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys', parentIds: [menu.id] })
   const docs = makeTask({ title: 'Docs' })
   const mem = repo(recordOf([menu, keys, docs]))
   const { ports, view, done } = fakePorts(mem, { view: { parenting: docs.id } })
 
-  await moveTask(ports, CTX, docs.id, menu.id)
-  expect(stored(mem).tasks.find(t => t.id === docs.id)?.parentId).toBe(menu.id)
+  await moveTask(ports, CTX, docs.id, [menu.id])
+  expect(stored(mem).tasks.find(t => t.id === docs.id)?.parentIds).toEqual([menu.id])
   expect(view.parenting).toBeNull()
   expect(done.toasts).toEqual(['Part of Menu parity: Docs'])
 
-  await moveTask(ports, CTX, docs.id, null)
-  expect(stored(mem).tasks.find(t => t.id === docs.id)?.parentId).toBeNull()
+  await moveTask(ports, CTX, docs.id, [])
+  expect(stored(mem).tasks.find(t => t.id === docs.id)?.parentIds).toEqual([])
   expect(done.toasts.at(-1)).toBe('On its own: Docs')
 
-  await moveTask(ports, CTX, docs.id, keys.id)
-  expect(stored(mem).tasks.find(t => t.id === docs.id)?.parentId).toBeNull()
+  await moveTask(ports, CTX, docs.id, [keys.id])
+  expect(stored(mem).tasks.find(t => t.id === docs.id)?.parentIds).toEqual([])
   expect(view.notice).toBe('Keys is part of Menu parity, so its tasks go under that.')
 
-  await moveTask(ports, CTX, menu.id, docs.id)
-  expect(stored(mem).tasks.find(t => t.id === menu.id)?.parentId).toBeNull()
+  await moveTask(ports, CTX, menu.id, [docs.id])
+  expect(stored(mem).tasks.find(t => t.id === menu.id)?.parentIds).toEqual([])
   expect(view.notice).toBe("Menu parity has tasks of its own, so it can't be part of another.")
 })
 
@@ -245,15 +245,15 @@ test('moving the current task under a feature changes nothing else about it', as
   const mem = repo(recordOf([now, menu]))
   const { ports } = fakePorts(mem)
 
-  await moveTask(ports, CTX, now.id, menu.id)
-  expect(stored(mem).tasks[0]).toEqual({ ...now, parentId: menu.id })
+  await moveTask(ports, CTX, now.id, [menu.id])
+  expect(stored(mem).tasks[0]).toEqual({ ...now, parentIds: [menu.id] })
   expect(mem.runs.filter(isGitWrite)).toEqual([])
 })
 
 test('/feature: shows, sets by title or id, says when several or none match, and clears', async () => {
   const menu = makeTask({ title: 'Menu parity' })
   const menuDocs = makeTask({ title: 'Menu docs' })
-  const keys = makeTask({ title: 'Keys hint', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys hint', parentIds: [menu.id] })
   const mem = repo(recordOf([menu, menuDocs, keys]))
   const { ports } = fakePorts(mem)
 
@@ -275,7 +275,7 @@ test('/feature: shows, sets by title or id, says when several or none match, and
 
 test('setFeature refuses a task under a feature, and one no longer open', async () => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys', parentIds: [menu.id] })
   const old = makeTask({ title: 'Old', state: 'done' })
   const mem = repo(recordOf([menu, keys, old]))
   const { ports } = fakePorts(mem)
@@ -287,21 +287,21 @@ test('setFeature refuses a task under a feature, and one no longer open', async 
 
 test('removing a feature leaves its tasks on their own and it is no longer active', async () => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys', parentIds: [menu.id] })
   const mem = repo(recordOf([menu, keys], menu.id))
   const { ports } = fakePorts(mem)
 
   await removeQueued(ports, CTX, menu.id)
   expect(stored(mem).feature).toBeNull()
-  expect(stored(mem).tasks.map(t => [t.state, t.parentId])).toEqual([
-    ['removed', null],
-    ['queued', null],
+  expect(stored(mem).tasks.map(t => [t.state, t.parentIds])).toEqual([
+    ['removed', []],
+    ['queued', []],
   ])
 })
 
 test('a task under the current feature can’t start while the feature is current: one task at a time', async () => {
   const menu = makeTask({ title: 'Menu parity', state: 'current', branch: 'task/menu-parity' })
-  const keys = makeTask({ title: 'Keys', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys', parentIds: [menu.id] })
   const mem = repo(recordOf([menu, keys]), gitWith(CLEAN, { 'git switch -c task/keys': {} }))
   const { ports } = fakePorts(mem)
 
@@ -312,7 +312,7 @@ test('a task under the current feature can’t start while the feature is curren
 
 test('a task under a feature still waits for the git check', async () => {
   const menu = makeTask({ title: 'Menu parity', state: 'done', branch: 'task/menu-parity' })
-  const keys = makeTask({ title: 'Keys', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys', parentIds: [menu.id] })
   const mem = repo(recordOf([menu, keys]), gitWith(DIRTY))
   const { ports, view } = fakePorts(mem)
 

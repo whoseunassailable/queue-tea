@@ -30,7 +30,7 @@ export const newTask = (input: {
   messages: string[]
   now: string
   id: string
-  parentId?: string | null
+  parentIds?: string[]
 }): Task => ({
   id: input.id,
   title: input.title,
@@ -59,7 +59,7 @@ export const newTask = (input: {
     filesTouched: 0,
   },
   files: { read: [], changed: [] },
-  parentId: input.parentId ?? null,
+  parentIds: input.parentIds ?? [],
   description: null,
   criteria: [],
   review: null,
@@ -71,9 +71,25 @@ export const newTask = (input: {
 export const setPriority = (tasks: Task[], id: string, priority: Priority): Task[] =>
   tasks.map(t => (t.id === id ? { ...t, priority } : t))
 
-// Only a queued task can be removed. The tasks under it are then on their own.
+// One list from several, each line once, in the order first met.
+const merged = (lists: string[][]): string[] => [...new Set(lists.flat())]
+
+// A task's criteria set for each feature only means something under two or
+// more. Under fewer, every set joins its own criteria, so no line is lost.
+export const foldCriteria = (task: Task): Task => {
+  if (task.criteriaByParent === undefined || task.parentIds.length >= 2) return task
+  const { criteriaByParent, ...rest } = task
+  const order = [...task.parentIds, ...Object.keys(criteriaByParent).filter(id => !task.parentIds.includes(id))]
+
+  return { ...rest, criteria: merged([task.criteria, ...order.map(id => criteriaByParent[id] ?? [])]) }
+}
+
+// Only a queued task can be removed. The tasks under it are no longer part of
+// it: on their own, or under the other features they were part of.
 export const removeTask = (tasks: Task[], id: string): Task[] => {
   if (!tasks.some(t => t.id === id && t.state === 'queued')) return tasks
 
-  return tasks.map(t => (t.id === id ? { ...t, state: 'removed' } : t.parentId === id ? { ...t, parentId: null } : t))
+  return tasks.map(t =>
+    t.id === id ? { ...t, state: 'removed' } : t.parentIds.includes(id) ? foldCriteria({ ...t, parentIds: t.parentIds.filter(p => p !== id) }) : t,
+  )
 }

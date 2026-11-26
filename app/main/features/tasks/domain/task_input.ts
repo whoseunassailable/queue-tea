@@ -1,5 +1,6 @@
 import type { Difficulty, HelperId, ParentPick, Platform, Priority, TestProfileId } from '../../../../../types'
 import { logFileIn } from '../../../../../hooks/features/tasks/domain/services/task_rules'
+import { NEW_PARENT } from '../../../../../hooks/features/tasks/domain/usecases/file_task'
 import { isDay } from '../../../../shared/calendar'
 import type { NewQuest, QuestEdit, Seal } from '../../../../shared/engine_api'
 import { defaultHelpers, isHelperId, onlyHelpers } from '../../../../../hooks/shared/records/domain/services/helpers'
@@ -19,6 +20,13 @@ export const questIdOf = (value: unknown): string => {
   if (typeof value !== 'string' || value === '') throw new Refusal(MESSAGES.badQuest)
 
   return value
+}
+
+// Quest ids, each once, in their order.
+export const questIdsOf = (value: unknown): string[] => {
+  if (!Array.isArray(value)) throw new Refusal(MESSAGES.badQuest)
+
+  return [...new Set(value.map(questIdOf))]
 }
 
 export const priorityOf = (value: unknown): Priority => {
@@ -68,23 +76,54 @@ const helpersOf = (value: unknown): HelperId[] => {
 }
 
 export const parentOf = (value: unknown): ParentPick => {
-  const pick = value as { kind?: unknown; id?: unknown; title?: unknown } | null
+  const pick = value as { kind?: unknown; id?: unknown; ids?: unknown; title?: unknown } | null
   if (pick?.kind === 'none') return { kind: 'none' }
   if (pick?.kind === 'task') return { kind: 'task', id: questIdOf(pick.id) }
   if (pick?.kind === 'new') return { kind: 'new', title: titleOf(pick.title) }
+  if (pick?.kind === 'several') {
+    const several = { kind: 'several' as const, ids: questIdsOf(pick.ids), title: pick.title === null ? null : titleOf(pick.title) }
+    // Several means two or more; one or none has a pick of its own.
+    if (several.ids.length + (several.title === null ? 0 : 1) < 2) throw new Refusal(MESSAGES.badValue)
+
+    return several
+  }
   throw new Refusal(MESSAGES.badValue)
+}
+
+// The sagas a pick puts a quest under, with 'new' for one filed with it.
+const pickedParents = (pick: ParentPick): string[] => {
+  if (pick.kind === 'task') return [pick.id]
+  if (pick.kind === 'new') return [NEW_PARENT]
+  if (pick.kind === 'several') return [...pick.ids, ...(pick.title === null ? [] : [NEW_PARENT])]
+
+  return []
+}
+
+// A criteria set for each saga, by the saga's id; null for one set. Only
+// sagas the quest is part of may have one.
+const criteriaSetsOf = (value: unknown, parents: string[] | null): Record<string, string[]> | null => {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Refusal(MESSAGES.badValue)
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (parents !== null && entries.some(([id]) => !parents.includes(id))) throw new Refusal(MESSAGES.badValue)
+
+  return Object.fromEntries(entries.map(([id, lines]) => [questIdOf(id), criteriaOf(lines)]))
 }
 
 export const newQuestOf = (value: unknown): NewQuest => {
   const v = (value ?? {}) as Record<string, unknown>
+  const parent = parentOf(v.parent)
+  const parents = pickedParents(parent)
 
   return {
     title: titleOf(v.title),
     priority: priorityOf(v.priority),
     difficulty: difficultyOf(v.difficulty),
-    parent: parentOf(v.parent),
+    parent,
     description: descriptionOf(v.description),
     criteria: criteriaOf(v.criteria),
+    // A set for each saga needs two or more of them.
+    criteriaByParent: parents.length < 2 ? null : criteriaSetsOf(v.criteriaByParent, parents),
     helpers: v.helpers === undefined ? defaultHelpers().on : helpersOf(v.helpers),
   }
 }
@@ -110,6 +149,7 @@ export const questEditOf = (value: unknown): QuestEdit => {
     ...(v.title === undefined ? {} : { title: titleOf(v.title) }),
     ...(v.description === undefined ? {} : { description: descriptionOf(v.description) }),
     ...(v.criteria === undefined ? {} : { criteria: criteriaOf(v.criteria) }),
+    ...(v.criteriaByParent === undefined ? {} : { criteriaByParent: criteriaSetsOf(v.criteriaByParent, null) }),
     ...(v.difficulty === undefined ? {} : { difficulty: difficultyOf(v.difficulty) }),
     ...(v.helpers === undefined ? {} : { helpers: helpersOf(v.helpers) }),
     ...(v.testProfile === undefined ? {} : { testProfile: testProfileOf(v.testProfile) }),

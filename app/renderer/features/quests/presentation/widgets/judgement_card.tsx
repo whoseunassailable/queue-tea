@@ -1,3 +1,5 @@
+import { Fragment } from 'preact'
+
 import type { ActiveQuest, SessionInfo } from '../../../../../shared/engine_api'
 import { formatMinutes } from '../../../../core/domain/format'
 import { PriorityTag } from '../../../../core/widgets/tags'
@@ -28,6 +30,20 @@ export const JudgementCard = ({ active, session, actions, kind }: { active: Acti
           ))}
         </ul>
       )}
+      {active.criteriaByParent
+        ?.filter(set => set.lines.length > 0)
+        .map(set => (
+          <Fragment key={set.parent.id}>
+            <p class="card-note">
+              <b>{t.judgement.asPartOf(set.parent.title)}</b>
+            </p>
+            <ul class="chapters">
+              {set.lines.map(line => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </Fragment>
+        ))}
       <div class="q-actions">
         <button type="button" class="btn primary" onClick={() => actions.onFinish(active)}>
           {t.judgement.yes}

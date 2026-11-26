@@ -5,11 +5,12 @@ import type { Choices, EngineApi } from '../../../../../shared/engine_api'
 import { ask } from '../../../../core/api/engine_client'
 import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { Dialog } from '../../../../core/widgets/dialog'
-import { Field, Group, Pick } from '../../../../core/widgets/field'
+import { titlesText } from '../../../../../../hooks/shared/backlog/domain/services/families'
+import { Field, Group, Pick, Tick } from '../../../../core/widgets/field'
 import { Failed, Loading } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import type { Load, ReadableView } from '../../../workspace/state_management/workspace_store'
-import { emptyQuestForm, questOf, validateQuest } from '../../domain/quest_form'
+import { asksCriteriaMode, emptyQuestForm, questOf, sagasOf, tickPart, validateQuest, withCriteriaMode } from '../../domain/quest_form'
 import type { QuestErrors, QuestField, QuestForm } from '../../domain/quest_form'
 import type { QuestEdits } from '../state_management/quest_edits'
 import { DescriptionFiles, withFileLink } from './description_files'
@@ -18,10 +19,10 @@ import { HelperToggles } from './helper_toggles'
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
-const titleOfPart = (choices: Choices['features'], part: string, sagaTitle: string): string | null => {
-  if (part === 'new') return sagaTitle.trim()
+const titleOfPart = (choices: Choices['features'], part: string, sagaTitle: string): string => {
+  if (part === 'new') return sagaTitle.trim() === '' ? t.form.newSagaName : sagaTitle.trim()
 
-  return choices.find(c => c.id === part)?.title ?? null
+  return choices.find(c => c.id === part)?.title ?? part
 }
 
 type SheetProps = { engine: EngineApi; view: ReadableView; edits: QuestEdits; parentId: string | null; title?: string | undefined; onClose: () => void }
@@ -29,7 +30,7 @@ type SheetProps = { engine: EngineApi; view: ReadableView; edits: QuestEdits; pa
 export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }: SheetProps) => {
   // With an active saga the answer has to be given; otherwise a quest stands
   // on its own, as it does in the terminal.
-  const [form, setForm] = useState<QuestForm>({ ...emptyQuestForm(parentId ?? (view.activeSagaId === null ? 'none' : 'unset')), title: title ?? '' })
+  const [form, setForm] = useState<QuestForm>({ ...emptyQuestForm(parentId !== null ? [parentId] : view.activeSagaId === null ? ['none'] : []), title: title ?? '' })
   const [touched, setTouched] = useState<readonly QuestField[]>([])
   const [choices, setChoices] = useState<Load<Choices>>({ status: 'loading' })
   const [failure, setFailure] = useState<string | null>(null)
@@ -64,8 +65,8 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
     setWaitShown(isAttaching)
     if (isSaving || isAttaching || Object.keys(validateQuest(form)).length > 0) return
     setSaving(true)
-    const saga = titleOfPart(parentChoices, form.part, form.sagaTitle)
-    const answer = await edits.file(view.key, questOf(form), saga)
+    const sagas = sagasOf(form)
+    const answer = await edits.file(view.key, questOf(form), sagas.length === 0 ? null : titlesText(sagas.map(part => titleOfPart(parentChoices, part, form.sagaTitle))))
     setSaving(false)
     if (answer.ok) onClose()
     else setFailure(answer.message)
@@ -101,24 +102,42 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
         {choices.status === 'failed' && <Failed message={choices.message} onRetry={() => void load()} />}
         {choices.status === 'ready' && (
           <div class="picks">
-            <Pick name="part" label={t.form.alone} isPicked={form.part === 'none'} onPick={() => set({ part: 'none' })} />
+            <Tick label={t.form.alone} isTicked={form.parts.includes('none')} onTick={() => set({ parts: tickPart(form.parts, 'none') })} />
             {parentChoices.map(choice => (
-              <Pick
+              <Tick
                 key={choice.id}
-                name="part"
                 label={choice.title}
                 detail={choice.id === view.activeSagaId ? t.form.active : choice.detail}
-                isPicked={form.part === choice.id}
-                onPick={() => set({ part: choice.id })}
+                isTicked={form.parts.includes(choice.id)}
+                onTick={() => set({ parts: tickPart(form.parts, choice.id) })}
               />
             ))}
-            <Pick name="part" label={t.form.newSaga} isPicked={form.part === 'new'} onPick={() => set({ part: 'new' })} />
+            <Tick label={t.form.newSaga} isTicked={form.parts.includes('new')} onTick={() => set({ parts: tickPart(form.parts, 'new') })} />
           </div>
         )}
       </Group>
-      {form.part === 'new' && (
+      {form.parts.includes('new') && (
         <Field label={t.form.sagaTitle} isRequired value={form.sagaTitle} error={shown.sagaTitle} onInput={sagaTitle => set({ sagaTitle })} onBlur={() => touch('sagaTitle')} />
       )}
+      {asksCriteriaMode(form) && (
+        <Group label={t.form.criteriaSets}>
+          <div class="segments">
+            <Pick name="criteria-mode" label={t.form.criteriaOne} isPicked={form.criteriaMode === 'one'} onPick={() => setForm(withCriteriaMode(form, 'one'))} />
+            <Pick name="criteria-mode" label={t.form.criteriaEach} isPicked={form.criteriaMode === 'each'} onPick={() => setForm(withCriteriaMode(form, 'each'))} />
+          </div>
+        </Group>
+      )}
+      {asksCriteriaMode(form) &&
+        form.criteriaMode === 'each' &&
+        sagasOf(form).map(part => (
+          <Field
+            key={part}
+            label={t.form.criteriaFor(titleOfPart(parentChoices, part, form.sagaTitle))}
+            isLong
+            value={form.criteriaFor[part] ?? ''}
+            onInput={text => set({ criteriaFor: { ...form.criteriaFor, [part]: text } })}
+          />
+        ))}
       <details class="form-more">
         <summary>{t.form.optional}</summary>
         <AttachmentInput
@@ -134,7 +153,7 @@ export const NewQuestSheet = ({ engine, view, edits, parentId, title, onClose }:
           <Field label={t.form.description} isLong value={form.description} error={isAttaching && isWaitShown ? t.form.stillAttaching : undefined} onInput={description => set({ description })} />
           <DescriptionFiles engine={engine} realm={view.key} text={form.description} />
         </AttachmentInput>
-        <Field label={t.form.criteria} isLong value={form.criteria} onInput={criteria => set({ criteria })} />
+        {!(asksCriteriaMode(form) && form.criteriaMode === 'each') && <Field label={t.form.criteria} isLong value={form.criteria} onInput={criteria => set({ criteria })} />}
       </details>
       <p class="hint">{t.form.waits}</p>
       <div class="sheet-actions">

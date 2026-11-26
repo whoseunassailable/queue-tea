@@ -17,7 +17,7 @@ export const AddChapter = ({ realm, saga, edits }: { realm: string; saga: QuestR
     const problem = titleError(title)
     setError(problem)
     if (problem !== undefined) return
-    const answer = await edits.file(realm, questOf({ ...emptyQuestForm(saga.id), title }), saga.title)
+    const answer = await edits.file(realm, questOf({ ...emptyQuestForm([saga.id]), title }), saga.title)
     if (!answer.ok) {
       setError(answer.message)
 

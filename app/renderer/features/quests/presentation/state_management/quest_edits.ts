@@ -1,3 +1,4 @@
+import { titlesText } from '../../../../../../hooks/shared/backlog/domain/services/families'
 import type { Priority } from '../../../../../../types'
 import type { EngineApi, NewQuest, QuestEdit, QuestRow, Seal } from '../../../../../shared/engine_api'
 import { t } from '../../../../l10n/en'
@@ -50,12 +51,13 @@ export const questEdits = (engine: EngineApi, workspace: Workspace) => ({
       isQuiet: true,
     }),
 
-  move: (key: string, quest: QuestRow, parentId: string | null, parentTitle: string | null) =>
+  // An empty list puts it on its own; undo puts back the sagas it had, in order.
+  move: (key: string, quest: QuestRow, parentIds: string[], titles: string[]) =>
     workspace.run({
       key,
-      call: () => engine.moveQuest(key, quest.id, parentId),
-      said: parentTitle === null ? t.edit.alone(quest.title) : t.edit.moved(parentTitle, quest.title),
-      undo: { said: t.edit.undone, call: () => engine.moveQuest(key, quest.id, quest.parentId) },
+      call: () => engine.moveQuest(key, quest.id, parentIds),
+      said: parentIds.length === 0 ? t.edit.alone(quest.title) : t.edit.moved(titlesText(titles), quest.title),
+      undo: { said: t.edit.undone, call: () => engine.moveQuest(key, quest.id, quest.parents.map(parent => parent.id)) },
       isQuiet: true,
     }),
 

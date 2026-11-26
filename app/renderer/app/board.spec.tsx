@@ -11,7 +11,7 @@ import { App } from './app'
 const KEY = 'a-000001'
 const FIRST = quest({ id: 'first', title: 'First quest', isStar: true, why: 'mid', priority: 'high' })
 const SECOND = quest({ id: 'second', title: 'Second quest', branch: 'task/needle', priority: 'low' })
-const SAGA: BoardEntry = { kind: 'saga', quest: quest({ id: 'saga', title: 'The saga' }), chapters: [quest({ id: 'hay', title: 'Hay', parentId: 'saga' }), quest({ id: 'pin', title: 'Pin', parentId: 'saga' })], progress: { done: 0, total: 2, current: 0, blocked: 0 }, hasStar: false }
+const SAGA: BoardEntry = { kind: 'saga', quest: quest({ id: 'saga', title: 'The saga' }), chapters: [quest({ id: 'hay', title: 'Hay', parents: [{ id: 'saga', title: 'The saga' }] }), quest({ id: 'pin', title: 'Pin', parents: [{ id: 'saga', title: 'The saga' }] })], progress: { done: 0, total: 2, current: 0, blocked: 0 }, hasStar: false, shared: [] }
 const BOARD = projectView(KEY, { ready: [{ kind: 'quest', quest: FIRST }, { kind: 'quest', quest: SECOND }, SAGA], canStart: 5 })
 
 const open = async (route: string, view: ProjectView = BOARD, over: Partial<EngineApi> = {}) => {
@@ -286,7 +286,7 @@ describe('dragging a quest', () => {
 
     await press(t.actions.move)
 
-    await waitFor(() => expect(engine.moveQuest).toHaveBeenCalledWith(KEY, 'first', 'saga'))
+    await waitFor(() => expect(engine.moveQuest).toHaveBeenCalledWith(KEY, 'first', ['saga']))
   })
 
   it('shows a refusal and moves nothing', async () => {

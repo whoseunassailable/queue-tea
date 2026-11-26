@@ -52,7 +52,7 @@ describe('due dates', () => {
       ready: [
         { kind: 'quest', quest: quest({ id: 'a', due: '2026-12-01' }) },
         { kind: 'quest', quest: quest({ id: 'none' }) },
-        { kind: 'saga', quest: quest({ id: 'saga', due: '2026-12-10' }), chapters: [quest({ id: 'ch', due: '2026-12-02' }), quest({ id: 'ch-sealed', due: '2026-12-03', sealedBecause: 'Waits for ch' })], progress: { done: 0, total: 2, current: 0, blocked: 1 }, hasStar: false },
+        { kind: 'saga', quest: quest({ id: 'saga', due: '2026-12-10' }), chapters: [quest({ id: 'ch', due: '2026-12-02' }), quest({ id: 'ch-sealed', due: '2026-12-03', sealedBecause: 'Waits for ch' })], progress: { done: 0, total: 2, current: 0, blocked: 1 }, hasStar: false, shared: [] },
       ],
       sealed: [{ kind: 'quest', quest: quest({ id: 's', due: '2026-11-20', sealedBecause: 'Waits for a' }) }],
       activeQuests: [activeQuest({ id: 'x', due: '2026-11-24' })],

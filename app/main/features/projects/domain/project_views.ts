@@ -1,5 +1,5 @@
 import type { AppRequest, ProjectRecord, Task } from '../../../../../types'
-import { activeFeature, groupBacklog, progressOf } from '../../../../../hooks/shared/backlog/domain/services/families'
+import { activeFeature, groupBacklog, homeOf, parentsOf, progressOf, sharedInto } from '../../../../../hooks/shared/backlog/domain/services/families'
 import type { Entry } from '../../../../../hooks/shared/backlog/domain/services/families'
 import { blockedTasks, blockedText, estimateMinutes, isBlocked, rankBacklog, suggest } from '../../../../../hooks/shared/backlog/domain/services/ranking'
 import type { Ranked } from '../../../../../hooks/shared/backlog/domain/services/ranking'
@@ -7,7 +7,7 @@ import { currentTask } from '../../../../../hooks/shared/records/domain/services
 import type { SessionFile } from '../../../../../hooks/shared/sessions/domain/entities/session_file'
 import { isFresh } from '../../../../../hooks/shared/sessions/domain/services/session_rules'
 import { finishedTasks } from '../../../../../hooks/shared/time/domain/services/week_stats'
-import type { ActiveQuest, BoardEntry, ProjectRow, ProjectStatus, ProjectView, QuestRow, SessionInfo, SessionState, VictoryRow } from '../../../../shared/engine_api'
+import type { ActiveQuest, BoardEntry, CriteriaSet, ProjectRow, ProjectStatus, ProjectView, QuestParent, QuestRow, SessionInfo, SessionState, VictoryRow } from '../../../../shared/engine_api'
 import { xpOf } from '../../game/domain/services/game'
 
 const RECENT_VICTORIES = 3
@@ -63,6 +63,16 @@ export const rowOf = (key: string, record: ProjectRecord, sessions: SessionFile[
   }
 }
 
+const parentLine = (task: Task): QuestParent => ({ id: task.id, title: task.title })
+
+// A set for each saga it is part of now, empty ones too, so each can be
+// edited; null while one set serves them all.
+const criteriaByParentOf = (task: Task, tasks: Task[]): CriteriaSet[] | null => {
+  const sets = task.criteriaByParent
+
+  return sets === undefined ? null : parentsOf(task, tasks).map(parent => ({ parent: parentLine(parent), lines: sets[parent.id] ?? [] }))
+}
+
 const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, starId: string | null, playNext: string | null): QuestRow => ({
   id: task.id,
   title: task.title,
@@ -74,12 +84,13 @@ const questOf = (task: Task, tasks: Task[], nowMs: number, row: Ranked | null, s
   why: task.id === starId ? (row?.why ?? null) : null,
   isStar: task.id === starId,
   isPlayNext: task.id === playNext,
-  parentId: task.parentId,
+  parents: parentsOf(task, tasks).map(parentLine),
   sealedBecause: isBlocked(task, tasks) ? blockedText(task, tasks) : null,
   branch: task.branch,
   created: task.created,
   description: task.description,
   criteria: task.criteria,
+  criteriaByParent: criteriaByParentOf(task, tasks),
   fits: row?.fits ?? null,
   goal: task.checkpoint?.goal || null,
   acceptance: task.checkpoint?.acceptance ?? [],
@@ -105,10 +116,11 @@ const entryOf = (entry: Entry, tasks: Task[], nowMs: number, ranked: Ranked[], p
     chapters: [...chapters, ...sealedChapters],
     progress: progressOf(group.parent, tasks),
     hasStar: group.hasStar,
+    shared: sharedInto(group.parent, tasks).map(t => ({ id: t.id, title: t.title, listedUnder: homeOf(t, tasks)?.title ?? '' })),
   }
 }
 
-const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
+const activeOf = (task: Task, tasks: Task[], requests: AppRequest[]): ActiveQuest => ({
   id: task.id,
   title: task.title,
   priority: task.priority,
@@ -122,6 +134,7 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   filesChanged: task.effort.filesChanged,
   review: task.review,
   criteria: task.criteria,
+  criteriaByParent: criteriaByParentOf(task, tasks),
   helpers: task.helpers.on,
   testProfile: task.testProfile ?? null,
   due: task.due ?? null,
@@ -131,7 +144,7 @@ const activeOf = (task: Task, requests: AppRequest[]): ActiveQuest => ({
   codexSince: task.codexSince,
   worktreePath: task.worktreePath,
   baseBranch: task.baseBranch,
-  parentId: task.parentId,
+  parentIds: task.parentIds,
 })
 
 const victoryOf = (task: Task): VictoryRow => ({
@@ -157,13 +170,13 @@ export const viewOf = (key: string, record: ProjectRecord, sessions: SessionFile
     name: record.project.name,
     path: record.project.path,
     session: sessionInfoOf(sessions, record.project.path, nowMs),
-    active: current === null ? null : activeOf(current, record.requests),
-    activeQuests: tasks.filter(t => t.state === 'current').map(t => ({ ...activeOf(t, record.requests), session: sessionInfoOf(sessions.filter(s => (s.workingPath ?? s.projectPath) === (t.worktreePath ?? record.project.path)), record.project.path, nowMs) })),
+    active: current === null ? null : activeOf(current, tasks, record.requests),
+    activeQuests: tasks.filter(t => t.state === 'current').map(t => ({ ...activeOf(t, tasks, record.requests), session: sessionInfoOf(sessions.filter(s => (s.workingPath ?? s.projectPath) === (t.worktreePath ?? record.project.path)), record.project.path, nowMs) })),
     branches: [...tasks].sort((a, b) => BRANCH_ORDER[a.state] - BRANCH_ORDER[b.state]).flatMap(task => task.branch === null || task.state === 'removed' ? [] : [{
       id: task.id, title: task.title, branch: task.branch, baseBranch: task.baseBranch,
       path: task.worktreePath ?? record.project.path, state: task.state,
       platform: task.state === 'current' ? (task.codexSince === null ? 'claude' as const : 'codex' as const) : null,
-      parent: task.parentId === null ? null : (() => { const parent = tasks.find(t => t.id === task.parentId); return parent ? { id: parent.id, title: parent.title } : null })(),
+      parent: (() => { const home = homeOf(task, tasks); return home === null ? null : parentLine(home) })(),
     }]),
     ready: ready.map(entry),
     sealed: stuck.map(entry),

@@ -98,7 +98,7 @@ describe('the sidebar', () => {
 })
 
 describe('Home', () => {
-  const active = { id: 'x', title: 'The boss', priority: 'urgent', difficulty: 'hard', xp: 50, branch: 'task/x', minutes: 43, started: '2026-10-20T22:17:00+02:00', isBoss: true, improvingMessages: 4, filesChanged: 40, review: null, criteria: [] as string[], helpers: [] as HelperId[], testProfile: null, due: null, testingMinutes: 0, minutesInChecks: 0, asking: null, codexSince: null, worktreePath: null, baseBranch: null, parentId: null } as const
+  const active = { id: 'x', title: 'The boss', priority: 'urgent', difficulty: 'hard', xp: 50, branch: 'task/x', minutes: 43, started: '2026-10-20T22:17:00+02:00', isBoss: true, improvingMessages: 4, filesChanged: 40, review: null, criteria: [] as string[], criteriaByParent: null, helpers: [] as HelperId[], testProfile: null, due: null, testingMinutes: 0, minutesInChecks: 0, asking: null, codexSince: null, worktreePath: null, baseBranch: null, parentIds: [] as string[] } as const
 
   it('shows the active quest with its reward and time', async () => {
     await open(withView(projectView('a-000001', { active, session: { state: 'working', allowance: null } })))
@@ -139,7 +139,7 @@ describe('Home', () => {
 describe('Quests', () => {
   const ready = [
     { kind: 'quest' as const, quest: quest({ id: 'first', title: 'First', isStar: true, why: 'urgent · unblocks Later', priority: 'urgent' }) },
-    { kind: 'saga' as const, quest: quest({ id: 'saga', title: 'Saga' }), chapters: [quest({ id: 'chapter', title: 'Chapter' })], progress: { done: 1, total: 3, current: 0, blocked: 0 }, hasStar: false },
+    { kind: 'saga' as const, quest: quest({ id: 'saga', title: 'Saga' }), chapters: [quest({ id: 'chapter', title: 'Chapter' })], progress: { done: 1, total: 3, current: 0, blocked: 0 }, hasStar: false, shared: [] },
     { kind: 'quest' as const, quest: quest({ id: 'last', title: 'Last' }) },
   ]
 

@@ -11,7 +11,7 @@ import { createWorkspace } from '../../workspace/state_management/workspace_stor
 const KEY = 'a-000001'
 const FIRST = quest({ id: 'first', title: 'First quest', isStar: true, why: 'mid', priority: 'mid' })
 const SECOND = quest({ id: 'second', title: 'Second quest', priority: 'high' })
-const SAGA: BoardEntry = { kind: 'saga', quest: quest({ id: 'saga', title: 'The saga' }), chapters: [quest({ id: 'chapter', title: 'A chapter', parentId: 'saga' })], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false }
+const SAGA: BoardEntry = { kind: 'saga', quest: quest({ id: 'saga', title: 'The saga' }), chapters: [quest({ id: 'chapter', title: 'A chapter', parents: [{ id: 'saga', title: 'The saga' }] })], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false, shared: [] }
 const BOARD = projectView(KEY, { ready: [{ kind: 'quest', quest: FIRST }, { kind: 'quest', quest: SECOND }, SAGA], canStart: 4 })
 const CHOICES: Choices = {
   features: [{ id: 'saga', title: 'The saga', detail: '0/1 done' }],
@@ -131,8 +131,8 @@ describe('sagas', () => {
   })
 
   it('a folded saga holding the ★ still shows it', async () => {
-    const star = quest({ id: 'star', title: 'Star chapter', isStar: true, why: 'urgent', parentId: 'saga' })
-    const view = projectView(KEY, { canStart: 1, ready: [{ ...SAGA, chapters: [star], hasStar: true } as BoardEntry] })
+    const star = quest({ id: 'star', title: 'Star chapter', isStar: true, why: 'urgent', parents: [{ id: 'saga', title: 'The saga' }] })
+    const view = projectView(KEY, { canStart: 1, ready: [{ ...SAGA, chapters: [star], hasStar: true, shared: [] } as BoardEntry] })
     await open({ readSettings: async () => ({ ok: true, data: { sky: 'day', isCalm: false, lastProject: null, folds: { [KEY]: ['saga'] }, terminal: 'terminal', chronicleScope: 'realm', letterKeys: true, realmAccounts: {} } }) }, view)
 
     expect(document.querySelector('.qrow .qc-title')?.textContent).toBe('The saga')
@@ -221,7 +221,7 @@ describe('New quest', () => {
     await waitFor(() => expect(within(dialog()).getByText(t.form.pickPart)).toBeTruthy())
     expect(engine.fileQuest).not.toHaveBeenCalled()
 
-    fireEvent.click(within(dialog()).getByRole('radio', { name: /The saga/ }))
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: /The saga/ }))
     submit()
     await waitFor(() => expect(engine.fileQuest).toHaveBeenCalledWith(KEY, expect.objectContaining({ parent: { kind: 'task', id: 'saga' } })))
   })
@@ -229,12 +229,67 @@ describe('New quest', () => {
   it('New saga makes its title required', async () => {
     const { engine } = await openSheet()
     fireEvent.input(title(), { target: { value: 'New one' } })
-    fireEvent.click(within(dialog()).getByRole('radio', { name: t.form.newSaga }))
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: t.form.newSaga }))
 
     submit()
 
     await waitFor(() => expect(within(dialog()).getByText(t.form.sagaRequired)).toBeTruthy())
     expect(engine.fileQuest).not.toHaveBeenCalled()
+  })
+
+  it('On its own clears the sagas ticked, and a saga clears On its own', async () => {
+    await openSheet()
+    const alone = () => within(dialog()).getByRole('checkbox', { name: t.form.alone }) as HTMLInputElement
+    const saga = () => within(dialog()).getByRole('checkbox', { name: /The saga/ }) as HTMLInputElement
+
+    expect([alone().checked, saga().checked]).toEqual([true, false])
+    fireEvent.click(saga())
+    expect([alone().checked, saga().checked]).toEqual([false, true])
+    fireEvent.click(alone())
+    expect([alone().checked, saga().checked]).toEqual([true, false])
+  })
+
+  it('under two sagas asks for one set of criteria or a set each, and files a box for each saga', async () => {
+    const { engine } = await openSheet()
+    fireEvent.input(title(), { target: { value: 'Sign in' } })
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: /The saga/ }))
+    expect(within(dialog()).queryByRole('radio', { name: t.form.criteriaEach })).toBe(null)
+
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: /Second quest/ }))
+    expect((within(dialog()).getByRole('radio', { name: t.form.criteriaOne }) as HTMLInputElement).checked).toBe(true)
+    fireEvent.input(within(dialog()).getByLabelText(t.form.criteria), { target: { value: 'Tests pass' } })
+    fireEvent.click(within(dialog()).getByRole('radio', { name: t.form.criteriaEach }))
+    // Each box starts from what was written for all of them.
+    const users = within(dialog()).getByLabelText(t.form.criteriaFor('The saga')) as HTMLTextAreaElement
+    expect(users.value).toBe('Tests pass')
+    expect(within(dialog()).queryByLabelText(t.form.criteria)).toBe(null)
+    fireEvent.input(users, { target: { value: 'Users land on home' } })
+    fireEvent.input(within(dialog()).getByLabelText(t.form.criteriaFor('Second quest')), { target: { value: 'Admins land on the dashboard' } })
+    submit()
+
+    await waitFor(() =>
+      expect(engine.fileQuest).toHaveBeenCalledWith(
+        KEY,
+        expect.objectContaining({ parent: { kind: 'several', ids: ['saga', 'second'], title: null }, criteria: [], criteriaByParent: { saga: ['Users land on home'], second: ['Admins land on the dashboard'] } }),
+      ),
+    )
+    expect(screen.getByText(t.edit.queued('Sign in', 'Mid', 'The saga and Second quest'))).toBeTruthy()
+  })
+
+  it('a new saga ticked with another gets its own box, named once it has a title', async () => {
+    const { engine } = await openSheet()
+    fireEvent.input(title(), { target: { value: 'Sign in' } })
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: /The saga/ }))
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: t.form.newSaga }))
+    fireEvent.click(within(dialog()).getByRole('radio', { name: t.form.criteriaEach }))
+    expect(within(dialog()).getByLabelText(t.form.criteriaFor(t.form.newSagaName))).toBeTruthy()
+    fireEvent.input(within(dialog()).getByLabelText(`${t.form.sagaTitle} *`), { target: { value: 'Admins' } })
+    fireEvent.input(within(dialog()).getByLabelText(t.form.criteriaFor('Admins')), { target: { value: 'Admins see the log' } })
+    submit()
+
+    await waitFor(() =>
+      expect(engine.fileQuest).toHaveBeenCalledWith(KEY, expect.objectContaining({ parent: { kind: 'several', ids: ['saga'], title: 'Admins' }, criteriaByParent: { saga: [], new: ['Admins see the log'] } })),
+    )
   })
 
   it('files the quest, closes, and says so', async () => {
@@ -250,11 +305,11 @@ describe('New quest', () => {
 
   it('adds a child task using the plus inside a newly filed quest card', async () => {
     const parent = quest({ id: 'filed-parent', title: 'New one' })
-    const child = quest({ id: 'child', title: 'First chapter', parentId: parent.id })
+    const child = quest({ id: 'child', title: 'First chapter', parents: [{ id: parent.id, title: parent.title }] })
     const fileQuest = vi.fn<EngineApi['fileQuest']>()
       .mockResolvedValueOnce({ ok: true, data: projectView(KEY, { ready: [{ kind: 'quest', quest: parent }] }) })
       .mockResolvedValueOnce({ ok: true, data: projectView(KEY, {
-        ready: [{ kind: 'saga', quest: parent, chapters: [child], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false }],
+        ready: [{ kind: 'saga', quest: parent, chapters: [child], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false, shared: [] }],
       }) })
     await openSheet({ fileQuest })
     fireEvent.input(title(), { target: { value: parent.title } })
@@ -265,7 +320,7 @@ describe('New quest', () => {
     expect(add.textContent?.trim()).toBe('+')
     expect(add.closest('.qrow')?.querySelector('.qc-title')?.textContent).toBe(parent.title)
     fireEvent.click(add)
-    const pickedParent = await within(dialog()).findByRole('radio', { name: parent.title }) as HTMLInputElement
+    const pickedParent = await within(dialog()).findByRole('checkbox', { name: parent.title }) as HTMLInputElement
     expect(pickedParent.checked).toBe(true)
     fireEvent.input(title(), { target: { value: child.title } })
     submit()
@@ -363,7 +418,7 @@ describe('Part of…', () => {
   const openMove = async (over: Partial<EngineApi> = {}) => {
     const opened = await open(over)
     fireEvent.click(screen.getByRole('button', { name: t.actions.partOf }))
-    await within(dialog()).findByRole('radio', { name: /The saga/ })
+    await within(dialog()).findByRole('checkbox', { name: /The saga/ })
 
     return opened
   }
@@ -372,13 +427,13 @@ describe('Part of…', () => {
   it('asks first, saying what stays the same', async () => {
     const { engine } = await openMove()
 
-    fireEvent.click(within(dialog()).getByRole('radio', { name: /The saga/ }))
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: /The saga/ }))
 
     await waitFor(() => expect(within(dialog()).getByText(t.form.moveLine('First quest', 'The saga'))).toBeTruthy())
     expect(engine.moveQuest).not.toHaveBeenCalled()
 
     submit()
-    await waitFor(() => expect(engine.moveQuest).toHaveBeenCalledWith(KEY, 'first', 'saga'))
+    await waitFor(() => expect(engine.moveQuest).toHaveBeenCalledWith(KEY, 'first', ['saga']))
   })
 
   it('wants a pick', async () => {
@@ -393,7 +448,7 @@ describe('Part of…', () => {
   it('a refused move shows the sentence and stays open', async () => {
     await openMove({ moveQuest: async () => ({ ok: false, error: { message: "First quest has chapters of its own, so it can't be part of another saga." } }) })
 
-    fireEvent.click(within(dialog()).getByRole('radio', { name: /The saga/ }))
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: /The saga/ }))
     submit()
 
     await waitFor(() => expect(within(dialog()).getByText("First quest has chapters of its own, so it can't be part of another saga.")).toBeTruthy())

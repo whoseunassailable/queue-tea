@@ -78,3 +78,12 @@ export const Pick = ({ name, label, detail, isPicked, onPick }: { name: string; 
     {detail != null && <span class="pick-detail">{detail}</span>}
   </label>
 )
+
+// One of a group where any number can be ticked.
+export const Tick = ({ label, detail, isTicked, onTick }: { label: string; detail?: string | null | undefined; isTicked: boolean; onTick: () => void }) => (
+  <label class="pick">
+    <input type="checkbox" checked={isTicked} onChange={onTick} />
+    <span class="pick-label">{label}</span>
+    {detail != null && <span class="pick-detail">{detail}</span>}
+  </label>
+)

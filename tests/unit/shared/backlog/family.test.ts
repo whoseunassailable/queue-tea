@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { checkPrompt, parseCheckAnswer } from '../../../../hooks/features/message_check/domain/services/check_prompt'
-import { activeFeature, childrenOf, filingCandidates, groupBacklog, guessParent, loneTasks, namedTasks, parentChoices, parentOf, parentRefusal, progressOf, progressText } from '../../../../hooks/shared/backlog/domain/services/families'
+import { activeFeature, childrenOf, filingCandidates, groupBacklog, guessParent, loneTasks, namedTasks, parentChoices, homeOf, parentRefusal, progressOf, progressText } from '../../../../hooks/shared/backlog/domain/services/families'
 import { blockedTasks, rankBacklog } from '../../../../hooks/shared/backlog/domain/services/ranking'
 import { newTask, removeTask } from '../../../../hooks/shared/records/domain/services/queue_rules'
 import { emptyRecord, parseRecord } from '../../../../hooks/shared/records/data/datasources/record_source'
@@ -14,25 +14,25 @@ const recordOf = (tasks: Task[], feature: string | null = null): ProjectRecord =
 // A feature with three tasks under it: one done, one queued, one blocked.
 const family = () => {
   const menu = makeTask({ title: 'Menu parity', priority: 'high', created: at(1) })
-  const keys = makeTask({ title: 'Keys hint', parentId: menu.id, created: at(2) })
-  const close = makeTask({ title: 'Close button', parentId: menu.id, state: 'done', created: at(3) })
-  const docs = makeTask({ title: 'Menu docs', parentId: menu.id, blockedReason: 'waiting for copy', created: at(4) })
+  const keys = makeTask({ title: 'Keys hint', parentIds: [menu.id], created: at(2) })
+  const close = makeTask({ title: 'Close button', parentIds: [menu.id], state: 'done', created: at(3) })
+  const docs = makeTask({ title: 'Menu docs', parentIds: [menu.id], blockedReason: 'waiting for copy', created: at(4) })
 
   return { menu, keys, close, docs, tasks: [menu, keys, close, docs] }
 }
 
 test('a task without a parent is on its own; children leave out removed ones', () => {
   const { menu, keys, close, docs, tasks } = family()
-  const gone = makeTask({ title: 'Gone', parentId: menu.id, state: 'removed' })
+  const gone = makeTask({ title: 'Gone', parentIds: [menu.id], state: 'removed' })
 
-  expect(parentOf(menu, tasks)).toBeNull()
-  expect(parentOf(keys, tasks)?.id).toBe(menu.id)
+  expect(homeOf(menu, tasks)).toBeNull()
+  expect(homeOf(keys, tasks)?.id).toBe(menu.id)
   expect(childrenOf(menu, [...tasks, gone]).map(t => t.id)).toEqual([keys.id, close.id, docs.id])
 })
 
 test('progress counts done, in progress and blocked tasks under a feature', () => {
   const { menu, tasks } = family()
-  const now = makeTask({ title: 'Wire it', parentId: menu.id, state: 'current' })
+  const now = makeTask({ title: 'Wire it', parentIds: [menu.id], state: 'current' })
   const p = progressOf(menu, [...tasks, now])
 
   expect(p).toEqual({ done: 1, total: 4, current: 1, blocked: 1 })
@@ -81,7 +81,7 @@ test('the active feature counts only while it is open and on its own', () => {
 test('filing offers the active feature, then the current task or its feature, then open features', () => {
   const { menu, keys, tasks } = family()
   const shell = makeTask({ title: 'Shell', created: at(10) })
-  const child = makeTask({ title: 'Shell child', parentId: shell.id })
+  const child = makeTask({ title: 'Shell child', parentIds: [shell.id] })
   const login = makeTask({ title: 'Login', state: 'current' })
   const lone = makeTask({ title: 'Lone' })
 
@@ -107,7 +107,7 @@ test('a message names a task by its id or its whole title of two words or more',
   expect(namedTasks('polish the UI keys hint', all)).toEqual([])
   expect(namedTasks('menu parity-ish', all).map(t => t.id)).toEqual([menu.id])
   expect(namedTasks('menus parity', all)).toEqual([])
-  expect(keys.parentId).toBe(menu.id)
+  expect(keys.parentIds).toEqual([menu.id])
 })
 
 test('guessParent: nothing to offer files it on its own, with no question', () => {
@@ -231,8 +231,8 @@ test('the check is told the features only when there are some, and reads its par
 test('the backlog groups a feature’s tasks where its first task stands, keeping the order', () => {
   const lone = makeTask({ title: 'Lone', priority: 'urgent', created: at(1) })
   const menu = makeTask({ title: 'Menu parity', priority: 'mid', created: at(2) })
-  const keys = makeTask({ title: 'Keys hint', priority: 'high', parentId: menu.id, created: at(3) })
-  const docs = makeTask({ title: 'Docs', priority: 'low', parentId: menu.id, created: at(4) })
+  const keys = makeTask({ title: 'Keys hint', priority: 'high', parentIds: [menu.id], created: at(3) })
+  const docs = makeTask({ title: 'Docs', priority: 'low', parentIds: [menu.id], created: at(4) })
   const typo = makeTask({ title: 'Typo', priority: 'okay', created: at(5) })
   const tasks = [lone, menu, keys, docs, typo]
   const ranked = rankBacklog({ tasks, playNext: null }, null)
@@ -266,7 +266,7 @@ test('the ★ inside a feature marks the feature; a feature with nothing that ca
 
   // Everything under another feature blocked: the feature stands among the blocked.
   const shell = makeTask({ title: 'Shell', state: 'current', created: at(7) })
-  const waits = makeTask({ title: 'Shell waits', parentId: shell.id, blockedReason: 'later', created: at(8) })
+  const waits = makeTask({ title: 'Shell waits', parentIds: [shell.id], blockedReason: 'later', created: at(8) })
   const both = [...all, shell, waits]
   const regrouped = groupBacklog(rankBacklog({ tasks: both, playNext: null }, null), blockedTasks(both), both)
   expect(regrouped.blocked.map(e => (e.kind === 'group' ? `◆ ${e.group.parent.title}` : e.kind === 'blocked' ? e.task.title : ''))).toEqual([
@@ -278,9 +278,9 @@ test('the ★ inside a feature marks the feature; a feature with nothing that ca
 
 test('a feature comes after its own tasks of the same priority, but priority still comes first', () => {
   const menu = makeTask({ title: 'Menu parity', priority: 'mid', created: at(1) })
-  const keys = makeTask({ title: 'Keys hint', priority: 'mid', parentId: menu.id, created: at(2) })
+  const keys = makeTask({ title: 'Keys hint', priority: 'mid', parentIds: [menu.id], created: at(2) })
   const urgentFeature = makeTask({ title: 'Outage', priority: 'urgent', created: at(3) })
-  const fix = makeTask({ title: 'Fix', priority: 'mid', parentId: urgentFeature.id, created: at(4) })
+  const fix = makeTask({ title: 'Fix', priority: 'mid', parentIds: [urgentFeature.id], created: at(4) })
 
   expect(rankBacklog({ tasks: [menu, keys], playNext: null }, null).map(r => r.task.title)).toEqual(['Keys hint', 'Menu parity'])
   expect(rankBacklog({ tasks: [menu, keys, urgentFeature, fix], playNext: null }, null).map(r => r.task.title)).toEqual([
@@ -300,7 +300,7 @@ test('removing a feature leaves its tasks on their own', () => {
   const after = removeTask(tasks, menu.id)
 
   expect(after.find(t => t.id === menu.id)?.state).toBe('removed')
-  expect(after.find(t => t.id === keys.id)?.parentId).toBeNull()
+  expect(after.find(t => t.id === keys.id)?.parentIds).toEqual([])
   // A task that can't be removed changes nothing.
   const current = makeTask({ state: 'current' })
   expect(removeTask([current, keys], current.id)).toEqual([current, keys])
@@ -309,20 +309,20 @@ test('removing a feature leaves its tasks on their own', () => {
 test('a new task is on its own unless given a parent', () => {
   const base = { title: 'X', priority: 'mid' as const, difficulty: 'light' as const, messages: [], now: at(0), id: 't-1' }
 
-  expect(newTask(base).parentId).toBeNull()
-  expect(newTask({ ...base, parentId: 't-0' }).parentId).toBe('t-0')
+  expect(newTask(base).parentIds).toEqual([])
+  expect(newTask({ ...base, parentIds: ['t-0', 't-2'] }).parentIds).toEqual(['t-0', 't-2'])
 })
 
 test('a record from before features loads: no parent, no feature, every field kept', () => {
   const old = makeTask({ title: 'Old', branch: 'task/old', blockedBy: ['t-x'] }) as Partial<Task>
-  delete old.parentId
+  delete old.parentIds
   const text = JSON.stringify({ version: 1, project: { name: 'p', path: '/p' }, docsLogPath: null, playNext: null, tasks: [old], unassignedMinutesByDay: {} })
   const read = parseRecord(text)
 
   expect(read === 'unreadable').toBe(false)
   if (read === 'unreadable') return
   expect(read.feature).toBeNull()
-  expect(read.tasks[0]).toEqual({ ...old, parentId: null } as Task)
+  expect(read.tasks[0]).toEqual({ ...old, parentIds: [] } as Task)
 })
 
 test('a task saved without an id gets one from its creation and title, the same at every read', () => {
@@ -341,8 +341,8 @@ test('parent and feature survive a write and a read', () => {
   const { menu, tasks } = family()
   const read = parseRecord(JSON.stringify(recordOf(tasks, menu.id)))
 
-  expect(read === 'unreadable' ? null : [read.feature, read.tasks.map(t => t.parentId)]).toEqual([
+  expect(read === 'unreadable' ? null : [read.feature, read.tasks.map(t => t.parentIds)]).toEqual([
     menu.id,
-    [null, menu.id, menu.id, menu.id],
+    [[], [menu.id], [menu.id], [menu.id]],
   ])
 })

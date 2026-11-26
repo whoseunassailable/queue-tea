@@ -1,4 +1,5 @@
 import type { Checkpoint, CommandRun, GitFacts, Task } from '../../../../../types'
+import { criteriaSetsOf } from '../../../backlog/domain/services/families'
 import { CODEX_RULES, FIRST_MESSAGE_LABELS } from '../constants/checkpoints_text'
 import { descriptionFiles, withFilePaths } from '../../../records/domain/services/description_files'
 import { firstObject } from './first_object'
@@ -195,16 +196,19 @@ export const latestNote = (task: Task): 'checkpoint' | 'handoff' | null => {
 // The first message of a task's fresh conversation. A task that has been
 // worked on brings its checkpoint, what Queue-tea checked just now, and the
 // order to compare before trusting either. Files the description links get
-// paths in the realm's notes folder, so Claude can open them.
-export const firstMessage = (task: Task, checked: string[] | null = null, files: string | null = null): string => {
+// paths in the realm's notes folder, so Claude can open them. `tasks` gives
+// the titles of the features its criteria sets belong to.
+export const firstMessage = (task: Task, checked: string[] | null = null, files: string | null = null, tasks: Task[] = []): string => {
   const c = task.checkpoint
   const hasNote = task.handoff !== null || (c !== null && (c.written !== null || c.seen !== null))
   const hasFiles = files !== null && descriptionFiles(task.description).length > 0
+  // Under several features with a set for each, each set says whose it is.
+  const sets = criteriaSetsOf(task, tasks)
   const parts = [
     `${FIRST_MESSAGE_LABELS.task} ${task.title}`,
     ...(task.description === null ? [] : [`${FIRST_MESSAGE_LABELS.description} ${hasFiles ? withFilePaths(task.description, files) : task.description}`]),
     ...(hasFiles ? [FIRST_MESSAGE_LABELS.files] : []),
-    ...(task.criteria.length === 0 ? [] : [[FIRST_MESSAGE_LABELS.criteria, ...list(task.criteria)].join('\n')]),
+    ...sets.map(set => [set.parent === null ? FIRST_MESSAGE_LABELS.criteria : FIRST_MESSAGE_LABELS.criteriaUnder(set.parent.title), ...list(set.lines)].join('\n')),
     ...task.messages,
   ]
   if (!hasNote) return parts.join('\n\n')
@@ -241,5 +245,5 @@ export const firstMessage = (task: Task, checked: string[] | null = null, files:
 }
 
 // Codex's first prompt: Queue-tea's rules, then what Claude would get.
-export const codexBrief = (task: Task, folder: string, checked: string[] | null, files: string | null = null): string =>
-  `${CODEX_RULES(folder, task.branch)}\n\n${firstMessage(task, checked, files)}`
+export const codexBrief = (task: Task, folder: string, checked: string[] | null, files: string | null = null, tasks: Task[] = []): string =>
+  `${CODEX_RULES(folder, task.branch)}\n\n${firstMessage(task, checked, files, tasks)}`

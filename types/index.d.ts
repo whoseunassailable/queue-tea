@@ -83,13 +83,21 @@ export type Task = {
   minutesByDay: Record<string, number>
   effort: Effort
   files: { read: string[]; changed: string[] }
-  // The feature this task is part of; null for a task on its own. One level
-  // deep: a task with tasks under it is part of none.
-  parentId: string | null
+  // The features this task is part of, in the order they were picked; empty
+  // for a task on its own. The first is where its row stands in the backlog.
+  // One level deep: a task with tasks under it is part of none. Older records
+  // kept one `parentId`, read as a list of one.
+  parentIds: string[]
   // What the task is for and how to tell it's finished. Any task can become a
-  // feature, so every task has them.
+  // feature, so every task has them. `criteria` holds what counts under every
+  // feature it is part of.
   description: string | null
   criteria: string[]
+  // A set of criteria for each feature, by the feature's id, when a task under
+  // two or more was given a set for each; absent while one set serves them
+  // all. A set stays when the task leaves that feature, so moving it back
+  // brings the set back.
+  criteriaByParent?: Record<string, string[]>
   // Set when Claude says the task looks done, cleared by Rohan's answer.
   review: { at: string; checked: string | null } | null
   // The step it is on now; absent before its first. Older records kept every
@@ -152,9 +160,14 @@ export type ProjectRecord = {
   gitMode?: GitMode
 }
 
-// What a new task is filed under: nothing, a task already there, or a new
-// feature filed with it.
-export type ParentPick = { kind: 'none' } | { kind: 'task'; id: string } | { kind: 'new'; title: string }
+// What a new task is filed under: nothing, a task already there, a new
+// feature filed with it, or two or more of those at once (`title` names the
+// new feature filed with them, null for none).
+export type ParentPick =
+  | { kind: 'none' }
+  | { kind: 'task'; id: string }
+  | { kind: 'new'; title: string }
+  | { kind: 'several'; ids: string[]; title: string | null }
 
 export type Band =
   | { kind: 'none' }

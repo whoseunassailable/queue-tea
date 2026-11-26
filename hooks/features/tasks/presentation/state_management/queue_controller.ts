@@ -70,9 +70,9 @@ export const featureCommand = async (p: Ports, ctx: Ctx, args: string): Promise<
   return found.kind === 'say' ? found.text : setFeature(p, ctx, found.taskId)
 }
 
-export const moveTask = async (p: Ports, ctx: Ctx, taskId: string, parentId: string | null): Promise<void> => {
+export const moveTask = async (p: Ports, ctx: Ctx, taskId: string, parentIds: string[]): Promise<void> => {
   await p.set('parenting', null)
-  const result = await moveTaskUseCase(tasksDepsOf(p, ctx), taskId, parentId)
+  const result = await moveTaskUseCase(tasksDepsOf(p, ctx), taskId, parentIds)
   if (result.kind === 'unreadable') {
     await markUnreadable(p, ctx)
 
@@ -152,8 +152,10 @@ export async function pressCancelPartOf(p: Ports) {
   await p.set('parenting', null)
 }
 
+// Part of… in the menu picks one feature: the task is then part of that one
+// only. On its own is null.
 export async function pressPartOfWith(p: Ports, taskId: string, parentId: string | null) {
-  if (live.ctx !== null) await moveTask(p, live.ctx, taskId, parentId)
+  if (live.ctx !== null) await moveTask(p, live.ctx, taskId, parentId === null ? [] : [parentId])
 }
 
 // Makes a task the active feature, or, pressed on the active one, none.

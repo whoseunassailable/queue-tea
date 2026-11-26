@@ -144,9 +144,9 @@ test('BrewQuest files the checklist as a saga in the realm’s queue, linked bac
   await sheet.getByRole('button', { name: 'File 3 quests' }).click()
   await expect(sheet).toBeHidden()
 
-  const tasks = (await record()).tasks as { id: string; title: string; parentId: string | null; description: string }[]
+  const tasks = (await record()).tasks as { id: string; title: string; parentIds: string[]; description: string }[]
   expect(tasks.map(task => task.title)).toEqual(['Bug Bounty Helper', 'Scan dependencies', 'Write the report'])
-  expect(tasks[1]!.parentId).toBe(tasks[0]!.id)
+  expect(tasks[1]!.parentIds).toEqual([tasks[0]!.id])
   expect(tasks[1]!.description).toBe('From the note "Bug Bounty Helper" in Notes.')
   const about = page.getByRole('complementary', { name: 'About this note' })
   await expect(about.getByRole('button', { name: 'Open Scan dependencies in Quests' })).toBeVisible()

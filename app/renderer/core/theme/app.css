@@ -64,6 +64,11 @@ body,
   opacity: 0.72;
 }
 
+.rm .qrow.shared .qc-title {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
 .rm .sealed-rows {
   flex: 1 1 100%;
   margin-top: 8px;

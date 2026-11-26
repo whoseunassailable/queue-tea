@@ -4,7 +4,7 @@ import { capital, markFor, total } from '../../../../core/widgets/format'
 import { KEYS } from '../../../../core/widgets/keys'
 import type { MenuContext } from '../../../../core/widgets/menu_context'
 import { cut } from '../../../../core/widgets/text'
-import { childrenOf, parentOf, progressOf, progressText } from '../../../../shared/backlog/domain/services/families'
+import { childrenOf, parentsOf, progressOf, progressText, titlesText } from '../../../../shared/backlog/domain/services/families'
 import { cardNote } from '../../../../shared/checkpoints/domain/services/card_note'
 import { formatMinutes } from '../../../../shared/time/domain/services/time'
 import { pressBlock } from '../state_management/queue_controller'
@@ -14,13 +14,14 @@ import { familyButtons } from '../widgets/family_buttons'
 
 export async function drawCurrent(c: MenuContext): Promise<RenderElement> {
   const { p, Box, Text, Button, cols, now, today, tasks, current, queue, feature, hold, isAskingDone, canContinue, openRow, checked, busy, drift, mismatch, done, hints, top, bar, tag } = c
-  // The feature the current task is part of, or how far its own tasks are.
-  const currentParent = current === null ? null : parentOf(current, tasks)
+  // The features the current task is part of, or how far its own tasks are.
+  // Under several, each one's progress would crowd the line: only the first's.
+  const currentParents = current === null ? [] : parentsOf(current, tasks)
   const currentFamily =
     current === null
       ? null
-      : currentParent !== null
-        ? `part of ${currentParent.title} · ${progressText(progressOf(currentParent, tasks))}`
+      : currentParents.length > 0
+        ? `part of ${titlesText(currentParents.map(t => t.title))} · ${progressText(progressOf(currentParents[0]!, tasks))}`
         : childrenOf(current, tasks).length > 0
           ? `feature · ${progressText(progressOf(current, tasks))}${feature?.id === current.id ? ' · active feature' : ''}`
           : feature?.id === current.id

@@ -31,7 +31,8 @@ export const freshConversation = async (p: Ports, ctx: Ctx, task: Task): Promise
     const checked = await checkNowUseCase(gitRepositoryOf(p, ctx), p.log, task)
     const assistant = assistantRepositoryOf(p)
     await assistant.clear()
-    await assistant.submit(firstMessage(task, checked, notesFolderOf(ctx)))
+    const record = await p.get('record')
+    await assistant.submit(firstMessage(task, checked, notesFolderOf(ctx), record?.tasks ?? []))
   } catch (err) {
     p.log(`starting the conversation for ${task.id} failed: ${err instanceof Error ? err.message : String(err)}`)
     await p.set('notice', `Couldn't open the conversation for ${task.title}. Press Continue to try again.`)

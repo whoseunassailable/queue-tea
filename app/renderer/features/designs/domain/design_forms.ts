@@ -88,6 +88,7 @@ export const questOfNext = (form: NextForm): NewQuest => ({
     .split('\n')
     .map(line => line.trim())
     .filter(line => line !== ''),
+  criteriaByParent: null,
   // Mocha Mockup drafts the version; agents/mocha-mockup.md has the format.
   helpers: onlyHelpers([...defaultHelpers().on, 'mocha-mockup']),
 })

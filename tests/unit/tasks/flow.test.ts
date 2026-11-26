@@ -7,8 +7,8 @@ import { firstMessage } from '../../../hooks/shared/checkpoints/domain/services/
 import { onMessage } from '../../../hooks/features/message_check/presentation/state_management/message_check_controller'
 import { shouldCheck } from '../../../hooks/features/message_check/domain/services/check_prompt'
 import { emptyRecord } from '../../../hooks/shared/records/data/datasources/record_source'
-import { ASKED, CLASSIFY_LINE, DIDNT_RUN, HELPER_LINES, PROFILE_LINE, QUICK_LINE, REMIND, TASK_LINE } from '../../../hooks/features/tasks/presentation/constants/tasks_text'
-import { helperToRemind } from '../../../hooks/features/tasks/domain/services/task_rules'
+import { ASKED, CLASSIFY_LINE, CRITERIA_SUMMARY, DIDNT_RUN, HELPER_LINES, PROFILE_LINE, QUICK_LINE, REMIND, TASK_LINE } from '../../../hooks/features/tasks/presentation/constants/tasks_text'
+import { criteriaAnswer, helperToRemind } from '../../../hooks/features/tasks/domain/services/task_rules'
 import { live } from '../../../hooks/core/session/live'
 import type { HelperId, ProjectRecord } from '../../../types'
 import { CTX, fakePorts, makeTask, memoryHost } from '../../helpers'
@@ -547,4 +547,61 @@ test('other agents and odd input are ignored', async () => {
   expect(stored(mem).tasks[0]?.helpers.ran).toEqual([])
   expect(mem.files.get(CTX.file)).toBe(before)
   expect(done.logs).toEqual([])
+})
+
+const criteriaTasks = () => {
+  const feature = makeTask({ id: 'f', title: 'Plan rebuild' })
+  const task = makeTask({ state: 'current', criteria: ['Saves the plan', 'Shows a spinner'], parentIds: ['f'], criteriaByParent: { f: ['Feels like one app'] } })
+
+  return { task, tasks: [task, feature] }
+}
+const yes = (evidence = 'plan test passed') => ({ met: true, evidence })
+
+test('the criteria rule wants one answered entry per criterion, own sets first', () => {
+  const { task, tasks } = criteriaTasks()
+  const lines = ['Saves the plan', 'Shows a spinner', 'Feels like one app']
+
+  expect(criteriaAnswer(makeTask(), [], undefined)).toEqual({ kind: 'none' })
+  expect(criteriaAnswer(task, tasks, undefined)).toEqual({ kind: 'refused', lines, given: 0, missing: [1, 2, 3] })
+  expect(criteriaAnswer(task, tasks, 'all done')).toEqual({ kind: 'refused', lines, given: 0, missing: [1, 2, 3] })
+  expect(criteriaAnswer(task, tasks, [yes(), { met: true, evidence: '  ' }, { met: 'yes', evidence: 'x' }])).toEqual({ kind: 'refused', lines, given: 3, missing: [2, 3] })
+  expect(criteriaAnswer(task, tasks, [yes(), yes(), yes(), yes()])).toEqual({ kind: 'refused', lines, given: 4, missing: [] })
+  expect(criteriaAnswer(task, tasks, [yes(), { met: false, evidence: ' no e2e on this Mac ' }, yes()])).toEqual({ kind: 'answered', total: 3, unmet: [{ n: 2, why: 'no e2e on this Mac' }] })
+})
+
+test('the brief pins the criteria, numbered across every set', () => {
+  const { task, tasks } = criteriaTasks()
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), gitMode: 'manual', tasks })?.text).toBe(
+    [TASK_LINE(task.title, 'manual', true), 'Acceptance criteria, in the order task_looks_done takes them:', '1. Saves the plan', '2. Shows a spinner', 'Under "Plan rebuild":', '3. Feels like one app'].join('\n'),
+  )
+})
+
+test('task_looks_done turns back a call without every criterion, every time, saving nothing', async () => {
+  live.ctx = CTX
+  const { task, tasks } = criteriaTasks()
+  const mem = memoryHost({ files: withRecord({ ...emptyRecord('p', '/p'), tasks: [{ ...task, helpers: helpersOf(['tea-dd']) }, tasks[1]!] }) })
+  const { ports, view } = fakePorts(mem, { view: { record: stored(mem) } })
+  const before = mem.files.get(CTX.file)
+
+  for (const criteria of [undefined, [yes()]]) {
+    const text = await taskLooksDone(ports, 'wrote it', criteria)
+    expect(text).toContain('Rohan was not asked')
+    expect(text).toContain('3. Feels like one app')
+  }
+  expect(view.isAskingDone).not.toBe(true)
+  expect(mem.files.get(CTX.file)).toBe(before)
+
+  // Answered: the helper reminder comes next, then Rohan sees the summary first.
+  const answered = [yes(), { met: false, evidence: 'no e2e on this Mac' }, yes()]
+  expect(await taskLooksDone(ports, 'ran it', answered)).toBe(REMIND('Tea-DD'))
+  expect(await taskLooksDone(ports, 'ran it', answered)).toBe(ASKED)
+  expect(view.checked).toBe(`Criteria: 2 of 3 met. Not met: 2 (no e2e on this Mac). ran it ${DIDNT_RUN('Tea-DD')}`)
+})
+
+test("the criteria summary shortens long reasons and counts the rest", () => {
+  const unmet = [1, 2, 3, 4].map(n => ({ n, why: 'x'.repeat(80) }))
+
+  expect(CRITERIA_SUMMARY(4, [])).toBe('Criteria: 4 of 4 met.')
+  expect(CRITERIA_SUMMARY(4, unmet)).toBe(`Criteria: 0 of 4 met. Not met: 1 (${'x'.repeat(59)}…); 2 (${'x'.repeat(59)}…); +2 more.`)
 })

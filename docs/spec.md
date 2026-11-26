@@ -184,9 +184,13 @@ When the handoff note cannot be written, the conversation is not cleared. The st
 
 The mod registers a tool for Claude (`$.tool.register`, listed from the start) and adds a short section to the system prompt saying when to call it: when a reply has finished what the current task asked. Calling it opens the "done for now?" question in the menu. This costs no extra model call, which a check after every reply would.
 
-The tool takes one optional argument, `checked`: a line on what Claude checked before calling ("ran the tests: 143 pass"). The menu shows it under the question as "Claude checked: …".
+The tool takes two arguments. `checked` is optional: a line on what Claude checked before calling ("ran the tests: 143 pass"). The menu shows it under the question as "Claude checked: …". `criteria` is for a quest with acceptance criteria.
 
-When a helper the quest needs is on and hasn't run, the first call asks Claude to run it instead, and the next call goes to Rohan with "<helper> is on and didn't run." after what Claude checked. A helper whose run failed hasn't run ([When a helper fails](helper-policies.md#when-a-helper-fails)).
+When the quest has acceptance criteria, the section lists them, numbered straight through: the quest's own set first, then each feature's set after a line `Under "<feature>":`. It tells Claude to check the work against each one before calling, and that code written doesn't meet a criterion: a check that passed, or what Claude saw, does. A quest without criteria keeps the one-line section.
+
+`criteria` takes one `{ met, evidence }` entry per criterion, in that order. A call with an entry missing, an entry without evidence, or the wrong number of entries is turned back, every time: the tool answers with the numbered criteria and the numbers that are missing, nothing is saved, and Rohan isn't asked. Once every criterion is answered, the "Claude checked" line starts with the count, such as "Criteria: 2 of 3 met. Not met: 2 (no e2e on this Mac).", with the first two reasons cut to 60 characters and "+N more" for the rest. The rule can't tell real evidence from hollow evidence; Rohan judges that.
+
+When a helper the quest needs is on and hasn't run, the first call that gets past the criteria asks Claude to run it instead, and the next call goes to Rohan with "<helper> is on and didn't run." after what Claude checked. A helper whose run failed hasn't run ([When a helper fails](helper-policies.md#when-a-helper-fails)).
 
 ## What Rohan sees
 

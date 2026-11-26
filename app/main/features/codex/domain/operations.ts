@@ -1,6 +1,7 @@
 import { errandNote, errandReply } from '../../../../../hooks/features/errands/domain/services/errands'
 import type { ErrandKind } from '../../../../../hooks/features/errands/domain/services/errands'
-import { helperToRemind } from '../../../../../hooks/features/tasks/domain/services/task_rules'
+import { criteriaAnswer, helperToRemind } from '../../../../../hooks/features/tasks/domain/services/task_rules'
+import { CRITERIA_REFUSED, CRITERIA_SUMMARY } from '../../../../../hooks/features/tasks/presentation/constants/tasks_text'
 import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/file_task'
 import { findFeatureUseCase } from '../../../../../hooks/features/tasks/domain/usecases/find_feature'
 import { setFeatureUseCase } from '../../../../../hooks/features/tasks/domain/usecases/set_feature'
@@ -56,16 +57,24 @@ export const codexOperations = ({ ctx, deps }: CodexContext) => {
 
   // Resolve the task and write under the same record lock. A stale helper or
   // review request must not affect a replacement task or another worktree.
-  const review = async (taskId: string, checked: string) => {
+  // A task with acceptance criteria needs an answer for each first; a call
+  // without them is turned back with the record left as it was.
+  const review = async (taskId: string, checked: string, criteria: unknown = []) => {
     const at = isoLocal(await deps.env.now(), ctx.offsetMinutes)
     let text: string = CODEX_TEXT.review
     readable(await deps.records.update(record => {
       const task = currentTask(record.tasks, ctx)
       if (task === null || task.id !== taskId) throw new CodexRefusal(CODEX_TEXT.noTask)
+      const answer = criteriaAnswer(task, record.tasks, criteria)
+      if (answer.kind === 'refused') {
+        text = CRITERIA_REFUSED(answer.lines, answer.given, answer.missing)
+
+        return record
+      }
       const helper = helperToRemind(task)
       const remind = helper !== null && !task.helpers.reminded
       if (remind) text = `${helper} is enabled and has not run. Use its skill, then call task_looks_done again. If it cannot run, say why in checked.`
-      const summary = [checked, ...(helper !== null && !remind ? [`${helper} did not run.`] : [])].filter(Boolean).join(' ')
+      const summary = [...(answer.kind === 'answered' ? [CRITERIA_SUMMARY(answer.total, answer.unmet)] : []), checked, ...(helper !== null && !remind ? [`${helper} did not run.`] : [])].filter(Boolean).join(' ')
 
       return { ...record, tasks: record.tasks.map(t => t.id !== taskId ? t : remind ? { ...t, helpers: { ...t.helpers, reminded: true } } : { ...t, review: { at, checked: summary || null } }) }
     }))

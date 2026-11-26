@@ -1,4 +1,5 @@
 import type { Difficulty, HelperId, Task } from '../../../../../types'
+import { criteriaSetsOf } from '../../../../shared/backlog/domain/services/families'
 import { routeHelpers } from '../../../../shared/records/domain/services/helper_policy'
 
 export const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
@@ -33,4 +34,32 @@ export const helperToRemind = (t: Task): HelperId | null => {
   const { run } = routeHelpers(t)
 
   return (['tea-dd', 'commit-chai-n'] as const).find(id => run.includes(id) && !t.helpers.ran.includes(id)) ?? null
+}
+
+// Claude's account of the acceptance criteria at the done question: one entry
+// per criterion, in the brief's order, each saying whether it is met and what
+// shows it. Writing the code is not evidence, so a call that leaves one out is
+// turned back every time. The count must match too: answers are matched by
+// position, so a stale list would shift every answer onto the wrong criterion.
+export type CriteriaAnswer =
+  | { kind: 'none' }
+  | { kind: 'refused'; lines: string[]; given: number; missing: number[] }
+  | { kind: 'answered'; total: number; unmet: { n: number; why: string }[] }
+
+export const criteriaAnswer = (task: Task, tasks: Task[], answers: unknown): CriteriaAnswer => {
+  const lines = criteriaSetsOf(task, tasks).flatMap(set => set.lines)
+  if (lines.length === 0) return { kind: 'none' }
+  const given = Array.isArray(answers) ? (answers as unknown[]) : []
+  const read = lines.map((_, i) => entryOf(given[i]))
+  const missing = read.flatMap((entry, i) => (entry === null ? [i + 1] : []))
+  if (missing.length > 0 || given.length !== lines.length) return { kind: 'refused', lines, given: given.length, missing }
+
+  return { kind: 'answered', total: lines.length, unmet: read.flatMap((entry, i) => (entry === null || entry.met ? [] : [{ n: i + 1, why: entry.evidence }])) }
+}
+
+const entryOf = (value: unknown): { met: boolean; evidence: string } | null => {
+  if (typeof value !== 'object' || value === null) return null
+  const { met, evidence } = value as Record<string, unknown>
+
+  return typeof met === 'boolean' && typeof evidence === 'string' && evidence.trim() !== '' ? { met, evidence: evidence.trim() } : null
 }

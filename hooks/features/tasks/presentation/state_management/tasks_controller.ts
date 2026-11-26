@@ -15,7 +15,8 @@ import { applySaved, markUnreadable } from '../../../../shared/records/presentat
 import { isHelperId } from '../../../../shared/records/domain/services/helpers'
 import { isQuickRoute, routeHelpers } from '../../../../shared/records/domain/services/helper_policy'
 import type { HelperRunSeen } from '../../../../shared/records/domain/services/helper_usage'
-import { helperToRemind } from '../../domain/services/task_rules'
+import { criteriaAnswer, helperToRemind } from '../../domain/services/task_rules'
+import { criteriaSetsOf } from '../../../../shared/backlog/domain/services/families'
 import type { Block } from '../../domain/services/task_rules'
 import { markRemindedUseCase, noteHelperUseCase } from '../../domain/usecases/helpers_run'
 import { finishTaskUseCase } from '../../domain/usecases/finish_task'
@@ -29,7 +30,7 @@ import { startTaskUseCase } from '../../domain/usecases/start_task'
 import { switchToTaskUseCase } from '../../domain/usecases/switch_to_task'
 import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
-import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CLASSIFY_LINE, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, PROFILE_LINE, PROFILE_TEXT, QUICK_LINE, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
+import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CLASSIFY_LINE, CRITERIA_LINES, CRITERIA_REFUSED, CRITERIA_SUMMARY, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, PROFILE_LINE, PROFILE_TEXT, QUICK_LINE, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
 import { clearHold } from './hold'
 import { gitModeOf } from '../../../../shared/records/domain/services/git_mode'
 
@@ -38,11 +39,12 @@ const DOCS_LOG = 'docs/task_log.md'
 export const taskSection = (record: ProjectRecord | null) => {
   const current = record === null ? null : currentTask(record.tasks, live.ctx)
   if (record === null || current === null) return null
+  const sets = criteriaSetsOf(current, record.tasks)
 
   return {
     id: 'queue-tea:task',
     scope: 'session' as const,
-    text: [TASK_LINE(current.title, gitModeOf(record)), ...helperLines(current)].join('\n'),
+    text: [TASK_LINE(current.title, gitModeOf(record), sets.length > 0), ...(sets.length > 0 ? CRITERIA_LINES(sets) : []), ...helperLines(current)].join('\n'),
   }
 }
 
@@ -116,13 +118,18 @@ const startOnce = async (p: Ports, ctx: Ctx, taskId: string): Promise<'started' 
   return 'started'
 }
 
-// The done question, with what Claude says it checked when it says. A helper
-// that is on and has not run is reminded once; after that Rohan is asked.
-export const taskLooksDone = async (p: Ports, checked?: unknown): Promise<string> => {
+// The done question, with what Claude says it checked when it says. A task
+// with acceptance criteria needs an answer for each, or it is turned back
+// with nothing saved. Then a helper that is on and has not run is reminded
+// once; after that Rohan is asked.
+export const taskLooksDone = async (p: Ports, checked?: unknown, criteria?: unknown): Promise<string> => {
   const record = await p.get('record')
   const current = record === null ? null : currentTask(record.tasks, live.ctx)
+  const answer = record === null || current === null ? null : criteriaAnswer(current, record.tasks, criteria)
+  if (answer?.kind === 'refused') return CRITERIA_REFUSED(answer.lines, answer.given, answer.missing)
   const helper = current === null ? null : helperToRemind(current)
-  let line = typeof checked === 'string' ? checked.trim().slice(0, 300) : ''
+  const own = typeof checked === 'string' ? checked.trim().slice(0, 300) : ''
+  let line = answer?.kind === 'answered' ? `${CRITERIA_SUMMARY(answer.total, answer.unmet)} ${own}`.trim() : own
   if (current !== null && helper !== null) {
     const name = HELPER_NAMES[helper]
     if (!current.helpers.reminded && (await markReminded(p, current.id))) return REMIND(name)

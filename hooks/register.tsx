@@ -64,7 +64,7 @@ export const register: Register = (on, options) => {
     }
 
     // A registered tool's result is what the model reads: a string, not a record.
-    return { result: await taskLooksDone(portsOf($), e.checked) }
+    return { result: await taskLooksDone(portsOf($), e.checked, e.criteria) }
   })
 
   on('tool.call', { tool: `mcp__queue-tea__${PROPOSE_TOOL.name}` }, async ($, e) => ({ result: await proposeCommit(portsOf($), e) }))

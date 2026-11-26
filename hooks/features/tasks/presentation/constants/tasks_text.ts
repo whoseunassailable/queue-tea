@@ -1,4 +1,5 @@
 import type { GitMode, HelperId, TaskStep, TestProfile, TestProfileId } from '../../../../../types'
+import type { CriteriaGroup } from '../../../../shared/backlog/domain/services/families'
 import { TEST_PROFILE_LIMITS } from '../../../../shared/records/domain/services/test_profile'
 
 // Claude's brief names what the realm's Git mode lets it do.
@@ -7,8 +8,49 @@ const GIT_LINE: Record<GitMode, string> = {
   assisted: 'Never commit or push: Rohan does. When work is ready to commit, propose it with propose_commit, and he commits it from Branches in the Queue-tea app.',
 }
 
-export const TASK_LINE = (title: string, mode: GitMode): string =>
-  `The current Queue-tea task is "${title}". When a reply of yours has finished what it asked, call task_looks_done. ${GIT_LINE[mode]}`
+export const TASK_LINE = (title: string, mode: GitMode, hasCriteria = false): string =>
+  hasCriteria
+    ? `The current Queue-tea task is "${title}". When a reply of yours has finished what it asked, check the work against each acceptance criterion below, then call task_looks_done with whether each is met and what shows it. Code written doesn't meet a criterion; a check that passed, or what you saw, does. ${GIT_LINE[mode]}`
+    : `The current Queue-tea task is "${title}". When a reply of yours has finished what it asked, call task_looks_done. ${GIT_LINE[mode]}`
+
+// The criteria pinned in the brief, numbered straight through every set in
+// the order task_looks_done takes them, so a compacted conversation keeps them.
+export const CRITERIA_LINES = (sets: readonly CriteriaGroup[]): string[] => {
+  let n = 0
+
+  return [
+    'Acceptance criteria, in the order task_looks_done takes them:',
+    ...sets.flatMap(set => [...(set.parent === null ? [] : [`Under "${set.parent.title}":`]), ...set.lines.map(line => `${++n}. ${line}`)]),
+  ]
+}
+
+export const DONE_TOOL = {
+  description:
+    "Call when your reply has finished what the current Queue-tea task asked. If the task has acceptance criteria, give criteria: one entry per criterion, in the brief's order. Writing the code doesn't meet one. Rohan is then asked in the Queue-tea menu whether it is done for now; a call that leaves a criterion out is turned back.",
+  checked: 'Optional. One line on what you checked before calling, such as the tests you ran and what they showed. Shown to Rohan beside the question.',
+  criteria: "One entry per acceptance criterion, in the brief's order.",
+  met: 'True only if you checked it.',
+  evidence: 'What shows it (the check and its result, or what you saw), or why it is not met.',
+} as const
+
+// The done question turned back: the criteria, numbered, and what is missing.
+export const CRITERIA_REFUSED = (lines: readonly string[], given: number, missing: readonly number[]): string =>
+  [
+    `Rohan was not asked. Give one entry for each of these ${lines.length} criteria, in order, with met and evidence:`,
+    ...lines.map((line, i) => `${i + 1}. ${line}`),
+    ...(missing.length === 0 ? [] : [`Missing or without evidence: ${missing.join(', ')}.`]),
+    ...(given > lines.length ? [`You gave ${given} entries for ${lines.length}; the criteria may have changed.`] : []),
+  ].join('\n')
+
+// What Rohan reads beside the question: how many are met, and why the first
+// unmet ones aren't, short enough to leave room for Claude's own line.
+export const CRITERIA_SUMMARY = (total: number, unmet: readonly { n: number; why: string }[]): string => {
+  const head = `Criteria: ${total - unmet.length} of ${total} met.`
+  if (unmet.length === 0) return head
+  const shown = unmet.slice(0, 2).map(u => `${u.n} (${u.why.length > 60 ? `${u.why.slice(0, 59)}…` : u.why})`)
+
+  return `${head} Not met: ${shown.join('; ')}${unmet.length > 2 ? `; +${unmet.length - 2} more` : ''}.`
+}
 
 export const HELPER_NAMES: Record<HelperId, string> = {
   'commit-chai-n': 'Commit Chai-n',

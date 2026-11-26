@@ -34,7 +34,7 @@ Decided while drawing:
 
 - **Sizes.** The list and the inspector are each 240 px wide, with 12 px between the panes. The editor takes the rest. The title is Marcellus 26 and the body is Nunito Sans 15 with 1.7 line spacing. The text column is at most 640 px wide, so lines stay under about 90 characters on a wide window.
 - **Narrower windows** use the app's two existing widths. From 1,180 px the three panes sit side by side. From 900 to 1,179 px the inspector becomes a panel that floats over the editor's right edge, opened and closed with **Details** in the editor's head. Below 900 px the app's sidebar folds away and the tabs become a menu, as they do on every page, and the note list becomes a 300 px drawer opened with **Notes** in the editor's head (screen 6). Picking a note closes the drawer.
-- **BrewQuest sits in the editor's foot**, a row of its own under the text area, aligned right. It never covers text, and it doesn't move. Its line counts what it can do ("3 checklist lines can be quests.").
+- **BrewQuest sits in the editor's foot**, a row of its own under the text area, aligned right. It never covers text, and the card doesn't move: the robot's moods, added later, play inside its own box (see [BrewQuest's moods](#brewquests-moods)). Its line counts what it can do ("3 checklist lines can be quests.").
 - **One open line makes one quest, with no parent.** A parent holding a single quest adds nothing, so the parent comes only with two lines or more.
 - **The parent row has no priority or difficulty.** The parent is made from its title alone, as Part of… → a new saga makes it today.
 - **New lines join the note's own quest** when one has been filed already ("Filed under False steps in the March recordings.").
@@ -175,7 +175,7 @@ A captured idea uses its first line as the title, with `[ ] | #` replaced by spa
 - **Search** ignores case. Every word you type must appear in the title, the body or a tag. A word starting with `#` matches tags only. Folders with no match hide.
 - **Filing.** The window sends the note's id and the reviewed rows. Main checks them again. Then it files each quest with the call New quest uses (the parent first) and writes the quest into the note's `quests` straight away. It returns the notes and the realm's quests, so the quest board and the inspector update together.
 - **Safety.** The window sends a realm key and a note id, never a path. Main checks the id (no `/`, `\` or `..`, not hidden, up to 120 characters), builds the path itself, and refuses to delete a note that isn't archived.
-- **Motion.** Notes 1 has none of its own. BrewQuest is still, and under Reduce Motion or Calm mode the picker, sheet and drawer appear without a transition.
+- **Motion.** Notes 1 has none of its own. BrewQuest is still, and under Reduce Motion or Calm mode the picker, sheet and drawer appear without a transition. BrewQuest's moods, added later, keep to the same rule (see [BrewQuest's moods](#brewquests-moods)).
 - **Screen readers.** The save line is a polite status and its errors are alerts. The picker is a list tied to the text area, so the highlighted note or quest is announced. A quest is read with its state: "Write the parser, quest, in progress". The sheet, the dialogs and the drawer are dialogs labelled by their titles.
 
 ## Architecture
@@ -234,11 +234,35 @@ The robot in the editor's foot has a grab cursor and the hint **Drag BrewQuest o
 
 Pending edits save through the usual save and conflict checks before the review opens. Dropping on another note first saves the open note; if saving fails or finds a conflict, the current note and its edits stay on screen. Archived notes cannot receive the robot. A cancelled drag or a robot dropped anywhere else changes no note and files no quest. The outlines disappear when the drag ends.
 
-**Turn into quests…** stays beside the robot as the keyboard and click way to open the same sheet. Tab reaches it and Enter or Space activates it. Closing the sheet returns focus to that button. A drop only opens the proposal: **File** still approves the quests, and **Cancel** or Esc files nothing. The robot stays in its footer, with no new animation.
+**Turn into quests…** stays beside the robot as the keyboard and click way to open the same sheet. Tab reaches it and Enter or Space activates it. Closing the sheet returns focus to that button. A drop only opens the proposal: **File** still approves the quests, and **Cancel** or Esc files nothing. The robot stays in its footer. While it's dragged it shows its hover mood, and a drag that reaches no note leaves it puzzled for a moment (see [BrewQuest's moods](#brewquests-moods)).
 
 The drag state lives in `app/renderer/features/notes/presentation/state_management/brew_drag.ts`. It accepts only a drag begun by this realm's robot, with a private transfer type and no plain text to insert into a field. Note rows and the editor share it, and both use the existing save and BrewQuest review flow. No engine API or stored note format changes.
 
 Component checks in `app/renderer/app/notes.spec.tsx` cover target hints, hover, cancellation, invalid and foreign drags, archived notes, save failures and pending text in Write, Read and Graph. `app/e2e/notes.e2e.ts` checks native dragging, unchanged files and queue after an invalid drop, review of another note, the editor at 760 px, keyboard activation and returned focus. Run `npm test`, `npm run typecheck` and `npm run e2e` inside `app/`.
+
+## BrewQuest's moods
+
+Added from the quest "BrewQuest: animation states". BrewQuest's robot shows what it's doing in one of seven moods, on its card in the editor's foot and in the review sheet. Each mood is drawn still first, with its eyes, mouth, arms, chest light and a mark in a free corner, so it reads with motion turned off. Motion adds to it.
+
+| Mood | When | Still | Motion |
+| --- | --- | --- | --- |
+| Idle | Nothing is going on, and always on the empty realm's large robot | As before | Blinks every 6 s |
+| Hover | The pointer is over the card, or the robot is being dragged | Looks up and smiles, with its right arm raised | Waves, and the tea-cup antenna wobbles |
+| Thinking | The note saves before its review opens, from **Turn into quests…** or a drop | Looks up and aside, with three dots | The dots light in turn |
+| Working | The sheet files the quests | Narrowed eyes and an amber chest light | The arms pump and the light flickers |
+| Success | The quests were filed: on the card for 2.4 s | Happy eyes, both arms up and sparkles | The arms cheer and the sparkles twinkle, then stop |
+| Confused | A drag ended without reaching a note (on the card for 2 s), or the sheet has nothing left to file | Uneven eyes, a wavy mouth and a question mark | The head tilts and the question mark bobs |
+| Error | Saving before the review failed (on the card for 4 s), or filing failed (in the sheet, while its banner shows) | Red crosses for eyes, a frown, a red light and an exclamation mark | The head shakes twice and the mark flashes three times |
+
+- **Which mood wins.** An error always shows. Otherwise being busy (thinking, working) comes first, then a reaction (success, confused), then the pointer, so quests filed under the pointer still cheer. A new step clears a reaction that is still showing.
+- **Never over the editor.** Everything moves inside the robot's 44 px box, which clips what moves and never changes size. No mood changes the card's text or width, so the card still never overlaps the text area (check 18 above).
+- **Reduce Motion and Calm mode.** The motion runs only under `prefers-reduced-motion: no-preference`, and Calm mode stops it as it stops the rest of the app's motion. Both keep the still drawing, so the mood still shows.
+- **Screen readers.** The robot stays hidden from them, as before. The save line, the sheet's banner, **Filing…** and the toast already say what each mood shows.
+- **Hover is the pointer and a drag, not keyboard focus.** Focus goes back to **Turn into quests…** after every review, so a focus hover would keep the robot waving until focus moved on. The robot is decoration, so keyboard users miss nothing.
+
+The rules are `brewMoodOf` and `sheetMoodOf` in `app/renderer/features/notes/domain/notes_view.ts`. The card's mood lives in `presentation/state_management/brew_mood.ts`, which the page keeps beside the drag, so a drop on the list, a save and filing all reach the same robot. The robot is drawn in `presentation/widgets/brew_robot.tsx`, its motion is in `notes.css`, and the reaction times are `BREW_REACTION_MS` in the constants. The thinking mood is there for Claude reading the note later (Q09).
+
+`notes_view.spec.ts` checks which mood wins, `brew_mood.spec.ts` the reaction times, busy steps, the pointer and drags, `brew_robot.spec.tsx` the sizes, every pixel inside the box, seven different still drawings and motion only under no-preference, and `app/renderer/app/notes.spec.tsx` each mood on the Notes page.
 
 ## Version history
 
@@ -457,7 +481,7 @@ records the budgets and fixture limits.
 
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph (added later, see [The graph](#the-graph)), the canvas (added later, see [The canvas](#the-canvas)), BrewQuest's animations, drag-to-note (added later, see [Drag BrewQuest onto a note](#drag-brewquest-onto-a-note)), and AI note analysis. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph (added later, see [The graph](#the-graph)), the canvas (added later, see [The canvas](#the-canvas)), BrewQuest's animations (added later, see [BrewQuest's moods](#brewquests-moods)), drag-to-note (added later, see [Drag BrewQuest onto a note](#drag-brewquest-onto-a-note)), and AI note analysis. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

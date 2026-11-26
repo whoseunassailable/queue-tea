@@ -42,6 +42,12 @@ note's existing parent while that parent is still open. Queue-tea remembers
 the original checklist text: changing that text makes it a new item, even
 if it looks much like one you filed earlier.
 
+BrewQuest's robot shows what it's doing: it waves when you point at it,
+thinks while the note saves, works while it files, cheers when the quests
+are in, looks puzzled after a drag that lands nowhere, and shows red when
+something fails. Under Reduce Motion or Calm mode it keeps each look but
+holds still.
+
 ## Find a note in a large realm
 
 Press `⌘F` inside Notes to focus **Search notes**. Search ignores case and

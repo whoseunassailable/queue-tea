@@ -88,7 +88,41 @@
 .rm .nt-brew { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--card); }
 .rm .nt-brew-text { display: flex; flex-direction: column; min-width: 0; max-width: 240px; }
 .rm .nt-brew .btn { flex: none; white-space: nowrap; }
-.rm .nt-robot { flex: none; }
+/* BrewQuest's moods. Each is drawn still; motion plays only for people who
+   haven't asked for less, and Calm mode stops it with the rest of the app's.
+   Everything moves inside the robot's own box, which clips and keeps its size,
+   so no mood reaches the text area. */
+.rm .nt-robot { flex: none; overflow: hidden; contain: layout paint; }
+.rm .nt-robot g, .rm .nt-robot rect { transform-box: fill-box; transform-origin: center; }
+.rm .nt-robot .nt-robot-head { transform-origin: 50% 100%; }
+.rm .nt-robot .nt-robot-cup, .rm .nt-robot .nt-robot-arm { transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .rm .nt-robot[data-mood='idle'] .nt-robot-eyes { animation: nt-brew-blink 6s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='hover'] .nt-robot-arm.right { animation: nt-brew-lift 0.9s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='hover'] .nt-robot-cup { animation: nt-brew-wobble 0.9s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='thinking'] .nt-robot-mark rect { animation: nt-brew-dot 1.2s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='thinking'] .nt-robot-mark rect:nth-child(2) { animation-delay: 0.3s; }
+  .rm .nt-robot[data-mood='thinking'] .nt-robot-mark rect:nth-child(3) { animation-delay: 0.6s; }
+  .rm .nt-robot[data-mood='working'] .nt-robot-arm { animation: nt-brew-lift 0.6s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='working'] .nt-robot-arm.right { animation-delay: -0.3s; }
+  .rm .nt-robot[data-mood='working'] .nt-robot-chest { animation: nt-brew-flicker 0.6s steps(2) infinite; }
+  .rm .nt-robot[data-mood='success'] .nt-robot-arm { animation: nt-brew-lift 0.4s ease-in-out 4; }
+  .rm .nt-robot[data-mood='success'] .nt-robot-mark rect { animation: nt-brew-twinkle 0.8s ease-in-out 3; }
+  .rm .nt-robot[data-mood='confused'] .nt-robot-head { animation: nt-brew-tilt 2s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='confused'] .nt-robot-mark { animation: nt-brew-bob 1s ease-in-out infinite; }
+  .rm .nt-robot[data-mood='error'] .nt-robot-head { animation: nt-brew-shake 0.35s ease-in-out 2; }
+  .rm .nt-robot[data-mood='error'] .nt-robot-mark { animation: nt-brew-flash 0.5s steps(2) 3; }
+}
+@keyframes nt-brew-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.15); } }
+@keyframes nt-brew-lift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.6px); } }
+@keyframes nt-brew-wobble { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-14deg); } }
+@keyframes nt-brew-dot { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@keyframes nt-brew-flicker { 50% { opacity: 0.45; } }
+@keyframes nt-brew-twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.6); } }
+@keyframes nt-brew-tilt { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-5deg); } 70% { transform: rotate(5deg); } }
+@keyframes nt-brew-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(0.4px); } }
+@keyframes nt-brew-shake { 25% { transform: translateX(-0.4px); } 75% { transform: translateX(0.4px); } }
+@keyframes nt-brew-flash { 50% { opacity: 0.2; } }
 .rm .nt-brew-drag { display: inline-flex; flex: none; cursor: grab; }
 .rm .nt-brew-drag:active { cursor: grabbing; }
 .rm .nt-brew-drag .nt-robot { pointer-events: none; }

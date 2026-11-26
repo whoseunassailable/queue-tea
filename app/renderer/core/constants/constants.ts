@@ -58,6 +58,8 @@ export const NOTE_AUTOSAVE_MS = 800
 // Bound the list's rendered rows, including when every folder is folded.
 export const NOTE_LIST_PAGE_SIZE = 100
 export const NOTE_BREW_DRAG_TYPE = 'application/x-queue-tea-brewquest'
+// How long BrewQuest's robot shows a reaction before it settles back.
+export const BREW_REACTION_MS = { success: 2_400, confused: 2_000, error: 4_000 } as const
 // How many notes the [[ link picker offers at once.
 export const NOTE_PICKER_ROWS = 8
 // How many notes the ⌘K palette lists, and how long a matching line it shows.

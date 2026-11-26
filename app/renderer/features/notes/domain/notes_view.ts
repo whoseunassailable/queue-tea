@@ -238,6 +238,35 @@ export const brewLineOf = (note: Pick<Note, 'body' | 'quests'>, proposal: QuestP
   return waiting === 0 ? t.notebook.brew.allFiled(note.quests.length) : t.notebook.brew.someLeft(note.quests.length, waiting)
 }
 
+// BrewQuest's robot shows what it's doing in one of seven moods.
+export const BREW_MOODS = ['idle', 'hover', 'thinking', 'working', 'success', 'confused', 'error'] as const
+export type BrewMood = (typeof BREW_MOODS)[number]
+// Something BrewQuest is busy with, for as long as it lasts.
+export type BrewActivity = 'thinking' | 'working'
+// How BrewQuest takes what just happened, shown for a moment.
+export type BrewReaction = 'success' | 'confused' | 'error'
+
+// An error is never hidden, being busy comes before a reaction, and a reaction
+// before the pointer, so filing that ends under the pointer still shows success.
+export const brewMoodOf = ({ activity, reaction, isNear }: { activity: BrewActivity | null; reaction: BrewReaction | null; isNear: boolean }): BrewMood => {
+  if (reaction === 'error') return 'error'
+  if (activity !== null) return activity
+  if (reaction !== null) return reaction
+  if (isNear) return 'hover'
+
+  return 'idle'
+}
+
+// The robot in the review sheet: busy while filing, upset when filing failed,
+// puzzled when the note has nothing left to file.
+export const sheetMoodOf = ({ isFiling, hasFailed, isEmpty }: { isFiling: boolean; hasFailed: boolean; isEmpty: boolean }): BrewMood => {
+  if (isFiling) return 'working'
+  if (hasFailed) return 'error'
+  if (isEmpty) return 'confused'
+
+  return 'idle'
+}
+
 // How well a title fits what's typed: starting with it, then a word starting
 // with it, then holding it anywhere; 3 is no match.
 const rankOf = (query: string) => {

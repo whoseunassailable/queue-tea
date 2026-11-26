@@ -125,6 +125,10 @@ const dragBrew = () => {
   return { robot, dataTransfer }
 }
 
+// The robot on the card in the editor's foot, and the one in the review sheet.
+const cardMood = () => screen.getByLabelText('Drag BrewQuest onto a note').querySelector('svg')!.getAttribute('data-mood')
+const sheetMood = (sheet: HTMLElement) => sheet.querySelector('svg[data-mood]')!.getAttribute('data-mood')
+
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
@@ -641,6 +645,7 @@ describe('the Notes page', () => {
     fireEvent.dragEnd(robot)
 
     const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Release plan') })
+    expect(cardMood()).toBe('idle')
     expect((within(sheet).getByLabelText(`${t.notebook.brew.questTitle(1)} *`) as HTMLInputElement).value).toBe('Ship')
     expect(screen.getByLabelText(`${t.notebook.noteTitle} *`)).toHaveProperty('value', 'Release plan')
     expect(notes.fileNoteQuests).not.toHaveBeenCalled()
@@ -772,10 +777,80 @@ describe('the Notes page', () => {
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
 
     expect((await within(sheet).findByRole('alert')).textContent).toBe("Couldn't file the quests.")
+    expect(sheetMood(sheet)).toBe('error')
     // The parent and the first quest went in; both lock.
     expect(await within(sheet).findAllByText(t.notebook.brew.filedRow)).toHaveLength(2)
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.tryAgain })))
     expect(fileNoteQuests.mock.calls[1]![2].quests.map((q: { title: string }) => q.title)).toEqual(['Report'])
+  })
+
+  it('BrewQuest’s robot perks up while the pointer is over its card, and settles when it leaves', async () => {
+    await open(memoryNotes([note({ body: '- [ ] Scan' })]))
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    expect(cardMood()).toBe('idle')
+    const robot = screen.getByLabelText('Drag BrewQuest onto a note')
+    fireEvent.mouseOver(robot)
+    expect(cardMood()).toBe('hover')
+    fireEvent.mouseLeave(robot.parentElement!)
+    expect(cardMood()).toBe('idle')
+  })
+
+  it('BrewQuest thinks while the note saves before its review, and is upset when saving fails', async () => {
+    const notes = memoryNotes([note()])
+    let finish!: (answer: Awaited<ReturnType<EngineApi['saveNote']>>) => void
+    const saveNote = vi.fn<EngineApi['saveNote']>(() => new Promise(resolve => { finish = resolve }))
+    await open({ ...notes, saveNote })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    write('- [ ] Scan')
+    await press(t.notebook.brew.turn)
+    expect(saveNote).toHaveBeenCalled()
+    expect(cardMood()).toBe('thinking')
+
+    await act(async () => finish({ ok: false, error: { message: "Couldn't save. Your text is still here." } }))
+    expect((await screen.findByRole('alert')).textContent).toContain("Couldn't save.")
+    expect(cardMood()).toBe('error')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('BrewQuest works while filing, cheers on its card once the quests are in, and is puzzled by a note with nothing left', async () => {
+    const notes = memoryNotes([note({ body: '- [ ] Scan\n- [ ] Report' })])
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const fileNoteQuests = vi.fn(async (key: string, id: string, proposal: QuestProposal) => {
+      await gate
+
+      return notes.fileNoteQuests(key, id, proposal)
+    })
+    await open({ ...notes, fileNoteQuests })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await press(t.notebook.brew.turn)
+    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    expect(sheetMood(sheet)).toBe('idle')
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
+    expect(sheetMood(sheet)).toBe('working')
+
+    await act(async () => release())
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(cardMood()).toBe('success')
+
+    await press(t.notebook.brew.turn)
+    const nothing = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    expect(within(nothing).getByText(t.notebook.brew.nothing)).toBeTruthy()
+    expect(sheetMood(nothing)).toBe('confused')
+  })
+
+  it('BrewQuest is puzzled when a drag ends without reaching a note, and nothing changes', async () => {
+    const notes = memoryNotes([note()])
+    await open(notes)
+    await screen.findByDisplayValue('Bug Bounty Helper')
+    const { robot } = dragBrew()
+    expect(cardMood()).toBe('hover')
+    fireEvent.dragEnd(robot)
+    expect(cardMood()).toBe('confused')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(notes.saveNote).not.toHaveBeenCalled()
+    expect(notes.fileNoteQuests).not.toHaveBeenCalled()
   })
 
   it('archives a note, and deletes it forever only from Archived, after asking', async () => {

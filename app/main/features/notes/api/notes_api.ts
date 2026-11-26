@@ -4,6 +4,8 @@ import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usec
 import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { ParentPick } from '../../../../../types'
 import type { Reply } from '../../../../shared/engine_api'
+import { attendeesOf, cleanAttendee, MEETING_LIMITS, meetingLinkOf, meetingTimeOf, NO_MEETING } from '../../../../shared/meetings'
+import type { Meeting } from '../../../../shared/meetings'
 import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_HISTORY_FOLDER, NOTE_LIMITS, NOTE_TITLE_BAD, NOTE_VERSION_ID, NOTES_FOLDER, noteTypeOf, renameLinks } from '../../../../shared/notes'
 import type { BackupSkip, Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesExport, NotesRestore, NotesView, NoteType, NoteVersion, ProposedQuest } from '../../../../shared/notes'
 import { projectsFolder } from '../../../core/constants'
@@ -43,7 +45,29 @@ const folderNameOf = (value: unknown): string => {
   return folder
 }
 
-const changeOf = (value: unknown): NoteChange => {
+// A meeting's details, checked as the meeting sheet checks them.
+const meetingOf = (value: unknown): Meeting => {
+  if (typeof value !== 'object' || value === null) throw new Refusal(MESSAGES.badValue)
+  const v = value as Record<string, unknown>
+  const given = v.attendees ?? []
+  if (!Array.isArray(given) || given.some(name => typeof name !== 'string')) throw new Refusal(MESSAGES.badValue)
+  const names = (given as string[]).map(cleanAttendee).filter(name => name !== '')
+  if (names.some(name => name.length > MEETING_LIMITS.attendee)) throw new Refusal(MESSAGES.meetingAttendeeLong)
+  // Repeats are dropped, so only different names count, as in the sheet.
+  if (new Set(names.map(name => name.toLowerCase())).size > MEETING_LIMITS.attendees) throw new Refusal(MESSAGES.meetingTooManyAttendees)
+  const link = v.link ?? null
+  if (link !== null && meetingLinkOf(link) === null) throw new Refusal(MESSAGES.badMeetingLink)
+  const time = (v.time ?? null) as Record<string, unknown> | null
+  const when = time === null ? null : meetingTimeOf(time.start, time.end, time.zone)
+  if (time !== null && when === null) throw new Refusal(MESSAGES.badMeetingTime)
+
+  return { attendees: attendeesOf(names), link: link === null ? null : meetingLinkOf(link), time: when }
+}
+
+// A change from the window. Without a meeting, the file's stays as it is.
+type Change = Omit<NoteChange, 'meeting'> & { meeting?: Meeting }
+
+const changeOf = (value: unknown): Change => {
   const v = (value ?? {}) as Record<string, unknown>
   const title = typeof v.title === 'string' ? v.title.trim() : ''
   if (title === '') throw new Refusal(MESSAGES.noteTitleRequired)
@@ -62,7 +86,7 @@ const changeOf = (value: unknown): NoteChange => {
   if (tags.some(tag => tag.length > NOTE_LIMITS.tag)) throw new Refusal(MESSAGES.noteTagLong)
   if (tags.length > NOTE_LIMITS.tags) throw new Refusal(MESSAGES.noteTooManyTags)
 
-  return { title, folder: folder === '' ? INBOX : folder, type: type as NoteType | null, isPinned, tags, body: v.body }
+  return { title, folder: folder === '' ? INBOX : folder, type: type as NoteType | null, isPinned, tags, body: v.body, ...(v.meeting === undefined ? {} : { meeting: meetingOf(v.meeting) }) }
 }
 
 const proposedOf = (value: unknown): ProposedQuest[] => {
@@ -148,7 +172,7 @@ export const notesApi = (d: NotesDeps) => {
     return { loaded, unreadable }
   }
 
-  const noteOf = ({ id, file, text }: Loaded): Note => ({ id, title: file.title, folder: file.folder, type: file.type, isPinned: file.isPinned, tags: file.tags, created: file.created, updated: file.updated, isArchived: file.isArchived, quests: file.quests, body: file.body, stamp: stampOf(text) })
+  const noteOf = ({ id, file, text }: Loaded): Note => ({ id, title: file.title, folder: file.folder, type: file.type, isPinned: file.isPinned, tags: file.tags, created: file.created, updated: file.updated, isArchived: file.isArchived, quests: file.quests, meeting: file.meeting, body: file.body, stamp: stampOf(text) })
 
   const titlesOf = async (key: string) => (await loadAll(key)).loaded.map(one => ({ id: one.id, title: one.file.title, isArchived: one.file.isArchived }))
 
@@ -549,7 +573,7 @@ export const notesApi = (d: NotesDeps) => {
         const id = await newId(realm)
         // A taken title gets the next number, so a link still means one note.
         const title = freeTitle(await titlesOf(realm), note.title)
-        await write(realm, id, { ...note, title, created: now, updated: now, isArchived: false, quests: [], aliases: [], rest: [] })
+        await write(realm, id, { ...note, meeting: note.meeting ?? NO_MEETING, title, created: now, updated: now, isArchived: false, quests: [], aliases: [], rest: [] })
 
         return { view: await viewOf(realm), id }
       }),

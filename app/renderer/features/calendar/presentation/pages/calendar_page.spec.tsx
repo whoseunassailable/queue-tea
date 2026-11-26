@@ -6,7 +6,8 @@ import type { CalendarEvent, CalendarView } from '../../../../../shared/calendar
 import type { EngineApi, ProjectView, Reply } from '../../../../../shared/engine_api'
 import { App } from '../../../../app/app'
 import { t } from '../../../../l10n/en'
-import { activeQuest, fakeEngine, projectView, quest, QUEST_FACTS } from '../../../../test_support'
+import type { NotesView } from '../../../../../shared/notes'
+import { activeQuest, fakeEngine, note, projectView, quest, QUEST_FACTS } from '../../../../test_support'
 import { createWorkspace } from '../../../workspace/state_management/workspace_store'
 import { CalendarPage } from './calendar_page'
 
@@ -29,9 +30,10 @@ const open = async ({ events = [CALL, TRIP], realm = REALM, over = {} }: { event
   const { engine } = fakeEngine({ readCalendar: vi.fn(async () => ok<CalendarView>({ events, unreadable: 0 })), ...over })
   const onOpenQuest = vi.fn()
   const onSay = vi.fn()
-  await act(async () => void render(<CalendarPage engine={engine} realm={realm} onOpenQuest={onOpenQuest} onSay={onSay} nowMs={() => NOW} zone={() => HERE} />))
+  const onOpenNote = vi.fn()
+  await act(async () => void render(<CalendarPage engine={engine} realm={realm} onOpenQuest={onOpenQuest} onOpenNote={onOpenNote} onSay={onSay} nowMs={() => NOW} zone={() => HERE} />))
 
-  return { engine, onOpenQuest, onSay }
+  return { engine, onOpenQuest, onOpenNote, onSay }
 }
 const dayCell = (day: string) => screen.getByRole('button', { name: c.addOn(day) }).closest('[role="gridcell"]') as HTMLElement
 const fill = (label: string, value: string) => fireEvent.input(screen.getByLabelText(new RegExp(`^${label}`)), { target: { value } })
@@ -234,6 +236,64 @@ describe('every state', () => {
   })
 })
 
+describe('meeting notes', () => {
+  // Monday 30 November, 16:00 to 16:45 in Lisbon: 10:00 to 10:45 in Chicago.
+  const REVIEW = note({ id: 'n-review', title: 'Design review', type: 'meeting', meeting: { attendees: ['Ana'], link: 'https://zoom.us/j/1', time: { start: '2026-11-30T16:00', end: '2026-11-30T16:45', zone: 'Europe/Lisbon' } } })
+  const notesOf = (...notes: ReturnType<typeof note>[]): Reply<NotesView> => ok({ notes, unreadable: [], folder: '/n' })
+
+  it('puts a Meeting note with a time on its day, and opens the note', async () => {
+    const { onOpenNote } = await open({ over: { readNotes: vi.fn(async () => notesOf(REVIEW, note({ id: 'n-plain', title: 'No time', type: 'meeting' }))) } })
+    await screen.findByRole('heading', { name: 'November 2026' })
+
+    const chip = within(dayCell('2026-11-30')).getByRole('button', { name: t.meeting.openNote('Design review') })
+    expect(chip.textContent).toBe('10:00Design review')
+    expect(screen.queryByRole('button', { name: t.meeting.openNote('No time') })).toBeNull()
+    fireEvent.click(chip)
+    expect(onOpenNote).toHaveBeenCalledWith('n-review')
+  })
+
+  it('lists a meeting in the agenda with its call and its own zone beside the Mac\'s', async () => {
+    await open({ over: { readNotes: vi.fn(async () => notesOf(REVIEW)) } })
+    await screen.findByRole('heading', { name: 'November 2026' })
+    fireEvent.click(screen.getByRole('button', { name: c.modes.agenda }))
+
+    expect(screen.getByText(`10:00 – 10:45 · ${c.inZone('16:00', '16:45', 'Europe/Lisbon')}`)).toBeTruthy()
+    expect(screen.getByText(`${t.meeting.calendarTag} · ${t.meeting.calls.zoom}`)).toBeTruthy()
+  })
+
+  it('shows the calendar while it reads the notes, then adds the meetings', async () => {
+    let answer: (reply: Reply<NotesView>) => void = () => {}
+    await open({ over: { readNotes: vi.fn(() => new Promise<Reply<NotesView>>(done => (answer = done))) } })
+    await screen.findByRole('heading', { name: 'November 2026' })
+
+    expect(screen.getByRole('status').textContent).toContain(t.meeting.readingNotes)
+    expect(screen.getByRole('button', { name: c.editEvent('Call with Ana') })).toBeTruthy()
+    await act(async () => answer(notesOf(REVIEW)))
+    expect(await screen.findByRole('button', { name: t.meeting.openNote('Design review') })).toBeTruthy()
+    expect(screen.queryByText(t.meeting.readingNotes)).toBeNull()
+  })
+
+  it("says when the notes can't be read, keeps the events, and tries again", async () => {
+    const readNotes = vi.fn(async (): Promise<Reply<NotesView>> => ({ ok: false, error: { message: "Couldn't read the notes." } }))
+    await open({ over: { readNotes } })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain(t.meeting.notesFailed)
+    expect(screen.getByRole('button', { name: c.editEvent('Call with Ana') })).toBeTruthy()
+    readNotes.mockResolvedValueOnce(notesOf(REVIEW))
+    await act(async () => void fireEvent.click(within(alert).getByRole('button', { name: t.failed.tryAgain })))
+    await waitFor(() => expect(screen.getByRole('button', { name: t.meeting.openNote('Design review') })).toBeTruthy())
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a realm with only a meeting shows it, not the empty state', async () => {
+    await open({ events: [], realm: realmWith(), over: { readNotes: vi.fn(async () => notesOf(REVIEW)) } })
+
+    expect(await screen.findByRole('button', { name: t.meeting.openNote('Design review') })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: c.emptyTitle })).toBeNull()
+  })
+})
+
 describe('in the app', () => {
   afterEach(() => vi.useRealTimers())
 
@@ -258,5 +318,27 @@ describe('in the app', () => {
 
     await waitFor(() => expect(window.location.hash).toBe('#/quests'))
     await waitFor(() => expect(readQuestFacts).toHaveBeenCalledWith(KEY, 't-ship'))
+  })
+
+  it('a meeting on the calendar opens its note in Notes', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    window.location.hash = '#/home'
+    const review = note({ id: 'n-review', title: 'Design review', type: 'meeting', meeting: { attendees: [], link: null, time: { start: '2026-11-30T10:00', end: '2026-11-30T10:30', zone: 'America/Chicago' } } })
+    const others = note({ id: 'n-other', title: 'Another note' })
+    const { engine } = fakeEngine({ readNotes: vi.fn(async () => ok<NotesView>({ notes: [others, review], unreadable: [], folder: '/n' })) })
+    const workspace = createWorkspace(engine)
+    await act(async () => {
+      render(<App workspace={workspace} engine={engine} />)
+      await workspace.start()
+    })
+    await act(() => void fireEvent.keyDown(document.body, { key: '8', metaKey: true }))
+    await waitFor(() => expect(window.location.hash).toBe('#/calendar'))
+    await screen.findByRole('heading', { name: c.title })
+
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: t.meeting.openNote('Design review') })))
+
+    await waitFor(() => expect(window.location.hash).toBe('#/notes'))
+    await waitFor(() => expect((screen.getByLabelText(`${t.notebook.noteTitle} *`) as HTMLInputElement).value).toBe('Design review'))
   })
 })

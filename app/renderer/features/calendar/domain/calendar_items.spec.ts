@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CalendarEvent } from '../../../../shared/calendar'
-import { activeQuest, projectView, quest } from '../../../test_support'
-import { dueItemsOf, eventItemOf, itemsOf, itemsOn, lanesOf, minutesOn } from './calendar_items'
+import { activeQuest, note, projectView, quest } from '../../../test_support'
+import { dueItemsOf, eventItemOf, itemsOf, itemsOn, lanesOf, meetingItemsOf, minutesOn } from './calendar_items'
 import type { CalendarItem } from './calendar_items'
 
 const HERE = 'America/Chicago'
@@ -109,5 +109,34 @@ describe('lanes', () => {
     const placed = lanesOf([{ item: 'quick', from: 540, to: 545 }, { item: 'next', from: 550, to: 600 }])
 
     expect(placed[0]).toMatchObject({ to: 560, lanes: 2 })
+  })
+})
+
+describe('meeting notes', () => {
+  const meeting = (id: string, start: string, end: string, zone = HERE, over: Parameters<typeof note>[0] = {}) =>
+    note({ id, title: id, type: 'meeting', meeting: { attendees: [], link: 'https://zoom.us/j/1', time: { start, end, zone } }, ...over })
+
+  it("puts a Meeting note with a time on the Mac's clock, and leaves out the rest", () => {
+    const notes = [
+      meeting('lisbon', '2026-11-25T15:00', '2026-11-25T15:30', 'Europe/Lisbon'),
+      meeting('archived', '2026-11-25T10:00', '2026-11-25T11:00', HERE, { isArchived: true }),
+      meeting('idea', '2026-11-25T10:00', '2026-11-25T11:00', HERE, { type: 'idea' }),
+      note({ id: 'untimed', type: 'meeting' }),
+    ]
+
+    expect(meetingItemsOf(notes, HERE)).toEqual([
+      { kind: 'meeting', key: 'meeting-lisbon', noteId: 'lisbon', title: 'lisbon', time: { start: '2026-11-25T15:00', end: '2026-11-25T15:30', zone: 'Europe/Lisbon' }, link: 'https://zoom.us/j/1', firstDay: '2026-11-25', lastDay: '2026-11-25', start: '2026-11-25T09:00', end: '2026-11-25T09:30' },
+    ])
+  })
+
+  it('puts one that ends at midnight on its one day, and one past midnight on both', () => {
+    expect(meetingItemsOf([meeting('late', '2026-11-25T23:00', '2026-11-26T00:00')], HERE)[0]).toMatchObject({ firstDay: '2026-11-25', lastDay: '2026-11-25' })
+    expect(meetingItemsOf([meeting('later', '2026-11-25T23:00', '2026-11-26T00:30')], HERE)[0]).toMatchObject({ firstDay: '2026-11-25', lastDay: '2026-11-26' })
+  })
+
+  it("sorts with the day's events by when they start", () => {
+    const items = itemsOf([timed('noon', '2026-11-25T12:00', '2026-11-25T13:00')], realmOf(), HERE, '2026-11-25', [meeting('standup', '2026-11-25T09:00', '2026-11-25T09:15')])
+
+    expect(keys(itemsOn(items, '2026-11-25'))).toEqual(['meeting-standup', 'noon'])
   })
 })

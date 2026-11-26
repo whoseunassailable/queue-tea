@@ -9,7 +9,7 @@ import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { CALENDAR_CLOCK_MS } from '../../../../core/constants/constants'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { ReadView } from '../../../../core/widgets/read_view'
-import { Empty } from '../../../../core/widgets/states'
+import { Empty, Spinner } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
 import { CALENDAR_MODES, rangeOf, stepOf, todayIn } from '../../domain/calendar_days'
 import type { CalendarMode } from '../../domain/calendar_days'
@@ -24,7 +24,7 @@ import { WeekView } from '../widgets/week_view'
 import '../calendar.css'
 
 type Realm = Extract<ProjectView, { kind: 'readable' }>
-type Props = { engine: EngineApi; realm: Realm; onOpenQuest: (id: string) => void; onSay: (text: string, tone?: 'success' | 'error') => void; nowMs?: () => number; zone?: () => string }
+type Props = { engine: EngineApi; realm: Realm; onOpenQuest: (id: string) => void; onOpenNote: (id: string) => void; onSay: (text: string, tone?: 'success' | 'error') => void; nowMs?: () => number; zone?: () => string }
 
 const RemoveEvent = ({ event, onRemove, onClose }: { event: CalendarEvent; onRemove: (event: CalendarEvent) => Promise<Answer<unknown>>; onClose: () => void }) => {
   const [failure, setFailure] = useState<string | null>(null)
@@ -65,9 +65,10 @@ const titleOf = (mode: CalendarMode, anchor: string): string => {
   return t.calendar.rangeTitle(first, last)
 }
 
-// A realm's calendar: its events, and the due dates of its quests in play.
-// Times show on the Mac's clock; an event keeps the zone it was made in.
-export const CalendarPage = ({ engine, realm, onOpenQuest, onSay, nowMs = Date.now, zone = hereZone }: Props) => {
+// A realm's calendar: its events, the due dates of its quests in play, and
+// its Meeting notes that have a time. Times show on the Mac's clock; an event
+// or a meeting keeps the zone it was made in.
+export const CalendarPage = ({ engine, realm, onOpenQuest, onOpenNote, onSay, nowMs = Date.now, zone = hereZone }: Props) => {
   const here = useMemo(zone, [zone])
   const [now, setNow] = useState(nowMs)
   useEffect(() => {
@@ -81,8 +82,11 @@ export const CalendarPage = ({ engine, realm, onOpenQuest, onSay, nowMs = Date.n
   const [sheet, setSheet] = useState<{ event: CalendarEvent | null; start: EventForm } | null>(null)
   const [removing, setRemoving] = useState<CalendarEvent | null>(null)
   const read = useEngineRead(engine, () => engine.readCalendar(realm.key), [realm.key])
+  // The notes come on their own read, so the events show while they're read.
+  const notesRead = useEngineRead(engine, () => engine.readNotes(realm.key), [realm.key])
   const events = read.load.status === 'ready' ? read.load.data.events : []
-  const items = useMemo(() => itemsOf(events, realm, here, today), [events, realm, here, today])
+  const notes = notesRead.load.status === 'ready' ? notesRead.load.data.notes : []
+  const items = useMemo(() => itemsOf(events, realm, here, today, notes), [events, realm, here, today, notes])
 
   const change = async (call: () => Promise<Awaited<ReturnType<EngineApi['readCalendar']>>>, said: string): Promise<Answer<CalendarView>> => {
     const answer = await ask(engine, call)
@@ -96,7 +100,7 @@ export const CalendarPage = ({ engine, realm, onOpenQuest, onSay, nowMs = Date.n
   const save = (input: CalendarEventInput) => change(() => engine.saveCalendarEvent(realm.key, sheet?.event?.id ?? null, input), t.calendar.saved(input.title))
   const remove = (event: CalendarEvent) => change(() => engine.removeCalendarEvent(realm.key, event.id), t.calendar.removed(event.title))
   const add = (day: string) => setSheet({ event: null, start: newEventForm(day, here, now) })
-  const actions: ItemActions = { onEdit: event => setSheet({ event, start: formOf(event, here) }), onOpenQuest }
+  const actions: ItemActions = { onEdit: event => setSheet({ event, start: formOf(event, here) }), onOpenQuest, onOpenNote }
   const { first, last } = rangeOf(mode, anchor)
   // New event lands on today when the view shows it, else on the view's first day.
   const addDay = first <= today && today <= last ? today : mode === 'month' ? `${anchor.slice(0, 7)}-01` : first
@@ -122,6 +126,19 @@ export const CalendarPage = ({ engine, realm, onOpenQuest, onSay, nowMs = Date.n
             {view.unreadable > 0 && (
               <p class="note panel" role="status">
                 {t.calendar.unreadable(view.unreadable)}
+              </p>
+            )}
+            {notesRead.load.status === 'loading' && (
+              <p class="hint cal-notes-line" role="status">
+                <Spinner /> {t.meeting.readingNotes}
+              </p>
+            )}
+            {notesRead.load.status === 'failed' && (
+              <p class="note panel" role="alert">
+                {t.meeting.notesFailed}{' '}
+                <button type="button" class="chip-btn" onClick={notesRead.retry}>
+                  {t.failed.tryAgain}
+                </button>
               </p>
             )}
             {items.length === 0 ? (

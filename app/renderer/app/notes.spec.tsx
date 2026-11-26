@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EngineApi, Reply } from '../../shared/engine_api'
+import { NO_MEETING } from '../../shared/meetings'
 import { NOTE_TYPES } from '../../shared/notes'
 import type { Note, NoteChange, NoteFiled, NoteInput, NotesExport, NotesRestore, NotesView, QuestProposal } from '../../shared/notes'
 import type { LayoutInput, Point } from '../features/notes/domain/note_graph_layout'
@@ -459,7 +460,7 @@ describe('the Notes page', () => {
 
     write('Hello')
     expect(screen.getByText(t.notebook.unsaved)).toBeTruthy()
-    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'new', { title: 'New', folder: 'Ideas', type: null, isPinned: false, tags: [], body: 'Hello' }, 's-1'))
+    await waitFor(() => expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'new', { title: 'New', folder: 'Ideas', type: null, isPinned: false, tags: [], meeting: NO_MEETING, body: 'Hello' }, 's-1'))
     expect(await screen.findByText(/^Saved/)).toBeTruthy()
   })
 

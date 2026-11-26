@@ -3,6 +3,7 @@
 import type { Difficulty, ParentPick, Priority } from '../../types'
 import type { ProjectView } from './engine_api'
 import { NOTE_ATTACHMENTS, noteFilePath } from './note_attachments'
+import type { Meeting } from './meetings'
 
 export { NOTES_FOLDER } from '../../hooks/shared/records/domain/services/description_files'
 export const NOTE_HISTORY_FOLDER = '.history'
@@ -22,11 +23,13 @@ export const noteTypeOf = (value: unknown): NoteType | null => NOTE_TYPES.find(t
 // quest, which is the parent of the rest or the only one.
 export type NoteQuest = { id: string; item: string | null }
 // id is the file's name without .md. stamp is the file as it was read.
-export type Note = { id: string; title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; created: string; updated: string; isArchived: boolean; quests: NoteQuest[]; body: string; stamp: string }
+// meeting: who comes, the call's link and when, kept on any note but shown
+// for a Meeting note; NO_MEETING when the file has none.
+export type Note = { id: string; title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; created: string; updated: string; isArchived: boolean; quests: NoteQuest[]; meeting: Meeting; body: string; stamp: string }
 // unreadable: the files in the folder that couldn't be read, by name.
 export type NotesView = { notes: Note[]; unreadable: string[]; folder: string }
-export type NoteInput = { title: string; folder: string; body: string; type?: NoteType | null }
-export type NoteChange = { title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; body: string }
+export type NoteInput = { title: string; folder: string; body: string; type?: NoteType | null; meeting?: Meeting }
+export type NoteChange = { title: string; folder: string; type: NoteType | null; isPinned: boolean; tags: string[]; meeting: Meeting; body: string }
 // changed: the file isn't the one the editor read; note is the file now, or null when it's gone.
 // relinked: how many other notes had their links to it rewritten by a rename.
 export type NoteSave = { kind: 'saved'; view: NotesView; note: Note; relinked: number } | { kind: 'changed'; note: Note | null }

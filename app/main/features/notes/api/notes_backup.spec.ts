@@ -12,6 +12,7 @@ import { MESSAGES } from '../../../core/messages'
 import { nodeHost } from '../../../core/node_host'
 import { notesApi } from './notes_api'
 import type { NotesDeps } from './notes_api'
+import { NO_MEETING } from '../../../../shared/meetings'
 
 const KEY = 'demo-abc123'
 const OTHER = 'other-def456'
@@ -44,7 +45,7 @@ const refused = <T>(answer: Reply<T>): string => {
 
   return answer.error.message
 }
-const change = (over: Partial<NoteChange> = {}): NoteChange => ({ title: 'Plan', folder: 'Ideas', type: null, isPinned: false, tags: [], body: 'Body', ...over })
+const change = (over: Partial<NoteChange> = {}): NoteChange => ({ title: 'Plan', folder: 'Ideas', type: null, isPinned: false, tags: [], meeting: NO_MEETING, body: 'Body', ...over })
 const created = async (over: Partial<NoteChange> = {}) => data(await api.createNote(KEY, change(over)))
 const vaultOf = (key: string) => join(home, '.queue-tea/notes', key)
 

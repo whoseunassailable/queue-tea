@@ -1,10 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import type { MutableRef } from 'preact/hooks'
 
+import { hereZone } from '../../../../../shared/calendar_time'
 import type { EngineApi } from '../../../../../shared/engine_api'
+import { sameMeeting } from '../../../../../shared/meetings'
+import type { Meeting } from '../../../../../shared/meetings'
 import { noteFilePath } from '../../../../../shared/note_attachments'
 import { backlinksOf, INBOX, linksOf, NOTE_TYPES, noteTitled, noteTypeOf, proposalOf, questLinkOf, questLinksOf } from '../../../../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteQuest, NotesView, NoteType } from '../../../../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteInput, NoteQuest, NotesView, NoteType } from '../../../../../shared/notes'
 import { ask } from '../../../../core/api/engine_client'
 import { NOTE_AUTOSAVE_MS, NOTE_PICKER_QUEST_ROWS, NOTE_PICKER_ROWS } from '../../../../core/constants/constants'
 import { dayOf } from '../../../../core/domain/format'
@@ -14,6 +17,9 @@ import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { t } from '../../../../l10n/en'
 import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, templateChange, titleError, whenOf, withLink, linkPicksOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
+import { followUpOf } from '../../domain/meeting_notes'
+import { MeetingCard } from './meeting_card'
+import { MeetingSheet } from './meeting_sheet'
 import { BrewQuestCard, BrewSheet } from './brew_quest'
 import { ReadView } from './read_view'
 import type { GraphKept, GraphSettings } from './note_graph_view'
@@ -32,6 +38,7 @@ export type NoteActions = {
   onHeld: (id: string, held: Held | null) => void
   onOpen: (id: string) => void
   onMake: (title: string, folder: string) => void
+  onFollowUp: (input: NoteInput) => void
   onSaveAsNew: (change: NoteChange) => void
   onArchive: (note: Note, isArchived: boolean) => void
   onRenameFolder: (folder: string) => void
@@ -53,8 +60,9 @@ type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; 
 
 const PICKER_WIDTH = 320
 
-const changeOf = (note: Note): NoteChange => ({ title: note.title, folder: note.folder, type: note.type, isPinned: note.isPinned, tags: note.tags, body: note.body })
-const isSame = (a: NoteChange, b: NoteChange | null) => b !== null && a.title === b.title && a.folder === b.folder && a.type === b.type && a.isPinned === b.isPinned && a.body === b.body && a.tags.join('\n') === b.tags.join('\n')
+const changeOf = (note: Note): NoteChange => ({ title: note.title, folder: note.folder, type: note.type, isPinned: note.isPinned, tags: note.tags, meeting: note.meeting, body: note.body })
+const isSame = (a: NoteChange, b: NoteChange | null) =>
+  b !== null && a.title === b.title && a.folder === b.folder && a.type === b.type && a.isPinned === b.isPinned && a.body === b.body && a.tags.join('\n') === b.tags.join('\n') && sameMeeting(a.meeting, b.meeting)
 
 // Where the caret sits in a text area, from its top-left: the text up to it is
 // laid out in a hidden copy with the same box and type, and a mark measured.
@@ -176,6 +184,8 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
   const [isOpeningHistory, setOpeningHistory] = useState(false)
   const [isRestored, setRestored] = useState(false)
   const [isDetailsOpen, setDetailsOpen] = useState(false)
+  const [isMeetingOpen, setMeetingOpen] = useState(false)
+  const here = useMemo(hereZone, [])
   const stamp = useRef(held?.stamp ?? note.stamp)
   // Kept edits aren't on disk yet, so the first save writes them.
   const onDisk = useRef<NoteChange | null>(held === null ? changeOf(note) : null)
@@ -376,6 +386,16 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     change({ isPinned: !latest.current.isPinned })
     void flush()
   }
+  // The details save with the note at once; its save line says how that went.
+  const saveMeeting = (meeting: Meeting) => {
+    setMeetingOpen(false)
+    change({ meeting })
+    void flush()
+  }
+  // The next meeting starts from this one as it is saved.
+  const followUp = async () => {
+    if (await flush()) actions.onFollowUp(followUpOf({ ...note, ...latest.current }, notes))
+  }
 
   const brew = async () => {
     if (isLive && await flush()) setBrewing(true)
@@ -552,6 +572,9 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
             </p>
           )}
         </div>
+        {draft.type === 'meeting' && view !== 'graph' && (
+          <MeetingCard title={draft.title} meeting={draft.meeting} body={draft.body} here={here} isLive={isLive} onEdit={() => setMeetingOpen(true)} onJoin={actions.onOpenLink} onFollowUp={() => void followUp()} />
+        )}
         <AttachmentInput engine={engine} realm={realm} id={note.id} isLive={isLive} onInsert={insertFile}>
         {view === 'graph' ? (
           <NoteGraphView engine={engine} notes={notes} open={shown} quests={quests} settings={graph} onSettings={onGraph} kept={kept} onOpenNote={actions.onOpen} onOpenQuest={actions.onOpenQuest} onLeave={() => graphButton.current?.focus()} />
@@ -760,6 +783,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
           </div>
         </aside>
       )}
+      {isMeetingOpen && <MeetingSheet meeting={draft.meeting} here={here} onSave={saveMeeting} onClose={() => setMeetingOpen(false)} />}
       {isBrewing && <BrewSheet engine={engine} realm={realm} realmName={realmName} note={shown} quests={quests} onFiled={actions.onFiled} onRefresh={actions.onRefresh} onClose={closeBrew} />}
       {historyNote !== null && <NoteHistory engine={engine} realm={realm} note={historyNote} onClose={closeHistory} onRefresh={actions.onRefresh} onRestored={saved => {
         adopt(saved.note)

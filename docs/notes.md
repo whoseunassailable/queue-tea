@@ -93,6 +93,7 @@ See [[Sensor sampling rates]] for why 100 Hz misses the short lifts.
 | `archived` | `true` or `false`. Missing reads as `false` |
 | `quests` | The quests filed from this note: the quest's id, and the checklist line it came from, or `null` for the note's own quest (the parent, or the only one) |
 | `aliases` | The title first, for Obsidian, then any other aliases the note had, which are kept. A rename drops the old title from it |
+| `attendees`, `meeting-link`, `meeting-start`, `meeting-end`, `meeting-zone` | A Meeting note's attendees, call link and time, each written only when set. A value that doesn't read is kept as it was. See [Meetings](meetings.md) |
 
 Queue-tea writes its values as JSON, which YAML reads too, so Obsidian shows them as properties. It also reads plain YAML values and lists, as Obsidian writes them. Every front-matter line it doesn't own is written back as it was read. A file with no front matter is a note too: its title is the file name and its folder is Inbox. Queue-tea adds the front matter the first time it saves that note.
 
@@ -275,7 +276,7 @@ Added after Notes 1, from the epic's "templates and pinned notes" quest.
 | Idea | The idea, Why it matters, Next steps (a checklist) |
 | Feature | Goal, What it does (a checklist), Open questions |
 | Bug | Steps to reproduce, Expected, Actual, Fix (a checklist) |
-| Meeting | Attendees, Notes, Actions (a checklist) |
+| Meeting | Agenda, Notes, Decisions, Action items (a checklist). The attendees, call link and time are on the note's details card; see [Meetings](meetings.md) |
 | Research | Question, Sources, Findings, Still open |
 | Decision | Context, Options, Decision, Consequences |
 | Daily | Today (a checklist), Notes, Done |

@@ -6,6 +6,7 @@ import type { Answer } from '../../../../core/api/engine_client'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { Field } from '../../../../core/widgets/field'
 import { t } from '../../../../l10n/en'
+import { todayIn } from '../../domain/calendar_days'
 import { EVENT_FIELDS, eventInputOf, validateEvent, withStartDay } from '../../domain/event_form'
 import type { EventField, EventForm } from '../../domain/event_form'
 
@@ -54,6 +55,12 @@ export const EventSheet = ({ event, start, here, onSave, onRemove, onClose }: Pr
         <p class="form-banner" role="alert">
           {failure}
         </p>
+      )}
+      {event?.source !== undefined && (
+        <div class="cal-source">
+          <p class="form-line">{t.calendar.sourceLine(todayIn(here, Date.parse(event.source.importedAt)), event.source.file, event.source.calendar, event.source.app)}</p>
+          <p class="hint">{t.calendar.sourceHint}</p>
+        </div>
       )}
       <Field label={t.form.title} isRequired value={form.title} error={errorOf('title')} onInput={title => set({ title })} onBlur={touch('title')} onEnter={enter} />
       <label class="check">

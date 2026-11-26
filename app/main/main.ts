@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
-import { readdir, writeFile } from 'node:fs/promises'
+import { readdir, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -136,7 +136,26 @@ const places = {
 
 const github = githubApi({ host, home, log, ghPaths: [`${home}/.local/bin/gh`, ...GH_PATHS], codeWaitMs: GH_CODE_WAIT_MS, loginWaitMs: GH_LOGIN_WAIT_MS })
 const library = libraryApi({ ...game, newId: () => `b-${randomBytes(4).toString('hex')}` })
-const calendar = calendarApi({ ...projects, newId: () => `e-${randomBytes(4).toString('hex')}` })
+const calendar = calendarApi({
+  ...projects,
+  newId: () => `e-${randomBytes(4).toString('hex')}`,
+  zone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+  pickIcsFile: async () => {
+    const window = BrowserWindow.getFocusedWindow()
+    const options = { properties: ['openFile' as const], filters: [{ name: 'Calendar', extensions: ['ics', 'ical', 'icalendar', 'ifb'] }] }
+    const picked = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options)
+
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+  sizeOf: async (path: string) => (await stat(path)).size,
+  chooseIcsSave: async (name: string) => {
+    const window = BrowserWindow.getFocusedWindow()
+    const options = { defaultPath: name, filters: [{ name: 'Calendar', extensions: ['ics'] }] }
+    const picked = window === null ? await dialog.showSaveDialog(options) : await dialog.showSaveDialog(window, options)
+
+    return picked.canceled || picked.filePath === undefined ? null : picked.filePath
+  },
+})
 const notes = notesApi({ ...quests, newNoteId: () => `n-${randomBytes(4).toString('hex')}`, reveal: (path: string) => shell.showItemInFolder(path), pickFolder: places.pickFolder,
   saveNoteFile: async (name, bytes) => {
     const window = BrowserWindow.getFocusedWindow()
@@ -249,6 +268,9 @@ const serveEngine = () => {
   handle(CHANNELS.readCalendar, (_, key: unknown) => calendar.readCalendar(key))
   handle(CHANNELS.saveCalendarEvent, (_, key: unknown, id: unknown, event: unknown) => calendar.saveCalendarEvent(key, id, event))
   handle(CHANNELS.removeCalendarEvent, (_, key: unknown, id: unknown) => calendar.removeCalendarEvent(key, id))
+  handle(CHANNELS.readCalendarImport, (_, key: unknown) => calendar.readCalendarImport(key))
+  handle(CHANNELS.importCalendarEvents, (_, key: unknown, items: unknown) => calendar.importCalendarEvents(key, items))
+  handle(CHANNELS.exportCalendar, (_, key: unknown, name: unknown) => calendar.exportCalendar(key, name))
   handle(CHANNELS.createNote, (_, key: unknown, note: unknown) => notes.createNote(key, note))
   handle(CHANNELS.saveNote, (_, key: unknown, id: unknown, change: unknown, stamp: unknown) => notes.saveNote(key, id, change, stamp))
   handle(CHANNELS.archiveNote, (_, key: unknown, id: unknown, isArchived: unknown) => notes.archiveNote(key, id, isArchived))

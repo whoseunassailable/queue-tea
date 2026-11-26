@@ -1,6 +1,6 @@
 import type { Host } from '../../../../../hooks/core/host/host'
-import { CALENDAR_FILE, CALENDAR_LIMITS } from '../../../../shared/calendar'
-import type { CalendarView } from '../../../../shared/calendar'
+import { CALENDAR_FILE, CALENDAR_LIMITS, ICS_LIMITS, SOURCE_LIMITS } from '../../../../shared/calendar'
+import type { CalendarExport, CalendarImport, CalendarImportPreview, CalendarView, ImportItem } from '../../../../shared/calendar'
 import type { Reply } from '../../../../shared/engine_api'
 import { NOTES_FOLDER } from '../../../../shared/notes'
 import { projectsFolder } from '../../../core/constants'
@@ -8,10 +8,46 @@ import type { Logger } from '../../../core/logger'
 import { MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
 import { isProjectKey } from '../../projects/api/projects_api'
-import { calendarText, emptyCalendar, eventInputOf, isEventId, parseCalendar, withEvent, withoutEvent } from '../domain/calendar_file'
+import { calendarText, emptyCalendar, eventInputOf, importStatusOf, isEventId, parseCalendar, sourceOf, withEvent, withImported, withoutEvent } from '../domain/calendar_file'
 import type { CalendarFile } from '../domain/calendar_file'
+import { icsOf } from '../domain/ics_export'
+import { readIcs } from '../domain/ics_import'
 
-export type CalendarDeps = { host: Host; home: string; log: Logger; newId: () => string }
+// The dialogs are the Mac's: pickIcsFile asks for a file to import and
+// chooseIcsSave where to put an export, each null when Rohan cancels. zone is
+// the Mac's time zone, for times a file gives without one.
+export type CalendarDeps = {
+  host: Host
+  home: string
+  log: Logger
+  newId: () => string
+  now: () => number
+  zone: () => string
+  pickIcsFile: () => Promise<string | null>
+  sizeOf: (path: string) => Promise<number>
+  chooseIcsSave: (name: string) => Promise<string | null>
+}
+
+const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path
+
+// A realm's name as a file name: no slashes, colons or controls, and short.
+export const icsNameOf = (name: unknown): string => {
+  const plain = typeof name === 'string' ? name.replace(/[\u0000-\u001f\u007f/\\:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\.+/, '') : ''
+  const short = plain.slice(0, ICS_LIMITS.fileName).trim()
+
+  return short === '' ? 'Calendar' : short
+}
+
+// Events back from the window, checked again as they would be from a file.
+const importItemsOf = (value: unknown): ImportItem[] => {
+  if (!Array.isArray(value) || value.length > CALENDAR_LIMITS.events) throw new Refusal(MESSAGES.badValue)
+
+  return value.map(item => {
+    const v = (item ?? {}) as Record<string, unknown>
+
+    return { event: eventInputOf(v.event), source: sourceOf(v.source) }
+  })
+}
 
 const viewOf = (file: CalendarFile): CalendarView => ({ events: file.events, unreadable: file.kept.length })
 
@@ -91,9 +127,12 @@ export const calendarApi = (d: CalendarDeps) => {
 
           return withEvent(file, { id: newIdIn(file), ...event })
         }
-        if (!isEventId(id) || !file.events.some(e => e.id === id)) throw new Refusal(MESSAGES.eventGone)
+        const before = isEventId(id) ? file.events.find(e => e.id === id) : undefined
+        if (before === undefined) throw new Refusal(MESSAGES.eventGone)
 
-        return withEvent(file, { id, ...event })
+        // An imported event keeps where it came from, so importing the file
+        // again still finds it.
+        return withEvent(file, before.source === undefined ? { id: before.id, ...event } : { id: before.id, ...event, source: before.source })
       }),
 
     removeCalendarEvent: (key: unknown, id: unknown): Promise<Reply<CalendarView>> =>
@@ -101,6 +140,58 @@ export const calendarApi = (d: CalendarDeps) => {
         if (!isEventId(id) || !file.events.some(e => e.id === id)) throw new Refusal(MESSAGES.eventGone)
 
         return withoutEvent(file, id)
+      }),
+
+    // An .ics file Rohan picks, read and held against the calendar: what
+    // would come in new, change or stay, and what can't come in and why.
+    // Nothing changes until importCalendarEvents. null when he cancels.
+    readCalendarImport: (key: unknown): Promise<Reply<CalendarImportPreview | null>> =>
+      reply(d.log, MESSAGES.readCalendarImport, async () => {
+        const realm = await realmOf(key)
+        const path = await d.pickIcsFile()
+        if (path === null) return null
+        const name = baseName(path).slice(0, SOURCE_LIMITS.file)
+        if ((await d.sizeOf(path)) > ICS_LIMITS.bytes) throw new Refusal(MESSAGES.icsTooBig(name))
+        const read = readIcs(await d.host.read(path), { file: name, here: d.zone(), now: d.now(), untitled: MESSAGES.untitledEvent })
+        if (read === null) throw new Refusal(MESSAGES.notCalendarFile(name))
+        d.log.debug(`calendar import read: ${path}, ${read.items.length} events, ${read.skipped.length} skipped`)
+        const file = await load(realm)
+        const items = read.items.map(item => ({ ...item, status: importStatusOf(file, item) }))
+        if (file.events.length + items.filter(item => item.status === 'new').length > CALENDAR_LIMITS.events) throw new Refusal(MESSAGES.importTooMany)
+
+        return { file: name, calendar: read.calendar, app: read.app, items, skipped: read.skipped }
+      }),
+
+    // The events Rohan chose from a preview, joined in one save: new ones
+    // added, ones imported before updated in place, the same left alone.
+    importCalendarEvents: async (key: unknown, items: unknown): Promise<Reply<CalendarImport>> => {
+      let counts = { added: 0, updated: 0, same: 0 }
+      const done = await change(MESSAGES.importCalendar, key, file => {
+        const joined = withImported(file, importItemsOf(items), newIdIn)
+        if (joined.file.events.length > CALENDAR_LIMITS.events) throw new Refusal(MESSAGES.importTooMany)
+        counts = { added: joined.added, updated: joined.updated, same: joined.same }
+
+        return joined.file
+      })
+
+      return done.ok ? { ok: true, data: { view: done.data, ...counts } } : done
+    },
+
+    // The realm's own events as an .ics file where Rohan chooses. Due dates
+    // and meeting notes stay out: they live with their quests and notes.
+    exportCalendar: (key: unknown, name: unknown): Promise<Reply<CalendarExport | null>> =>
+      reply(d.log, MESSAGES.exportCalendar, async () => {
+        const realm = await realmOf(key)
+        const file = await load(realm)
+        if (file.events.length === 0) throw new Refusal(MESSAGES.nothingToExportCalendar)
+        const title = icsNameOf(name)
+        const text = icsOf(file.events, { calendar: title, here: d.zone(), now: d.now() })
+        const path = await d.chooseIcsSave(`${title}.ics`)
+        if (path === null) return null
+        await d.host.write(path, text)
+        d.log.debug(`calendar exported: ${path}, ${file.events.length} events`)
+
+        return { file: baseName(path), events: file.events.length }
       }),
   }
 }

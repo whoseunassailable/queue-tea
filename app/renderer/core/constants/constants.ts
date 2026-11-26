@@ -117,3 +117,5 @@ export const CALENDAR_HOUR_PX = 44
 export const CALENDAR_OPEN_HOUR = 8
 export const CALENDAR_MONTH_ITEMS = 3
 export const CALENDAR_CLOCK_MS = 60_000
+// Events an import's preview lists by name; the rest are counted.
+export const CALENDAR_IMPORT_ROWS = 100

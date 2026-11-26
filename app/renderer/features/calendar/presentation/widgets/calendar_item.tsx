@@ -1,4 +1,4 @@
-import type { CalendarEvent, CalendarWhen } from '../../../../../shared/calendar'
+import type { CalendarEvent, CalendarSource, CalendarWhen } from '../../../../../shared/calendar'
 import { t } from '../../../../l10n/en'
 import type { CalendarItem } from '../../domain/calendar_items'
 
@@ -17,6 +17,9 @@ export const whenText = (item: Extract<CalendarItem, { kind: 'event' | 'meeting'
 
   return `${t.calendar.span(timeOf(item.start), end)}${own}`
 }
+
+// The name an imported event's source goes by: its calendar's, else its file's.
+export const sourceName = (source: CalendarSource) => source.calendar ?? source.file
 
 // One item as a small button: an event opens its sheet, a due date its quest.
 export const ItemChip = ({ item, day, here, actions }: { item: CalendarItem; day: string; here: string; actions: ItemActions }) => {
@@ -44,8 +47,18 @@ export const ItemChip = ({ item, day, here, actions }: { item: CalendarItem; day
     )
   }
 
+  // An imported event says where it came from, and is marked apart.
+  const { source } = item.event
+  const from = source === undefined ? null : sourceName(source)
+
   return (
-    <button type="button" class={`cal-chip event${item.start === null ? ' all-day' : ''}`} title={`${item.event.title} · ${whenText(item, here)}`} aria-label={t.calendar.editEvent(item.event.title)} onClick={() => actions.onEdit(item.event)}>
+    <button
+      type="button"
+      class={`cal-chip event${item.start === null ? ' all-day' : ''}${from === null ? '' : ' imported'}`}
+      title={[item.event.title, whenText(item, here), ...(from === null ? [] : [t.calendar.fromTag(from)])].join(' · ')}
+      aria-label={from === null ? t.calendar.editEvent(item.event.title) : t.calendar.editImported(item.event.title, from)}
+      onClick={() => actions.onEdit(item.event)}
+    >
       {start !== null && <span class="cal-time">{start}</span>}
       <span class="cal-name">{item.event.title}</span>
     </button>

@@ -18,7 +18,8 @@ import { dayName } from '../../../../core/domain/format'
 import { captureOf, dailyBodyOf, dayError, folderKeyOf, folderNameError, folderPageOf, foldersOf, isDay, journalOf, localDay, questLinesOf, whenOf } from '../../domain/notes_view'
 import { useNotesAsks } from '../state_management/notes_asks'
 import { useBrewDrag } from '../state_management/brew_drag'
-import { Robot } from '../widgets/brew_quest'
+import { useBrewMood } from '../state_management/brew_mood'
+import { Robot } from '../widgets/brew_robot'
 import { useNotesBackup } from '../widgets/notes_backup'
 import { NoteWorkspace } from '../widgets/note_workspace'
 import type { Held, Layout, NoteActions, NoteMode } from '../widgets/note_workspace'
@@ -128,7 +129,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   const [openId, setOpenId] = useState<string | null>(null)
   const [newId, setNewId] = useState<string | null>(null)
   const [brewId, setBrewId] = useState<string | null>(null)
-  const brewDrag = useBrewDrag(realm.key)
+  const brewMood = useBrewMood()
+  const brewDrag = useBrewDrag(realm.key, () => brewMood.react('confused'))
   const [page, setPage] = useState(0)
   const [query, setQueryValue] = useState('')
   const setQuery = (value: string) => {
@@ -290,6 +292,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
       read.adopt(filed.view)
       onProject(filed.project)
       onSay(t.notebook.brew.filed(count))
+      brewMood.react('success')
     },
     onOpenQuest,
     onOpenLink: url => void ask(engine, () => engine.openLink(url)).then(answer => !answer.ok && onSay(answer.message, 'error')),
@@ -352,7 +355,13 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     })
   }
   const brewOn = async (note: Note) => {
-    if (note.isArchived || (saveOpen.current !== null && !(await saveOpen.current()))) return
+    if (note.isArchived) return
+    const save = saveOpen.current
+    if (save !== null && !(await brewMood.busyWhile('thinking', save))) {
+      brewMood.react('error')
+
+      return
+    }
     setOpenId(note.id)
     setBrewId(note.id)
     setDrawerOpen(false)
@@ -673,7 +682,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
           empty
         ) : open !== undefined ? (
           <div class="nt-main">
-            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} mode={mode} onMode={setMode} graph={graph} onGraph={setGraph} kept={kept} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} brewDrag={brewDrag} isBrewRequested={brewId === open.id} onBrewHandled={() => setBrewId(null)} />
+            <NoteWorkspace key={open.id} engine={engine} realm={realm.key} realmName={realm.name} note={open} notes={view.notes} folders={folders} quests={quests} isNew={open.id === newId} held={held[open.id] ?? null} layout={layout} mode={mode} onMode={setMode} graph={graph} onGraph={setGraph} kept={kept} onShowList={() => setDrawerOpen(true)} saveRef={saveOpen} actions={actions} brewDrag={brewDrag} brewMood={brewMood} isBrewRequested={brewId === open.id} onBrewHandled={() => setBrewId(null)} />
           </div>
         ) : (
           <Empty title={t.notebook.pickTitle} line={t.notebook.pickLine} />

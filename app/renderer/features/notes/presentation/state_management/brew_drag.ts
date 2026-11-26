@@ -8,9 +8,11 @@ type DragEvent = JSX.TargetedDragEvent<HTMLElement>
 export type BrewDrag = ReturnType<typeof useBrewDrag>
 
 // Only a drag begun by this realm's robot can start a review. A matching MIME
-// type from another window, a file or selected text is not enough.
-export const useBrewDrag = (realm: string) => {
+// type from another window, a file or selected text is not enough. A drag that
+// ends without reaching a note calls onMiss.
+export const useBrewDrag = (realm: string, onMiss: () => void) => {
   const active = useRef(false)
+  const isLanded = useRef(false)
   const [isDragging, setDragging] = useState(false)
   const [over, setOver] = useState<string | null>(null)
   const end = () => {
@@ -39,9 +41,13 @@ export const useBrewDrag = (realm: string) => {
       event.dataTransfer.setData(NOTE_BREW_DRAG_TYPE, realm)
       event.dataTransfer.effectAllowed = 'copy'
       active.current = true
+      isLanded.current = false
       setDragging(true)
     },
-    onDragEnd: end,
+    onDragEnd: () => {
+      end()
+      if (!isLanded.current) onMiss()
+    },
   }
   const target = (id: string, isLive: boolean, onDrop: () => void) => ({
     'data-brew-target': isLive && isDragging ? 'true' : undefined,
@@ -62,7 +68,9 @@ export const useBrewDrag = (realm: string) => {
       event.stopPropagation()
       const isFromHere = event.dataTransfer!.getData(NOTE_BREW_DRAG_TYPE) === realm
       end()
-      if (isFromHere) onDrop()
+      if (!isFromHere) return
+      isLanded.current = true
+      onDrop()
     },
   })
 

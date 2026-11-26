@@ -21,6 +21,7 @@ import { NoteGraphView } from './note_graph_view'
 import { AttachmentInput } from '../../../../core/widgets/attachment_input'
 import { NoteHistory } from './note_history'
 import type { BrewDrag } from '../state_management/brew_drag'
+import type { BrewMoodState } from '../state_management/brew_mood'
 
 export type SaveState = { kind: 'saved'; at?: string; relinked?: number } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'failed'; message: string } | { kind: 'changed'; note: Note | null }
 
@@ -49,7 +50,7 @@ export type Layout = 'wide' | 'mid' | 'narrow'
 // saveRef: how the page saves the open note before it moves notes itself.
 export type NoteMode = 'write' | 'read' | 'graph'
 
-type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; mode: NoteMode; onMode: (mode: NoteMode) => void; graph: GraphSettings; onGraph: (next: GraphSettings) => void; kept: MutableRef<GraphKept>; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions; brewDrag: BrewDrag; isBrewRequested: boolean; onBrewHandled: () => void }
+type Props = { engine: EngineApi; realm: string; realmName: string; note: Note; notes: readonly Note[]; folders: string[]; quests: Map<string, QuestLine>; isNew: boolean; held: Held | null; layout: Layout; mode: NoteMode; onMode: (mode: NoteMode) => void; graph: GraphSettings; onGraph: (next: GraphSettings) => void; kept: MutableRef<GraphKept>; onShowList: () => void; saveRef: MutableRef<(() => Promise<boolean>) | null>; actions: NoteActions; brewDrag: BrewDrag; brewMood: BrewMoodState; isBrewRequested: boolean; onBrewHandled: () => void }
 
 const PICKER_WIDTH = 320
 
@@ -161,7 +162,7 @@ const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, Q
 // One note, open: its editor, what it links to and from, and BrewQuest. Every
 // change saves itself a moment after typing stops, over the file it was read
 // from; a file changed meanwhile stops the saving and asks what to keep.
-export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, mode, onMode, graph, onGraph, kept, onShowList, saveRef, actions, brewDrag, isBrewRequested, onBrewHandled }: Props) => {
+export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, quests, isNew, held, layout, mode, onMode, graph, onGraph, kept, onShowList, saveRef, actions, brewDrag, brewMood, isBrewRequested, onBrewHandled }: Props) => {
   const start = held?.change ?? changeOf(note)
   const [draft, setDraft] = useState<NoteChange>(start)
   const [titleText, setTitleText] = useState(start.title)
@@ -377,8 +378,11 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
     void flush()
   }
 
+  // BrewQuest thinks while the note saves, and the review opens on what's saved.
   const brew = async () => {
-    if (isLive && await flush()) setBrewing(true)
+    if (!isLive) return
+    if (await brewMood.busyWhile('thinking', flush)) setBrewing(true)
+    else brewMood.react('error')
   }
   useEffect(() => {
     if (!isBrewRequested) return
@@ -631,7 +635,7 @@ export const NoteWorkspace = ({ engine, realm, realmName, note, notes, folders, 
         )}
         {isLive && (
           <footer class="nt-foot" ref={brewButton}>
-            <BrewQuestCard line={brewLine} drag={brewDrag} onBrew={() => void brew()} />
+            <BrewQuestCard line={brewLine} drag={brewDrag} mood={brewMood} onBrew={() => void brew()} />
           </footer>
         )}
       </section>

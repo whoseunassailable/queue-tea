@@ -9,35 +9,19 @@ import { Dialog } from '../../../../core/widgets/dialog'
 import { Field } from '../../../../core/widgets/field'
 import { Spinner } from '../../../../core/widgets/states'
 import { t } from '../../../../l10n/en'
-import { isInPlay, lineOf, questLineOf, tickedItemsOf } from '../../domain/notes_view'
+import { isInPlay, lineOf, questLineOf, sheetMoodOf, tickedItemsOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 import type { BrewDrag } from '../state_management/brew_drag'
+import type { BrewMoodState } from '../state_management/brew_mood'
+import { Robot } from './brew_robot'
 
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'mid', 'okay', 'low']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
-// BrewQuest, drawn in pixels: a small robot with a tea-cup antenna.
-export const Robot = ({ size = 44 }: { size?: number }) => (
-  <svg class="nt-robot" viewBox="0 0 12 12" width={size} height={size} role="presentation" aria-hidden="true" shape-rendering="crispEdges">
-    <rect x="5" y="0" width="2" height="1" fill="#E8B04B" />
-    <rect x="5.5" y="1" width="1" height="1" fill="#54473A" />
-    <rect x="2" y="2" width="8" height="5" fill="#EEF3F8" stroke="#2A3550" stroke-width="0.4" />
-    <rect x="3.5" y="3.5" width="1.5" height="1.5" fill="#3BA6D6" />
-    <rect x="7" y="3.5" width="1.5" height="1.5" fill="#3BA6D6" />
-    <rect x="5" y="5.6" width="2" height="0.6" fill="#2A3550" />
-    <rect x="3" y="7.5" width="6" height="3" fill="#DDE6EF" stroke="#2A3550" stroke-width="0.4" />
-    <rect x="5" y="8.3" width="2" height="1.4" fill="#2E9C7E" />
-    <rect x="1.4" y="7.8" width="1.2" height="2" fill="#B8C6D4" />
-    <rect x="9.4" y="7.8" width="1.2" height="2" fill="#B8C6D4" />
-    <rect x="3.6" y="10.6" width="1.6" height="1.2" fill="#54473A" />
-    <rect x="6.8" y="10.6" width="1.6" height="1.2" fill="#54473A" />
-  </svg>
-)
-
-export const BrewQuestCard = ({ line, drag, onBrew }: { line: string; drag: BrewDrag; onBrew: () => void }) => (
-  <div class="nt-brew">
+export const BrewQuestCard = ({ line, drag, mood, onBrew }: { line: string; drag: BrewDrag; mood: BrewMoodState; onBrew: () => void }) => (
+  <div class="nt-brew" {...mood.near}>
     <span class="nt-brew-drag" role="img" aria-label={t.notebook.brew.drag} title={t.notebook.brew.drag} {...drag.source}>
-      <Robot />
+      <Robot mood={mood.moodWith(drag.isDragging)} />
     </span>
     <div class="nt-brew-text">
       <b>{t.notebook.brew.name}</b>
@@ -127,7 +111,7 @@ export const BrewSheet = ({ engine, realm, realmName, note, quests, onFiled, onR
   return (
     <Dialog title={t.notebook.brew.sheet(note.title)} isSheet onCancel={onClose} onSubmit={() => void submit()}>
       <div class="nt-sheet-head">
-        <Robot />
+        <Robot mood={sheetMoodOf({ isFiling, hasFailed: failure !== null, isEmpty: rows.length === 0 })} />
         <p class="form-line">{rows.length === 0 ? t.notebook.brew.nothing : t.notebook.brew.intro}</p>
       </div>
       {failure !== null && (

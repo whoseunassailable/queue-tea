@@ -7,7 +7,7 @@ import { NOTE_TYPES } from '../../../../shared/notes'
 import { t } from '../../../l10n/en'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
 import type { QuestLine } from './notes_view'
-import { captureOf, dailyBodyOf, dayError, folderError, folderNameError, foldersOf, isDay, journalOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf } from './notes_view'
+import { BREW_MOODS, brewMoodOf, captureOf, dailyBodyOf, dayError, folderError, folderNameError, foldersOf, isDay, journalOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf, sheetMoodOf } from './notes_view'
 
 describe('days', () => {
   it.each(['2026-11-17', '2024-02-29', '2026-12-31', '2027-01-01'])('%s is a day', title => {
@@ -279,5 +279,42 @@ describe('where a filed quest is now', () => {
     const lines = questLinesOf(view)
 
     expect(['p', 'c', 's', 'd', 'x'].map(id => questLineOf(lines, id).state)).toEqual(['waiting', 'active', 'sealed', 'done', 'gone'])
+  })
+})
+
+describe('BrewQuest’s moods', () => {
+  const calm = { activity: null, reaction: null, isNear: false } as const
+
+  it('has the seven moods, each once', () => {
+    expect([...BREW_MOODS].sort()).toEqual(['confused', 'error', 'hover', 'idle', 'success', 'thinking', 'working'])
+  })
+
+  it('is idle with nothing going on, and hovers while the pointer is near', () => {
+    expect(brewMoodOf(calm)).toBe('idle')
+    expect(brewMoodOf({ ...calm, isNear: true })).toBe('hover')
+  })
+
+  it('shows what it is busy with over the pointer', () => {
+    expect(brewMoodOf({ ...calm, activity: 'thinking', isNear: true })).toBe('thinking')
+    expect(brewMoodOf({ ...calm, activity: 'working', isNear: true })).toBe('working')
+  })
+
+  it('shows a reaction over the pointer, so filing that ends under it still cheers', () => {
+    expect(brewMoodOf({ ...calm, reaction: 'success', isNear: true })).toBe('success')
+    expect(brewMoodOf({ ...calm, reaction: 'confused', isNear: true })).toBe('confused')
+  })
+
+  it('lets a new step hide an old success or puzzle, but never an error', () => {
+    expect(brewMoodOf({ ...calm, activity: 'thinking', reaction: 'success' })).toBe('thinking')
+    expect(brewMoodOf({ ...calm, activity: 'working', reaction: 'confused' })).toBe('working')
+    expect(brewMoodOf({ activity: 'working', reaction: 'error', isNear: true })).toBe('error')
+  })
+
+  it('in the review sheet, works while filing, is upset when filing failed and puzzled with nothing to file', () => {
+    const sheet = { isFiling: false, hasFailed: false, isEmpty: false }
+    expect(sheetMoodOf(sheet)).toBe('idle')
+    expect(sheetMoodOf({ ...sheet, isFiling: true, hasFailed: true })).toBe('working')
+    expect(sheetMoodOf({ ...sheet, hasFailed: true })).toBe('error')
+    expect(sheetMoodOf({ ...sheet, isEmpty: true })).toBe('confused')
   })
 })

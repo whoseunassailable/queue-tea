@@ -21,6 +21,7 @@ import { HomePage } from '../features/home/presentation/pages/home_page'
 import { CalendarPage } from '../features/calendar/presentation/pages/calendar_page'
 import { LibraryPage } from '../features/library/presentation/pages/library_page'
 import { ManaPage } from '../features/mana/presentation/pages/mana_page'
+import { PlanPage } from '../features/plan/presentation/pages/plan_page'
 import type { PaletteInput } from '../features/palette/domain/palette'
 import { PaletteDialog } from '../features/palette/presentation/widgets/palette_dialog'
 import { NotesPage } from '../features/notes/presentation/pages/notes_page'
@@ -63,7 +64,11 @@ const TABS: readonly { route: Route; label: string }[] = [
   { route: ROUTES.mana, label: t.nav.mana },
   { route: ROUTES.notes, label: t.nav.notes },
   { route: ROUTES.calendar, label: t.nav.calendar },
+  { route: ROUTES.plan, label: t.nav.plan },
 ]
+
+// The tab a route belongs to: the quest board is one of Plan's views.
+const tabOf = (route: Route): Route => (route === ROUTES.planBoard ? ROUTES.plan : route)
 
 const MORE_PAGES: readonly { route: Route; label: string }[] = [
   { route: ROUTES.guild, label: t.nav.guild },
@@ -181,6 +186,30 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
   }
   const flow = state.flows[view.key]
   const actions = actionsFor(view)
+  if (route === ROUTES.plan || route === ROUTES.planBoard) {
+    return (
+      <PlanPage
+        engine={engine}
+        workspace={workspace}
+        view={view}
+        route={route}
+        settings={state.settings}
+        actions={actions}
+        edits={edits}
+        onSheet={onSheet}
+        onSettings={patch => void workspace.changeSettings(patch)}
+        onOpenQuest={(realm, id) => {
+          const show = () => {
+            workspace.openQuest(realm, id)
+            window.location.hash = hrefOf(ROUTES.quests)
+          }
+          if (realm === view.key) show()
+          else void workspace.pick(realm).then(show)
+        }}
+        onOpenRealm={realm => void workspace.pick(realm)}
+      />
+    )
+  }
   if (route === ROUTES.branches) return <BranchesPage view={view} actions={actions} engine={engine} flow={flow} onOpen={id => { branchSelection.current = id; workspace.openQuest(view.key, id); window.location.hash = hrefOf(ROUTES.quests) }} />
   if (route === ROUTES.quests) {
     return (
@@ -252,7 +281,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   // The tabs of a realm that doesn't read all show the same failure. From the
   // rest of the app they're still the way back to it.
   const isBroken = state.project.status === 'ready' && state.project.data.kind === 'unreadable'
-  const isTab = TABS.some(tab => tab.route === route)
+  const isTab = TABS.some(tab => tab.route === tabOf(route))
 
   const actionsFor = (view: ReadableView): QuestActions => ({
     onStart: (quest, platform) => void flows.start(view.key, quest, platform),
@@ -404,7 +433,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
             ☰
           </button>
           {useNarrowTabs && (
-            <select class="chip-select tab-menu" aria-label={t.narrow.section} value={route} disabled={isBroken && isTab} onChange={event => go((event.target as HTMLSelectElement).value as Route)}>
+            <select class="chip-select tab-menu" aria-label={t.narrow.section} value={tabOf(route)} disabled={isBroken && isTab} onChange={event => go((event.target as HTMLSelectElement).value as Route)}>
               {[...TABS, ...MORE_PAGES].map(tab => (
                 <option key={tab.route} value={tab.route}>
                   {tab.label}
@@ -419,7 +448,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
                   {tab.label}
                 </span>
               ) : (
-                <a key={tab.route} class={tab.route === route ? 'tab on' : 'tab'} href={hrefOf(tab.route)} aria-current={tab.route === route ? 'page' : undefined}>
+                <a key={tab.route} class={tab.route === tabOf(route) ? 'tab on' : 'tab'} href={hrefOf(tab.route)} aria-current={tab.route === tabOf(route) ? 'page' : undefined}>
                   {tab.label}
                 </a>
               ),

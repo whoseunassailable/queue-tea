@@ -4,6 +4,7 @@ import type { NoteBookmark } from './note_bookmarks'
 import type { CalendarEventInput, CalendarExport, CalendarImport, CalendarImportPreview, CalendarView, ImportItem } from './calendar'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
+import type { PlanChange, PlanRealm, PlanSnapshot, PlanView, SavedPlanView } from './plan'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
 import type { Allowance, AppRequest, Difficulty, GitMode, HelperId, ParentPick, Platform, Priority, Task, TaskStep, TestProfile, TestProfileId } from '../../types'
 import type { Options } from '../../hooks/core/env/env'
@@ -232,7 +233,20 @@ export type TerminalChoice = 'terminal' | 'iterm' | 'vscode'
 // Folds are the sagas folded, by realm.
 export type ChronicleScope = 'realm' | 'all'
 // realmAccounts says which GitHub account each realm belongs to, by realm.
-export type Settings = { sky: SkyChoice; isCalm: boolean; lastProject: string | null; folds: Record<string, string[]>; terminal: TerminalChoice; chronicleScope: ChronicleScope; letterKeys: boolean; realmAccounts: Record<string, string> }
+// planViews are the Plan tab's saved views, and wipLimits each realm's most
+// quests in hand on its board; both are absent until first set.
+export type Settings = {
+  sky: SkyChoice
+  isCalm: boolean
+  lastProject: string | null
+  folds: Record<string, string[]>
+  terminal: TerminalChoice
+  chronicleScope: ChronicleScope
+  letterKeys: boolean
+  realmAccounts: Record<string, string>
+  planViews?: SavedPlanView[]
+  wipLimits?: Record<string, number>
+}
 
 // What the Settings page shows beside the app's own settings.
 export type RealmLine = { key: string; name: string; path: string; file: string; hasCopy: boolean; logPath: string | null; gitMode: GitMode; isReadable: boolean }
@@ -338,6 +352,10 @@ export type FinishOutcome = LogOutcome & { minutes: number; victory: Victory | n
 // Asked: an open session writes the checkpoint, then the quest goes back. Back:
 // it has gone. missedCheckpoint is set when Claude's checkpoint wasn't written,
 // with when the last one was.
+// A Plan change: the realm as the board and the Plan tab read it now, and
+// what Undo puts back.
+export type PlanChanged = { view: ProjectView; realm: PlanRealm; undo: PlanSnapshot[] }
+
 export type BackOutcome = { view: ProjectView; went: 'asked' | 'back'; missedCheckpoint: { lastAt: string | null } | null; isCodexTimeLost: boolean }
 
 // The accounts gh knows. isWorking is false when a sign-in has lapsed. The app
@@ -465,6 +483,9 @@ export type EngineApi = {
   editQuest: (key: string, taskId: string, edit: QuestEdit) => Promise<Reply<ProjectView>>
   setActiveSaga: (key: string, taskId: string | null) => Promise<Reply<ProjectView>>
   setTimeBudget: (key: string, budget: number | null) => Promise<Reply<ProjectView>>
+  // Every realm's backlog for the Plan tab, and one change to one realm.
+  readPlan: () => Promise<Reply<PlanView>>
+  changePlan: (key: string, change: PlanChange) => Promise<Reply<PlanChanged>>
   readLive: (key: string) => Promise<Reply<LiveFacts>>
   readQuestFacts: (key: string, taskId: string) => Promise<Reply<QuestFacts>>
   switchBranch: (key: string) => Promise<Reply<null>>
@@ -585,6 +606,8 @@ export const CHANNELS = {
   editQuest: 'engine:edit-quest',
   setActiveSaga: 'engine:set-active-saga',
   setTimeBudget: 'engine:set-time-budget',
+  readPlan: 'engine:read-plan',
+  changePlan: 'engine:change-plan',
   readLive: 'engine:read-live',
   readQuestFacts: 'engine:read-quest-facts',
   switchBranch: 'engine:switch-branch',

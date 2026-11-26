@@ -225,6 +225,12 @@ Added 2026-11-26. A quest can be part of several sagas, for logic two sagas shar
 
 In the record, `parentIds` lists the sagas (the first is where the row stands) and `criteriaByParent` holds the sets by saga id. A record with the older single `parentId` reads as a list of one, so old records keep loading, and the record version stays 2. An older app or mod reads a quest saved only with `parentIds` as on its own until it is updated, and a move it makes isn't seen by the newer one. The menu's Part of… in Claude Code picks one saga.
 
+### The Plan tab
+
+Added 2026-11-26. **Plan** is the last tab, at `/plan`, and opens with ⌘9. Its **Backlog** nests sagas, quests and child quests, three deep, ranks them by drag or Alt with an arrow, filters and searches them, and edits picked quests together. Its **Quest board** (`/plan/board`) shows the same quests in a column for each status, with lanes by saga, realm or priority, a WIP limit per realm, and each blocker on its card. Board moves go through the Quests page's flows. Saved views and WIP limits live in the app's settings as `planViews` and `wipLimits`.
+
+The planning fields, `rank`, `tags`, `points` (effort points, never time), `parentQuest` and `links`, are optional on each task, so old records load unchanged. Two engine calls carry the tab: `readPlan()` and `changePlan(key, change)`. The screens, rules and limits are in [backlog-and-board.md](backlog-and-board.md).
+
 ## Data
 
 Section 6 of the design lists every field: what each screen reads, the new fields with their defaults, the session file and the app's own settings. The rules:

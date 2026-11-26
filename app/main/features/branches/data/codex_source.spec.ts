@@ -15,7 +15,9 @@ const { readCodexSession } = await import('./codex_source')
 const row = (type: string, payload: Record<string, unknown>, ms: number) => JSON.stringify({ timestamp: new Date(ms).toISOString(), type, payload })
 let home: string
 let now: number
-// When the task started: fixed, as a real task's start is.
+// When the task started: fixed, as a real task's start is, and a second before
+// the sessions are written. A file's time can lag the clock by a few
+// milliseconds, and a session from before the task started is not the task's.
 let since: number
 const deps = () => ({ home, now: () => now }) as TasksDeps
 // More sessions than the old 128-entry cache held, as a busy Codex user has.
@@ -24,7 +26,7 @@ const SESSIONS = 150
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'queue-tea-codex-'))
   now = Date.now()
-  since = now - 1
+  since = now - 1_000
   const folder = join(home, '.codex/sessions/2026/11/06')
   await mkdir(folder, { recursive: true })
   for (let i = 0; i < SESSIONS; i++) {

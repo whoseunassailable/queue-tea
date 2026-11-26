@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { WATCH_SETTLE_MS } from './constants'
 import { createLogger } from './logger'
 import { hasChanged, watchFolders } from './watcher'
 
@@ -35,17 +36,20 @@ describe('watchFolders', () => {
     await expect(writeFile(join(dir, 'new', 'x.json'), '{}')).resolves.toBeUndefined()
   })
 
+  // With the app's own settle time: a busy Mac can take longer than a few
+  // milliseconds between the write and the rename, and longer than a second to
+  // deliver the folder's events.
   it('sees an atomic replace, and only once for a burst', async () => {
     const file = join(dir, 'r.json')
     await writeFile(file, '{}')
     const changed = vi.fn()
-    stop = await watchFolders([dir], changed, { settleMs: 30, sweepMs: 10_000, log })
+    stop = await watchFolders([dir], changed, { settleMs: WATCH_SETTLE_MS, sweepMs: 10_000, log })
 
     await writeFile(`${file}.tmp`, '{"a":1}')
     await rename(`${file}.tmp`, file)
 
-    await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
-    await new Promise(done => setTimeout(done, 80))
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(1), { timeout: 5_000 })
+    await new Promise(done => setTimeout(done, 3 * WATCH_SETTLE_MS))
     expect(changed).toHaveBeenCalledTimes(1)
   })
 

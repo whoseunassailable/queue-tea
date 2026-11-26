@@ -13,6 +13,7 @@ import { nodeHost } from '../../../core/node_host'
 import { notesApi } from './notes_api'
 import type { NotesDeps } from './notes_api'
 import { NO_MEETING } from '../../../../shared/meetings'
+import { BIG_FIXTURE_TIMEOUT_MS } from '../../../../tools/test_limits'
 
 const KEY = 'demo-abc123'
 const OTHER = 'other-def456'
@@ -389,11 +390,14 @@ describe('restoring notes', () => {
     const folder = join(outside, 'big')
     await mkdir(folder)
     await writeFile(join(folder, MANIFEST), '{"format": 1}')
-    for (let n = 0; n < 5001; n += 1) await writeFile(join(folder, `n-${n}.md`), 'x')
+    // Written a batch at a time: one after another, 5,001 files took more than
+    // half a minute on a busy laptop.
+    const names = Array.from({ length: 5001 }, (_, n) => `n-${n}.md`)
+    for (let start = 0; start < names.length; start += 500) await Promise.all(names.slice(start, start + 500).map(name => writeFile(join(folder, name), 'x')))
 
     expect(refused(await restoreFrom(folder))).toBe(MESSAGES.backupTooBig)
     expect(await tree(dir)).toEqual({})
-  })
+  }, BIG_FIXTURE_TIMEOUT_MS)
 
   it('a cancelled picker gives nothing back and changes nothing', async () => {
     await fillRealm()

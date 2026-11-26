@@ -50,6 +50,8 @@ npm run e2e:packaged  # the same, on the built apps themselves
 npm run test:codex  # after build: real stdio MCP client/server and isolated skill setup
 ```
 
+`npm test` is also what an update runs, in the background while you work, so it keeps to half the Mac's cores (`maxWorkers` in `vitest.config.ts`; the limits are in `tools/test_limits.ts`). With every core but one, as Vitest does by default, an update on an 8-core MacBook Air timed out tests that take seconds on their own. Pass `--maxWorkers=N` to choose for one run. The specs that time how fast something runs, `*_performance.spec.ts`, form the **speed budgets** project: they start only once every other file has finished, so a budget measures the code and not the other tests. They still fail the run, and the update, when the code gets slower.
+
 Keep the Mac awake for the end-to-end run, with `caffeinate -dimsu npm run e2e`: a sleeping display stops the window painting, and the failures look like the app's.
 
 To look at the skies, set `QUEUE_TEA_SHOTS` to a folder before `npm run e2e`. Set `QUEUE_TEA_REAL_COPY` to a folder of record copies to see those too.

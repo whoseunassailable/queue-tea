@@ -91,16 +91,6 @@ describe('filters', () => {
     expect(hasFilters(EMPTY_BOARD.filters)).toBe(false)
     expect(hasFilters({ ...EMPTY_BOARD.filters, sections: ['sealed'] })).toBe(true)
   })
-
-  it('filters 500 quests within 50 ms', () => {
-    const entries = Array.from({ length: 500 }, (_, i) => one(`Quest number ${i}`, { branch: `task/quest-${i}` }))
-    const started = performance.now()
-
-    const found = filterEntries(entries, board({ search: 'number 49', filters: { ...EMPTY_BOARD.filters, priorities: ['mid'] } }), null, null)
-
-    expect(performance.now() - started).toBeLessThan(50)
-    expect(found.length).toBe(11)
-  })
 })
 
 describe('marking the match', () => {

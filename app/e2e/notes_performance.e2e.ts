@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 
+import { plantBrewQuest } from './fake_brewquest'
+
 const APP = join(__dirname, '..')
 const KEY = 'notes-abc123'
 const TITLE = 'Maybe we should understand the missed steps'
@@ -33,7 +35,9 @@ test.beforeAll(async () => {
       return writeFile(join(vault(), `Note ${n}.md`), `---\ntitle: Note ${n}\nfolder: Research ${i % 100}\ntags: ["research"]\npinned: ${i % 10 === 0}\nupdated: "2026-11-01T12:00:00Z"\n---\n${'Observation from a walk. '.repeat(100)} marker-${n}`)
     }))
   }
-  app = await electron.launch({ args: [join(APP, 'out/main/main.js')], cwd: APP, env: { ...process.env, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' } })
+  // Claude Code without BrewQuest, so the review is the checklist and no test spends tokens.
+  const bin = await plantBrewQuest(home)
+  app = await electron.launch({ args: [join(APP, 'out/main/main.js')], cwd: APP, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' } })
   page = await app.firstWindow()
   page.on('pageerror', error => errors.push(String(error)))
   await page.route(/^https?:/, route => route.abort())

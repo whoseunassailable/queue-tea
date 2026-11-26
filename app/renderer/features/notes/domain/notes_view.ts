@@ -1,6 +1,6 @@
 import type { Difficulty, Priority } from '../../../../../types'
-import { cleanTag, DAILY_TEMPLATE, freeTitle, INBOX, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, noteTitled, openItemsOf, questIdOf } from '../../../../shared/notes'
-import type { Note, NoteChange, NoteInput, NoteType, QuestProposal } from '../../../../shared/notes'
+import { cleanTag, DAILY_TEMPLATE, freeTitle, INBOX, isOwnQuest, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_LIMITS, NOTE_TITLE_BAD, noteTitled, openItemsOf, questIdOf } from '../../../../shared/notes'
+import type { Note, NoteChange, NoteInput, NoteQuest, NoteType, ProposalGroup } from '../../../../shared/notes'
 import { dayOf } from '../../../core/domain/format'
 import { NOTE_LIST_PAGE_SIZE } from '../../../core/constants/constants'
 import { t } from '../../../l10n/en'
@@ -230,8 +230,36 @@ export const toggleTaskAt = (body: string, index: number): string => {
   return body
 }
 
+// The quests filed from a note, as the inspector lists them: each parent with
+// the quests under it. A quest filed from a checklist goes under the parent
+// before it. One filed from a Claude draft goes under the quest it was filed
+// under, which may be a quest the note didn't file; under none, it stands
+// alone, listed with the others that do.
+export type QuestGroup = { parent: NoteQuest | null; children: NoteQuest[] }
+export const questGroupsOf = (quests: readonly NoteQuest[]): QuestGroup[] => {
+  const groups: QuestGroup[] = []
+  for (const quest of quests) {
+    if (isOwnQuest(quest)) {
+      groups.push({ parent: quest, children: [] })
+      continue
+    }
+    if (quest.under === undefined) {
+      const last = groups.at(-1)
+      if (last === undefined) groups.push({ parent: null, children: [quest] })
+      else last.children.push(quest)
+      continue
+    }
+    const under = quest.under
+    const home = groups.find(group => (under === null ? group.parent === null : group.parent?.id === under))
+    if (home !== undefined) home.children.push(quest)
+    else groups.push({ parent: under === null ? null : { id: under, item: null }, children: [quest] })
+  }
+
+  return groups
+}
+
 // What BrewQuest's card says about the note.
-export const brewLineOf = (note: Pick<Note, 'body' | 'quests'>, proposal: QuestProposal): string => {
+export const brewLineOf = (note: Pick<Note, 'body' | 'quests'>, proposal: ProposalGroup): string => {
   const waiting = proposal.quests.length
   if (note.quests.length === 0) return openItemsOf(note.body).length === 0 ? t.notebook.brew.asOne : t.notebook.brew.canBe(waiting)
 

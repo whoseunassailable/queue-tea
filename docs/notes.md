@@ -7,7 +7,7 @@ Spec for **Notes 1**, the first slice of Rohan's Notes workspace epic. Mocha Moc
 
 ## What the user can do
 
-Open **Notes** (after Designs, ⌘4) and keep notes for the selected realm. Jot an idea in one line and it becomes a note in Inbox. Write longer notes in Markdown, file them in folders, tag them, and link them to each other with `[[Note title]]`, or to one of the realm's quests. The inspector shows each note's links, the notes that link back to it, and the quests filed from it. **BrewQuest**, a small robot in the editor's corner, turns a note's open checklist lines into quests in the realm's queue. You check the proposal before anything is filed. A note you no longer need is archived, not deleted. Only an archived note can be deleted forever.
+Open **Notes** (after Designs, ⌘4) and keep notes for the selected realm. Jot an idea in one line and it becomes a note in Inbox. Write longer notes in Markdown, file them in folders, tag them, and link them to each other with `[[Note title]]`, or to one of the realm's quests. The inspector shows each note's links, the notes that link back to it, and the quests filed from it. **BrewQuest**, a small robot in the editor's corner, turns a note into quests in the realm's queue. It first turned open checklist lines into quests; it now reads the note and the project with Claude Code (added later, see [BrewQuest](brewquest.md)). You check the proposal before anything is filed. A note you no longer need is archived, not deleted. Only an archived note can be deleted forever.
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ Settled before the design:
 - **Links are Obsidian's**: `[[Note title]]`, `[[Note title|shown text]]` and `[[Note title#heading]]`. Typing `[[` opens a picker. Renaming a note rewrites the links to it in the realm's other notes. A quest is linked by its id, as `[[quest:t-e84dd5ab|Write the parser]]`, so the link still works when the quest is renamed. The text after `|` is the quest's title when it was linked, with `[`, `]`, `|` and line breaks turned into spaces. Quest links aren't note links: they count as no backlinks, and renaming a note never rewrites them.
 - **Autosave**, with a save line that says what is happening. If the file changes in another app while it's open, Queue-tea asks which version to keep.
 - **Archive, not delete.** Delete forever is offered only for archived notes, behind a confirm dialog.
-- **BrewQuest files nothing until you press File.** It proposes one parent quest named after the note, with one quest under it for each unticked `- [ ]` line not filed yet. A note with no such lines becomes one quest, made from its title and first paragraph.
+- **BrewQuest files nothing until you press File.** It proposes one parent quest named after the note, with one quest under it for each unticked `- [ ]` line not filed yet. A note with no such lines becomes one quest, made from its title and first paragraph. This is now the checklist draft; the draft BrewQuest makes with Claude Code is described in [brewquest.md](brewquest.md).
 
 Decided while drawing:
 
@@ -481,7 +481,7 @@ records the budgets and fixture limits.
 
 ## Not in Notes 1
 
-The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph (added later, see [The graph](#the-graph)), the canvas (added later, see [The canvas](#the-canvas)), BrewQuest's animations (added later, see [BrewQuest's moods](#brewquests-moods)), drag-to-note (added later, see [Drag BrewQuest onto a note](#drag-brewquest-onto-a-note)), and AI note analysis. Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
+The calendar, meetings, ICS or Google sync, reminders, daily notes (added later, see [Daily notes and the journal](#daily-notes-and-the-journal)), the graph (added later, see [The graph](#the-graph)), the canvas (added later, see [The canvas](#the-canvas)), BrewQuest's animations (added later, see [BrewQuest's moods](#brewquests-moods)), drag-to-note (added later, see [Drag BrewQuest onto a note](#drag-brewquest-onto-a-note)), and AI note analysis (added later, see [BrewQuest](brewquest.md)). Notes in subfolders of the vault, inline `#tags` in the body, and indenting with Tab are left out too.
 
 ## Answered
 

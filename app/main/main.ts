@@ -31,6 +31,7 @@ import { notesApi } from './features/notes/api/notes_api'
 import { noteFileResponse } from './features/notes/api/note_protocol'
 import { designsApi } from './features/designs/api/designs_api'
 import { helpersApi } from './features/helpers/api/helpers_api'
+import { brewquestApi } from './features/brewquest/api/brewquest_api'
 import { judgementWatch } from './features/notify/domain/judgements'
 import type { Asked } from './features/notify/domain/judgements'
 import { installCommand, openedFromUrl } from './features/opening/api/opening_api'
@@ -176,6 +177,16 @@ const helpers = helpersApi({
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(CHANNELS.helpers, jobs)
   },
 })
+// BrewQuest reads a note with Claude Code; each change to what it's reading goes to every window.
+const brewquest = brewquestApi({
+  ...quests,
+  stream: streamProcess,
+  newDraftId: () => `d-${Date.now().toString(36)}${randomBytes(2).toString('hex')}`,
+  readNotes: notes.readNotes,
+  tell: progress => {
+    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(CHANNELS.brewing, progress)
+  },
+})
 const designs = designsApi({
   ...quests,
   reveal: (path: string) => shell.showItemInFolder(path),
@@ -278,6 +289,8 @@ const serveEngine = () => {
   handle(CHANNELS.renameFolder, (_, key: unknown, from: unknown, to: unknown) => notes.renameFolder(key, from, to))
   handle(CHANNELS.deleteNote, (_, key: unknown, id: unknown) => notes.deleteNote(key, id))
   handle(CHANNELS.fileNoteQuests, (_, key: unknown, id: unknown, proposal: unknown) => notes.fileNoteQuests(key, id, proposal))
+  handle(CHANNELS.draftNoteQuests, (_, key: unknown, id: unknown, ask: unknown) => brewquest.draftNoteQuests(key, id, ask))
+  handle(CHANNELS.stopNoteDraft, (_, key: unknown) => brewquest.stopNoteDraft(key))
   handle(CHANNELS.takeOpened, () => reply(log, MESSAGES.openFolder, async () => takeOpened()))
   handle(CHANNELS.readChoices, (_, key: unknown, taskId: unknown) => tasks.readChoices(quests, key, taskId))
   handle(CHANNELS.setPriority, (_, key: unknown, taskId: unknown, priority: unknown) => tasks.setPriority(quests, key, taskId, priority))
@@ -444,7 +457,7 @@ const askRestart = async (version: string): Promise<boolean> => {
 
 const isUpdateBusy = async () => {
   // A restart would end a helper's order half done.
-  if (callsRunning > 0 || helpers.isBusy()) return true
+  if (callsRunning > 0 || helpers.isBusy() || brewquest.isBusy()) return true
   const [window] = BrowserWindow.getAllWindows()
 
   return window !== undefined && (await window.webContents.executeJavaScript(BUSY_PROBE)) === true

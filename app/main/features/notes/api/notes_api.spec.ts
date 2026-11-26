@@ -453,7 +453,7 @@ describe('note history', () => {
     const { view, id } = await created({ body: 'Original', tags: [] })
     const first = data(await api.readNoteHistory(KEY, id))[0]!
     await api.saveNote(KEY, id, change({ title: 'Renamed', folder: 'Later', type: 'research', isPinned: true, tags: ['later'], body: 'Latest' }), only(view, id).stamp)
-    await api.fileNoteQuests(KEY, id, { parent: { kind: 'none' }, quests: [{ title: 'Do it', priority: 'mid', difficulty: 'medium', item: 'Do it' }] })
+    await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'none' }, quests: [{ title: 'Do it', priority: 'mid', difficulty: 'medium', item: 'Do it' }] }] })
     const archived = only(data(await api.archiveNote(KEY, id, true)), id)
     const restored = data(await api.restoreNoteVersion(KEY, id, first.id, archived.stamp))
     if (restored.kind !== 'saved') throw new Error('should restore')
@@ -537,10 +537,14 @@ describe('filing quests from a note', () => {
     const { id } = await created({ title: 'Bug Bounty Helper', body: 'A helper.\n\n- [ ] Scan\n- [ ] Report' })
     const filed = data(
       await api.fileNoteQuests(KEY, id, {
-        parent: { kind: 'new', title: 'Bug Bounty Helper' },
-        quests: [
-          { title: 'Scan', priority: 'high', difficulty: 'hard', item: 'Scan' },
-          { title: 'Report', priority: 'mid', difficulty: 'light', item: 'Report' },
+        groups: [
+          {
+            parent: { kind: 'new', title: 'Bug Bounty Helper' },
+            quests: [
+              { title: 'Scan', priority: 'high', difficulty: 'hard', item: 'Scan' },
+              { title: 'Report', priority: 'mid', difficulty: 'light', item: 'Report' },
+            ],
+          },
         ],
       }),
     )
@@ -562,7 +566,7 @@ describe('filing quests from a note', () => {
 
   it('a note with no checklist is one quest, described by its first paragraph', async () => {
     const { id } = await created({ title: 'Idea', body: '# Idea\n\nWhy it matters.' })
-    await api.fileNoteQuests(KEY, id, { parent: { kind: 'none' }, quests: [{ title: 'Idea', priority: 'mid', difficulty: 'medium', item: null }] })
+    await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'none' }, quests: [{ title: 'Idea', priority: 'mid', difficulty: 'medium', item: null }] }] })
 
     expect((await record()).tasks[0]).toMatchObject({ title: 'Idea', parentIds: [], description: 'From the note "Idea" in Notes.\n\nWhy it matters.' })
   })
@@ -570,16 +574,16 @@ describe('filing quests from a note', () => {
   it('checks the quests and files nothing when one is wrong', async () => {
     const { id } = await created()
 
-    expect(refused(await api.fileNoteQuests(KEY, id, { parent: { kind: 'none' }, quests: [] }))).toBe('Pick at least one quest to file.')
-    expect(refused(await api.fileNoteQuests(KEY, id, { parent: { kind: 'none' }, quests: [{ title: ' ', priority: 'mid', difficulty: 'medium', item: null }] }))).toBe('Title is required.')
+    expect(refused(await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'none' }, quests: [] }] }))).toBe('Pick at least one quest to file.')
+    expect(refused(await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'none' }, quests: [{ title: ' ', priority: 'mid', difficulty: 'medium', item: null }] }] }))).toBe('Title is required.')
     expect((await record()).tasks).toEqual([])
   })
 
   it('never files a line twice, and puts new lines under the note’s open parent', async () => {
     const { id } = await created({ title: 'Saga', body: '- [ ] A\n- [ ] B' })
     const a = { title: 'A', priority: 'mid' as const, difficulty: 'medium' as const, item: 'A' }
-    await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [a] })
-    const again = data(await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [a, { ...a, title: 'B', item: 'B' }] }))
+    await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'new', title: 'Saga' }, quests: [a] }] })
+    const again = data(await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'new', title: 'Saga' }, quests: [a, { ...a, title: 'B', item: 'B' }] }] }))
 
     expect((await record()).tasks.map(t => [t.title, t.parentIds])).toEqual([
       ['Saga', []],
@@ -591,12 +595,12 @@ describe('filing quests from a note', () => {
 
   it('once the note’s parent is done, new lines go under a new one', async () => {
     const { id } = await created({ title: 'Saga' })
-    await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [{ title: 'A', priority: 'mid', difficulty: 'medium', item: 'A' }] })
+    await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'new', title: 'Saga' }, quests: [{ title: 'A', priority: 'mid', difficulty: 'medium', item: 'A' }] }] })
     const file = join(home, '.queue-tea/projects', `${KEY}.json`)
     const done = JSON.parse(await readFile(file, 'utf8'))
     done.tasks = done.tasks.map((t: { state: string }) => ({ ...t, state: 'done' }))
     await writeFile(file, JSON.stringify(done))
-    await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [{ title: 'B', priority: 'mid', difficulty: 'medium', item: 'B' }] })
+    await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'new', title: 'Saga' }, quests: [{ title: 'B', priority: 'mid', difficulty: 'medium', item: 'B' }] }] })
 
     const tasks = (await record()).tasks
     expect(tasks.map(t => [t.title, t.parentIds])).toEqual([
@@ -609,10 +613,129 @@ describe('filing quests from a note', () => {
 
   it('refuses a parent that is not open, and files nothing', async () => {
     const { id } = await created()
-    const message = refused(await api.fileNoteQuests(KEY, id, { parent: { kind: 'task', id: 't-gone' }, quests: [{ title: 'A', priority: 'mid', difficulty: 'medium', item: 'A' }] }))
+    const message = refused(await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'task', id: 't-gone' }, quests: [{ title: 'A', priority: 'mid', difficulty: 'medium', item: 'A' }] }] }))
 
     expect(message).toMatch(/Pick again\.$/)
     expect(only(data(await api.readNotes(KEY)), id).quests).toEqual([])
+  })
+
+  describe('from a BrewQuest draft', () => {
+    const D = 'd-abcd1234'
+    const quest = (n: number, title: string, over: Record<string, unknown> = {}) => ({ key: `${D}.q${n}`, title, priority: 'mid', difficulty: 'medium', item: null, summary: '', criteria: [], points: 3, waitsFor: [], sources: [], doubts: [], ...over })
+    // A quest on its own already in the realm, filed from another note.
+    const existing = async () => {
+      const other = await created({ title: 'Old', body: 'Old.' })
+      await api.fileNoteQuests(KEY, other.id, { groups: [{ parent: { kind: 'none' }, quests: [{ title: 'Sidebar polish', priority: 'mid', difficulty: 'medium', item: null }] }] })
+
+      return (await record()).tasks[0]!.id
+    }
+
+    it('files each group under its parent, with keys, descriptions, criteria and waits', async () => {
+      const sidebar = await existing()
+      const { id } = await created({ title: 'Plan', body: 'We should count terminal time.\n\n- [ ] Fix sidebar spacing' })
+      const filed = data(
+        await api.fileNoteQuests(KEY, id, {
+          groups: [
+            { key: `${D}.g1`, parent: { kind: 'new', title: 'Terminal tracking' }, quests: [quest(1, 'Count terminal time', { priority: 'high', summary: 'Time in the terminal counts toward the quest.', criteria: ['Counts time in iTerm', ' '], points: 5, sources: [{ title: 'Plan', quote: 'count terminal time' }], doubts: ['Which terminals count?'], waitsFor: [`${D}.q2`] })] },
+            { key: `${D}.g2`, parent: { kind: 'task', id: sidebar }, quests: [quest(2, 'Fix sidebar spacing', { item: 'Fix sidebar spacing', points: 2 })] },
+            { key: `${D}.g3`, parent: { kind: 'none' }, quests: [quest(3, 'Write the docs', { waitsFor: [`${D}.q1`] })] },
+          ],
+        }),
+      )
+      const tasks = (await record()).tasks
+      const byTitle = (title: string) => tasks.find(t => t.title === title)!
+
+      expect(tasks.map(t => [t.title, t.parentIds.map(parent => tasks.find(other => other.id === parent)?.title)])).toEqual([
+        ['Sidebar polish', []],
+        ['Terminal tracking', []],
+        ['Count terminal time', ['Terminal tracking']],
+        ['Fix sidebar spacing', ['Sidebar polish']],
+        ['Write the docs', []],
+      ])
+      expect(byTitle('Count terminal time')).toMatchObject({ priority: 'high', criteria: ['Counts time in iTerm'] })
+      expect(byTitle('Count terminal time').description).toBe(
+        'From the note "Plan" in Notes.\n\nTime in the terminal counts toward the quest.\n\nThe note\'s words:\n\n> count terminal time\n\nEffort: 5 points (BrewQuest\'s estimate).\n\nNot confirmed yet:\n- Which terminals count?',
+      )
+      expect(byTitle('Count terminal time').blockedBy).toEqual([byTitle('Fix sidebar spacing').id])
+      expect(byTitle('Write the docs').blockedBy).toEqual([byTitle('Count terminal time').id])
+      expect(only(filed.view, id).quests).toEqual([
+        { id: byTitle('Terminal tracking').id, item: null, key: `${D}.g1`, under: null },
+        { id: byTitle('Count terminal time').id, item: null, key: `${D}.q1`, under: byTitle('Terminal tracking').id },
+        { id: byTitle('Fix sidebar spacing').id, item: 'Fix sidebar spacing', key: `${D}.q2`, under: sidebar },
+        { id: byTitle('Write the docs').id, item: null, key: `${D}.q3`, under: null },
+      ])
+      expect(filed.waitsLeftOut).toBe(0)
+      // The keys stay on the note's file, so they read back after a restart.
+      expect(only(data(await makeApi().readNotes(KEY)), id).quests.map(q => q.key)).toEqual([`${D}.g1`, `${D}.q1`, `${D}.q2`, `${D}.q3`])
+    })
+
+    it('Try again never files a drafted quest twice, and keeps its group under the parent filed the first time', async () => {
+      const { id } = await created({ title: 'Plan', body: 'Ideas.' })
+      const first = { key: `${D}.g1`, parent: { kind: 'new', title: 'Saga' }, quests: [quest(1, 'A')] }
+      await api.fileNoteQuests(KEY, id, { groups: [first] })
+      const again = data(await api.fileNoteQuests(KEY, id, { groups: [{ ...first, quests: [quest(1, 'A'), quest(2, 'B')] }] }))
+
+      expect((await record()).tasks.map(t => [t.title, t.parentIds])).toEqual([
+        ['Saga', []],
+        ['A', ['t-2']],
+        ['B', ['t-2']],
+      ])
+      expect(only(again.view, id).quests.map(q => q.key)).toEqual([`${D}.g1`, `${D}.q1`, `${D}.q2`])
+    })
+
+    it('a drafted quest from a line filed before is filed without the line, so the line stays with one quest', async () => {
+      const { id } = await created({ title: 'Plan', body: '- [ ] Scan' })
+      await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'none' }, quests: [{ title: 'Scan', priority: 'mid', difficulty: 'medium', item: 'Scan' }] }] })
+      const filed = data(await api.fileNoteQuests(KEY, id, { groups: [{ key: `${D}.g1`, parent: { kind: 'none' }, quests: [quest(1, 'Scan deeper', { item: 'Scan' })] }] }))
+
+      expect(only(filed.view, id).quests.map(q => q.item)).toEqual(['Scan', null])
+    })
+
+    it('leaves out and counts a wait that would loop or names a quest not filed', async () => {
+      const { id } = await created({ title: 'Plan', body: 'Ideas.' })
+      const filed = data(
+        await api.fileNoteQuests(KEY, id, {
+          groups: [{ key: `${D}.g1`, parent: { kind: 'none' }, quests: [quest(1, 'A', { waitsFor: [`${D}.q2`] }), quest(2, 'B', { waitsFor: [`${D}.q1`] }), quest(3, 'C', { waitsFor: [`${D}.q9`, 't-gone'] })] }],
+        }),
+      )
+      const tasks = (await record()).tasks
+
+      expect(tasks.map(t => [t.title, t.blockedBy.length])).toEqual([
+        ['A', 1],
+        ['B', 0],
+        ['C', 0],
+      ])
+      expect(filed.waitsLeftOut).toBe(3)
+    })
+
+    it('keeps what Rohan did with a Claude draft for its next brief, and a review that does not read never stops the filing', async () => {
+      const { id } = await created({ title: 'Plan', body: 'Ideas.' })
+      const outcome = { id: D, by: 'claude', proposed: 3, rejected: ['C'], merged: 1, reused: 0, changed: [{ title: 'A', field: 'points', from: '3', to: '5' }] }
+      await api.fileNoteQuests(KEY, id, { groups: [{ key: `${D}.g1`, parent: { kind: 'none' }, quests: [quest(1, 'A', { points: 5 })] }], draft: outcome })
+      const kept = JSON.parse(await readFile(join(home, '.queue-tea/brewquest', `${KEY}.json`), 'utf8'))
+      expect(kept).toEqual([{ ...outcome, at: '2026-11-07T13:00:00+01:00', filed: 1 }])
+
+      expect(data(await api.fileNoteQuests(KEY, id, { groups: [{ key: 'd-other123.g1', parent: { kind: 'none' }, quests: [{ ...quest(1, 'B'), key: 'd-other123.q1' }] }], draft: { id: 'not a draft' } })).waitsLeftOut).toBe(0)
+      expect((await record()).tasks.map(t => t.title)).toEqual(['A', 'B'])
+    })
+
+    it('checks every draft field and files nothing when one is wrong', async () => {
+      const { id } = await created({ title: 'Plan', body: 'Ideas.' })
+      const group = (quests: unknown[], key: unknown = `${D}.g1`) => ({ groups: [{ key, parent: { kind: 'none' }, quests }] })
+      for (const wrong of [
+        group([quest(1, 'A', { key: 'q1' })]),
+        group([quest(1, 'A', { points: 4 })]),
+        group([quest(1, 'A', { criteria: Array.from({ length: 11 }, (_, i) => `C${i}`) })]),
+        group([quest(1, 'A', { summary: 'x'.repeat(2_001) })]),
+        group([quest(1, 'A', { sources: [{ title: 'Plan', quote: ' ' }] })]),
+        group([quest(1, 'A'), quest(1, 'B')]),
+        group([quest(1, 'A')], 'd-abcd1234.q1'),
+      ]) {
+        expect(refused(await api.fileNoteQuests(KEY, id, wrong))).toBe(MESSAGES.badDraftQuest)
+      }
+      expect(refused(await api.fileNoteQuests(KEY, id, { groups: [{ parent: { kind: 'several', ids: ['t-1', 't-2'], title: null }, quests: [quest(1, 'A')] }] }))).toBe(MESSAGES.badValue)
+      expect((await record()).tasks).toEqual([])
+    })
   })
 })
 

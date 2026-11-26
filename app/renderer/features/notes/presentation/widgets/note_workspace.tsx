@@ -15,7 +15,7 @@ import { Field } from '../../../../core/widgets/field'
 import { Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { t } from '../../../../l10n/en'
-import { brewLineOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, templateChange, titleError, whenOf, withLink, linkPicksOf } from '../../domain/notes_view'
+import { brewLineOf, questGroupsOf, folderError, toggleTaskAt, isInPlay, linkLineOf, linkQueryAt, localDay, questLineOf, tagsError, tagsOf, templateChange, titleError, whenOf, withLink, linkPicksOf } from '../../domain/notes_view'
 import type { QuestLine } from '../../domain/notes_view'
 import { followUpOf } from '../../domain/meeting_notes'
 import { MeetingCard } from './meeting_card'
@@ -111,17 +111,6 @@ export const SaveLine = ({ save, onRetry }: { save: SaveState; onRetry: () => vo
   )
 }
 
-// A parent filed from the note, with the quests filed under it after it.
-type QuestGroup = { parent: NoteQuest | null; children: NoteQuest[] }
-const groupsOf = (quests: readonly NoteQuest[]): QuestGroup[] =>
-  quests.reduce<QuestGroup[]>((groups, quest) => {
-    if (quest.item === null) return [...groups, { parent: quest, children: [] }]
-    const last = groups.at(-1)
-    if (last === undefined) return [{ parent: null, children: [quest] }]
-
-    return [...groups.slice(0, -1), { ...last, children: [...last.children, quest] }]
-  }, [])
-
 const QuestItem = ({ id, quests, onOpen }: { id: string; quests: Map<string, QuestLine>; onOpen: (id: string) => void }) => {
   const line = questLineOf(quests, id)
 
@@ -147,7 +136,7 @@ const QuestItem = ({ id, quests, onOpen }: { id: string; quests: Map<string, Que
 
 const QuestList = ({ note, quests, onOpen }: { note: Note; quests: Map<string, QuestLine>; onOpen: (id: string) => void }) => (
   <ul class="nt-links">
-    {groupsOf(note.quests).map(group =>
+    {questGroupsOf(note.quests).map(group =>
       group.parent !== null && group.children.length > 0 ? (
         <li key={group.parent.id} class="nt-saga">
           <ul class="nt-links">

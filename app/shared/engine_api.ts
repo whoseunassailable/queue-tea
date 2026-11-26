@@ -3,6 +3,7 @@ import type { NoteAttachment, NoteUpload } from './note_attachments'
 import type { NoteBookmark } from './note_bookmarks'
 import type { CalendarEventInput, CalendarExport, CalendarImport, CalendarImportPreview, CalendarView, ImportItem } from './calendar'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
+import type { BrewDraft, DraftAsk } from './brew_draft'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { PlanChange, PlanRealm, PlanSnapshot, PlanView, SavedPlanView } from './plan'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RestoreRequest, RunChecksRequest } from './branches'
@@ -415,6 +416,9 @@ export const HELPER_ORDER_CHARS = 4_000
 // what it answered. Main keeps the latest one per helper while the app runs.
 export type HelperDoingKind = 'reading' | 'editing' | 'writing' | 'running' | 'step' | 'searching' | 'browsing' | 'asking' | 'skill' | 'planning' | 'thinking' | 'working'
 export type HelperDoing = { kind: HelperDoingKind; target: string | null }
+// What BrewQuest is doing while it reads a note for a draft, sent as it changes.
+// steps counts the files and searches it has opened so far.
+export type BrewProgress = { key: string; noteId: string; doing: HelperDoing | null; steps: number }
 export type HelperJob = {
   helper: HelperId
   realm: string
@@ -500,6 +504,12 @@ export type EngineApi = {
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
   renameFolder: (key: string, from: string, to: string) => Promise<Reply<NotesView>>
   deleteNote: (key: string, id: string) => Promise<Reply<NotesView>>
+  // BrewQuest reads the note, and the realm, with Claude Code and drafts quests
+  // for review; a checklist draft comes back at once, and whenever reading fails.
+  // Nothing is filed: fileNoteQuests files what Rohan approves.
+  draftNoteQuests: (key: string, id: string, ask: DraftAsk) => Promise<Reply<BrewDraft>>
+  stopNoteDraft: (key: string) => Promise<Reply<null>>
+  onBrewing: (listener: (progress: BrewProgress) => void) => () => void
   fileNoteQuests: (key: string, id: string, proposal: QuestProposal) => Promise<Reply<NoteFiled>>
   // What arrived before the window was listening.
   takeOpened: () => Promise<Reply<Opened[]>>
@@ -626,6 +636,9 @@ export const CHANNELS = {
   renameFolder: 'engine:rename-folder',
   deleteNote: 'engine:delete-note',
   fileNoteQuests: 'engine:file-note-quests',
+  draftNoteQuests: 'engine:draft-note-quests',
+  stopNoteDraft: 'engine:stop-note-draft',
+  brewing: 'engine:brewing',
   takeOpened: 'engine:take-opened',
   opened: 'engine:opened',
   readChoices: 'engine:read-choices',

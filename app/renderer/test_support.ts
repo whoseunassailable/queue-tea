@@ -3,11 +3,12 @@ import { planView } from './features/plan/test_fixtures'
 import { vi } from 'vitest'
 
 import type { DesignsView } from '../shared/designs'
-import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
+import type { ActiveQuest, BrewProgress, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 import type { Note, NotesView } from '../shared/notes'
 import type { CalendarEventInput, CalendarExport, CalendarImport, CalendarImportPreview, CalendarView } from '../shared/calendar'
 import type { CanvasSave, CanvasView } from '../shared/note_canvas'
 import { NO_MEETING } from '../shared/meetings'
+import { checklistDraftOf } from '../shared/brew_draft'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -228,6 +229,7 @@ export const helperJob = (over: Partial<HelperJob> = {}): HelperJob => ({
 export const fakeEngine = (over: Partial<EngineApi> = {}) => {
   const listeners = new Set<() => void>()
   const helperListeners = new Set<(jobs: HelperJob[]) => void>()
+  const brewListeners = new Set<(progress: BrewProgress) => void>()
   const engine: EngineApi = {
     readAppUpdate: async () => ({ ok: true, data: { running: { version: '1.5.2', commit: 'a'.repeat(40) }, installed: null, state: { phase: 'idle', commit: null, detail: null }, canRetry: false, canRestart: false } }),
     applyAppUpdate: vi.fn(async () => ({ ok: true as const, data: { running: { version: '1.5.2', commit: 'a'.repeat(40) }, installed: null, state: { phase: 'idle' as const, commit: null, detail: null }, canRetry: false, canRestart: false } })),
@@ -293,7 +295,15 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     archiveNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),
     renameFolder: vi.fn(async () => ({ ok: true as const, data: NOTES })),
     deleteNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),
-    fileNoteQuests: vi.fn(async (key: string) => ({ ok: true as const, data: { view: NOTES, project: projectView(key) } })),
+    fileNoteQuests: vi.fn(async (key: string) => ({ ok: true as const, data: { view: NOTES, project: projectView(key), waitsLeftOut: 0 } })),
+    // BrewQuest's checklist draft of the note, as main returns it when Claude can't read.
+    draftNoteQuests: vi.fn(async (_key: string, id: string) => ({ ok: true as const, data: checklistDraftOf('d-test0001', NOTES.notes.find(one => one.id === id) ?? note({ id }), []) })),
+    stopNoteDraft: vi.fn(async () => ({ ok: true as const, data: null })),
+    onBrewing: listener => {
+      brewListeners.add(listener)
+
+      return () => brewListeners.delete(listener)
+    },
     takeOpened: async () => ({ ok: true, data: [] }),
     readChoices: async () => ({ ok: true, data: { features: [], lone: [], parents: [], waitFor: [] } }),
     setPriority: vi.fn(reply),
@@ -359,5 +369,5 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     ...over,
   }
 
-  return { engine, fire: () => listeners.forEach(listener => listener()), tellHelpers: (jobs: HelperJob[]) => helperListeners.forEach(listener => listener(jobs)) }
+  return { engine, fire: () => listeners.forEach(listener => listener()), tellHelpers: (jobs: HelperJob[]) => helperListeners.forEach(listener => listener(jobs)), tellBrewing: (progress: BrewProgress) => brewListeners.forEach(listener => listener(progress)) }
 }

@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { _electron as electron, expect, test } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 
+import { brewQuestDrafts, plantBrewQuest } from './fake_brewquest'
+
 // The Notes tab end to end: notes are real Markdown files in the home folder,
 // and BrewQuest files quests into the realm's real record.
 
@@ -30,10 +32,12 @@ test.beforeAll(async () => {
   await mkdir(notesDir(), { recursive: true })
   await writeFile(join(notesDir(), 'Threat model.md'), '---\ntitle: Threat model\ntags:\n  - security\n---\nWhat could go wrong.')
 
+  const bin = await plantBrewQuest(home)
+
   app = await electron.launch({
     args: [join(APP, 'out/main/main.js')],
     cwd: APP,
-    env: { ...process.env, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' },
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home, QUEUE_TEA_USER_DATA: join(home, 'user-data'), QUEUE_TEA_FLAVOR: 'stage' },
   })
   page = await app.firstWindow()
   page.on('pageerror', err => errors.push(String(err)))
@@ -140,6 +144,8 @@ test('dragging BrewQuest highlights notes and opens their review without filing;
 test('BrewQuest files the checklist as a saga in the realm’s queue, linked back to the note', async () => {
   await page.getByRole('button', { name: 'Turn into quests…' }).click()
   const sheet = page.getByRole('dialog', { name: 'Turn Bug Bounty Helper into quests' })
+  // Claude Code here has no BrewQuest helper, so the sheet says so and drafts the checklist.
+  await expect(sheet.getByText("Claude Code doesn't have BrewQuest yet.", { exact: false })).toBeVisible()
   await expect(sheet.getByLabel('Parent quest *')).toHaveValue('Bug Bounty Helper')
   await sheet.getByRole('button', { name: 'File 3 quests' }).click()
   await expect(sheet).toBeHidden()
@@ -153,6 +159,52 @@ test('BrewQuest files the checklist as a saga in the realm’s queue, linked bac
 
   await about.getByRole('button', { name: 'Open Scan dependencies in Quests' }).click()
   expect(page.url()).toContain('#/quests')
+  expect(errors).toEqual([])
+})
+
+test('BrewQuest reads a note with Claude Code, read-only, and files its draft under the realm’s quests with waits', async () => {
+  await brewQuestDrafts(home, {
+    understood: 'Plan the threat model.',
+    groups: [
+      {
+        parent: { new: 'Threat model review' },
+        why: 'One review.',
+        quests: [
+          { key: 'q1', title: 'List the attack surface', summary: 'Know what could go wrong.', priority: 'high', difficulty: 'medium', points: 5, criteria: ['Every entry point is listed'], sources: [{ note: 'Threat model', quote: 'What could go wrong.' }] },
+          { key: 'q2', title: 'Rank the threats', priority: 'mid', difficulty: 'light', points: 2, waitsFor: ['q1'], doubts: ['Which scale to rank by?'] },
+        ],
+      },
+    ],
+    questions: ['Is the mobile app in scope?'],
+    files: ['CLAUDE.md'],
+  })
+  await page.getByRole('navigation', { name: 'Notes' }).getByRole('button', { name: /^Threat model/ }).click()
+  await page.getByRole('button', { name: 'Turn into quests…' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Turn Threat model into quests' })
+  await expect(sheet.getByText('Read as: Plan the threat model.')).toBeVisible()
+  await expect(sheet.getByText('Is the mobile app in scope?')).toBeVisible()
+  await expect(sheet.getByLabel('Quest 1 effort')).toHaveValue('5')
+  await sheet.getByRole('button', { name: 'Details for quest 2' }).click()
+  await expect(sheet.getByText('Waits for List the attack surface.')).toBeVisible()
+  await sheet.getByLabel('Quest 2 effort').selectOption('3')
+  await sheet.getByRole('button', { name: 'File 3 quests' }).click()
+  await expect(sheet).toBeHidden()
+
+  const calls = await readFile(join(home, 'claude-calls'), 'utf8')
+  expect(calls).toContain('--agent\nqueue-tea:brewquest\n--disallowedTools\nBash,Edit,MultiEdit,Write,NotebookEdit,WebFetch,WebSearch,Agent,Task\n')
+  const tasks = (await record()).tasks as { id: string; title: string; parentIds: string[]; blockedBy: string[]; description: string; priority: string }[]
+  const [parent, first, second] = tasks.slice(-3)
+  expect([parent!.title, first!.title, second!.title]).toEqual(['Threat model review', 'List the attack surface', 'Rank the threats'])
+  expect(first!.parentIds).toEqual([parent!.id])
+  expect(first!.priority).toBe('high')
+  expect(first!.description).toContain('Know what could go wrong.')
+  expect(first!.description).toContain('> What could go wrong.')
+  expect(second!.blockedBy).toEqual([first!.id])
+  expect(second!.description).toContain("Effort: 3 points (BrewQuest's estimate).")
+  expect(second!.description).toContain('- Which scale to rank by?')
+  expect(await readFile(join(notesDir(), 'Threat model.md'), 'utf8')).toMatch(/quests: .*"key":"d-[0-9a-z]+\.q2","under":"/)
+  const kept = JSON.parse(await readFile(join(home, '.queue-tea/brewquest', `${KEY}.json`), 'utf8'))
+  expect(kept[0]).toMatchObject({ by: 'claude', proposed: 2, filed: 2, changed: [{ title: 'Rank the threats', field: 'points', from: '2', to: '3' }] })
   expect(errors).toEqual([])
 })
 

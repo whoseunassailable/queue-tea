@@ -69,6 +69,14 @@ const engine: EngineApi = {
   archiveNote: (key, id, isArchived) => ipcRenderer.invoke(CHANNELS.archiveNote, key, id, isArchived),
   renameFolder: (key, from, to) => ipcRenderer.invoke(CHANNELS.renameFolder, key, from, to),
   deleteNote: (key, id) => ipcRenderer.invoke(CHANNELS.deleteNote, key, id),
+  draftNoteQuests: (key, id, ask) => ipcRenderer.invoke(CHANNELS.draftNoteQuests, key, id, ask),
+  stopNoteDraft: key => ipcRenderer.invoke(CHANNELS.stopNoteDraft, key),
+  onBrewing: listener => {
+    const heard = (_: unknown, progress: Parameters<typeof listener>[0]) => listener(progress)
+    ipcRenderer.on(CHANNELS.brewing, heard)
+
+    return () => ipcRenderer.off(CHANNELS.brewing, heard)
+  },
   fileNoteQuests: (key, id, proposal) => ipcRenderer.invoke(CHANNELS.fileNoteQuests, key, id, proposal),
   takeOpened: () => ipcRenderer.invoke(CHANNELS.takeOpened),
   readChoices: (key, taskId) => ipcRenderer.invoke(CHANNELS.readChoices, key, taskId),

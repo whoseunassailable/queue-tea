@@ -13,7 +13,7 @@ A quest gets a due date in its details pane, under **Due date**, in the quest pa
 These are the defaults this quest picked; each can change in a word.
 
 - **One Calendar tab per realm**, after Notes, at `/calendar`, opened with ⌘8. The View menu and the palette's Go to list it. Its events belong to the selected realm only.
-- **Events live with the realm's notes**, in `Calendar.json` in the realm's notes folder, so Export notes takes them along and Restore brings them back. The file is JSON for now. Reading and writing `.ics` is its own quest (t-b4038d01).
+- **Events live with the realm's notes**, in `Calendar.json` in the realm's notes folder, so Export notes takes them along and Restore brings them back. The file is JSON. Import… and Export… read and write `.ics` files, added later by t-b4038d01: see [Calendar import and export](calendar-ics.md).
 - **A timed event keeps its own zone's clock.** It is saved as the wall times it was given plus an IANA zone name, such as `Europe/Lisbon`, and every view shows it on the Mac's clock. A call at 15:00 in Lisbon shows at 09:00 on a Mac in Chicago, and still at 15:00 Lisbon time after either side changes to or from summer time. The sheet edits an event on its own zone's clock, and a line under the time zone says which zone the Mac is on.
 - **An all-day event has no zone.** It is a first and a last day, both included, and shows on those days wherever the Mac is.
 - **A due date is a plain day**, as `due: "YYYY-MM-DD"` on the quest in the record, with no time and no zone. Records without it read as before.
@@ -38,6 +38,7 @@ These are the defaults this quest picked; each can change in a word.
 - No file means no events. The first save makes it.
 - Events are kept in order of when they start.
 - A save writes a `.tmp` file, keeps the last good copy as `Calendar.json.bak`, then moves the new file into place. Export notes skips both.
+- An imported event also carries `source`, and the file is then format 2 ([details](calendar-ics.md#the-calendar-file)).
 - An entry that doesn't read, or repeats an id, is left in the file as it is, after the others, and the page says how many there are.
 - A file that isn't a calendar, or a newer format, is refused and never written over; the page says which file and why.
 - A time that falls in a summer-time gap moves forward to the first time that exists. A time that happens twice takes the first.
@@ -75,7 +76,8 @@ A refusal from main shows in a banner at the top of the sheet, and the sheet sta
 | The event and file types, limits, `isDay` | `app/shared/calendar.ts` |
 | Wall times, zones and moments | `app/shared/calendar_time.ts` |
 | Reading, checking and writing the file | `app/main/features/calendar/domain/calendar_file.ts` |
-| The three engine calls, one change at a time | `app/main/features/calendar/api/calendar_api.ts`, channels in `app/shared/engine_api.ts`, bridged in `app/preload/preload.ts` |
+| The engine calls, one change at a time | `app/main/features/calendar/api/calendar_api.ts`, channels in `app/shared/engine_api.ts`, bridged in `app/preload/preload.ts` |
+| Reading and writing `.ics` files, and where an imported event came from | See [Calendar import and export](calendar-ics.md#architecture) |
 | Days, weeks, months and ranges | `app/renderer/features/calendar/domain/calendar_days.ts` |
 | Events and due dates as items on days, and lanes in the week | `app/renderer/features/calendar/domain/calendar_items.ts` |
 | The sheet's form and its checks | `app/renderer/features/calendar/domain/event_form.ts` |
@@ -96,4 +98,4 @@ Text the user reads is in `app/renderer/l10n/en.ts` under `calendar` and `detail
 
 ## Not in this quest
 
-Each is its own quest: importing and exporting `.ics` (t-b4038d01), syncing with Google Calendar (t-f42cae61), meetings (t-cfa806e9, added later: Meeting notes with a time show on the calendar and open their note, see [Meetings](meetings.md)), and reminders and repeating events (t-d4cec95d).
+Each is its own quest: importing and exporting `.ics` (t-b4038d01, added later, see [Calendar import and export](calendar-ics.md)), syncing with Google Calendar (t-f42cae61), meetings (t-cfa806e9, added later: Meeting notes with a time show on the calendar and open their note, see [Meetings](meetings.md)), and reminders and repeating events (t-d4cec95d).

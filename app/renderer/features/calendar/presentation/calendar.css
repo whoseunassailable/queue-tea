@@ -64,3 +64,19 @@
 /* A Meeting note with a time: it opens the note, so it's marked apart from events. */
 .rm .cal-chip.meeting { border-left: 3px solid var(--mp, #3ba6d6); }
 .rm .cal-notes-line { display: flex; align-items: center; gap: 8px; margin: 0; }
+/* Import and export, beside New event. */
+.rm .cal .page-h .cal-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rm .cal-files-line { display: flex; align-items: center; gap: 8px; margin: 0; }
+/* An event that came from an .ics file: a dotted edge, as a meeting has a solid one. */
+.rm .cal-chip.imported { border-left: 3px dotted currentColor; }
+.rm .cal-source { padding: 8px 10px; border-radius: 8px; background: var(--hov); }
+.rm .cal-source p { margin: 0; }
+.rm .cal-source .hint { margin-top: 2px; }
+.rm .cal-import-list, .rm .cal-skipped { margin: 0 0 8px; padding: 0; list-style: none; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.rm .cal-import-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: baseline; gap: 0 10px; }
+.rm .cal-import-row .sub { grid-column: 2; font-size: 12px; color: var(--ink2); }
+.rm .cal-import-row .cal-name { font-weight: 700; }
+.rm .cal-import-row.new .cal-tag { color: var(--xp-t); }
+.rm .cal-import-row.update .cal-tag { color: var(--hi-t); }
+.rm .cal-import-row.same { color: var(--ink2); }
+.rm .cal-skipped li { font-size: 13px; }

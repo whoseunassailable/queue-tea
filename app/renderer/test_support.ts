@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import type { DesignsView } from '../shared/designs'
 import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJob, HoardView, LibraryView, ManaView, ProjectRow, ProjectView, QuestFacts, QuestRow, Reply, SettingsPage, Victory, VictoryLine } from '../shared/engine_api'
 import type { Note, NotesView } from '../shared/notes'
-import type { CalendarEventInput, CalendarView } from '../shared/calendar'
+import type { CalendarEventInput, CalendarExport, CalendarImport, CalendarImportPreview, CalendarView } from '../shared/calendar'
 import type { CanvasSave, CanvasView } from '../shared/note_canvas'
 import { NO_MEETING } from '../shared/meetings'
 
@@ -282,6 +282,9 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     readCalendar: vi.fn(async () => ({ ok: true as const, data: { events: [], unreadable: 0 } as CalendarView })),
     saveCalendarEvent: vi.fn(async (_key: string, id: string | null, event: CalendarEventInput) => ({ ok: true as const, data: { events: [{ id: id ?? 'e-1', ...event }], unreadable: 0 } as CalendarView })),
     removeCalendarEvent: vi.fn(async () => ({ ok: true as const, data: { events: [], unreadable: 0 } as CalendarView })),
+    readCalendarImport: vi.fn(async () => ({ ok: true as const, data: null as CalendarImportPreview | null })),
+    importCalendarEvents: vi.fn(async () => ({ ok: true as const, data: { view: { events: [], unreadable: 0 }, added: 0, updated: 0, same: 0 } as CalendarImport })),
+    exportCalendar: vi.fn(async () => ({ ok: true as const, data: null as CalendarExport | null })),
     createNote: vi.fn(async () => ({ ok: true as const, data: { view: NOTES, id: 'n-00000001' } })),
     saveNote: vi.fn(async (_key: string, id: string, change: Pick<Note, 'title' | 'folder' | 'tags' | 'body'>) => ({ ok: true as const, data: { kind: 'saved' as const, view: NOTES, note: note({ id, ...change, stamp: 's-2' }), relinked: 0 } })),
     archiveNote: vi.fn(async () => ({ ok: true as const, data: NOTES })),

@@ -3,7 +3,7 @@ import { t } from '../../../../l10n/en'
 import { addDays, AGENDA_DAYS } from '../../domain/calendar_days'
 import { itemsOn } from '../../domain/calendar_items'
 import type { CalendarItem } from '../../domain/calendar_items'
-import { ItemChip, whenText } from './calendar_item'
+import { ItemChip, sourceName, whenText } from './calendar_item'
 import type { ItemActions } from './calendar_item'
 
 type Props = { anchor: string; today: string; here: string; items: CalendarItem[]; actions: ItemActions }
@@ -12,7 +12,9 @@ const Line = ({ item, day, here, actions }: { item: CalendarItem; day: string; h
   <li class="cal-line">
     <span class="cal-when">{item.kind === 'due' ? t.calendar.states[item.state] : whenText(item, here)}</span>
     <ItemChip item={item} day={day} here={here} actions={actions} />
-    {item.kind === 'event' && item.event.place !== null && <span class="sub">{item.event.place}</span>}
+    {item.kind === 'event' && (item.event.place !== null || item.event.source !== undefined) && (
+      <span class="sub">{[item.event.place, item.event.source === undefined ? null : t.calendar.fromTag(sourceName(item.event.source))].filter(part => part !== null).join(' · ')}</span>
+    )}
     {item.kind === 'meeting' && <span class="sub">{item.link === null ? t.meeting.calendarTag : `${t.meeting.calendarTag} · ${t.meeting.calls[callKindOf(item.link)]}`}</span>}
   </li>
 )

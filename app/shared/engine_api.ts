@@ -1,7 +1,7 @@
 import type { CommentInput, DesignComment, DesignRead, DesignSave, DesignsView, NextVersion, Scene, VersionView } from './designs'
 import type { NoteAttachment, NoteUpload } from './note_attachments'
 import type { NoteBookmark } from './note_bookmarks'
-import type { CalendarEventInput, CalendarView } from './calendar'
+import type { CalendarEventInput, CalendarExport, CalendarImport, CalendarImportPreview, CalendarView, ImportItem } from './calendar'
 import type { CanvasSave, CanvasView, NoteCanvas } from './note_canvas'
 import type { Note, NoteChange, NoteFiled, NoteInput, NoteSave, NotesExport, NotesRestore, NotesView, NoteVersion, QuestProposal } from './notes'
 import type { BranchGraph, BranchReview, CommitRequest, CompleteRequest, FolderSpace, MergeRequest, MergeWorkspace, PushPreview, ResolveRequest, RunChecksRequest } from './branches'
@@ -422,6 +422,11 @@ export type EngineApi = {
   // id null adds the event.
   saveCalendarEvent: (key: string, id: string | null, event: CalendarEventInput) => Promise<Reply<CalendarView>>
   removeCalendarEvent: (key: string, id: string) => Promise<Reply<CalendarView>>
+  // Opens the Mac's file dialog and reads the .ics picked; null when cancelled.
+  readCalendarImport: (key: string) => Promise<Reply<CalendarImportPreview | null>>
+  importCalendarEvents: (key: string, items: ImportItem[]) => Promise<Reply<CalendarImport>>
+  // name is the realm's, for the file and the calendar; null when cancelled.
+  exportCalendar: (key: string, name: string) => Promise<Reply<CalendarExport | null>>
   createNote: (key: string, note: NoteInput) => Promise<Reply<{ view: NotesView; id: string }>>
   saveNote: (key: string, id: string, change: NoteChange, stamp: string) => Promise<Reply<NoteSave>>
   archiveNote: (key: string, id: string, isArchived: boolean) => Promise<Reply<NotesView>>
@@ -539,6 +544,9 @@ export const CHANNELS = {
   readCalendar: 'engine:read-calendar',
   saveCalendarEvent: 'engine:save-calendar-event',
   removeCalendarEvent: 'engine:remove-calendar-event',
+  readCalendarImport: 'engine:read-calendar-import',
+  importCalendarEvents: 'engine:import-calendar-events',
+  exportCalendar: 'engine:export-calendar',
   createNote: 'engine:create-note',
   saveNote: 'engine:save-note',
   archiveNote: 'engine:archive-note',

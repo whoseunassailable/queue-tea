@@ -901,6 +901,50 @@ export const t = {
     removeTitle: (title: string) => `Remove ${title}?`,
     removeLine: "It comes off this realm's calendar. Quests aren't touched.",
     removeIt: 'Remove event',
+    // Where an imported event came from: its calendar's name, else its file's.
+    fromTag: (from: string) => `From ${from}`,
+    editImported: (title: string, from: string) => `Edit ${title}, imported from ${from}`,
+    sourceLine: (day: string, file: string, calendar: string | null, app: string | null) =>
+      `Imported on ${dayText(day)} ${day.slice(0, 4)} from ${file}${calendar === null ? '' : `, the ${calendar} calendar`}${app === null ? '' : ` in ${app}`}.`,
+    sourceHint: 'Importing that file again updates this event, and replaces changes made to it here.',
+    files: {
+      import: 'Import…',
+      export: 'Export…',
+      reading: 'Reading the calendar file…',
+      exporting: 'Exporting the calendar…',
+      readFailed: "Couldn't read the calendar file",
+      exportFailed: "Couldn't export the calendar",
+      close: 'Close',
+      title: (file: string) => `Import from ${file}`,
+      from: (calendar: string | null, app: string | null) =>
+        calendar !== null && app !== null ? `The ${calendar} calendar, from ${app}.` : calendar !== null ? `The ${calendar} calendar.` : app !== null ? `From ${app}.` : null,
+      counts: (added: number, updated: number, same: number) =>
+        [added > 0 ? plural(added, 'new event', 'new events') : null, updated > 0 ? `${updated} to update` : null, same > 0 ? `${same} already here` : null].filter(part => part !== null).join(', ') + '.',
+      statuses: { new: 'New', update: 'Updates', same: 'Already here' },
+      andMore: (n: number) => `and ${plural(n, 'more event', 'more events')}`,
+      leftOut: (n: number) => `${plural(n, "event can't", "events can't")} come in:`,
+      untitled: 'An event with no title',
+      reasons: {
+        repeats: "it repeats, and Queue-tea doesn't keep repeating events yet",
+        cancelled: 'it was cancelled',
+        noStart: 'it has no start',
+        noLength: 'it has no end, or ends as it starts',
+        badTime: "its time doesn't read",
+        tooLong: 'it lasts over a year',
+        zone: "its time zone isn't one Queue-tea knows",
+        twice: "it's in the file twice, and the later copy comes in",
+      },
+      zoneNamed: (zone: string) => `its time zone, ${zone}, isn't one Queue-tea knows`,
+      nothingNew: 'Everything this file holds is on the calendar already.',
+      nothingAtAll: 'This file has no events that can come in.',
+      replaceHint: 'Imported events remember this file. Importing it again updates them, and replaces changes made to them here.',
+      importIt: (n: number) => `Import ${plural(n, 'event', 'events')}`,
+      importing: 'Importing…',
+      imported: (added: number, updated: number) =>
+        added > 0 && updated > 0 ? `Imported ${plural(added, 'new event', 'new events')} and updated ${updated}.` : added > 0 ? `Imported ${plural(added, 'event', 'events')}.` : `Updated ${plural(updated, 'event', 'events')}.`,
+      exported: (n: number, file: string) => `Exported ${plural(n, 'event', 'events')} to ${file}.`,
+      nothingToExport: 'Nothing to export yet. Add an event first.',
+    },
   },
   // A meeting note: its details card in the editor, its sheet, and the calendar's meeting items.
   meeting: {

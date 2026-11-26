@@ -17,6 +17,7 @@ import { itemsOf } from '../../domain/calendar_items'
 import { formOf, newEventForm } from '../../domain/event_form'
 import type { EventForm } from '../../domain/event_form'
 import { AgendaView } from '../widgets/agenda_view'
+import { useCalendarFiles } from '../widgets/calendar_files'
 import type { ItemActions } from '../widgets/calendar_item'
 import { EventSheet } from '../widgets/event_sheet'
 import { MonthView } from '../widgets/month_view'
@@ -87,6 +88,7 @@ export const CalendarPage = ({ engine, realm, onOpenQuest, onOpenNote, onSay, no
   const events = read.load.status === 'ready' ? read.load.data.events : []
   const notes = notesRead.load.status === 'ready' ? notesRead.load.data.notes : []
   const items = useMemo(() => itemsOf(events, realm, here, today, notes), [events, realm, here, today, notes])
+  const files = useCalendarFiles({ engine, realm: { key: realm.key, name: realm.name }, events, here, onView: read.adopt, onSay })
 
   const change = async (call: () => Promise<Awaited<ReturnType<EngineApi['readCalendar']>>>, said: string): Promise<Answer<CalendarView>> => {
     const answer = await ask(engine, call)
@@ -119,9 +121,12 @@ export const CalendarPage = ({ engine, realm, onOpenQuest, onOpenNote, onSay, no
                   </button>
                 ))}
               </div>
-              <button type="button" class="btn primary" onClick={() => add(addDay)}>
-                {t.calendar.newEvent}
-              </button>
+              <div class="cal-actions">
+                {files.controls}
+                <button type="button" class="btn primary" onClick={() => add(addDay)}>
+                  {t.calendar.newEvent}
+                </button>
+              </div>
             </div>
             {view.unreadable > 0 && (
               <p class="note panel" role="status">
@@ -201,6 +206,7 @@ export const CalendarPage = ({ engine, realm, onOpenQuest, onOpenNote, onSay, no
         />
       )}
       {removing !== null && <RemoveEvent event={removing} onRemove={remove} onClose={() => setRemoving(null)} />}
+      {files.dialog}
     </main>
   )
 }

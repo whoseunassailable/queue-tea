@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { CalendarEvent, CalendarView } from '../../../../../shared/calendar'
+import type { CalendarEvent, CalendarExport, CalendarImport, CalendarImportPreview, CalendarSource, CalendarView } from '../../../../../shared/calendar'
 import type { EngineApi, ProjectView, Reply } from '../../../../../shared/engine_api'
 import { App } from '../../../../app/app'
 import { t } from '../../../../l10n/en'
@@ -233,6 +233,120 @@ describe('every state', () => {
 
     expect(await screen.findByText(c.unreadable(2))).toBeTruthy()
     expect(screen.getByRole('button', { name: c.editEvent('Call with Ana') })).toBeTruthy()
+  })
+})
+
+describe('importing and exporting .ics files', () => {
+  const f = c.files
+  const SOURCE: CalendarSource = { file: 'Work.ics', calendar: 'Work', app: 'Google Calendar', uid: 'review@google.com', importedAt: '2026-11-25T19:00:00.000Z' }
+  // 14:00 in Lisbon on Monday 30 November is 08:00 in Chicago.
+  const REVIEW: CalendarEvent = { id: 'e-3', title: 'Design review', when: { kind: 'timed', start: '2026-11-30T14:00', end: '2026-11-30T15:00', zone: 'Europe/Lisbon' }, place: 'Room 2', notes: null, source: SOURCE }
+  const { id: _, source: __, ...reviewInput } = REVIEW
+  const PREVIEW: CalendarImportPreview = {
+    file: 'Work.ics',
+    calendar: 'Work',
+    app: 'Google Calendar',
+    items: [
+      { event: reviewInput, source: SOURCE, status: 'new' },
+      { event: { title: 'Lisbon trip', when: TRIP.when, place: null, notes: null }, source: { ...SOURCE, uid: 'e-2@queue-tea' }, status: 'same' },
+    ],
+    skipped: [
+      { title: 'Weekly sync', reason: 'repeats', detail: null },
+      { title: null, reason: 'zone', detail: 'Mars/Olympus' },
+    ],
+  }
+
+  it('shows what a file would bring in, imports the new and changed events, and says so', async () => {
+    const importCalendarEvents = vi.fn(async () => ok<CalendarImport>({ view: { events: [CALL, TRIP, REVIEW], unreadable: 0 }, added: 1, updated: 0, same: 0 }))
+    const { engine, onSay } = await open({ over: { readCalendarImport: vi.fn(async () => ok<CalendarImportPreview | null>(PREVIEW)), importCalendarEvents } })
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.import })))
+
+    const sheet = await screen.findByRole('dialog', { name: f.title('Work.ics') })
+    expect(engine.readCalendarImport).toHaveBeenCalledWith(KEY)
+    expect(within(sheet).getByText(f.from('Work', 'Google Calendar')!)).toBeTruthy()
+    expect(within(sheet).getByText(f.counts(1, 0, 1))).toBeTruthy()
+    expect(within(sheet).getByText(`${c.dayName('2026-11-30')}, 14:00 – 15:00 · Europe/Lisbon`)).toBeTruthy()
+    expect(within(sheet).getByText(f.leftOut(2))).toBeTruthy()
+    expect(within(sheet).getByText(f.reasons.repeats, { exact: false })).toBeTruthy()
+    expect(within(sheet).getByText(f.untitled)).toBeTruthy()
+    expect(within(sheet).getByText(f.zoneNamed('Mars/Olympus'), { exact: false })).toBeTruthy()
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: f.importIt(1) })))
+
+    expect(importCalendarEvents).toHaveBeenCalledWith(KEY, [{ event: reviewInput, source: SOURCE }])
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onSay).toHaveBeenCalledWith(f.imported(1, 0))
+    expect(within(dayCell('2026-11-30')).getByRole('button', { name: c.editImported('Design review', 'Work') })).toBeTruthy()
+  })
+
+  it('says when everything in the file is here already, and closes without importing', async () => {
+    const preview = { ...PREVIEW, items: PREVIEW.items.map(item => ({ ...item, status: 'same' as const })), skipped: [] }
+    const { engine } = await open({ over: { readCalendarImport: vi.fn(async () => ok<CalendarImportPreview | null>(preview)) } })
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.import })))
+
+    expect(await screen.findByText(f.nothingNew)).toBeTruthy()
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: f.close })))
+    expect(engine.importCalendarEvents).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it("keeps the sheet open with the engine's reason when an import is refused", async () => {
+    const importCalendarEvents = vi.fn(async () => ({ ok: false as const, error: { message: 'Importing these would put more than 5,000 events on this calendar.' } }))
+    await open({ over: { readCalendarImport: vi.fn(async () => ok<CalendarImportPreview | null>(PREVIEW)), importCalendarEvents } })
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.import })))
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.importIt(1) })))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Importing these would put more than 5,000 events on this calendar.')
+    expect(screen.getByRole('dialog', { name: f.title('Work.ics') })).toBeTruthy()
+  })
+
+  it('says it is reading the file, does nothing when the dialog is cancelled, and tries again after a failure', async () => {
+    let answer: (reply: Reply<CalendarImportPreview | null>) => void = () => {}
+    const readCalendarImport = vi.fn(() => new Promise<Reply<CalendarImportPreview | null>>(done => (answer = done)))
+    await open({ over: { readCalendarImport } })
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.import })))
+
+    expect(screen.getByRole('status').textContent).toContain(f.reading)
+    expect((screen.getByRole('button', { name: f.export }) as HTMLButtonElement).disabled).toBe(true)
+    await act(async () => answer(ok(null)))
+    await waitFor(() => expect(screen.queryByText(f.reading)).toBeNull())
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: f.import })))
+    await act(async () => answer({ ok: false, error: { message: "Notes.ics isn't a calendar file Queue-tea can read." } }))
+    const failed = await screen.findByRole('dialog', { name: f.readFailed })
+    expect(within(failed).getByRole('alert').textContent).toBe("Notes.ics isn't a calendar file Queue-tea can read.")
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.failed.tryAgain })))
+    expect(readCalendarImport).toHaveBeenCalledTimes(3)
+  })
+
+  it("exports the realm's events under its name, and says where they went", async () => {
+    const exportCalendar = vi.fn(async () => ok<CalendarExport | null>({ file: 'a.ics', events: 2 }))
+    const { onSay } = await open({ over: { exportCalendar } })
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.export })))
+
+    expect(exportCalendar).toHaveBeenCalledWith(KEY, REALM.name)
+    await waitFor(() => expect(onSay).toHaveBeenCalledWith(f.exported(2, 'a.ics')))
+  })
+
+  it('says there is nothing to export before asking where to put it', async () => {
+    const { engine, onSay } = await open({ events: [], realm: realmWith() })
+    await act(async () => void fireEvent.click(await screen.findByRole('button', { name: f.export })))
+
+    expect(onSay).toHaveBeenCalledWith(f.nothingToExport)
+    expect(engine.exportCalendar).not.toHaveBeenCalled()
+  })
+
+  it('shows where an imported event came from: in the agenda and in its sheet', async () => {
+    await open({ events: [CALL, REVIEW] })
+    await screen.findByRole('heading', { name: 'November 2026' })
+    fireEvent.click(screen.getByRole('button', { name: c.modes.agenda }))
+
+    expect(screen.getByText(`Room 2 · ${c.fromTag('Work')}`)).toBeTruthy()
+    expect(screen.getByRole('button', { name: c.editImported('Design review', 'Work') }).getAttribute('title')).toContain(c.fromTag('Work'))
+    fireEvent.click(screen.getByRole('button', { name: c.editImported('Design review', 'Work') }))
+    expect(screen.getByText(c.sourceLine('2026-11-25', 'Work.ics', 'Work', 'Google Calendar'))).toBeTruthy()
+    expect(screen.getByText(c.sourceHint)).toBeTruthy()
+    expect(screen.queryByText(c.fromTag('Zoom'))).toBeNull()
   })
 })
 

@@ -59,7 +59,6 @@ type SidebarProps = { engine: EngineApi; projects: Load<ProjectRow[]>; selected:
 
 export const Sidebar = ({ engine, projects, selected, detected, route, onPick, onOpenFolder }: SidebarProps) => (
   <nav class="side panel" aria-label={t.nav.realms}>
-    <div class="lights" aria-hidden="true" />
     <div class="side-h">
       <span>{t.nav.realms}</span>
       <button type="button" class="icon-btn" aria-label={t.firstRun.openFolder} onClick={onOpenFolder}>

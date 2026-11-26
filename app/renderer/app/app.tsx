@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 
 import type { EngineApi, FolderPick, MenuItem, Opened, RealmLine, SessionState } from '../../shared/engine_api'
+import { TITLE_BAR_PX } from '../../shared/window_chrome'
 import { hrefOf, ROUTES, useRoute } from '../config/routing/routes'
 import type { Route } from '../config/routing/routes'
 import { DETAIL_IS_PAGE_BELOW, PET_MS, SKY_CHECK_MS } from '../core/constants/constants'
@@ -394,7 +395,7 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
   const classes = ['rm', `t-${skyOf(state.settings.sky, hour)}`, state.won === null ? moodOf(session) : 'm-cheer', isPetted ? 'pet' : '', state.settings.isCalm ? 'calm' : '', isSideOpen ? 'side-open' : ''].filter(c => c !== '')
 
   return (
-    <div class={classes.join(' ')} data-testid="root">
+    <div class={classes.join(' ')} style={{ '--title-bar': `${TITLE_BAR_PX}px` }} data-testid="root">
       <Sky />
       <Sidebar engine={engine} projects={state.projects} selected={state.selected} detected={state.detected} route={route} onPick={pickRealm} onOpenFolder={() => void openFolder()} />
       <div class="main">
@@ -441,6 +442,9 @@ export const App = ({ workspace, engine }: { workspace: Workspace; engine: Engin
         )}
         <Content state={state} workspace={workspace} engine={engine} route={route} edits={edits} flows={flows} actionsFor={actionsFor} sheet={sheet} isPaletteOpen={isPaletteOpen} onSheet={setSheet} onCopy={text => void flows.copy(text)} onPet={() => setPetted(true)} realms={realms} onOpenFolder={() => void openFolder()} onConnect={setConnecting} />
       </div>
+      {/* After the panels, so a button scrolled up behind it can't take its drag
+          away, and before the dialogs, which stay pressable over it. */}
+      <div class="title-bar" aria-hidden="true" data-testid="title-bar" />
       {sheet !== null && readable !== null && <SheetView sheet={sheet} view={readable} engine={engine} edits={edits} flows={flows} onClose={() => setSheet(null)} />}
       {isPaletteOpen && <PaletteDialog key={state.selected} engine={engine} input={paletteInput} onClose={() => setPaletteOpen(false)} />}
       {adding !== null && <AddRealmDialog engine={engine} pick={adding.pick} isDetected={adding.isDetected} flows={realms} onAccount={(key, login) => void workspace.setRealmAccount(key, login)} onCopy={text => void flows.copy(text)} onClose={() => setAdding(null)} />}

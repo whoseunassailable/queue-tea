@@ -301,7 +301,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
 
 **Window**
 - Default size 1280×800; minimum 720×560. Size and position are remembered per display.
-- One unified 52 px title bar: `titleBarStyle: 'hiddenInset'`, traffic lights at x 20, y 18. The bar is a drag region; its controls are `no-drag`.
+- A 28 px title strip across the top of the window: `titleBarStyle: 'hiddenInset'`, traffic lights at x 20, centred in the strip. The strip drags the window from anywhere along it and holds nothing to press; the sidebar and the toolbar start under it. The toolbar's gaps drag too, and its controls are `no-drag`. Updated 2026-11-26: this replaces a 52 px bar whose drag areas sat inside the sidebar and the scrolling content, so the window couldn't be dragged from its top.
 
 **Panes**
 - Sidebar 248 px, resizable 200–320, collapses below 180. Toggle with ⌃⌘S.
@@ -314,7 +314,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
 - Below 900 px: the sidebar folds away (⌃⌘S brings it back as an overlay), the tabs become a menu, and the detail opens as its own page with ‹ Back. That page is the shape the phone app can reuse later.
 
 **Sidebar**, top to bottom:
-1. The 52 px bar: traffic lights and [⊟].
+1. The traffic lights sit in the title strip above the sidebar (see Window), so the sidebar starts with its header. The [⊟] toggle isn't built.
 2. A "Projects" header (28 px) with **+**, which is Open folder….
 3. One row per record in `~/.queue-tea/projects/*.json`, skipping names that start with ".", `.bak`, `.lock` and `.broken-*`. Each row is 44 px:
    - Line 1: the session mark, the name, and the waiting count on the right.

@@ -99,6 +99,23 @@ describe('Queue-tea MCP operations', () => {
     expect(record.tasks.find(t => t.id === 'other')!.review).toBe(null)
   })
 
+  it('turns back a review that leaves an acceptance criterion out, then asks with the summary', async () => {
+    const record = await read()
+    await seed({ ...record, tasks: record.tasks.map(t => t.id === 'ours' ? { ...t, criteria: ['Saves the plan'] } : t) })
+    const before = await read()
+    for (const criteria of [undefined, [{ met: true, evidence: ' ' }]]) {
+      const result = await call('task_looks_done', { taskId: 'ours', checked: 'wrote it', ...(criteria === undefined ? {} : { criteria }) })
+      expect(result).toMatchObject({ error: false, text: expect.stringContaining('1. Saves the plan') })
+    }
+    expect(await read()).toEqual(before)
+    expect((await call('done', { taskId: 'ours', criteria: [{ met: 'yes', evidence: 'x' }] })).error).toBe(true)
+
+    const criteria = [{ met: true, evidence: 'plan test passed' }]
+    expect((await call('done', { taskId: 'ours', criteria })).text).toContain('tea-dd')
+    await call('done', { taskId: 'ours', checked: 'npm test passed', criteria })
+    expect((await read()).tasks.find(t => t.id === 'ours')!.review).toMatchObject({ checked: 'Criteria: 1 of 1 met. npm test passed tea-dd did not run.' })
+  })
+
   it('rejects other worktrees, stale task IDs, bad schemas and unreadable records', async () => {
     for (const taskId of ['other', 'stale']) {
       expect((await call('done', { taskId })).error).toBe(true)

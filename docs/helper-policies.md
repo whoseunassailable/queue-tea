@@ -33,7 +33,7 @@ The same rule decides the done reminder: at Quick, Tea-DD isn't asked for when C
 
 A helper counts as run only when its Agent call comes back without an error and without being refused. A call that fails, is refused, or throws doesn't count, so the done reminder still asks for it.
 
-- **The reminder.** When Claude calls `task_looks_done` and a helper the profile needs hasn't run, the tool answers once: "Tea-DD is on for this task and hasn't run yet. Run it, then call task_looks_done again. If it failed or can't run here, say why in checked when you call again."
+- **The reminder.** When Claude calls `task_looks_done` with every acceptance criterion answered ([Telling the mod a task looks done](spec.md#telling-the-mod-a-task-looks-done)) and a helper the profile needs hasn't run, the tool answers once: "Tea-DD is on for this task and hasn't run yet. Run it, then call task_looks_done again. If it failed or can't run here, say why in checked when you call again."
 - **After one reminder,** Rohan is asked whether the task is done, and the menu's "Claude checked: …" line ends with "Tea-DD is on and didn't run." Nothing is marked done without him.
 - **A helper that isn't installed,** or is turned away, fails its Agent call, so it is handled the same way: one reminder, then Rohan decides.
 - **A helper sent to the background** counts as run when it starts, since Claude reads its result later.

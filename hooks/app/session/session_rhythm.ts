@@ -23,7 +23,7 @@ import { recordsRepositoryOf } from '../../shared/records/records_providers'
 import { HEARTBEAT_MS } from '../../shared/sessions/domain/services/session_rules'
 import { isoLocal } from '../../shared/time/domain/services/time'
 import { PROPOSE_TOOL } from '../../features/commit_guard/presentation/constants/commit_guard_text'
-import { PROFILE_TOOL } from '../../features/tasks/presentation/constants/tasks_text'
+import { DONE_TOOL, PROFILE_TOOL } from '../../features/tasks/presentation/constants/tasks_text'
 import { TEST_PROFILE_IDS } from '../../shared/records/domain/services/test_profile'
 import { loadContext } from './load_context'
 import { beat } from './session_beat'
@@ -62,15 +62,19 @@ export async function startSession($: EngineInterface) {
   await loadRecord(portsOf($))
   await $.tool.register({
     name: 'task_looks_done',
-    description:
-      'Call when your reply has finished what the current Queue-tea task asked. Rohan is then asked in the Queue-tea menu whether it is done for now.',
+    description: DONE_TOOL.description,
     inputSchema: {
       type: 'object',
       properties: {
-        checked: {
-          type: 'string',
-          description:
-            'Optional. One line on what you checked before calling, such as the tests you ran and what they showed. Shown to Rohan beside the question.',
+        checked: { type: 'string', description: DONE_TOOL.checked },
+        criteria: {
+          type: 'array',
+          description: DONE_TOOL.criteria,
+          items: {
+            type: 'object',
+            properties: { met: { type: 'boolean', description: DONE_TOOL.met }, evidence: { type: 'string', description: DONE_TOOL.evidence } },
+            required: ['met', 'evidence'],
+          },
         },
       },
     },

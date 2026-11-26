@@ -96,4 +96,4 @@ Text the user reads is in `app/renderer/l10n/en.ts` under `calendar` and `detail
 
 ## Not in this quest
 
-Each is its own quest: importing and exporting `.ics` (t-b4038d01), syncing with Google Calendar (t-f42cae61), meetings (t-cfa806e9), and reminders and repeating events (t-d4cec95d).
+Each is its own quest: importing and exporting `.ics` (t-b4038d01), syncing with Google Calendar (t-f42cae61), meetings (t-cfa806e9, added later: Meeting notes with a time show on the calendar and open their note, see [Meetings](meetings.md)), and reminders and repeating events (t-d4cec95d).

@@ -6,6 +6,7 @@ import type { ActiveQuest, ChronicleView, DayTime, EngineApi, GameView, HelperJo
 import type { Note, NotesView } from '../shared/notes'
 import type { CalendarEventInput, CalendarView } from '../shared/calendar'
 import type { CanvasSave, CanvasView } from '../shared/note_canvas'
+import { NO_MEETING } from '../shared/meetings'
 
 export const quest = (over: Partial<QuestRow> & { id: string }): QuestRow => ({
   title: over.id,
@@ -182,7 +183,7 @@ export const DESIGNS: DesignsView = { versions: [], coming: [] }
 
 export const NOTES: NotesView = { notes: [], unreadable: [], folder: '/Users/me/.queue-tea/notes/a-000001' }
 
-export const note = (over: Partial<Note> = {}): Note => ({ id: 'n-00000001', title: 'Bug Bounty Helper', folder: 'Ideas', type: null, isPinned: false, tags: [], created: '2026-11-07T10:00:00+01:00', updated: '2026-11-07T10:00:00+01:00', isArchived: false, quests: [], body: '', stamp: 's-1', ...over })
+export const note = (over: Partial<Note> = {}): Note => ({ id: 'n-00000001', title: 'Bug Bounty Helper', folder: 'Ideas', type: null, isPinned: false, tags: [], created: '2026-11-07T10:00:00+01:00', updated: '2026-11-07T10:00:00+01:00', isArchived: false, quests: [], meeting: NO_MEETING, body: '', stamp: 's-1', ...over })
 
 export const LIBRARY: LibraryView = { reading: [], finished: [], finishedCount: 0, pagesRead: 0, pagesThisWeek: 0, pagesToday: 0 }
 

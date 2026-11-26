@@ -277,7 +277,8 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     onHeld: (id, edits) => setHeld(was => (edits === null && !(id in was) ? was : Object.fromEntries([...Object.entries(was).filter(([key]) => key !== id), ...(edits === null ? [] : [[id, edits]])]))),
     onOpen: id => setOpenId(id),
     onMake: (title, folder) => void create({ title, folder, body: '' }).then(isMade => isMade && onSay(t.notebook.made(title))),
-    onSaveAsNew: (change: NoteChange) => void create({ title: change.title, folder: change.folder, body: change.body, type: change.type }),
+    onSaveAsNew: (change: NoteChange) => void create({ title: change.title, folder: change.folder, body: change.body, type: change.type, meeting: change.meeting }),
+    onFollowUp: input => void create(input).then(isMade => isMade && onSay(t.meeting.madeFollowUp(input.title))),
     onRenameFolder: setRenaming,
     onArchive: (note, isArchived) =>
       void act(() => engine.archiveNote(realm.key, note.id, isArchived), view => view).then(answer => {

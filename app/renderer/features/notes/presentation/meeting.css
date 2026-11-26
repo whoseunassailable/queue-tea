@@ -1,0 +1,9 @@
+/* A Meeting note's details card, under its title, as wide as the text column. */
+.rm .nt-meeting { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 640px; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--card); }
+.rm .nt-meeting p { margin: 0; }
+.rm .nt-meeting-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.rm .nt-meeting-when { font-weight: 600; color: var(--ink); }
+.rm .nt-meeting-join { margin-left: auto; white-space: nowrap; }
+.rm .nt-meeting-people { overflow-wrap: anywhere; }
+.rm .nt-meeting-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.rm .nt-meeting-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }

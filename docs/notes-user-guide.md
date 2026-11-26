@@ -106,6 +106,15 @@ resizes it. **Connect**, then another card, draws a line between them; a
 focused line goes with Delete. The board is `Canvas.canvas` in the notes
 folder, so Obsidian opens it as a canvas.
 
+A **Meeting** note has Agenda, Notes, Decisions and Action items. Its
+**Meeting details** card, under the title, holds the day and time, the call
+link and the attendees: **Add meeting details…** sets them, and **Join on
+Zoom**, **Join on Google Meet** or **Join on Teams** opens the call.
+**Follow-up meeting** makes the next note with the same people and link, and
+this one's open action items on its agenda. A meeting with a time shows on
+the **Calendar**, and clicking it there opens the note. See
+[Meetings](meetings.md).
+
 **Today** opens today's note, creating it in Journal when needed. **Journal**
 lists daily notes by month and lets you open another date with **Day** and
 **Open day**. **Edit the daily template** opens the note that new days copy;

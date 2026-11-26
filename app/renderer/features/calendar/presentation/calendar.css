@@ -61,3 +61,6 @@
 /* sheet */
 .rm .cal-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .rm .sheet-actions .cal-remove { margin-right: auto; }
+/* A Meeting note with a time: it opens the note, so it's marked apart from events. */
+.rm .cal-chip.meeting { border-left: 3px solid var(--mp, #3ba6d6); }
+.rm .cal-notes-line { display: flex; align-items: center; gap: 8px; margin: 0; }

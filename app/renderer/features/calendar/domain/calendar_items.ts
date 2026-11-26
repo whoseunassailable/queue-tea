@@ -1,6 +1,8 @@
 import type { CalendarEvent } from '../../../../shared/calendar'
 import { wallIn } from '../../../../shared/calendar_time'
 import type { ProjectView, QuestRow } from '../../../../shared/engine_api'
+import type { MeetingTime } from '../../../../shared/meetings'
+import type { Note } from '../../../../shared/notes'
 import { addDays, daysFrom } from './calendar_days'
 
 type Realm = Extract<ProjectView, { kind: 'readable' }>
@@ -10,10 +12,12 @@ type Realm = Extract<ProjectView, { kind: 'readable' }>
 export type DueState = 'waiting' | 'sealed' | 'active'
 
 // What a view draws. A timed event's start and end are wall times on the
-// Mac's clock; firstDay and lastDay are the days it touches there.
+// Mac's clock; firstDay and lastDay are the days it touches there. A meeting
+// is a Meeting note with a time, which opens the note; time is on its own clock.
 export type CalendarItem =
   | { kind: 'event'; key: string; event: CalendarEvent; firstDay: string; lastDay: string; start: string | null; end: string | null }
   | { kind: 'due'; key: string; questId: string; title: string; state: DueState; day: string; isOverdue: boolean }
+  | { kind: 'meeting'; key: string; noteId: string; title: string; time: MeetingTime; link: string | null; firstDay: string; lastDay: string; start: string; end: string }
 
 const MINUTES_IN_DAY = 24 * 60
 
@@ -45,17 +49,35 @@ export const dueItemsOf = (realm: Realm, today: string): CalendarItem[] => {
   })
 }
 
-export const itemsOf = (events: CalendarEvent[], realm: Realm, here: string, today: string): CalendarItem[] => [...events.map(event => eventItemOf(event, here)), ...dueItemsOf(realm, today)]
+// The realm's live Meeting notes that have a time, on the Mac's clock.
+export const meetingItemsOf = (notes: readonly Note[], here: string): CalendarItem[] =>
+  notes.flatMap(note => {
+    const { time } = note.meeting
+    if (note.isArchived || note.type !== 'meeting' || time === null) return []
+    const start = wallIn(time.start, time.zone, here)
+    const end = wallIn(time.end, time.zone, here)
+    const firstDay = start.slice(0, 10)
+    const endDay = end.slice(11) === '00:00' ? addDays(end.slice(0, 10), -1) : end.slice(0, 10)
+
+    return [{ kind: 'meeting' as const, key: `meeting-${note.id}`, noteId: note.id, title: note.title, time, link: note.meeting.link, firstDay, lastDay: endDay < firstDay ? firstDay : endDay, start, end }]
+  })
+
+export const itemsOf = (events: CalendarEvent[], realm: Realm, here: string, today: string, notes: readonly Note[] = []): CalendarItem[] => [
+  ...events.map(event => eventItemOf(event, here)),
+  ...dueItemsOf(realm, today),
+  ...meetingItemsOf(notes, here),
+]
 
 export const firstDayOf = (item: CalendarItem): string => (item.kind === 'due' ? item.day : item.firstDay)
 const lastDayOf = (item: CalendarItem): string => (item.kind === 'due' ? item.day : item.lastDay)
-export const isTimed = (item: CalendarItem): item is Extract<CalendarItem, { kind: 'event' }> & { start: string; end: string } => item.kind === 'event' && item.start !== null
+export type TimedItem = Extract<CalendarItem, { kind: 'event' | 'meeting' }> & { start: string; end: string }
+export const isTimed = (item: CalendarItem): item is TimedItem => (item.kind === 'event' && item.start !== null) || item.kind === 'meeting'
 
 // All-day events first, then due dates, then the timed ones by when they start.
 const rank = (item: CalendarItem) => (item.kind === 'due' ? 1 : item.start === null ? 0 : 2)
-const titleOf = (item: CalendarItem) => (item.kind === 'due' ? item.title : item.event.title)
-const compare = (a: CalendarItem, b: CalendarItem) =>
-  rank(a) - rank(b) || (a.kind === 'event' && b.kind === 'event' ? (a.start ?? a.firstDay).localeCompare(b.start ?? b.firstDay) : 0) || titleOf(a).localeCompare(titleOf(b))
+const titleOf = (item: CalendarItem) => (item.kind === 'event' ? item.event.title : item.title)
+const startOf = (item: CalendarItem) => (item.kind === 'due' ? item.day : (item.start ?? item.firstDay))
+const compare = (a: CalendarItem, b: CalendarItem) => rank(a) - rank(b) || (a.kind !== 'due' && b.kind !== 'due' ? startOf(a).localeCompare(startOf(b)) : 0) || titleOf(a).localeCompare(titleOf(b))
 
 export const itemsOn = (items: CalendarItem[], day: string): CalendarItem[] => items.filter(item => firstDayOf(item) <= day && day <= lastDayOf(item)).sort(compare)
 

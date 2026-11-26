@@ -15,6 +15,7 @@ import { Refusal } from '../../../core/reply'
 import { notesApi } from './notes_api'
 import type { NotesDeps } from './notes_api'
 import { noteFileResponse } from './note_protocol'
+import { NO_MEETING } from '../../../../shared/meetings'
 
 const KEY = 'demo-abc123'
 const NOW = Date.parse('2026-11-07T12:00:00Z')
@@ -37,7 +38,7 @@ const refused = <T>(answer: Reply<T>): string => {
 
   return answer.error.message
 }
-const change = (over: Partial<NoteChange> = {}): NoteChange => ({ title: 'Plan', folder: 'Ideas', type: null, isPinned: false, tags: [], body: 'Body', ...over })
+const change = (over: Partial<NoteChange> = {}): NoteChange => ({ title: 'Plan', folder: 'Ideas', type: null, isPinned: false, tags: [], meeting: NO_MEETING, body: 'Body', ...over })
 const created = async (over: Partial<NoteChange> = {}) => data(await api.createNote(KEY, change(over)))
 const only = (view: NotesView, id: string) => view.notes.find(n => n.id === id)!
 const makeApi = (over: Partial<NotesDeps> = {}) => {

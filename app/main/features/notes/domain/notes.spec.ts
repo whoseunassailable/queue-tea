@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, NOTE_TYPES, openItemsOf, proposalOf, renameLinks, questIdOf, questLinkOf, questLinksOf } from '../../../../shared/notes'
 import type { Note } from '../../../../shared/notes'
+import { NO_MEETING } from '../../../../shared/meetings'
 import { noteText, parseNote } from './note_file'
 
-const note = (over: Partial<Note> = {}): Note => ({ id: 'n-1', title: 'Bug Bounty Helper', folder: 'Ideas', type: null, isPinned: false, tags: [], created: '', updated: '', isArchived: false, quests: [], body: '', stamp: '', ...over })
+const note = (over: Partial<Note> = {}): Note => ({ id: 'n-1', title: 'Bug Bounty Helper', folder: 'Ideas', type: null, isPinned: false, tags: [], created: '', updated: '', isArchived: false, quests: [], meeting: NO_MEETING, body: '', stamp: '', ...over })
 
 describe('a note file', () => {
   it.each(NOTE_TYPES)('reads and writes a %s type apart from the folder and pin', type => {
@@ -43,10 +44,10 @@ describe('a note file', () => {
   })
 
   it('reads what it writes, and keeps front matter it does not own', () => {
-    const text = noteText({ title: 'Bug "Bounty"', folder: 'Ideas', type: null, isPinned: false, tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
+    const text = noteText({ title: 'Bug "Bounty"', folder: 'Ideas', type: null, isPinned: false, tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], meeting: NO_MEETING, body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
     const read = parseNote(text, 'n-1', 'file-time')
 
-    expect(read).toEqual({ title: 'Bug "Bounty"', folder: 'Ideas', type: null, isPinned: false, tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
+    expect(read).toEqual({ title: 'Bug "Bounty"', folder: 'Ideas', type: null, isPinned: false, tags: ['security'], created: '2026-11-07T10:00:00', updated: '2026-11-07T11:00:00', isArchived: true, quests: [{ id: 't-1', item: null }], meeting: NO_MEETING, body: '# Plan\n\n---\nnot front matter', aliases: ['bbh'], rest: ['cssclass: wide'] })
     expect(noteText(read)).toBe(text)
   })
 

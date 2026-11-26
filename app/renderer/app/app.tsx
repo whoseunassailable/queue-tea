@@ -157,6 +157,10 @@ const Content = ({ state, workspace, engine, route, edits, flows, actionsFor, sh
           workspace.openQuest(view.key, id)
           window.location.hash = hrefOf(ROUTES.quests)
         }}
+        onOpenNote={id => {
+          askNotes({ kind: 'open', id })
+          window.location.hash = hrefOf(ROUTES.notes)
+        }}
         onSay={(text, tone = 'success') => workspace.say({ tone, text })}
       />
     )

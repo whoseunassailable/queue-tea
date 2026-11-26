@@ -1,3 +1,4 @@
+import { callKindOf } from '../../../../../shared/meetings'
 import { t } from '../../../../l10n/en'
 import { addDays, AGENDA_DAYS } from '../../domain/calendar_days'
 import { itemsOn } from '../../domain/calendar_items'
@@ -12,6 +13,7 @@ const Line = ({ item, day, here, actions }: { item: CalendarItem; day: string; h
     <span class="cal-when">{item.kind === 'due' ? t.calendar.states[item.state] : whenText(item, here)}</span>
     <ItemChip item={item} day={day} here={here} actions={actions} />
     {item.kind === 'event' && item.event.place !== null && <span class="sub">{item.event.place}</span>}
+    {item.kind === 'meeting' && <span class="sub">{item.link === null ? t.meeting.calendarTag : `${t.meeting.calendarTag} · ${t.meeting.calls[callKindOf(item.link)]}`}</span>}
   </li>
 )
 

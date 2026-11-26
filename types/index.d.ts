@@ -133,7 +133,26 @@ export type Task = {
   // The day it's due, as YYYY-MM-DD on Rohan's own calendar; absent for none
   // and in older records. The realm calendar shows it on that day.
   due?: string
+  // Planning, from the app's Plan tab. Each is absent in older records and is
+  // read defensively, so a hand-edited value that doesn't read counts as none.
+  // Its place among the quests beside it in the backlog, lowest first; absent
+  // until it is dragged, when it follows the ranked ones in the ★ order.
+  rank?: number
+  // Labels to filter by, each once.
+  tags?: string[]
+  // Effort points: Rohan's estimate of its size, never minutes. Measured time
+  // stays in `minutesByDay`.
+  points?: number
+  // The quest this is a child quest of. Its sagas stay in `parentIds`, so the
+  // quest board still lists it under them; the Plan backlog nests it here.
+  parentQuest?: string
+  // Relates to and duplicates. Depends on and blocks are `blockedBy`, read
+  // from either end.
+  links?: QuestLink[]
 }
+
+export type QuestLinkKind = 'relates' | 'duplicates'
+export type QuestLink = { kind: QuestLinkKind; id: string }
 
 // Who works on a task in progress.
 export type Platform = 'claude' | 'codex'

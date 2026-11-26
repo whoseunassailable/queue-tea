@@ -62,6 +62,7 @@ const entry = (over: Pick<PaletteEntry, 'id' | 'section' | 'label' | 'run'> & Pa
 
 const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
   ...TAB_ORDER.map(tab => ({ route: ROUTES[tab], label: t.nav[tab], keys: `⌘${tabKeyOf(tab)}` })),
+  { route: ROUTES.planBoard, label: t.plan.board, keys: null },
   { route: ROUTES.guild, label: t.nav.guild, keys: null },
   { route: ROUTES.hoard, label: t.nav.hoard, keys: null },
   { route: ROUTES.library, label: t.nav.library, keys: null },

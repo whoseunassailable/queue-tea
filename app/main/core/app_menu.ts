@@ -15,7 +15,7 @@ const command = (label: string, key: string, send: Send): MenuItemConstructorOpt
 
 // The menu bar's own words for each tab. The order and the digits come from
 // the window's tab order.
-const TAB_LABELS: Record<TabId, string> = { home: 'Home', quests: 'Quests', designs: 'Designs', notes: 'Notes', branches: 'Branches', chronicle: 'Chronicle', mana: 'Mana & time', calendar: 'Calendar' }
+const TAB_LABELS: Record<TabId, string> = { home: 'Home', quests: 'Quests', designs: 'Designs', notes: 'Notes', branches: 'Branches', chronicle: 'Chronicle', mana: 'Mana & time', calendar: 'Calendar', plan: 'Plan' }
 
 const TABS: readonly (readonly [string, string])[] = TAB_ORDER.map(tab => [TAB_LABELS[tab], tabKeyOf(tab)] as const)
 

@@ -63,7 +63,7 @@ describe('finding the pages', () => {
     await open('/home')
 
     const tabs = within(screen.getByRole('navigation', { name: t.nav.sections })).getAllByRole('link')
-    expect(tabs.map(link => link.textContent)).toEqual([t.nav.home, t.nav.quests, t.nav.designs, t.nav.notes, t.nav.branches, t.nav.chronicle, t.nav.mana, t.nav.calendar])
+    expect(tabs.map(link => link.textContent)).toEqual([t.nav.home, t.nav.quests, t.nav.designs, t.nav.notes, t.nav.branches, t.nav.chronicle, t.nav.mana, t.nav.calendar, t.nav.plan])
     expect(tabs[3]!.getAttribute('href')).toBe('#/notes')
   })
 

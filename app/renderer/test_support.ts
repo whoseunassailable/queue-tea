@@ -1,4 +1,5 @@
 import { branchGraph, branchReview, mergeWorkspace } from './features/branches/test_fixtures'
+import { planView } from './features/plan/test_fixtures'
 import { vi } from 'vitest'
 
 import type { DesignsView } from '../shared/designs'
@@ -306,6 +307,8 @@ export const fakeEngine = (over: Partial<EngineApi> = {}) => {
     editQuest: vi.fn(reply),
     setActiveSaga: vi.fn(reply),
     setTimeBudget: vi.fn(reply),
+    readPlan: vi.fn(async () => ({ ok: true as const, data: planView() })),
+    changePlan: vi.fn(async (key: string) => ({ ok: true as const, data: { view: projectView(key), realm: planView(key).realms[0]!, undo: [] } })),
     readQuestFacts: vi.fn(async () => ({ ok: true as const, data: QUEST_FACTS })),
     readLive: vi.fn(async () => ({ ok: true as const, data: { drift: [], mismatch: null, warning: null } })),
     switchBranch: vi.fn(async () => ({ ok: true as const, data: null })),

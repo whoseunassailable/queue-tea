@@ -3,6 +3,7 @@ import type { ChronicleScope, HomeGroup, HomeNav, RecipeDetail, Reply, Settings,
 import type { Logger } from '../../../core/logger'
 import { MESSAGES } from '../../../core/messages'
 import { reply } from '../../../core/reply'
+import { savedViewsOf, wipLimitsOf } from '../../../../shared/plan'
 import { isGithubLogin } from '../../github/domain/accounts'
 
 export type SettingsDeps = { host: Host; file: string; log: Logger }
@@ -64,7 +65,16 @@ export const cleanSettings = (value: unknown): Partial<Settings> => {
     ...(isRealmAccounts(v.realmAccounts) ? { realmAccounts: v.realmAccounts } : {}),
     ...homeNavOf(v.homeNav),
     ...(isRecipeDetail(v.recipeDetail) ? { recipeDetail: v.recipeDetail } : {}),
+    ...planSettings(v),
   }
+}
+
+// The Plan tab's saved views and WIP limits, when they read.
+const planSettings = (v: Record<string, unknown>): Partial<Settings> => {
+  const planViews = savedViewsOf(v.planViews)
+  const wipLimits = wipLimitsOf(v.wipLimits)
+
+  return { ...(planViews === null ? {} : { planViews }), ...(wipLimits === null ? {} : { wipLimits }) }
 }
 
 const load = async ({ host, file, log }: SettingsDeps): Promise<Settings> => {

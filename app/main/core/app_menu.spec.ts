@@ -66,7 +66,7 @@ describe('the menu bar', () => {
     expect(send).toHaveBeenCalledWith({ kind: 'showRecord' })
   })
 
-  it('numbers the tabs ⌘1 to ⌘8, with Designs third and Notes fourth', () => {
+  it('numbers the tabs ⌘1 to ⌘9, with Designs third, Notes fourth and Plan last', () => {
     const tabs = items('View').filter(item => /^CmdOrCtrl\+\d$/.test(String(item.accelerator)))
 
     expect(tabs.map(item => [item.label, item.accelerator])).toEqual([
@@ -78,6 +78,7 @@ describe('the menu bar', () => {
       ['Chronicle', 'CmdOrCtrl+6'],
       ['Mana & time', 'CmdOrCtrl+7'],
       ['Calendar', 'CmdOrCtrl+8'],
+      ['Plan', 'CmdOrCtrl+9'],
     ])
   })
 

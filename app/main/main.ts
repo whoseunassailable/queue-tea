@@ -50,6 +50,7 @@ import { readPush, pushMerge } from './features/branches/api/push_api'
 import { nodeUserGit } from './features/branches/data/user_git'
 import * as setOut from './features/tasks/api/start_api'
 import * as tasks from './features/tasks/api/tasks_api'
+import { changePlan, readPlan } from './features/plan/api/plan_api'
 import { commitOfProvenance, relaunchArgv, restoredOf, versionOfPlist } from './features/update/data/bundle'
 import type { Restored } from './features/update/data/bundle'
 import { updateWatch } from './features/update/domain/update_watch'
@@ -290,6 +291,8 @@ const serveEngine = () => {
   handle(CHANNELS.editQuest, (_, key: unknown, taskId: unknown, edit: unknown) => tasks.editQuest(quests, key, taskId, edit))
   handle(CHANNELS.setActiveSaga, (_, key: unknown, taskId: unknown) => tasks.setActiveSaga(quests, key, taskId))
   handle(CHANNELS.setTimeBudget, (_, key: unknown, budget: unknown) => live.setTimeBudget(quests, key, budget))
+  handle(CHANNELS.readPlan, () => readPlan(quests))
+  handle(CHANNELS.changePlan, (_, key: unknown, change: unknown) => changePlan(quests, key, change))
   handle(CHANNELS.readLive, (_, key: unknown) => live.readLive(quests, key))
   handle(CHANNELS.readQuestFacts, (_, key: unknown, taskId: unknown) => readQuestFacts(quests, key, taskId))
   handle(CHANNELS.switchBranch, (_, key: unknown) => live.switchBranch(quests, key))

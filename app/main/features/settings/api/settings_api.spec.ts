@@ -44,6 +44,20 @@ describe('settings', () => {
     expect(await deps.host.exists(deps.file)).toBe(false)
   })
 
+  it('keeps the Plan tab\'s saved views and WIP limits', async () => {
+    const view = { id: 'v1', name: 'Urgent', filters: { statuses: [], priorities: ['urgent'], difficulties: [], realms: [], tags: [] }, search: '', lanes: 'saga' }
+    await saveSettings(deps, { planViews: [view], wipLimits: { 'a-000001': 2 } })
+
+    expect(await readSettings(deps)).toMatchObject({ data: { planViews: [view], wipLimits: { 'a-000001': 2 } } })
+  })
+
+  it('refuses Plan settings that do not read, keeping what was saved', async () => {
+    await saveSettings(deps, { wipLimits: { 'a-000001': 2 } })
+
+    expect(await saveSettings(deps, { wipLimits: { 'a-000001': 0 }, planViews: 'all' })).toMatchObject({ ok: false })
+    expect(await readSettings(deps)).toMatchObject({ data: { wipLimits: { 'a-000001': 2 } } })
+  })
+
   it('keeps which account each realm belongs to', async () => {
     const saved = await saveSettings(deps, { realmAccounts: { 'a-000001': 'first-account' } })
 

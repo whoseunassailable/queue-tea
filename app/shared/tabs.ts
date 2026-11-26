@@ -2,7 +2,7 @@
 // the second, and so on. The window's tabs, the command palette and the menu
 // bar all number them from this one list, so they never disagree. Notes is
 // fourth: it is used more often than the screens that look back.
-export const TAB_ORDER = ['home', 'quests', 'designs', 'notes', 'branches', 'chronicle', 'mana', 'calendar'] as const
+export const TAB_ORDER = ['home', 'quests', 'designs', 'notes', 'branches', 'chronicle', 'mana', 'calendar', 'plan'] as const
 
 export type TabId = (typeof TAB_ORDER)[number]
 

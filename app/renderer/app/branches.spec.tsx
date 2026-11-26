@@ -266,7 +266,9 @@ describe('Claude\'s proposed commit in the review', () => {
   const FILES = [{ path: 'a.ts', previous: null, status: ' M' }, { path: 'b.ts', previous: null, status: '??' }, { path: 'c.ts', previous: null, status: ' M' }]
   const FIRST = { message: 'fixed the retry button', files: ['a.ts', 'c.ts'], head: SOURCE, at: '2026-11-20T09:00:00+01:00' }
   const NEWER = { message: 'fixed the retry button and its test', files: ['b.ts'], head: SOURCE, at: '2026-11-20T09:05:00+01:00' }
-  // Preact runs the form's effects after the next frame (35 ms at most in jsdom).
+  // Preact runs the form's effects after the next frame (35 ms at most in jsdom,
+  // longer on a busy machine). A test that expects a change waits for it; one
+  // that expects none waits this long, then checks nothing moved.
   const painted = () => act(() => new Promise<void>(resolve => setTimeout(resolve, 50)))
   const messageBox = () => screen.getByLabelText(t.branches.commitMessage) as HTMLTextAreaElement
   const ticked = () => FILES.map(f => f.path).filter(path => (screen.getByRole('checkbox', { name: new RegExp(path.replace('.', '\\.')) }) as HTMLInputElement).checked)
@@ -306,8 +308,10 @@ describe('Claude\'s proposed commit in the review', () => {
 
     await reread({ proposal: NEWER })
 
-    expect(messageBox().value).toBe(NEWER.message)
-    expect(ticked()).toEqual(['b.ts'])
+    await waitFor(() => {
+      expect(messageBox().value).toBe(NEWER.message)
+      expect(ticked()).toEqual(['b.ts'])
+    })
   })
 
   it('a newer proposal leaves a message Rohan has edited, and the files ticked', async () => {
@@ -328,8 +332,10 @@ describe('Claude\'s proposed commit in the review', () => {
 
     await reread({ proposal: NEWER })
 
-    expect(messageBox().value).toBe(NEWER.message)
-    expect(ticked()).toEqual(['b.ts'])
+    await waitFor(() => {
+      expect(messageBox().value).toBe(NEWER.message)
+      expect(ticked()).toEqual(['b.ts'])
+    })
   })
 
   it('the same proposal read again leaves the files Rohan unticked', async () => {

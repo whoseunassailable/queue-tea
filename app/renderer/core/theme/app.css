@@ -10,29 +10,46 @@ body,
 .rm {
   position: relative;
   height: 100vh;
+  box-sizing: border-box;
+  padding-top: var(--title-bar);
   overflow: hidden;
   display: flex;
   align-items: stretch;
 }
 
 .rm .side {
-  max-height: calc(100vh - 24px);
+  margin-top: 0;
+  padding-top: 10px;
+  max-height: calc(100vh - var(--title-bar) - 12px);
   overflow-y: auto;
 }
 
 .rm .main {
-  height: 100vh;
+  height: calc(100vh - var(--title-bar));
+  padding-top: 0;
   overflow-y: auto;
 }
 
-/* The window drags from the sidebar's head and the toolbar's gaps. */
-.rm .lights,
+/* The window drags from the strip across its top, which the panels start
+   under, and from the toolbar's gaps. The strip sits outside every scrolling
+   pane, so it never scrolls away, and holds nothing to press. Its z-index puts
+   it over the panels and under the dialogs, like its place in the page. */
+.rm .title-bar {
+  position: fixed;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--title-bar);
+  -webkit-app-region: drag;
+}
+
 .rm .top {
   -webkit-app-region: drag;
 }
 
 .rm .top > *,
-.rm .realm {
+.rm [role='dialog'] {
   -webkit-app-region: no-drag;
 }
 
@@ -788,11 +805,11 @@ body,
 .rm .quests.floating .detail {
   position: fixed;
   z-index: 4;
-  top: 132px;
+  top: calc(var(--title-bar) + 120px);
   right: 16px;
   width: 360px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 148px);
+  max-height: calc(100vh - var(--title-bar) - 136px);
   overflow-y: auto;
   box-shadow: 0 16px 40px rgba(30, 24, 60, 0.35);
 }
@@ -801,7 +818,7 @@ body,
   display: inline-flex;
   position: fixed;
   z-index: 5;
-  top: 138px;
+  top: calc(var(--title-bar) + 126px);
   right: 22px;
 }
 
@@ -826,12 +843,12 @@ body,
     display: flex;
     position: fixed;
     z-index: 20;
-    top: 0;
+    top: var(--title-bar);
     bottom: 0;
     left: 0;
     width: 260px;
-    margin: 12px;
-    max-height: calc(100vh - 24px);
+    margin: 0 12px 12px;
+    max-height: calc(100vh - var(--title-bar) - 12px);
   }
 
   .rm .side-toggle {

@@ -1,7 +1,7 @@
 /* The Notes tab, as docs/notes.pen draws it. Every class starts nt-, since
    class names are page-wide. Nothing here moves on its own. */
 .rm .nt { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
-.rm .nt-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px; align-items: stretch; min-height: calc(100vh - 190px); }
+.rm .nt-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px; align-items: stretch; min-height: calc(100vh - var(--title-bar) - 178px); }
 .rm .nt-grid.narrow { grid-template-columns: minmax(0, 1fr); }
 .rm .nt-folder ul, .rm .nt-links, .rm .nt-proposal, .rm .nt-picker ul { margin: 0; padding: 0; list-style: none; }
 .rm .nt-link { padding: 0; border: none; background: none; color: var(--link); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
@@ -9,7 +9,7 @@
 .rm .nt-link:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
 
 /* The list */
-.rm .nt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; max-height: calc(100vh - 190px); overflow-y: auto; box-sizing: border-box; }
+.rm .nt-list { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; max-height: calc(100vh - var(--title-bar) - 178px); overflow-y: auto; box-sizing: border-box; }
 .rm .nt-list .input { width: 100%; box-sizing: border-box; }
 .rm .nt-list-head { display: flex; align-items: center; gap: 8px; }
 .rm .nt-list-head h2 { margin: 0 auto 0 0; font-size: 20px; }
@@ -36,7 +36,7 @@
 .rm .nt-list .nt-day-row .input { width: auto; flex: 1; min-width: 0; }
 .rm .nt-day .hint { margin: 2px 0 0; }
 /* Below 900 px the list is a drawer over the page, which dims behind it. */
-.rm .nt-list.drawer { position: fixed; z-index: 30; left: 12px; top: 12px; bottom: 12px; width: 300px; max-height: none; }
+.rm .nt-list.drawer { position: fixed; z-index: 30; left: 12px; top: var(--title-bar); bottom: 12px; width: 300px; max-height: none; }
 .rm .nt-scrim { position: fixed; z-index: 29; inset: 0; background: rgba(20, 16, 30, 0.35); }
 
 /* The editor */

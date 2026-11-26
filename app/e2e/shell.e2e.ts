@@ -6,6 +6,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 
 import type { ProjectRecord, Task } from '../../types'
+import { TITLE_BAR_PX } from '../shared/window_chrome'
 
 const APP = join(__dirname, '..')
 const KEY = 'demo-abc123'
@@ -50,6 +51,27 @@ const palette = () => page.getByRole('dialog', { name: 'Command palette' })
 const resize = async (width: number, height: number) => {
   await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
   await page.waitForFunction(w => window.innerWidth === w, width)
+}
+// The strip the window drags by, and anything you could press that sits under
+// it, which would never get its click.
+const titleStrip = () =>
+  page.evaluate(() => {
+    const strip = document.querySelector<HTMLElement>('[data-testid="title-bar"]')!
+    const box = strip.getBoundingClientRect()
+    const pressable = [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, summary, [tabindex], [role="button"], [role="tab"]')]
+      .filter(element => {
+        const rect = element.getBoundingClientRect()
+
+        return rect.width > 0 && rect.height > 0 && rect.top < box.bottom
+      })
+      .map(element => element.getAttribute('aria-label') ?? element.textContent?.trim() ?? element.tagName)
+
+    return { top: box.top, left: box.left, width: box.width, height: box.height, windowWidth: window.innerWidth, region: getComputedStyle(strip).getPropertyValue('-webkit-app-region'), pressable }
+  })
+const expectStripClear = async () => {
+  const strip = await titleStrip()
+
+  expect(strip).toEqual({ top: 0, left: 0, width: strip.windowWidth, height: TITLE_BAR_PX, windowWidth: strip.windowWidth, region: 'drag', pressable: [] })
 }
 // A menu item, clicked as the mouse would.
 const clickMenu = (top: string, label: string) =>
@@ -153,6 +175,15 @@ test('a letter typed in a field stays a letter, though the menu shows it', async
   await page.keyboard.press('Escape')
 })
 
+test('the window drags from a strip across its top, with nothing to press under it, and a dialog stays clear of it', async () => {
+  await expectStripClear()
+
+  await page.locator('.top').getByRole('button', { name: 'New quest' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expectStripClear()
+  await page.keyboard.press('Escape')
+})
+
 test('below 1180 px the detail floats over the list, and closes', async () => {
   await resize(1000, 700)
   await expect(page.locator('.detail')).toBeHidden()
@@ -162,6 +193,7 @@ test('below 1180 px the detail floats over the list, and closes', async () => {
   await expect(page.locator('.quests.floating .detail')).toBeVisible()
   await page.waitForTimeout(100)
   await shot('narrow-floating')
+  await expectStripClear()
   await page.getByRole('button', { name: 'Close the quest details' }).click()
   await expect(page.locator('.detail')).toBeHidden()
 })
@@ -173,6 +205,7 @@ test('below 900 px the sidebar goes, the tabs are a menu and the detail is a pag
   await expect(page.getByRole('combobox', { name: 'Go to a section' })).toBeVisible()
   await page.waitForTimeout(100)
   await shot('narrow-list')
+  await expectStripClear()
 
   await page.locator('.qrow-open').first().click()
   await expect(page.locator('.detail')).toBeVisible()
@@ -199,6 +232,7 @@ test('below 900 px the realms come back as an overlay', async () => {
   await expect(page.getByRole('navigation', { name: 'Realms' })).toBeVisible()
   await page.waitForTimeout(100)
   await shot('narrow-realms')
+  await expectStripClear()
   await page.getByRole('button', { name: /^Demo realm/ }).click()
   await expect(page.getByRole('navigation', { name: 'Realms' })).toBeHidden()
 })

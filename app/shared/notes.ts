@@ -20,8 +20,11 @@ export type NoteType = (typeof NOTE_TYPES)[number]
 export const noteTypeOf = (value: unknown): NoteType | null => NOTE_TYPES.find(type => typeof value === 'string' && type === value.trim().toLowerCase()) ?? null
 
 // item is the checklist line a quest was filed from; null for the note's own
-// quest, which is the parent of the rest or the only one.
-export type NoteQuest = { id: string; item: string | null }
+// quest, which is the parent of the rest or the only one. A quest filed from a
+// BrewQuest draft also keeps its draft key, so trying again never files it
+// twice, and under: the quest it went under, null on its own. Both are absent
+// on quests filed before drafts, and their grouping follows the order instead.
+export type NoteQuest = { id: string; item: string | null; key?: string; under?: string | null }
 // id is the file's name without .md. stamp is the file as it was read.
 // meeting: who comes, the call's link and when, kept on any note but shown
 // for a Meeting note; NO_MEETING when the file has none.
@@ -35,10 +38,37 @@ export type NoteChange = { title: string; folder: string; type: NoteType | null;
 export type NoteSave = { kind: 'saved'; view: NotesView; note: Note; relinked: number } | { kind: 'changed'; note: Note | null }
 // History lists only times; the full snapshot is read when selected.
 export type NoteVersion = { id: string; savedAt: string }
-export type ProposedQuest = { title: string; priority: Priority; difficulty: Difficulty; item: string | null }
-export type QuestProposal = { parent: ParentPick; quests: ProposedQuest[] }
-// project: the realm's quests once the new ones are in.
-export type NoteFiled = { view: NotesView; project: ProjectView }
+// What the review sheet files. key, and everything after it, comes from a
+// BrewQuest draft: what it's for, how to tell it's done, its effort, the quests
+// it waits for (keys in this proposal or quest ids), the note's words it came
+// from and what's not confirmed. A checklist line sends the first four only.
+export type ProposedQuest = {
+  title: string
+  priority: Priority
+  difficulty: Difficulty
+  item: string | null
+  key?: string
+  summary?: string
+  criteria?: string[]
+  points?: number
+  waitsFor?: string[]
+  sources?: { title: string; quote: string }[]
+  doubts?: string[]
+}
+// One parent and the quests under it; key names a draft group's new parent.
+export type ProposalGroup = { key?: string; parent: ParentPick; quests: ProposedQuest[] }
+// draft: the BrewQuest draft it came from, so the outcome can be kept for
+// learning; absent for none.
+export type QuestProposal = { groups: ProposalGroup[]; draft?: DraftOutcome }
+// What Rohan did with a draft of proposed quests: which he turned down,
+// merged into another or left to a quest already there, and what he changed
+// on the rest.
+export type DraftChange = { title: string; field: 'priority' | 'difficulty' | 'points'; from: string; to: string }
+export type DraftOutcome = { id: string; by: 'claude' | 'checklist'; proposed: number; rejected: string[]; merged: number; reused: number; changed: DraftChange[] }
+// project: the realm's quests once the new ones are in. waitsLeftOut: the
+// waits that weren't set, because they'd make two quests wait for each other
+// or name a quest that's gone.
+export type NoteFiled = { view: NotesView; project: ProjectView; waitsLeftOut: number }
 // A file left out of an export or a restore, by its path in the folder, and
 // why: 10 MB or more (or a note too long), unreadable, not matching the hash
 // in its name, or named like a different file already here.
@@ -143,14 +173,18 @@ export const openItemsOf = (body: string): string[] =>
     .filter(item => item !== '')
     .map(item => item.slice(0, NOTE_LIMITS.item))
 
+// The note's own quest: the parent filed with its quests, or the note filed
+// as one quest. A quest a draft filed under it, or on its own, isn't.
+export const isOwnQuest = (quest: NoteQuest): boolean => quest.item === null && (quest.key === undefined || /\.g[0-9]+$/.test(quest.key))
+
 // What Turn into quests offers: one quest per unticked line not filed yet,
 // under the note's own quest while it's still open, or under a new one named
 // after the note when there are two or more. With no lines, the note itself
 // is the quest, but only while nothing has been filed from it. isOpen says
 // whether a quest is still in play.
-export const proposalOf = (note: Pick<Note, 'title' | 'body' | 'quests'>, isOpen: (id: string) => boolean = () => true): QuestProposal => {
+export const proposalOf = (note: Pick<Note, 'title' | 'body' | 'quests'>, isOpen: (id: string) => boolean = () => true): ProposalGroup => {
   const filed = new Set(note.quests.map(q => q.item))
-  const own = note.quests.find(q => q.item === null && isOpen(q.id))
+  const own = note.quests.find(q => isOwnQuest(q) && isOpen(q.id))
   const items = openItemsOf(note.body).filter((item, i, all) => !filed.has(item) && all.indexOf(item) === i)
   const quest = (title: string, item: string | null): ProposedQuest => ({ title: title.slice(0, NOTE_LIMITS.title), priority: 'mid', difficulty: 'medium', item })
   if (items.length === 0) return { parent: { kind: 'none' }, quests: note.quests.length > 0 ? [] : [quest(note.title, null)] }

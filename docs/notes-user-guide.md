@@ -20,21 +20,32 @@ turn it into work on the quest board.
    ```
 
 3. Press **Turn into quests…** in BrewQuest's card beneath the editor.
-   BrewQuest proposes a parent named after the note and a quest for each
-   open checklist line. Nothing is filed yet.
-4. Review the proposal. Rename the parent to `Understand missed steps`,
-   clarify each quest's title, and choose its priority and difficulty.
-   Clear a checkbox to leave that row out. With this example, keep the
-   parent and both children, then press **File 3 quests**.
+   BrewQuest reads the note, the notes it links to and the project with
+   Claude Code, then drafts quests. Nothing is filed yet. To skip the
+   reading, press **Use the checklist instead**.
+4. Review the draft. Rename a parent, clarify each quest's title, and
+   choose its priority, difficulty and effort. **Details** shows what a
+   quest is for, how to tell it's done, the note's words it came from and
+   what isn't confirmed; you can merge it into another quest there. Clear a
+   checkbox to leave a row out. Then press **File**.
 5. In **About this note**, the **Quests** section shows the filed saga and
    its children. Press a quest to open it on the board. Filing puts work in
    the selected realm's queue; it does not start that work.
 
-BrewQuest uses checklist lines rather than interpreting vague prose. With no
-open checklist lines, an unfiled note becomes one quest using its title and
-first paragraph. One open line becomes one quest without a parent. Two or
-more lines propose a saga. Checked lines are left out. Defaults are **Mid**
-priority and **Medium** difficulty.
+BrewQuest reads with read-only tools: it can't edit files, run commands or
+go online. When it says a quest is **Already a quest**, that row starts
+unticked; **Keep both** files it anyway. Questions it needs you to settle are
+under **Decide before filing**. Waits between drafted quests are set when
+they're filed. What you change in a review is kept for the realm, and the
+next draft is told about it; see [BrewQuest](brewquest.md).
+
+When Claude Code can't read (it isn't installed or signed in, has no
+BrewQuest helper yet, or takes too long), the sheet says why and shows the
+checklist draft instead. That draft uses checklist lines rather than
+interpreting vague prose. With no open checklist lines, an unfiled note
+becomes one quest using its title and first paragraph. One open line becomes
+one quest without a parent. Two or more lines propose a saga. Checked lines
+are left out. Defaults are **Mid** priority and **Medium** difficulty.
 
 If filing stops part way, the rows already filed lock. **Try again** files
 the rest. Adding a checklist line later proposes another quest under the

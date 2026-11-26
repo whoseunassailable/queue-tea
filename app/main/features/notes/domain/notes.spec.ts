@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isTitleTaken, linkPartsOf, linksOf, NOTE_TYPES, openItemsOf, proposalOf, renameLinks, questIdOf, questLinkOf, questLinksOf } from '../../../../shared/notes'
-import type { Note } from '../../../../shared/notes'
+import { backlinksOf, firstParagraphOf, freeTitle, isNoteId, isOwnQuest, isTitleTaken, linkPartsOf, linksOf, NOTE_TYPES, openItemsOf, proposalOf, renameLinks, questIdOf, questLinkOf, questLinksOf } from '../../../../shared/notes'
+import type { Note, NoteQuest } from '../../../../shared/notes'
 import { NO_MEETING } from '../../../../shared/meetings'
 import { noteText, parseNote } from './note_file'
 
@@ -64,6 +64,17 @@ describe('a note file', () => {
 
   it('drops quest links it cannot read', () => {
     expect(parseNote('---\nquests: [{"id":1}, {"id":"t-2","item":"x"}]\n---\n', 'n', 't').quests).toEqual([{ id: 't-2', item: 'x' }])
+  })
+
+  it('keeps the draft key and parent of a quest filed from a BrewQuest draft, and drops ones it cannot read', () => {
+    const quests = [{ id: 't-1', item: null, key: 'd-abcd1234.g1', under: null }, { id: 't-2', item: 'Scan', key: 'd-abcd1234.q1', under: 't-1' }, { id: 't-3', item: null, key: '../x', under: 4 }] as unknown as NoteQuest[]
+    const text = noteText({ title: 'Plan', folder: 'Ideas', type: null, isPinned: false, tags: [], created: 'c', updated: 'u', isArchived: false, quests, meeting: NO_MEETING, body: '', aliases: [], rest: [] })
+
+    expect(parseNote(text, 'n', 't').quests).toEqual([{ id: 't-1', item: null, key: 'd-abcd1234.g1', under: null }, { id: 't-2', item: 'Scan', key: 'd-abcd1234.q1', under: 't-1' }, { id: 't-3', item: null }])
+  })
+
+  it('tells the note’s own quests from the quests filed under them', () => {
+    expect([{ id: 't-1', item: null }, { id: 't-2', item: 'Scan' }, { id: 't-3', item: null, key: 'd-abcd1234.g1' }, { id: 't-4', item: null, key: 'd-abcd1234.q2' }].map(isOwnQuest)).toEqual([true, false, true, false])
   })
 })
 

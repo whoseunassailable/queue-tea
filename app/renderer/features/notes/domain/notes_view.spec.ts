@@ -7,7 +7,7 @@ import { NOTE_TYPES } from '../../../../shared/notes'
 import { t } from '../../../l10n/en'
 import { activeQuest, note, projectView, quest } from '../../../test_support'
 import type { QuestLine } from './notes_view'
-import { BREW_MOODS, brewMoodOf, captureOf, dailyBodyOf, dayError, folderError, folderNameError, foldersOf, isDay, journalOf, linkOptionsOf, linkQueryAt, matches, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf, sheetMoodOf } from './notes_view'
+import { BREW_MOODS, brewMoodOf, captureOf, dailyBodyOf, dayError, folderError, folderNameError, foldersOf, isDay, journalOf, linkOptionsOf, linkQueryAt, matches, questGroupsOf, questLineOf, questLinesOf, tagsError, tagsOf, templateChange, titleError, toggleTaskAt, withLink, linkPicksOf, sheetMoodOf } from './notes_view'
 
 describe('days', () => {
   it.each(['2026-11-17', '2024-02-29', '2026-12-31', '2027-01-01'])('%s is a day', title => {
@@ -316,5 +316,27 @@ describe('BrewQuest’s moods', () => {
     expect(sheetMoodOf({ ...sheet, isFiling: true, hasFailed: true })).toBe('working')
     expect(sheetMoodOf({ ...sheet, hasFailed: true })).toBe('error')
     expect(sheetMoodOf({ ...sheet, isEmpty: true })).toBe('confused')
+  })
+})
+
+describe('the quests a note filed, grouped', () => {
+  it('puts checklist quests under the parent before them, and drafted ones under the quest they were filed under', () => {
+    const groups = questGroupsOf([
+      { id: 't-own', item: null },
+      { id: 't-1', item: 'Scan' },
+      { id: 't-new', item: null, key: 'd-abcd1234.g1', under: null },
+      { id: 't-2', item: null, key: 'd-abcd1234.q1', under: 't-new' },
+      { id: 't-3', item: null, key: 'd-abcd1234.q2', under: 't-old' },
+      { id: 't-4', item: null, key: 'd-abcd1234.q3', under: null },
+      { id: 't-5', item: null, key: 'd-abcd1234.q4', under: 't-old' },
+      { id: 't-6', item: null, key: 'd-abcd1234.q5', under: null },
+    ])
+
+    expect(groups.map(group => [group.parent?.id ?? null, group.children.map(child => child.id)])).toEqual([
+      ['t-own', ['t-1']],
+      ['t-new', ['t-2']],
+      ['t-old', ['t-3', 't-5']],
+      [null, ['t-4', 't-6']],
+    ])
   })
 })

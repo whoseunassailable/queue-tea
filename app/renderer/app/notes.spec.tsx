@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EngineApi, Reply } from '../../shared/engine_api'
 import { NO_MEETING } from '../../shared/meetings'
-import { NOTE_TYPES } from '../../shared/notes'
-import type { Note, NoteChange, NoteFiled, NoteInput, NotesExport, NotesRestore, NotesView, QuestProposal } from '../../shared/notes'
+import { checklistDraftOf } from '../../shared/brew_draft'
+import type { BrewDraft, DraftQuest, RealmQuest } from '../../shared/brew_draft'
+import { isOwnQuest, NOTE_TYPES } from '../../shared/notes'
+import type { Note, NoteChange, NoteFiled, NoteInput, NoteQuest, NotesExport, NotesRestore, NotesView, QuestProposal } from '../../shared/notes'
 import type { LayoutInput, Point } from '../features/notes/domain/note_graph_layout'
 import type { LayoutRun } from '../features/notes/presentation/state_management/graph_layout'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
@@ -41,6 +43,9 @@ const never = <T,>() => new Promise<T>(() => {})
 const memoryNotes = (start: Note[]) => {
   let notes = start
   let n = 0
+  // The quests filed so far, all still waiting, so BrewQuest's checklist draft sees their parents open.
+  const realm: RealmQuest[] = []
+  const filedQuest = (id: string, title: string) => realm.push({ id, title, state: 'queued', parentIds: [], priority: 'mid', description: null })
   const view = (): NotesView => ({ notes, unreadable: [], folder: FOLDER })
 
   return {
@@ -76,11 +81,32 @@ const memoryNotes = (start: Note[]) => {
       return ok(view())
     }),
     fileNoteQuests: vi.fn(async (key: string, id: string, proposal: QuestProposal): Promise<Reply<NoteFiled>> => {
-      const parent = proposal.parent.kind === 'new' && !notes.find(one => one.id === id)!.quests.some(q => q.item === null) ? [{ id: 't-parent', item: null }] : []
-      notes = notes.map(one => (one.id === id ? { ...one, quests: [...one.quests, ...parent, ...proposal.quests.map(q => ({ id: `t-${q.item}`, item: q.item }))], stamp: `filed-${one.quests.length}` } : one))
+      const current = notes.find(one => one.id === id)!
+      const linked: NoteQuest[] = []
+      const filed: { id: string; title: string }[] = []
+      for (const group of proposal.groups) {
+        let under = group.parent.kind === 'task' ? group.parent.id : null
+        if (group.parent.kind === 'new') {
+          const own = current.quests.find(isOwnQuest)
+          under = own?.id ?? 't-parent'
+          if (own === undefined) {
+            linked.push(group.key === undefined ? { id: 't-parent', item: null } : { id: 't-parent', item: null, key: group.key, under: null })
+            filedQuest('t-parent', group.parent.title)
+          }
+        }
+        for (const q of group.quests) {
+          const questId = `t-${q.key ?? q.item}`
+          linked.push(q.key === undefined ? { id: questId, item: q.item } : { id: questId, item: q.item, key: q.key, under })
+          filed.push({ id: questId, title: q.title })
+          filedQuest(questId, q.title)
+        }
+      }
+      notes = notes.map(one => (one.id === id ? { ...one, quests: [...one.quests, ...linked], stamp: `filed-${one.quests.length}` } : one))
 
-      return ok({ view: view(), project: projectView(key, { ready: proposal.quests.map(q => ({ kind: 'quest' as const, quest: quest({ id: `t-${q.item}`, title: q.title }) })) }) })
+      return ok({ view: view(), project: projectView(key, { ready: filed.map(q => ({ kind: 'quest' as const, quest: quest({ id: q.id, title: q.title }) })) }), waitsLeftOut: 0 })
     }),
+    // Main falls back to the checklist when Claude can't read; here it always does.
+    draftNoteQuests: vi.fn(async (_key: string, id: string) => ok(checklistDraftOf('d-test0001', notes.find(one => one.id === id)!, realm))),
   }
 }
 
@@ -96,6 +122,13 @@ const open = async (over: Partial<EngineApi> = {}) => {
   return engine
 }
 
+// BrewQuest's sheet once its draft is in: it opens reading, and reviews when the read comes back.
+const brewSheet = async (name?: string) => {
+  const sheet = await screen.findByRole('dialog', name === undefined ? {} : { name })
+  await waitFor(() => expect(within(sheet).queryByText(t.notebook.brew.reading)).toBeNull())
+
+  return sheet
+}
 const press = (name: string | RegExp) => act(async () => void fireEvent.click(screen.getByRole('button', { name })))
 const body = () => screen.getByLabelText(t.notebook.body, { selector: 'textarea' }) as HTMLTextAreaElement
 const write = (text: string) => {
@@ -644,7 +677,7 @@ describe('the Notes page', () => {
     await act(async () => void fireEvent.drop(row, { dataTransfer }))
     fireEvent.dragEnd(robot)
 
-    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Release plan') })
+    const sheet = await brewSheet(t.notebook.brew.sheet('Release plan'))
     expect(cardMood()).toBe('idle')
     expect((within(sheet).getByLabelText(`${t.notebook.brew.questTitle(1)} *`) as HTMLInputElement).value).toBe('Ship')
     expect(screen.getByLabelText(`${t.notebook.noteTitle} *`)).toHaveProperty('value', 'Release plan')
@@ -665,7 +698,7 @@ describe('the Notes page', () => {
     const target = mode === 'write' ? body() : screen.getByRole('region', { name: t.notebook.body })
     await act(async () => void fireEvent.drop(target, { dataTransfer }))
 
-    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    const sheet = await brewSheet(t.notebook.brew.sheet('Bug Bounty Helper'))
     expect((within(sheet).getByLabelText(`${t.notebook.brew.questTitle(1)} *`) as HTMLInputElement).value).toBe('A freshly typed quest')
     expect(notes.saveNote).toHaveBeenCalledWith(KEY, 'n-00000001', expect.objectContaining({ body: '- [ ] A freshly typed quest' }), expect.any(String))
     expect(notes.fileNoteQuests).not.toHaveBeenCalled()
@@ -742,7 +775,7 @@ describe('the Notes page', () => {
     await screen.findByDisplayValue('Bug Bounty Helper')
 
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
-    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    const sheet = await brewSheet(t.notebook.brew.sheet('Bug Bounty Helper'))
     expect((within(sheet).getByLabelText(`${t.notebook.brew.parent} *`) as HTMLInputElement).value).toBe('Bug Bounty Helper')
     const second = within(sheet).getByLabelText(`${t.notebook.brew.questTitle(2)} *`)
     fireEvent.input(second, { target: { value: '' } })
@@ -754,7 +787,7 @@ describe('the Notes page', () => {
     fireEvent.click(within(sheet).getByLabelText(t.notebook.brew.include(2)))
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(2) })))
 
-    expect(notes.fileNoteQuests).toHaveBeenCalledWith(KEY, 'n-00000001', { parent: { kind: 'new', title: 'Bug Bounty Helper' }, quests: [{ title: 'Scan', priority: 'mid', difficulty: 'medium', item: 'Scan' }] })
+    expect(notes.fileNoteQuests).toHaveBeenCalledWith(KEY, 'n-00000001', { groups: [{ parent: { kind: 'new', title: 'Bug Bounty Helper' }, quests: [{ title: 'Scan', priority: 'mid', difficulty: 'medium', item: 'Scan' }] }] })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(await screen.findByText(t.notebook.brew.filed(2))).toBeTruthy()
     expect(screen.getByRole('button', { name: t.notebook.openQuest('Scan') })).toBeTruthy()
@@ -765,7 +798,7 @@ describe('the Notes page', () => {
     const notes = memoryNotes([note({ body: '- [ ] Scan\n- [ ] Report' })])
     // The first quest goes in before the queue fails, as main links each one as it's filed.
     const fileNoteQuests = vi.fn().mockImplementationOnce(async (key: string, id: string, proposal: QuestProposal) => {
-      await notes.fileNoteQuests(key, id, { ...proposal, quests: proposal.quests.slice(0, 1) })
+      await notes.fileNoteQuests(key, id, { groups: proposal.groups.map(group => ({ ...group, quests: group.quests.slice(0, 1) })) })
 
       return { ok: false, error: { message: "Couldn't file the quests." } }
     }).mockImplementation(notes.fileNoteQuests)
@@ -773,7 +806,7 @@ describe('the Notes page', () => {
     await screen.findByDisplayValue('Bug Bounty Helper')
 
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
-    const sheet = await screen.findByRole('dialog')
+    const sheet = await brewSheet()
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
 
     expect((await within(sheet).findByRole('alert')).textContent).toBe("Couldn't file the quests.")
@@ -781,7 +814,100 @@ describe('the Notes page', () => {
     // The parent and the first quest went in; both lock.
     expect(await within(sheet).findAllByText(t.notebook.brew.filedRow)).toHaveLength(2)
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.tryAgain })))
-    expect(fileNoteQuests.mock.calls[1]![2].quests.map((q: { title: string }) => q.title)).toEqual(['Report'])
+    expect((fileNoteQuests.mock.calls[1]![2] as QuestProposal).groups.flatMap(group => group.quests.map(q => q.title))).toEqual(['Report'])
+  })
+
+  it('BrewQuest reads with Claude, shows what it read, and files the review as you changed it', async () => {
+    const notes = memoryNotes([note({ body: 'Count terminal time.\n\n- [ ] Scan logs' })])
+    const id = 'd-claude01'
+    const quest = (n: number, over: Partial<DraftQuest> = {}): DraftQuest => ({ key: `${id}.q${n}`, title: `Quest ${n}`, summary: `For ${n}.`, priority: 'mid', difficulty: 'medium', points: 3, criteria: [`Works ${n}`], waitsFor: [], sources: [{ noteId: 'n-00000001', title: 'Bug Bounty Helper', quote: 'Count terminal time.', isFound: true }], doubts: [], match: null, item: null, ...over })
+    const draft: BrewDraft = {
+      id,
+      by: 'claude',
+      understood: 'Track time in the terminal.',
+      groups: [
+        { key: `${id}.g1`, parent: { kind: 'existing', id: 't-old', title: 'Sidebar polish', why: 'It is part of the sidebar work.' }, quests: [quest(1, { doubts: ['Which terminals?'] }), quest(2, { title: 'Polish the sidebar', match: { id: 't-old2', title: 'Polish sidebar', state: 'queued', kind: 'same', why: '', by: 'title' } })] },
+        { key: `${id}.g2`, parent: { kind: 'new', title: 'Terminal time', why: '' }, quests: [quest(3, { waitsFor: [`${id}.q1`], sources: [{ noteId: 'n-00000001', title: 'Bug Bounty Helper', quote: 'Not in the note', isFound: false }] })] },
+      ],
+      questions: ['Count idle time too?'],
+      missing: [],
+      read: { notes: [{ id: 'n-00000001', title: 'Bug Bounty Helper' }], files: ['CLAUDE.md', 'README.md'] },
+      trouble: null,
+      learned: ['He turned down 1 quest, such as "Old".'],
+    }
+    let answer: (draft: BrewDraft) => void = () => {}
+    const draftNoteQuests = vi.fn(() => new Promise<Reply<BrewDraft>>(done => void (answer = value => done(ok(value)))))
+    window.location.hash = '#/notes'
+    const { engine, tellBrewing } = fakeEngine({ ...notes, draftNoteQuests })
+    const workspace = createWorkspace(engine)
+    await act(async () => {
+      render(<App workspace={workspace} engine={engine} />)
+      await workspace.start()
+    })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
+    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    expect(within(sheet).getByText(t.notebook.brew.reading)).toBeTruthy()
+    await waitFor(() => expect(draftNoteQuests).toHaveBeenCalledWith(KEY, 'n-00000001', { mode: 'claude', withLinked: true }))
+    act(() => tellBrewing({ key: KEY, noteId: 'n-00000001', doing: { kind: 'reading', target: 'CLAUDE.md' }, steps: 2 }))
+    expect(within(sheet).getByText(t.notebook.brew.readingSteps(2), { exact: false })).toBeTruthy()
+    await act(async () => answer(draft))
+
+    expect(await within(sheet).findByText(t.notebook.brew.understood('Track time in the terminal.'))).toBeTruthy()
+    expect(within(sheet).getByText(t.notebook.brew.readWhat(1, 2))).toBeTruthy()
+    expect(within(within(sheet).getByRole('region', { name: t.notebook.brew.decide })).getByText('Count idle time too?')).toBeTruthy()
+    expect(within(sheet).getByRole('region', { name: t.notebook.brew.groupUnder('Sidebar polish') })).toBeTruthy()
+    // The quest already in the realm starts left out; Keep both puts it back.
+    expect((within(sheet).getByLabelText(t.notebook.brew.include(2)) as HTMLInputElement).checked).toBe(false)
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.keepBoth })))
+    expect((within(sheet).getByLabelText(t.notebook.brew.include(2)) as HTMLInputElement).checked).toBe(true)
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.skipIt })))
+
+    fireEvent.change(within(sheet).getByLabelText(t.notebook.brew.points(1)), { target: { value: '8' } })
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.details(1) })))
+    expect((within(sheet).getByLabelText(t.notebook.brew.summary(1)) as HTMLTextAreaElement).value).toBe('For 1.')
+    expect(within(sheet).getByText('Which terminals?')).toBeTruthy()
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.details(3) })))
+    expect(within(sheet).getByText(t.notebook.brew.notFound, { exact: false })).toBeTruthy()
+    expect(within(sheet).getByText(t.notebook.brew.waits(['Quest 1']))).toBeTruthy()
+
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
+
+    expect(notes.fileNoteQuests).toHaveBeenCalledTimes(1)
+    const sent = notes.fileNoteQuests.mock.calls[0]![2] as QuestProposal
+    expect(sent.groups.map(group => [group.key, group.parent, group.quests.map(q => [q.key, q.points, q.waitsFor])])).toEqual([
+      [`${id}.g1`, { kind: 'task', id: 't-old' }, [[`${id}.q1`, 8, []]]],
+      [`${id}.g2`, { kind: 'new', title: 'Terminal time' }, [[`${id}.q3`, 3, [`${id}.q1`]]]],
+    ])
+    expect(sent.draft).toEqual({ id, by: 'claude', proposed: 3, rejected: [], merged: 0, reused: 1, changed: [{ title: 'Quest 1', field: 'points', from: '3', to: '8' }] })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('BrewQuest falls back to the checklist when you ask, stopping the read, and says why when Claude couldn’t read', async () => {
+    const notes = memoryNotes([note({ body: '- [ ] Scan' })])
+    const draftNoteQuests = vi.fn(async (_key: string, id: string, ask: { mode: string }) => {
+      const checklist = checklistDraftOf('d-test0002', notes.readNotes.mock.results.length > 0 ? note({ id, body: '- [ ] Scan' }) : note({ id }), [], ask.mode === 'claude' ? "The app couldn't find Claude Code, so this is the checklist." : null)
+
+      return ask.mode === 'claude' && draftNoteQuests.mock.calls.length === 1 ? never<Reply<BrewDraft>>() : ok(checklist)
+    })
+    const engine = await open({ ...notes, draftNoteQuests })
+    await screen.findByDisplayValue('Bug Bounty Helper')
+
+    await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
+    const sheet = await screen.findByRole('dialog')
+    await waitFor(() => expect(draftNoteQuests).toHaveBeenCalledTimes(1))
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.useChecklist })))
+    expect(engine.stopNoteDraft).toHaveBeenCalledWith(KEY)
+    expect(draftNoteQuests.mock.calls[1]![2]).toEqual({ mode: 'checklist', withLinked: true })
+    expect(await within(sheet).findByText(t.notebook.brew.intro)).toBeTruthy()
+    expect(within(sheet).queryByRole('status', { name: '' })).toBeNull()
+
+    fireEvent.click(within(sheet).getByLabelText(t.notebook.brew.withLinked))
+    await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.readAgain })))
+    expect(draftNoteQuests.mock.calls[2]![2]).toEqual({ mode: 'claude', withLinked: false })
+    expect(await within(sheet).findByText("The app couldn't find Claude Code, so this is the checklist.")).toBeTruthy()
+    expect(within(sheet).getByLabelText(`${t.notebook.brew.questTitle(1)} *`)).toBeTruthy()
   })
 
   it('BrewQuest’s robot perks up while the pointer is over its card, and settles when it leaves', async () => {
@@ -825,7 +951,7 @@ describe('the Notes page', () => {
     await screen.findByDisplayValue('Bug Bounty Helper')
 
     await press(t.notebook.brew.turn)
-    const sheet = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    const sheet = await brewSheet(t.notebook.brew.sheet('Bug Bounty Helper'))
     expect(sheetMood(sheet)).toBe('idle')
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))
     expect(sheetMood(sheet)).toBe('working')
@@ -835,7 +961,7 @@ describe('the Notes page', () => {
     expect(cardMood()).toBe('success')
 
     await press(t.notebook.brew.turn)
-    const nothing = await screen.findByRole('dialog', { name: t.notebook.brew.sheet('Bug Bounty Helper') })
+    const nothing = await brewSheet(t.notebook.brew.sheet('Bug Bounty Helper'))
     expect(within(nothing).getByText(t.notebook.brew.nothing)).toBeTruthy()
     expect(sheetMood(nothing)).toBe('confused')
   })
@@ -1002,7 +1128,7 @@ describe('the Notes page', () => {
     expect(screen.getByText(t.notebook.brew.canBe(2))).toBeTruthy()
 
     await act(async () => void fireEvent.click(screen.getByRole('button', { name: t.notebook.brew.turn })))
-    const sheet = await screen.findByRole('dialog')
+    const sheet = await brewSheet()
     expect(within(sheet).getByText(t.notebook.brew.fromLine(1))).toBeTruthy()
     expect(within(sheet).getByText(t.notebook.brew.totalWithParent(3, 'a', 2))).toBeTruthy()
     await act(async () => void fireEvent.click(within(sheet).getByRole('button', { name: t.notebook.brew.file(3) })))

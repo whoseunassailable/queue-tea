@@ -167,6 +167,27 @@
 .rm .nt-row.out .nt-row-title { opacity: 0.55; }
 .rm .nt-total { margin: 4px 0 0; font-weight: 800; }
 .rm .sheet-actions .nt-keys { margin-right: auto; align-self: center; font-size: 11px; }
+.rm .nt-sheet-say { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rm .nt-sheet-say .hint { margin: 0; }
+.rm .nt-cols.drafted, .rm .nt-row[data-drafted] { grid-template-columns: 22px minmax(0, 1fr) 104px 104px 96px; }
+.rm .nt-brew-trouble { background: var(--hi-b); color: var(--hi-t); }
+.rm .nt-brew-decide { padding: 8px 12px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.rm .nt-brew-decide h3, .rm .nt-brew-decide h4, .rm .nt-brew-details h4 { margin: 4px 0; font-size: 12px; font-weight: 800; }
+.rm .nt-brew-decide ul, .rm .nt-brew-details ul, .rm .nt-brew-learned ul { margin: 0; padding-left: 18px; font-size: 12px; }
+.rm .nt-brew-group { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.rm .nt-brew-group:first-of-type { border-top: 0; }
+.rm .nt-brew-alone { font-weight: 800; }
+.rm .nt-brew-match { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 12px; color: var(--ink2); }
+.rm .nt-brew-match.same { color: var(--urg-t); }
+.rm .nt-brew-more { margin-top: 4px; }
+.rm .nt-brew-details { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.rm .nt-brew-details .form-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.rm .nt-brew-sources blockquote { margin: 4px 0; padding-left: 10px; border-left: 3px solid var(--line); font-size: 12px; }
+.rm .nt-brew-sources blockquote.not-found { border-left-color: var(--urg-t); }
+.rm .nt-brew-sources cite { color: var(--ink2); font-style: normal; }
+.rm .nt-brew-learned { font-size: 12px; }
+.rm .nt-brew-learned summary { cursor: pointer; font-weight: 800; }
+.rm .nt-brew-linked { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 
 /* Empty and failed */
 .rm .nt-empty { text-align: center; align-items: center; }

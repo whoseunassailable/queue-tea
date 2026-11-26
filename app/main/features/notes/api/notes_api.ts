@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto'
 
+import { blockTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/block_task'
 import { fileTaskUseCase } from '../../../../../hooks/features/tasks/domain/usecases/file_task'
 import { isoLocal } from '../../../../../hooks/shared/time/domain/services/time'
 import type { ParentPick } from '../../../../../types'
 import type { Reply } from '../../../../shared/engine_api'
 import { attendeesOf, cleanAttendee, MEETING_LIMITS, meetingLinkOf, meetingTimeOf, NO_MEETING } from '../../../../shared/meetings'
 import type { Meeting } from '../../../../shared/meetings'
-import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_HISTORY_FOLDER, NOTE_LIMITS, NOTE_TITLE_BAD, NOTE_VERSION_ID, NOTES_FOLDER, noteTypeOf, renameLinks } from '../../../../shared/notes'
+import { BREW_LIMITS, isDraftKey, isEffortPoints } from '../../../../shared/brew_draft'
+import { cleanTag, firstParagraphOf, freeTitle, INBOX, isNoteId, isOwnQuest, isTitleTaken, linksOf, NOTE_FOLDER_BAD, NOTE_HISTORY_FOLDER, NOTE_LIMITS, NOTE_TITLE_BAD, NOTE_VERSION_ID, NOTES_FOLDER, noteTypeOf, renameLinks } from '../../../../shared/notes'
 import type { BackupSkip, Note, NoteChange, NoteFiled, NoteQuest, NoteSave, NotesExport, NotesRestore, NotesView, NoteType, NoteVersion, ProposedQuest } from '../../../../shared/notes'
 import { projectsFolder } from '../../../core/constants'
 import { inGameWords, MESSAGES } from '../../../core/messages'
@@ -16,6 +18,9 @@ import { realmView, scopeOf } from '../../tasks/api/scope'
 import type { TasksDeps } from '../../tasks/api/scope'
 import { newQuestOf, parentOf } from '../../tasks/domain/task_input'
 import { noteText, parseNote } from '../domain/note_file'
+import { questDescriptionOf } from '../domain/quest_description'
+import { keepOutcome } from '../../brewquest/data/outcome_store'
+import { outcomeOf } from '../../brewquest/domain/brew_lessons'
 import type { NoteFile } from '../domain/note_file'
 import type { NoteAttachment } from '../../../../shared/note_attachments'
 import { BOOKMARK_LIMITS, bookmarkUrlOf } from '../../../../shared/note_bookmarks'
@@ -89,19 +94,74 @@ const changeOf = (value: unknown): Change => {
   return { title, folder: folder === '' ? INBOX : folder, type: type as NoteType | null, isPinned, tags, body: v.body, ...(v.meeting === undefined ? {} : { meeting: meetingOf(v.meeting) }) }
 }
 
-const proposedOf = (value: unknown): ProposedQuest[] => {
-  if (!Array.isArray(value)) throw new Refusal(MESSAGES.badValue)
-  if (value.length === 0) throw new Refusal(MESSAGES.noQuestsToFile)
-  if (value.length > NOTE_LIMITS.quests) throw new Refusal(MESSAGES.tooManyQuests)
+type Asked = { key: string | null; parent: ParentPick; quests: ProposedQuest[] }
 
-  return value.map((q: Record<string, unknown> | null) => {
-    const item = q?.item ?? null
-    if (item !== null && (typeof item !== 'string' || item.length > NOTE_LIMITS.item)) throw new Refusal(MESSAGES.badValue)
-    // newQuestOf checks the title, priority and difficulty as the quest form does.
-    const quest = newQuestOf({ ...q, parent: { kind: 'none' } })
+// A list of short lines, each checked; absent reads as none.
+const linesOf = (value: unknown, count: number, limit: number): string[] => {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.length > count || value.some(line => typeof line !== 'string' || line.length > limit)) throw new Refusal(MESSAGES.badDraftQuest)
 
-    return { title: quest.title, priority: quest.priority, difficulty: quest.difficulty, item }
+  return (value as string[]).map(line => line.trim()).filter(line => line !== '')
+}
+
+// One quest as the review sheet sent it. A draft's extras are checked here
+// as they were when the draft was read, since the sheet lets Rohan edit them.
+const proposedOf = (q: Record<string, unknown> | null): ProposedQuest => {
+  const item = q?.item ?? null
+  if (item !== null && (typeof item !== 'string' || item.length > NOTE_LIMITS.item)) throw new Refusal(MESSAGES.badValue)
+  // newQuestOf checks the title, priority and difficulty as the quest form does.
+  const quest = newQuestOf({ ...q, parent: { kind: 'none' } })
+  const base: ProposedQuest = { title: quest.title, priority: quest.priority, difficulty: quest.difficulty, item }
+  if (q?.key === undefined) return base
+  if (!isDraftKey(q.key) || !/\.q[0-9]+$/.test(q.key)) throw new Refusal(MESSAGES.badDraftQuest)
+  const summary = q.summary ?? ''
+  if (typeof summary !== 'string' || summary.length > BREW_LIMITS.summary) throw new Refusal(MESSAGES.badDraftQuest)
+  if (q.points !== undefined && !isEffortPoints(q.points)) throw new Refusal(MESSAGES.badDraftQuest)
+  const sources = q.sources ?? []
+  if (!Array.isArray(sources) || sources.length > BREW_LIMITS.sources) throw new Refusal(MESSAGES.badDraftQuest)
+  const quoted = sources.map((one: Record<string, unknown> | null) => {
+    if (typeof one?.title !== 'string' || one.title.length > NOTE_LIMITS.title || typeof one.quote !== 'string' || one.quote.trim() === '' || one.quote.length > BREW_LIMITS.quote) throw new Refusal(MESSAGES.badDraftQuest)
+
+    return { title: one.title, quote: one.quote.trim() }
   })
+  const waits = q.waitsFor ?? []
+  if (!Array.isArray(waits) || waits.length > BREW_LIMITS.quests || waits.some(wait => typeof wait !== 'string' || wait === '' || wait.length > 40)) throw new Refusal(MESSAGES.badDraftQuest)
+
+  return {
+    ...base,
+    key: q.key,
+    summary: summary.trim(),
+    criteria: linesOf(q.criteria, BREW_LIMITS.criteria, BREW_LIMITS.criterion),
+    ...(q.points === undefined ? {} : { points: q.points as number }),
+    waitsFor: [...new Set(waits as string[])],
+    sources: quoted,
+    // One more than BrewQuest may give, for the wait main left out.
+    doubts: linesOf(q.doubts, BREW_LIMITS.doubts + 1, BREW_LIMITS.doubt),
+  }
+}
+
+// The groups the review sheet sent: each a parent and its quests, with every
+// draft key once.
+const askedOf = (value: unknown): Asked[] => {
+  const groups = (value ?? {}) as { groups?: unknown }
+  if (!Array.isArray(groups.groups) || groups.groups.length > BREW_LIMITS.groups) throw new Refusal(MESSAGES.badValue)
+  const asked = groups.groups.map((g: Record<string, unknown> | null): Asked => {
+    const key = g?.key ?? null
+    if (key !== null && (!isDraftKey(key) || !/\.g[0-9]+$/.test(key))) throw new Refusal(MESSAGES.badDraftQuest)
+    const parent = parentOf(g?.parent)
+    // A group goes under one parent or none; a quest under several is picked on its own card.
+    if (parent.kind === 'several') throw new Refusal(MESSAGES.badValue)
+    if (!Array.isArray(g?.quests)) throw new Refusal(MESSAGES.badValue)
+
+    return { key, parent, quests: g.quests.map(proposedOf) }
+  })
+  const count = asked.reduce((sum, group) => sum + group.quests.length, 0)
+  if (count === 0) throw new Refusal(MESSAGES.noQuestsToFile)
+  if (count > NOTE_LIMITS.quests) throw new Refusal(MESSAGES.tooManyQuests)
+  const keys = asked.flatMap(group => [group.key, ...group.quests.map(quest => quest.key ?? null)]).filter((key): key is string => key !== null)
+  if (new Set(keys).size !== keys.length) throw new Refusal(MESSAGES.badDraftQuest)
+
+  return asked
 }
 
 // A link from a note opens in the browser or mail app, and nothing else does.
@@ -640,40 +700,81 @@ export const notesApi = (d: NotesDeps) => {
         return viewOf(realm)
       }),
 
-    // Files the quests one by one into the realm's queue, and links each to
-    // the note as soon as it is in. A line the note already lists is skipped,
-    // so Try again after a failure part way never files a line twice.
+    // Files the quests one by one into the realm's queue, group by group, and
+    // links each to the note as soon as it is in, with its draft key. A quest
+    // whose key or checklist line the note already lists is skipped, so Try
+    // again after a failure part way never files one twice. Waits are set once
+    // every quest is in; one that would loop or names a quest that's gone is
+    // left out and counted.
     fileNoteQuests: (key: unknown, id: unknown, proposal: unknown): Promise<Reply<NoteFiled>> =>
       inTurn(MESSAGES.fileNoteQuests, async () => {
         const realm = await realmOf(key)
         let note = await known(realm, idOf(id))
-        const p = (proposal ?? {}) as { parent?: unknown; quests?: unknown }
-        const asked = proposedOf(p.quests)
-        let parent: ParentPick = parentOf(p.parent)
+        const asked = askedOf(proposal)
+        const outcome = outcomeOf((proposal as { draft?: unknown } | null)?.draft)
         const scope = await scopeOf(d, realm)
         const isOpen = (questId: string) => scope.record.tasks.some(task => task.id === questId && (task.state === 'queued' || task.state === 'current'))
-        // A parent already filed from this note, and still open, takes the new lines.
-        const own = note.file.quests.find(q => q.item === null && isOpen(q.id))
-        if (parent.kind === 'new' && own !== undefined) parent = { kind: 'task', id: own.id }
+        // A parent already filed from this note, and still open, takes new lines.
+        const own = note.file.quests.find(q => isOwnQuest(q) && isOpen(q.id))
         const filedItems = new Set(note.file.quests.map(q => q.item))
-        const quests = asked.filter(quest => !filedItems.has(quest.item))
-        const from = `From the note "${note.file.title}" in Notes.`
+        const idOfKey = new Map(note.file.quests.flatMap(q => (q.key === undefined ? [] : [[q.key, q.id] as const])))
+        const firstParagraph = firstParagraphOf(note.file.body)
         let record = scope.record
-        for (const quest of quests) {
-          const about = quest.item === null ? firstParagraphOf(note.file.body) : null
-          const filed = await fileTaskUseCase(scope.deps, scope.ctx, { title: quest.title, priority: quest.priority, difficulty: quest.difficulty, parent, description: about === null ? from : `${from}\n\n${about}`, criteria: [], text: quest.title, intent: 'improving' })
-          if (filed.kind === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
-          if (filed.kind === 'refused') throw new Refusal(inGameWords(filed.notice))
-          const linked: NoteQuest[] = [{ id: filed.task.id, item: quest.item }]
-          if (parent.kind === 'new' && filed.parent !== null) {
-            linked.unshift({ id: filed.parent.id, item: null })
-            parent = { kind: 'task', id: filed.parent.id }
+        let filedCount = 0
+        for (const group of asked) {
+          let parent = group.parent
+          const filedParent = group.key === null ? undefined : idOfKey.get(group.key)
+          if (filedParent !== undefined && isOpen(filedParent)) parent = { kind: 'task', id: filedParent }
+          else if (group.key === null && parent.kind === 'new' && own !== undefined) parent = { kind: 'task', id: own.id }
+          for (const quest of group.quests) {
+            if (quest.key !== undefined ? idOfKey.has(quest.key) : filedItems.has(quest.item)) continue
+            // A drafted quest from a line filed before keeps no line, so the line stays linked to one quest.
+            const item = quest.key !== undefined && quest.item !== null && filedItems.has(quest.item) ? null : quest.item
+            const description = questDescriptionOf(note.file.title, firstParagraph, quest)
+            const filed = await fileTaskUseCase(scope.deps, scope.ctx, { title: quest.title, priority: quest.priority, difficulty: quest.difficulty, parent, description, criteria: quest.criteria ?? [], text: quest.title, intent: 'improving' })
+            if (filed.kind === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
+            if (filed.kind === 'refused') throw new Refusal(inGameWords(filed.notice))
+            const linked: NoteQuest[] = []
+            if (parent.kind === 'new' && filed.parent !== null) {
+              linked.push(group.key === null ? { id: filed.parent.id, item: null } : { id: filed.parent.id, item: null, key: group.key, under: null })
+              if (group.key !== null) idOfKey.set(group.key, filed.parent.id)
+              parent = { kind: 'task', id: filed.parent.id }
+            }
+            const under = parent.kind === 'task' ? parent.id : null
+            linked.push(quest.key === undefined ? { id: filed.task.id, item } : { id: filed.task.id, item, key: quest.key, under })
+            if (quest.key !== undefined) idOfKey.set(quest.key, filed.task.id)
+            note = await write(realm, note.id, { ...note.file, quests: [...note.file.quests, ...linked] })
+            record = filed.record
+            filedCount += 1
           }
-          note = await write(realm, note.id, { ...note.file, quests: [...note.file.quests, ...linked] })
-          record = filed.record
         }
 
-        return { view: await viewOf(realm), project: await realmView(d, realm, record) }
+        let waitsLeftOut = 0
+        for (const quest of asked.flatMap(group => group.quests)) {
+          const taskId = quest.key === undefined ? undefined : idOfKey.get(quest.key)
+          if (taskId === undefined) continue
+          for (const wait of quest.waitsFor ?? []) {
+            const target = isDraftKey(wait) ? idOfKey.get(wait) : wait
+            const there = record.tasks.find(task => task.id === target)
+            if (target === undefined || there === undefined || there.state === 'removed' || there.state === 'done') {
+              waitsLeftOut += 1
+              continue
+            }
+            const set = await blockTaskUseCase(scope.deps, record, taskId, { waitFor: target })
+            if (set.kind !== 'saved') {
+              waitsLeftOut += 1
+              continue
+            }
+            if (set.saved === 'unreadable') throw new Refusal(MESSAGES.unreadableRealm)
+            record = set.saved
+          }
+        }
+        if (outcome !== null) {
+          // Learning only ever adds to a draft, so a review that can't be kept never undoes a filing.
+          await keepOutcome(d, realm, { ...outcome, at: nowText(), filed: filedCount }).catch(err => d.log.error('keeping a brewquest outcome failed', err))
+        }
+
+        return { view: await viewOf(realm), project: await realmView(d, realm, record), waitsLeftOut }
       }),
   }
 }

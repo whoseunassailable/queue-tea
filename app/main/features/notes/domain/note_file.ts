@@ -1,3 +1,4 @@
+import { isDraftKey } from '../../../../shared/brew_draft'
 import { attendeesOf, MEETING_KEYS, meetingLinkOf, meetingTimeOf } from '../../../../shared/meetings'
 import type { Meeting } from '../../../../shared/meetings'
 import { cleanTag, INBOX, NOTE_LIMITS, noteTypeOf } from '../../../../shared/notes'
@@ -39,7 +40,10 @@ const tagsOf = (value: unknown): string[] => {
 const questsOf = (value: unknown): NoteQuest[] =>
   // shortcut: a quests line that isn't Queue-tea's JSON reads as none and is rewritten on the next save; upgrade if other tools start writing it.
   Array.isArray(value)
-    ? value.filter((q): q is NoteQuest => typeof q?.id === 'string' && (q.item === null || typeof q.item === 'string')).map(q => ({ id: q.id, item: q.item }))
+    ? value
+        .filter((q): q is NoteQuest => typeof q?.id === 'string' && (q.item === null || typeof q.item === 'string'))
+        // A draft's key and the quest it went under are kept when they read, and left off when they don't.
+        .map(q => ({ id: q.id, item: q.item, ...(isDraftKey(q.key) ? { key: q.key } : {}), ...(q.under === null || typeof q.under === 'string' ? { under: q.under } : {}) }))
     : []
 
 export const parseNote = (raw: string, name: string, fileTime: string): NoteFile => {

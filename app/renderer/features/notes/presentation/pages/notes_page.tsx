@@ -292,7 +292,7 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
     onFiled: (filed: NoteFiled, count: number) => {
       read.adopt(filed.view)
       onProject(filed.project)
-      onSay(t.notebook.brew.filed(count))
+      onSay(filed.waitsLeftOut > 0 ? `${t.notebook.brew.filed(count)}${t.notebook.brew.waitsLeftOut(filed.waitsLeftOut)}` : t.notebook.brew.filed(count))
       brewMood.react('success')
     },
     onOpenQuest,

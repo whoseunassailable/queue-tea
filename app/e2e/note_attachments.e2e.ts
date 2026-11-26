@@ -38,7 +38,7 @@ test.beforeAll(async () => {
   page.on('pageerror', error => errors.push(String(error)))
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.getByRole('button', { name: /^File notes/ }).click()
-  await page.keyboard.press('Meta+7')
+  await page.keyboard.press('Meta+4')
   await expect(page.getByLabel('Title *')).toHaveValue('Files')
 })
 

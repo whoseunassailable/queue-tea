@@ -92,7 +92,7 @@ export const ActiveDetail = ({ engine, realm, active, isSaved, edits }: Props) =
       {read.load.status === 'failed' && <p class="hint" role="alert">{read.load.message}</p>}
       {read.load.status === 'ready' && read.note !== null && <p class="hint" role="alert">{read.note}</p>}
       <button type="button" class="link-btn" disabled={read.isRefreshing || read.load.status === 'loading'} onClick={read.load.status === 'failed' ? read.retry : read.refresh}>
-        {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.activity.refreshing : t.activity.refresh}
+        {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.detail.refreshing : t.detail.refresh}
       </button>
       {facts?.active != null && <Facts facts={facts.active} active={active} />}
       {facts?.active?.git != null && <NotCommitted git={facts.active.git} />}

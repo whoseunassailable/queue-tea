@@ -121,38 +121,48 @@ describe('the active quest\'s details', () => {
   const held = (over: Partial<EngineApi> = {}) => open(HELD, { readQuestFacts: vi.fn(facts({ active: ACTIVE })), ...over })
   const showIt = () => press(t.detail.openActive('The quest in hand'))
 
-  it('updates the activity when the record changes and retains it through a failed refresh', async () => {
+  it('updates its details when the record changes and keeps them through a failed refresh', async () => {
     const readQuestFacts = vi.fn(facts({ active: ACTIVE }))
     const { pane, fire } = await held({ readQuestFacts })
     await showIt()
-    await within(pane()).findByText(t.activity.empty)
-    readQuestFacts.mockImplementation(facts({ active: ACTIVE, activity: {
-      step: { id: 'run', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', subject: 'npm test', status: 'running' },
-      commits: [], gitUnavailable: false,
-    } }))
+    await within(pane()).findByText(t.notes.files(33, 39))
+    readQuestFacts.mockImplementation(facts({ active: { ...ACTIVE, filesChanged: 40 } }))
     await act(async () => fire())
-    expect(await within(pane()).findByText('npm test')).toBeTruthy()
-    readQuestFacts.mockResolvedValue({ ok: false, error: { message: 'Could not read activity.' } })
+    expect(await within(pane()).findByText(t.notes.files(33, 40))).toBeTruthy()
+    readQuestFacts.mockResolvedValue({ ok: false, error: { message: 'Could not read the details.' } })
     await act(async () => fire())
-    expect(await within(pane()).findByText('Could not read activity.')).toBeTruthy()
-    expect(within(pane()).getByText('npm test')).toBeTruthy()
+    expect(await within(pane()).findByText('Could not read the details.')).toBeTruthy()
+    expect(within(pane()).getByText(t.notes.files(33, 40))).toBeTruthy()
     readQuestFacts.mockImplementation(facts({ active: ACTIVE }))
-    await act(() => void fireEvent.click(within(pane()).getByRole('button', { name: t.activity.refresh })))
-    expect(await within(pane()).findByText(t.activity.empty)).toBeTruthy()
+    await act(() => void fireEvent.click(within(pane()).getByRole('button', { name: t.detail.refresh })))
+    expect(await within(pane()).findByText(t.notes.files(33, 39))).toBeTruthy()
   })
 
-  it('shows a busy refresh without removing the activity already read', async () => {
+  it('shows a busy refresh without removing the details already read', async () => {
     const readQuestFacts = vi.fn(facts({ active: ACTIVE }))
     const { pane } = await held({ readQuestFacts })
     await showIt()
-    await within(pane()).findByText(t.activity.empty)
+    await within(pane()).findByText(t.notes.files(33, 39))
     let finish!: (reply: Reply<QuestFacts>) => void
     readQuestFacts.mockImplementation(() => new Promise(resolve => { finish = resolve }))
-    await act(() => void fireEvent.click(within(pane()).getByRole('button', { name: t.activity.refresh })))
-    expect((within(pane()).getByRole('button', { name: t.activity.refreshing }) as HTMLButtonElement).disabled).toBe(true)
-    expect(within(pane()).getByText(t.activity.empty)).toBeTruthy()
-    await act(async () => finish({ ok: true, data: QUEST_FACTS }))
-    expect(await within(pane()).findByRole('button', { name: t.activity.refresh })).toBeTruthy()
+    await act(() => void fireEvent.click(within(pane()).getByRole('button', { name: t.detail.refresh })))
+    expect((within(pane()).getByRole('button', { name: t.detail.refreshing }) as HTMLButtonElement).disabled).toBe(true)
+    expect(within(pane()).getByText(t.notes.files(33, 39))).toBeTruthy()
+    await act(async () => finish({ ok: true, data: { ...QUEST_FACTS, active: ACTIVE } }))
+    expect(await within(pane()).findByRole('button', { name: t.detail.refresh })).toBeTruthy()
+  })
+
+  it('no longer lists task activity, though the step and commits are still read', async () => {
+    const readQuestFacts = vi.fn(facts({ active: ACTIVE, activity: {
+      step: { id: 'run', at: '2026-11-04T12:00:00Z', finished: null, kind: 'test', subject: 'npm test', status: 'running' },
+      commits: [{ id: 'abc1234', at: '2026-11-04T12:03:00Z', message: 'added the activity feed', remotes: ['origin/main'] }], gitUnavailable: false,
+    } }))
+    const { pane } = await held({ readQuestFacts })
+    await showIt()
+    await within(pane()).findByText(t.notes.files(33, 39))
+    expect(within(pane()).queryByRole('region', { name: 'Task activity' })).toBeNull()
+    expect(within(pane()).queryByText('npm test')).toBeNull()
+    expect(within(pane()).queryByText('added the activity feed')).toBeNull()
   })
 
   it('opens from the card', async () => {

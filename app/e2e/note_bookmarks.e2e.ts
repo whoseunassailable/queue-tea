@@ -31,7 +31,7 @@ test.beforeAll(async () => {
   page = await app.firstWindow()
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.getByRole('button', { name: /^Mark notes/ }).click()
-  await page.keyboard.press('Meta+7')
+  await page.keyboard.press('Meta+4')
   await expect(page.getByLabel('Title *')).toHaveValue('Marks')
 })
 

@@ -1,6 +1,6 @@
 # Using Notes
 
-Select a realm, then open **Notes** or press `⌘7`. Each realm has its own
+Select a realm, then open **Notes** or press `⌘4`. Each realm has its own
 notes. You can capture an unfinished thought and come back to organize it or
 turn it into work on the quest board.
 
@@ -165,7 +165,7 @@ For the full format and feature details, see [Notes](notes.md).
 
 | Key | Action |
 | --- | --- |
-| `⌘7` | Open Notes for the selected realm |
+| `⌘4` | Open Notes for the selected realm |
 | `⇧⌘N` | New note from any screen |
 | `⌘J` | Focus Jot an idea while in Notes |
 | `⌘F` | Focus search while in Notes |

@@ -45,7 +45,7 @@ test.afterAll(async () => {
 })
 
 test('Graph shows the notes around the open note', async () => {
-  await page.keyboard.press('Meta+7')
+  await page.keyboard.press('Meta+4')
   await expect(page.getByLabel('Title *')).toHaveValue(/^Note \d+$/, { timeout: 30_000 })
   await page.keyboard.press('Meta+g')
 

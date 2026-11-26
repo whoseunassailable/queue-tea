@@ -1,0 +1,111 @@
+/* The app's shared design tokens: spacing, type, corners, widths, layers,
+   shadows, motion and the status colours. Every screen takes its sizes from
+   here, so panels, sheets, forms and states line up the same way everywhere.
+   The Jade Peaks theme (jade_peaks.css) keeps the palette and the art; these
+   values are the ones the mockups already use, named, so nothing changes look
+   by moving to them. docs/ui-refinement.md lists them and when to use each.
+
+   The colour tokens point at the theme's own colours, so they follow the sky:
+   a token set here is worked out on the same element as the theme's colours,
+   and the night sky's values win there. */
+.rm {
+  /* Spacing. A 4px step, and the in-between steps the pixel-art panels use
+     for their inner padding. */
+  --space-half: 2px;
+  --space-1: 4px;
+  --space-1h: 6px;
+  --space-2: 8px;
+  --space-2h: 10px;
+  --space-3: 12px;
+  --space-3h: 14px;
+  --space-4: 16px;
+  --space-4h: 18px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* What the spacing is for. A panel's padding leaves room for its double
+     gold rule, so it is a little deeper at the bottom and sides. */
+  --pad-panel: var(--space-4) var(--space-4h) var(--space-4h);
+  --pad-card: var(--space-2h) var(--space-3);
+  --pad-sheet: var(--space-5);
+  --pad-state: var(--space-5) var(--space-6);
+  --pad-field: 7px var(--space-2h);
+  --gap-page: var(--space-4h);
+  --gap-stack: var(--space-2h);
+  --gap-inline: var(--space-2);
+  --gap-tight: var(--space-1);
+
+  /* Type. Nunito Sans for reading, Marcellus for titles and tabs, the system
+     monospace for paths, branches and commands. */
+  --font-body: 'Nunito Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-title: 'Marcellus', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --text-caption: 11px;
+  --text-small: 12px;
+  --text-body: 13px;
+  --text-button: 14px;
+  --text-lead: 16px;
+  --text-section: 18px;
+  --text-title: 22px;
+  --text-page: 26px;
+  --leading-caption: 16px;
+  --leading-body: 18px;
+  --leading-section: 24px;
+  --leading-title: 28px;
+  --leading-page: 32px;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  /* Corners. */
+  --radius-small: 6px;
+  --radius: 8px;
+  --radius-panel: 10px;
+  --radius-pill: 999px;
+
+  /* Heights of the things you press. */
+  --control-small: 24px;
+  --control: 28px;
+  --control-tab: 32px;
+  --control-button: 36px;
+  --control-icon: 42px;
+
+  /* Widths. */
+  --width-state: 480px;
+  --width-confirm: 480px;
+  --width-sheet: 600px;
+  --width-wide-sheet: 1000px;
+  --width-palette: 600px;
+  --width-detail: 380px;
+  --width-floating-detail: 360px;
+  --width-page: 1100px;
+
+  /* What sits over what. */
+  --layer-title-bar: 2;
+  --layer-floating: 4;
+  --layer-menu: 5;
+  --layer-scrim: 20;
+  --layer-toast: 30;
+
+  /* Shadows, from a menu just above the page to a pane floating over it. */
+  --shadow-menu: 0 0 0 1px var(--line), 0 8px 20px rgba(0, 0, 0, 0.25);
+  --shadow-toast: 0 0 0 1px var(--line), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-float: 0 16px 40px rgba(30, 24, 60, 0.35);
+  --scrim: rgba(8, 20, 24, 0.45);
+
+  /* Motion. Only transform and opacity move. */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --duration-quick: 0.16s;
+  --duration-fill: 1.2s;
+
+  /* Status colours, from the theme. */
+  --accent: var(--xp);
+  --danger: var(--urg-t);
+  --danger-soft: var(--urg-b);
+  --warning: var(--hi-t);
+  --warning-soft: var(--hi-b);
+  --success: var(--xp-t);
+  --success-soft: var(--xp-b);
+}

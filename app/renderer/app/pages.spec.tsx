@@ -44,17 +44,27 @@ describe('finding the pages', () => {
     expect(screen.getByRole('link', { name: t.nav.hoard }).getAttribute('href')).toBe('#/hoard')
   })
 
-  it('⌘3 opens Designs, and Branches, Chronicle and Mana move to ⌘4, ⌘5 and ⌘6', async () => {
+  it('⌘3 opens Designs, ⌘4 Notes, and Branches, Chronicle and Mana move to ⌘5, ⌘6 and ⌘7', async () => {
     await open('/home')
 
     await act(() => void fireEvent.keyDown(document.body, { key: '3', metaKey: true }))
     await waitFor(() => expect(window.location.hash).toBe('#/designs'))
     await act(() => void fireEvent.keyDown(document.body, { key: '4', metaKey: true }))
-    await waitFor(() => expect(window.location.hash).toBe('#/branches'))
+    await waitFor(() => expect(window.location.hash).toBe('#/notes'))
     await act(() => void fireEvent.keyDown(document.body, { key: '5', metaKey: true }))
-    await waitFor(() => expect(window.location.hash).toBe('#/chronicle'))
+    await waitFor(() => expect(window.location.hash).toBe('#/branches'))
     await act(() => void fireEvent.keyDown(document.body, { key: '6', metaKey: true }))
+    await waitFor(() => expect(window.location.hash).toBe('#/chronicle'))
+    await act(() => void fireEvent.keyDown(document.body, { key: '7', metaKey: true }))
     await waitFor(() => expect(window.location.hash).toBe('#/mana'))
+  })
+
+  it('shows the tabs in order, with Notes fourth and leading to the Notes page', async () => {
+    await open('/home')
+
+    const tabs = within(screen.getByRole('navigation', { name: t.nav.sections })).getAllByRole('link')
+    expect(tabs.map(link => link.textContent)).toEqual([t.nav.home, t.nav.quests, t.nav.designs, t.nav.notes, t.nav.branches, t.nav.chronicle, t.nav.mana, t.nav.calendar])
+    expect(tabs[3]!.getAttribute('href')).toBe('#/notes')
   })
 
   it('puts the Designs tab right after Quests', async () => {

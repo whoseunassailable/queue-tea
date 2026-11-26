@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 
 import type { EngineApi, FolderPick, MenuItem, Opened, RealmLine, SessionState } from '../../shared/engine_api'
+import { TAB_ORDER } from '../../shared/tabs'
 import { TITLE_BAR_PX } from '../../shared/window_chrome'
 import { hrefOf, ROUTES, useRoute } from '../config/routing/routes'
 import type { Route } from '../config/routing/routes'
@@ -54,16 +55,8 @@ import { useWorkspace } from '../features/workspace/state_management/workspace_s
 import type { ReadableView, Workspace, WorkspaceState } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
 
-const TABS: readonly { route: Route; label: string }[] = [
-  { route: ROUTES.home, label: t.nav.home },
-  { route: ROUTES.quests, label: t.nav.quests },
-  { route: ROUTES.designs, label: t.nav.designs },
-  { route: ROUTES.branches, label: t.nav.branches },
-  { route: ROUTES.chronicle, label: t.nav.chronicle },
-  { route: ROUTES.mana, label: t.nav.mana },
-  { route: ROUTES.notes, label: t.nav.notes },
-  { route: ROUTES.calendar, label: t.nav.calendar },
-]
+// The toolbar's tabs, in the order every part of the app numbers them.
+const TABS: readonly { route: Route; label: string }[] = TAB_ORDER.map(tab => ({ route: ROUTES[tab], label: t.nav[tab] }))
 
 const MORE_PAGES: readonly { route: Route; label: string }[] = [
   { route: ROUTES.guild, label: t.nav.guild },

@@ -1,6 +1,8 @@
 import type { MenuItemConstructorOptions } from 'electron'
 
 import type { MenuItem } from '../../shared/engine_api'
+import { TAB_ORDER, tabKeyOf } from '../../shared/tabs'
+import type { TabId } from '../../shared/tabs'
 
 type Send = (item: MenuItem) => void
 
@@ -11,16 +13,11 @@ const letter = (label: string, key: string, send: Send): MenuItemConstructorOpti
 // Pressed in the window the key arrives there first; this is for the mouse.
 const command = (label: string, key: string, send: Send): MenuItemConstructorOptions => ({ label, accelerator: `CmdOrCtrl+${key}`, click: () => send({ kind: 'key', key: key.toLowerCase(), isMeta: true }) })
 
-const TABS: readonly (readonly [string, string])[] = [
-  ['Home', '1'],
-  ['Quests', '2'],
-  ['Designs', '3'],
-  ['Branches', '4'],
-  ['Chronicle', '5'],
-  ['Mana & time', '6'],
-  ['Notes', '7'],
-  ['Calendar', '8'],
-]
+// The menu bar's own words for each tab. The order and the digits come from
+// the window's tab order.
+const TAB_LABELS: Record<TabId, string> = { home: 'Home', quests: 'Quests', designs: 'Designs', notes: 'Notes', branches: 'Branches', chronicle: 'Chronicle', mana: 'Mana & time', calendar: 'Calendar' }
+
+const TABS: readonly (readonly [string, string])[] = TAB_ORDER.map(tab => [TAB_LABELS[tab], tabKeyOf(tab)] as const)
 
 export const appMenu = (appName: string, isDev: boolean, send: Send): MenuItemConstructorOptions[] => [
   {

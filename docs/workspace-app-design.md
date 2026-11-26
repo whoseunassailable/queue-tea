@@ -325,7 +325,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
 5. The project the app was opened from (`queue-tea open`, or `queue-tea://open?path=` from the tea-cup menu) is selected and tagged Detected. Opened without one, the app shows the last project used. On the very first launch with records it shows a "Pick a project" list beside Open folder….
 
 **Navigation**
-- Tabs in the toolbar for the selected project: Home ⌘1 (`/home`), Quests ⌘2 (`/quests`), Designs ⌘3 (`/designs`, 4.20), Branches ⌘4 (`/branches`), Chronicle ⌘5 (`/chronicle`), Mana & time ⌘6 (`/mana`). The sky dial sits at the right of the toolbar, and the HUD (level and XP, streak, gold, mana) runs under the tabs on every screen.
+- Tabs in the toolbar for the selected project: Home ⌘1 (`/home`), Quests ⌘2 (`/quests`), Designs ⌘3 (`/designs`, 4.20), Notes ⌘4 (`/notes`), Branches ⌘5 (`/branches`), Chronicle ⌘6 (`/chronicle`), Mana & time ⌘7 (`/mana`), Calendar ⌘8 (`/calendar`). The order lives in one list, `TAB_ORDER` in `app/shared/tabs.ts`, so the tabs, the palette and the menu bar agree. Updated 2026-11-26 (2.25.0): Notes moved up to fourth. The sky dial sits at the right of the toolbar, and the HUD (level and XP, streak, gold, mana) runs under the tabs on every screen.
 - Guild Hall, Hoard, Library and Settings are app-wide pages; Settings is also ⌘,, and it leads with the realm you're in.
 - Each project keeps its own tab, selection, scroll, folds, search and Time I have while you switch.
 
@@ -1306,6 +1306,8 @@ Added 2026-11-05. The approved screens are in `docs/design-tab.pen`, and [design
 ---
 
 ## 5. Components
+
+Spacing, type sizes, corners, control heights, container widths and layers come from the tokens in `app/renderer/core/theme/tokens.css`, added in 2.25.0. [UI refinement](ui-refinement.md) lists them and says when to use each.
 
 ```
 COMPONENT STATES · task row (44 px; 60 px with the ★ line)

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { Platform } from '../../../../../types'
 
-import type { ActiveQuest, EngineApi, GameView, GitHold, ProjectRow, ProjectView, Reply, Settings, SkyChoice, TerminalChoice, Victory } from '../../../../shared/engine_api'
+import type { ActiveQuest, EngineApi, GameView, GitHold, HomeNav, ProjectRow, ProjectView, Reply, Settings, SkyChoice, TerminalChoice, Victory } from '../../../../shared/engine_api'
 import { ask } from '../../../core/api/engine_client'
 import type { Answer } from '../../../core/api/engine_client'
-import { SAVED_MS, TOASTS_SHOWN, UNDO_DEPTH } from '../../../core/constants/constants'
+import { HOME_SAVE_MS, SAVED_MS, TOASTS_SHOWN, UNDO_DEPTH } from '../../../core/constants/constants'
 import { t } from '../../../l10n/en'
 import type { BoardView } from '../../quests/domain/search'
 
@@ -142,9 +142,14 @@ export const createWorkspace = (engine: EngineApi) => {
     await loadProject(key)
   }
 
+  // What Home remembers, while its save waits for the picking to settle. Another
+  // save coming back in the meantime mustn't undo it.
+  let homeNavToSave: Record<string, HomeNav> | null = null
+  let homeSave: ReturnType<typeof setTimeout> | null = null
+
   const remember = async (patch: Partial<Settings>) => {
     const answer = await ask(engine, () => engine.saveSettings(patch))
-    if (answer.ok) set({ settings: answer.data })
+    if (answer.ok) set({ settings: homeNavToSave === null ? answer.data : { ...answer.data, homeNav: homeNavToSave } })
     else set({ note: answer.message })
   }
 
@@ -290,6 +295,19 @@ export const createWorkspace = (engine: EngineApi) => {
     dismiss,
     dismissBadges: () => set({ toasts: state.toasts.filter(toast => toast.isLong !== true) }),
     say,
+    // Home's picked quest and folded groups for one realm show at once, and are
+    // saved a moment after the last change.
+    rememberHomeNav: (key: string, nav: HomeNav) => {
+      const homeNav = { ...(state.settings.homeNav ?? {}), [key]: nav }
+      homeNavToSave = homeNav
+      set({ settings: { ...state.settings, homeNav } })
+      if (homeSave !== null) clearTimeout(homeSave)
+      homeSave = setTimeout(() => {
+        homeSave = null
+        homeNavToSave = null
+        void remember({ homeNav })
+      }, HOME_SAVE_MS)
+    },
     toggleFold: async (key: string, questId: string) => {
       const folded = state.settings.folds[key] ?? []
       const next = folded.includes(questId) ? folded.filter(id => id !== questId) : [...folded, questId]

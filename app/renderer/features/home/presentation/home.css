@@ -1,0 +1,199 @@
+/* Home (Q06): the list of quests on the left, the picked quest's details on
+   the right. Only Home's own pieces are styled here; the cards and panes it
+   reuses keep the theme's styles. */
+
+.rm .home {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.rm .home-list {
+  flex: 1 1 440px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* The details stay in view while the list scrolls, and scroll on their own. */
+.rm .home-detail {
+  flex: 1 1 380px;
+  max-width: 460px;
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - var(--title-bar) - 24px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rm .home-detail .detail {
+  max-width: none;
+  flex: none;
+}
+
+/* A smaller lair, so the list starts higher. */
+.rm .home .lair {
+  height: 180px;
+}
+
+.rm .home .lair-art {
+  transform: translateX(-50%) scale(0.52);
+  transform-origin: bottom center;
+}
+
+.rm .home-quests {
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rm .hgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rm .hg-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rm .hg-toggle {
+  margin-right: auto;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.rm .hg-toggle:hover {
+  color: var(--link);
+}
+
+.rm .hg-more {
+  align-self: flex-start;
+}
+
+.rm .hcards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rm .hcard {
+  min-height: 48px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.rm .hcard:hover {
+  background: var(--hov);
+}
+
+.rm .hcard.on {
+  background: var(--sel);
+  border-color: var(--line);
+  box-shadow: inset 3px 0 0 var(--line);
+}
+
+.rm .hcard.child {
+  margin-left: 30px;
+}
+
+.rm .hcard.sealed .hc-title {
+  color: var(--ink2);
+}
+
+.rm .hc-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rm .hc-title {
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rm .hc-sub {
+  font-size: 12px;
+  color: var(--ink2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rm .hc-fold {
+  flex: none;
+}
+
+/* 900 to 1,179 px: the list takes the width and the details float over it. */
+.rm .home.floating {
+  position: relative;
+}
+
+.rm .home.floating .home-list {
+  flex-basis: 100%;
+}
+
+.rm .home.floating .home-detail {
+  position: fixed;
+  z-index: 4;
+  top: calc(var(--title-bar) + 120px);
+  right: 16px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - var(--title-bar) - 136px);
+  box-shadow: 0 16px 40px rgba(30, 24, 60, 0.35);
+  border-radius: 10px;
+}
+
+.rm .home.floating .detail-close {
+  display: inline-flex;
+  position: fixed;
+  z-index: 5;
+  top: calc(var(--title-bar) + 126px);
+  right: 22px;
+}
+
+/* Below 900 px the details are a page of their own. */
+.rm .home.paged .home-detail {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  box-shadow: none;
+}

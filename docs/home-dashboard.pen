@@ -1,0 +1,4079 @@
+{
+  "version": "2.25",
+  "children": [
+    {
+      "type": "frame",
+      "id": "h00127",
+      "x": 0,
+      "y": 0,
+      "name": "1 · Wide window, 1,280 × 900",
+      "width": 1280,
+      "height": 1300,
+      "clip": true,
+      "fill": "#E9F1EC",
+      "layout": "vertical",
+      "gap": 0,
+      "padding": 0,
+      "children": [
+        {
+          "type": "frame",
+          "id": "h00129",
+          "name": "Title bar and tabs",
+          "gap": 8,
+          "padding": [
+            12,
+            20
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "h00128",
+              "name": "Queue-tea · Home  Quests  Design",
+              "content": "Queue-tea · Home  Quests  Designs  Branches  Chronicle  …",
+              "fontFamily": "Nunito",
+              "fontSize": 12,
+              "fontWeight": "800",
+              "fill": "#54473A"
+            }
+          ],
+          "layout": "vertical",
+          "width": "fill_container",
+          "height": 40,
+          "fill": "#F4EFE2"
+        },
+        {
+          "type": "frame",
+          "id": "h00126",
+          "name": "Main",
+          "gap": 20,
+          "padding": [
+            12,
+            16,
+            20,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "h00065",
+              "name": "Sidebar (realms)",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h00062",
+                  "name": "Realms",
+                  "content": "Realms",
+                  "fontFamily": "Nunito",
+                  "fontSize": 14,
+                  "fontWeight": "800",
+                  "fill": "#2A2218"
+                },
+                {
+                  "type": "text",
+                  "id": "h00063",
+                  "name": "queue-tea",
+                  "content": "queue-tea",
+                  "fontFamily": "Nunito",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "fill": "#2A2218"
+                },
+                {
+                  "type": "text",
+                  "id": "h00064",
+                  "name": "Gait-feedback ●",
+                  "content": "Gait-feedback ●",
+                  "fontFamily": "Nunito",
+                  "fontSize": 13,
+                  "fontWeight": "800",
+                  "fill": "#2A2218"
+                }
+              ],
+              "layout": "vertical",
+              "width": 220,
+              "fill": "#FFFAEE",
+              "stroke": "#E3CFA6",
+              "strokeWidth": 1,
+              "cornerRadius": 8
+            },
+            {
+              "type": "frame",
+              "id": "h00105",
+              "name": "List column (flex 1 1 440)",
+              "gap": 16,
+              "padding": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00072",
+                  "name": "Lair, compact",
+                  "gap": 8,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00067",
+                      "name": "Dragon (scaled to 52%)",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00066",
+                          "name": "🐉 hatchling",
+                          "content": "🐉 hatchling",
+                          "fontFamily": "Nunito",
+                          "fontSize": 16,
+                          "fontWeight": "700",
+                          "fill": "#54473A"
+                        }
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "layout": "vertical",
+                      "width": 220,
+                      "height": 150,
+                      "fill": "#F4EBD6",
+                      "cornerRadius": 8
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00071",
+                      "name": "Plaque",
+                      "gap": 2,
+                      "padding": [
+                        16,
+                        18
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00068",
+                          "name": "Your hatchling",
+                          "content": "Your hatchling",
+                          "fontFamily": "Nunito",
+                          "fontSize": 16,
+                          "fontWeight": "700",
+                          "fill": "#2A2218"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00069",
+                          "name": "Level 2 · grows up at level 5",
+                          "content": "Level 2 · grows up at level 5",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "800",
+                          "fill": "#54473A"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00070",
+                          "name": "Awake and watching",
+                          "content": "Awake and watching",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "500",
+                          "fill": "#54473A"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": 210,
+                      "fill": "#FFFAEE",
+                      "stroke": "#B8893A",
+                      "strokeWidth": 1,
+                      "cornerRadius": 10
+                    }
+                  ],
+                  "justifyContent": "space_between",
+                  "width": "fill_container",
+                  "height": 180
+                },
+                {
+                  "type": "frame",
+                  "id": "h00081",
+                  "name": "Next up (Home's Now card)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00073",
+                      "name": "Next up",
+                      "content": "Next up",
+                      "fontFamily": "Nunito",
+                      "fontSize": 22,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00074",
+                      "name": "Fix the documentation",
+                      "content": "Fix the documentation",
+                      "fontFamily": "Nunito",
+                      "fontSize": 14,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00075",
+                      "name": "★ urgent",
+                      "content": "★ urgent",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00080",
+                      "name": "Actions",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00077",
+                          "name": "Button Start ★ Fix the documentation",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00076",
+                              "name": "Start ★ Fix the documentation",
+                              "content": "Start ★ Fix the documentation",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#E2BC66",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00079",
+                          "name": "Button Start in Codex",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00078",
+                              "name": "Start in Codex",
+                              "content": "Start in Codex",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00101",
+                  "name": "Realm's quests",
+                  "gap": 12,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00084",
+                      "name": "Heading",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00082",
+                          "name": "Gait-feedback's quests",
+                          "content": "Gait-feedback's quests",
+                          "fontFamily": "Nunito",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "fill": "#2A2218"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00083",
+                          "name": "3 active · 6 can start · 2 seale",
+                          "content": "3 active · 6 can start · 2 sealed",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "700",
+                          "fill": "#54473A"
+                        }
+                      ],
+                      "alignItems": "center",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00089",
+                      "name": "Search and filters",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00086",
+                          "name": "Search box",
+                          "gap": 8,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00085",
+                              "name": "⌕ Search quests",
+                              "content": "⌕ Search quests",
+                              "fontFamily": "Nunito",
+                              "fontSize": 13,
+                              "fontWeight": "600",
+                              "fill": "#665848"
+                            }
+                          ],
+                          "layout": "vertical",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00088",
+                          "name": "Button Filters",
+                          "gap": 8,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00087",
+                              "name": "Filters",
+                              "content": "Filters",
+                              "fontFamily": "Nunito",
+                              "fontSize": 12,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 999
+                        }
+                      ],
+                      "alignItems": "center",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00092",
+                      "name": "Group Active",
+                      "gap": 6,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00091",
+                          "name": "Group header",
+                          "gap": 10,
+                          "padding": 0,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00090",
+                              "name": "▾ Active · 3",
+                              "content": "▾ Active · 3",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "justifyContent": "space_between",
+                          "width": "fill_container"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00008",
+                          "name": "Card Mana tracking overhaul",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00003",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00001",
+                                  "name": "Mana tracking overhaul",
+                                  "content": "Mana tracking overhaul",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00002",
+                                  "name": "Claude is on it · ⏱ 43m",
+                                  "content": "Claude is on it · ⏱ 43m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00005",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00004",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00007",
+                              "name": "Button Pause",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00006",
+                                  "name": "Pause",
+                                  "content": "Pause",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#D6F0E4",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00014",
+                          "name": "Card Recipe panel",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00011",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00009",
+                                  "name": "Recipe panel",
+                                  "content": "Recipe panel",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00010",
+                                  "name": "Asks whether it’s done · ⏱ 12m",
+                                  "content": "Asks whether it’s done · ⏱ 12m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00013",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00012",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00022",
+                          "name": "Card Calendar export",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00017",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00015",
+                                  "name": "Calendar export",
+                                  "content": "Calendar export",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00016",
+                                  "name": "With Codex · ⏱ 1h 05m",
+                                  "content": "With Codex · ⏱ 1h 05m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00019",
+                              "name": "Tag Mid",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00018",
+                                  "name": "Mid",
+                                  "content": "Mid",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "fill": "#EFE8DA",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00021",
+                              "name": "Button Pause",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00020",
+                                  "name": "Pause",
+                                  "content": "Pause",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00097",
+                      "name": "Group Up next",
+                      "gap": 6,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00096",
+                          "name": "Group header",
+                          "gap": 10,
+                          "padding": 0,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00094",
+                              "name": "▾ Up next · 6",
+                              "content": "▾ Up next · 6",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            },
+                            {
+                              "type": "text",
+                              "id": "h00095",
+                              "name": "Time I have: any",
+                              "content": "Time I have: any",
+                              "fontFamily": "Nunito",
+                              "fontSize": 12,
+                              "fontWeight": "700",
+                              "fill": "#54473A"
+                            }
+                          ],
+                          "justifyContent": "space_between",
+                          "width": "fill_container"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00030",
+                          "name": "Card Fix the documentation",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00025",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00023",
+                                  "name": "★ Fix the documentation",
+                                  "content": "★ Fix the documentation",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00024",
+                                  "name": "Can start · ~3h 46m",
+                                  "content": "Can start · ~3h 46m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00027",
+                              "name": "Tag Urgent",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00026",
+                                  "name": "Urgent",
+                                  "content": "Urgent",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#9E1F12"
+                                }
+                              ],
+                              "fill": "#FBE0DC",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00029",
+                              "name": "Button Start",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00028",
+                                  "name": "Start",
+                                  "content": "Start",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00037",
+                          "name": "Card Notes saga",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00034",
+                              "name": "▾",
+                              "content": "▾",
+                              "fontFamily": "Nunito",
+                              "fontSize": 13,
+                              "fontWeight": "800",
+                              "fill": "#54473A"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00033",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00031",
+                                  "name": "Notes saga",
+                                  "content": "Notes saga",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00032",
+                                  "name": "Saga · 2 of 5 chapters",
+                                  "content": "Saga · 2 of 5 chapters",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00036",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00035",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00045",
+                          "name": "Card Link picker keys",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10,
+                            8,
+                            40
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00040",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00038",
+                                  "name": "Link picker keys",
+                                  "content": "Link picker keys",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00039",
+                                  "name": "Resumes on its branch · ~45m",
+                                  "content": "Resumes on its branch · ~45m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00042",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00041",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00044",
+                              "name": "Button Resume",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00043",
+                                  "name": "Resume",
+                                  "content": "Resume",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00053",
+                          "name": "Card Daily note template",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10,
+                            8,
+                            40
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00048",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00046",
+                                  "name": "Daily note template",
+                                  "content": "Daily note template",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00047",
+                                  "name": "Can start · ~1h 30m",
+                                  "content": "Can start · ~1h 30m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00050",
+                              "name": "Tag Mid",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00049",
+                                  "name": "Mid",
+                                  "content": "Mid",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "fill": "#EFE8DA",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00052",
+                              "name": "Button Start",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00051",
+                                  "name": "Start",
+                                  "content": "Start",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00061",
+                          "name": "Card Sky colours at dusk",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00056",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00054",
+                                  "name": "Sky colours at dusk",
+                                  "content": "Sky colours at dusk",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00055",
+                                  "name": "Can start · ~2h",
+                                  "content": "Can start · ~2h",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00058",
+                              "name": "Tag Mid",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00057",
+                                  "name": "Mid",
+                                  "content": "Mid",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "fill": "#EFE8DA",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00060",
+                              "name": "Button Start",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00059",
+                                  "name": "Start",
+                                  "content": "Start",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00093",
+                          "name": "Show 60 more (only past 60 cards",
+                          "content": "Show 60 more (only past 60 cards)",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "800",
+                          "fill": "#8E2A1E"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00100",
+                      "name": "Group Sealed",
+                      "gap": 6,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00099",
+                          "name": "Group header",
+                          "gap": 10,
+                          "padding": 0,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00098",
+                              "name": "▸ Sealed · 2",
+                              "content": "▸ Sealed · 2",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "justifyContent": "space_between",
+                          "width": "fill_container"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00104",
+                  "name": "Glory",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00102",
+                      "name": "Glory",
+                      "content": "Glory",
+                      "fontFamily": "Nunito",
+                      "fontSize": 18,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00103",
+                      "name": "5 victories across your realms",
+                      "content": "5 victories across your realms",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                }
+              ],
+              "layout": "vertical",
+              "width": 560
+            },
+            {
+              "type": "frame",
+              "id": "h00125",
+              "name": "Detail column (sticky, scrolls on its own)",
+              "gap": 14,
+              "padding": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00119",
+                  "name": "Active quest card (shared ActiveCard, full)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00106",
+                      "name": "Active quest · In progress · 43m",
+                      "content": "Active quest · In progress · 43m so far",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "800",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00107",
+                      "name": "Mana tracking overhaul",
+                      "content": "Mana tracking overhaul",
+                      "fontFamily": "Nunito",
+                      "fontSize": 22,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00108",
+                      "name": "task/mana-tracking · Hard · +50 ",
+                      "content": "task/mana-tracking · Hard · +50 XP",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00109",
+                      "name": "Claude Code is working on it · a",
+                      "content": "Claude Code is working on it · a turn is running",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00118",
+                      "name": "Actions",
+                      "gap": 8,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00111",
+                          "name": "Button Open terminal",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00110",
+                              "name": "Open terminal",
+                              "content": "Open terminal",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#E2BC66",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00113",
+                          "name": "Button Finish quest…",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00112",
+                              "name": "Finish quest…",
+                              "content": "Finish quest…",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00115",
+                          "name": "Button Back to the board",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00114",
+                              "name": "Back to the board",
+                              "content": "Back to the board",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00117",
+                          "name": "Button Seal…",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00116",
+                              "name": "Seal…",
+                              "content": "Seal…",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00124",
+                  "name": "Quest details (shared ActiveDetail)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00120",
+                      "name": "Helpers · Test profile · Due dat",
+                      "content": "Helpers · Test profile · Due date",
+                      "fontFamily": "Nunito",
+                      "fontSize": 13,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00121",
+                      "name": "Time on it, checks, effort, file",
+                      "content": "Time on it, checks, effort, files changed",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00122",
+                      "name": "Task activity",
+                      "content": "Task activity",
+                      "fontFamily": "Nunito",
+                      "fontSize": 13,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00123",
+                      "name": "Notes (Q07's recipe panel stays ",
+                      "content": "Notes (Q07's recipe panel stays as it is)",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                }
+              ],
+              "layout": "vertical",
+              "width": 420
+            }
+          ],
+          "width": "fill_container"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "h00193",
+      "x": 1360,
+      "y": 0,
+      "name": "2 · 900 to 1,179 px: details float over the list",
+      "width": 1040,
+      "height": 1300,
+      "clip": true,
+      "fill": "#E9F1EC",
+      "layout": "vertical",
+      "gap": 0,
+      "padding": 0,
+      "children": [
+        {
+          "type": "frame",
+          "id": "h00195",
+          "name": "Title bar and tabs",
+          "gap": 8,
+          "padding": [
+            12,
+            20
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "h00194",
+              "name": "Queue-tea · Home  Quests  Design",
+              "content": "Queue-tea · Home  Quests  Designs  Branches  Chronicle  …",
+              "fontFamily": "Nunito",
+              "fontSize": 12,
+              "fontWeight": "800",
+              "fill": "#54473A"
+            }
+          ],
+          "layout": "vertical",
+          "width": "fill_container",
+          "height": 40,
+          "fill": "#F4EFE2"
+        },
+        {
+          "type": "frame",
+          "id": "h00192",
+          "name": "Main",
+          "gap": 8,
+          "padding": [
+            12,
+            16,
+            20,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "h00169",
+              "name": "List column (flex 1 1 440)",
+              "gap": 16,
+              "padding": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00136",
+                  "name": "Lair, compact",
+                  "gap": 8,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00131",
+                      "name": "Dragon (scaled to 52%)",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00130",
+                          "name": "🐉 hatchling",
+                          "content": "🐉 hatchling",
+                          "fontFamily": "Nunito",
+                          "fontSize": 16,
+                          "fontWeight": "700",
+                          "fill": "#54473A"
+                        }
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "layout": "vertical",
+                      "width": 220,
+                      "height": 150,
+                      "fill": "#F4EBD6",
+                      "cornerRadius": 8
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00135",
+                      "name": "Plaque",
+                      "gap": 2,
+                      "padding": [
+                        16,
+                        18
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00132",
+                          "name": "Your hatchling",
+                          "content": "Your hatchling",
+                          "fontFamily": "Nunito",
+                          "fontSize": 16,
+                          "fontWeight": "700",
+                          "fill": "#2A2218"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00133",
+                          "name": "Level 2 · grows up at level 5",
+                          "content": "Level 2 · grows up at level 5",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "800",
+                          "fill": "#54473A"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00134",
+                          "name": "Awake and watching",
+                          "content": "Awake and watching",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "500",
+                          "fill": "#54473A"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": 210,
+                      "fill": "#FFFAEE",
+                      "stroke": "#B8893A",
+                      "strokeWidth": 1,
+                      "cornerRadius": 10
+                    }
+                  ],
+                  "justifyContent": "space_between",
+                  "width": "fill_container",
+                  "height": 180
+                },
+                {
+                  "type": "frame",
+                  "id": "h00145",
+                  "name": "Next up (Home's Now card)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00137",
+                      "name": "Next up",
+                      "content": "Next up",
+                      "fontFamily": "Nunito",
+                      "fontSize": 22,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00138",
+                      "name": "Fix the documentation",
+                      "content": "Fix the documentation",
+                      "fontFamily": "Nunito",
+                      "fontSize": 14,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00139",
+                      "name": "★ urgent",
+                      "content": "★ urgent",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00144",
+                      "name": "Actions",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00141",
+                          "name": "Button Start ★ Fix the documentation",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00140",
+                              "name": "Start ★ Fix the documentation",
+                              "content": "Start ★ Fix the documentation",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#E2BC66",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00143",
+                          "name": "Button Start in Codex",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00142",
+                              "name": "Start in Codex",
+                              "content": "Start in Codex",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00165",
+                  "name": "Realm's quests",
+                  "gap": 12,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00148",
+                      "name": "Heading",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00146",
+                          "name": "Gait-feedback's quests",
+                          "content": "Gait-feedback's quests",
+                          "fontFamily": "Nunito",
+                          "fontSize": 18,
+                          "fontWeight": "700",
+                          "fill": "#2A2218"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00147",
+                          "name": "3 active · 6 can start · 2 seale",
+                          "content": "3 active · 6 can start · 2 sealed",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "700",
+                          "fill": "#54473A"
+                        }
+                      ],
+                      "alignItems": "center",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00153",
+                      "name": "Search and filters",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00150",
+                          "name": "Search box",
+                          "gap": 8,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00149",
+                              "name": "⌕ Search quests",
+                              "content": "⌕ Search quests",
+                              "fontFamily": "Nunito",
+                              "fontSize": 13,
+                              "fontWeight": "600",
+                              "fill": "#665848"
+                            }
+                          ],
+                          "layout": "vertical",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00152",
+                          "name": "Button Filters",
+                          "gap": 8,
+                          "padding": [
+                            6,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00151",
+                              "name": "Filters",
+                              "content": "Filters",
+                              "fontFamily": "Nunito",
+                              "fontSize": 12,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 999
+                        }
+                      ],
+                      "alignItems": "center",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00156",
+                      "name": "Group Active",
+                      "gap": 6,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00155",
+                          "name": "Group header",
+                          "gap": 10,
+                          "padding": 0,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00154",
+                              "name": "▾ Active · 3",
+                              "content": "▾ Active · 3",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "justifyContent": "space_between",
+                          "width": "fill_container"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00008",
+                          "name": "Card Mana tracking overhaul",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00003",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00001",
+                                  "name": "Mana tracking overhaul",
+                                  "content": "Mana tracking overhaul",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00002",
+                                  "name": "Claude is on it · ⏱ 43m",
+                                  "content": "Claude is on it · ⏱ 43m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00005",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00004",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00007",
+                              "name": "Button Pause",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00006",
+                                  "name": "Pause",
+                                  "content": "Pause",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#D6F0E4",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00014",
+                          "name": "Card Recipe panel",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00011",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00009",
+                                  "name": "Recipe panel",
+                                  "content": "Recipe panel",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00010",
+                                  "name": "Asks whether it’s done · ⏱ 12m",
+                                  "content": "Asks whether it’s done · ⏱ 12m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00013",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00012",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00022",
+                          "name": "Card Calendar export",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00017",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00015",
+                                  "name": "Calendar export",
+                                  "content": "Calendar export",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00016",
+                                  "name": "With Codex · ⏱ 1h 05m",
+                                  "content": "With Codex · ⏱ 1h 05m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00019",
+                              "name": "Tag Mid",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00018",
+                                  "name": "Mid",
+                                  "content": "Mid",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "fill": "#EFE8DA",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00021",
+                              "name": "Button Pause",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00020",
+                                  "name": "Pause",
+                                  "content": "Pause",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00161",
+                      "name": "Group Up next",
+                      "gap": 6,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00160",
+                          "name": "Group header",
+                          "gap": 10,
+                          "padding": 0,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00158",
+                              "name": "▾ Up next · 6",
+                              "content": "▾ Up next · 6",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            },
+                            {
+                              "type": "text",
+                              "id": "h00159",
+                              "name": "Time I have: any",
+                              "content": "Time I have: any",
+                              "fontFamily": "Nunito",
+                              "fontSize": 12,
+                              "fontWeight": "700",
+                              "fill": "#54473A"
+                            }
+                          ],
+                          "justifyContent": "space_between",
+                          "width": "fill_container"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00030",
+                          "name": "Card Fix the documentation",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00025",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00023",
+                                  "name": "★ Fix the documentation",
+                                  "content": "★ Fix the documentation",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00024",
+                                  "name": "Can start · ~3h 46m",
+                                  "content": "Can start · ~3h 46m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00027",
+                              "name": "Tag Urgent",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00026",
+                                  "name": "Urgent",
+                                  "content": "Urgent",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#9E1F12"
+                                }
+                              ],
+                              "fill": "#FBE0DC",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00029",
+                              "name": "Button Start",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00028",
+                                  "name": "Start",
+                                  "content": "Start",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00037",
+                          "name": "Card Notes saga",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00034",
+                              "name": "▾",
+                              "content": "▾",
+                              "fontFamily": "Nunito",
+                              "fontSize": 13,
+                              "fontWeight": "800",
+                              "fill": "#54473A"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00033",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00031",
+                                  "name": "Notes saga",
+                                  "content": "Notes saga",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00032",
+                                  "name": "Saga · 2 of 5 chapters",
+                                  "content": "Saga · 2 of 5 chapters",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00036",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00035",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00045",
+                          "name": "Card Link picker keys",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10,
+                            8,
+                            40
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00040",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00038",
+                                  "name": "Link picker keys",
+                                  "content": "Link picker keys",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00039",
+                                  "name": "Resumes on its branch · ~45m",
+                                  "content": "Resumes on its branch · ~45m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00042",
+                              "name": "Tag High",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00041",
+                                  "name": "High",
+                                  "content": "High",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#7F430A"
+                                }
+                              ],
+                              "fill": "#FCEBD0",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00044",
+                              "name": "Button Resume",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00043",
+                                  "name": "Resume",
+                                  "content": "Resume",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00053",
+                          "name": "Card Daily note template",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10,
+                            8,
+                            40
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00048",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00046",
+                                  "name": "Daily note template",
+                                  "content": "Daily note template",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00047",
+                                  "name": "Can start · ~1h 30m",
+                                  "content": "Can start · ~1h 30m",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00050",
+                              "name": "Tag Mid",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00049",
+                                  "name": "Mid",
+                                  "content": "Mid",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "fill": "#EFE8DA",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00052",
+                              "name": "Button Start",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00051",
+                                  "name": "Start",
+                                  "content": "Start",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00061",
+                          "name": "Card Sky colours at dusk",
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "h00056",
+                              "name": "Card text",
+                              "gap": 2,
+                              "padding": 0,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00054",
+                                  "name": "Sky colours at dusk",
+                                  "content": "Sky colours at dusk",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 14,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h00055",
+                                  "name": "Can start · ~2h",
+                                  "content": "Can start · ~2h",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "600",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "layout": "vertical",
+                              "width": "fill_container"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00058",
+                              "name": "Tag Mid",
+                              "gap": 8,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00057",
+                                  "name": "Mid",
+                                  "content": "Mid",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 11,
+                                  "fontWeight": "800",
+                                  "fill": "#54473A"
+                                }
+                              ],
+                              "fill": "#EFE8DA",
+                              "cornerRadius": 999
+                            },
+                            {
+                              "type": "frame",
+                              "id": "h00060",
+                              "name": "Button Start",
+                              "gap": 8,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h00059",
+                                  "name": "Start",
+                                  "content": "Start",
+                                  "fontFamily": "Nunito",
+                                  "fontSize": 12,
+                                  "fontWeight": "800",
+                                  "fill": "#2A2218"
+                                }
+                              ],
+                              "fill": "#FFFFFF",
+                              "stroke": "#E3CFA6",
+                              "strokeWidth": 1,
+                              "cornerRadius": 999
+                            }
+                          ],
+                          "alignItems": "center",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "stroke": "#E3CFA6",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "h00157",
+                          "name": "Show 60 more (only past 60 cards",
+                          "content": "Show 60 more (only past 60 cards)",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "800",
+                          "fill": "#8E2A1E"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00164",
+                      "name": "Group Sealed",
+                      "gap": 6,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00163",
+                          "name": "Group header",
+                          "gap": 10,
+                          "padding": 0,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00162",
+                              "name": "▸ Sealed · 2",
+                              "content": "▸ Sealed · 2",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "justifyContent": "space_between",
+                          "width": "fill_container"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00168",
+                  "name": "Glory",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00166",
+                      "name": "Glory",
+                      "content": "Glory",
+                      "fontFamily": "Nunito",
+                      "fontSize": 18,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00167",
+                      "name": "5 victories across your realms",
+                      "content": "5 victories across your realms",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                }
+              ],
+              "layout": "vertical",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "h00189",
+              "name": "Detail column (sticky, scrolls on its own)",
+              "gap": 14,
+              "padding": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00183",
+                  "name": "Active quest card (shared ActiveCard, full)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00170",
+                      "name": "Active quest · In progress · 43m",
+                      "content": "Active quest · In progress · 43m so far",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "800",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00171",
+                      "name": "Mana tracking overhaul",
+                      "content": "Mana tracking overhaul",
+                      "fontFamily": "Nunito",
+                      "fontSize": 22,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00172",
+                      "name": "task/mana-tracking · Hard · +50 ",
+                      "content": "task/mana-tracking · Hard · +50 XP",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00173",
+                      "name": "Claude Code is working on it · a",
+                      "content": "Claude Code is working on it · a turn is running",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00182",
+                      "name": "Actions",
+                      "gap": 8,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00175",
+                          "name": "Button Open terminal",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00174",
+                              "name": "Open terminal",
+                              "content": "Open terminal",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#E2BC66",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00177",
+                          "name": "Button Finish quest…",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00176",
+                              "name": "Finish quest…",
+                              "content": "Finish quest…",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00179",
+                          "name": "Button Back to the board",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00178",
+                              "name": "Back to the board",
+                              "content": "Back to the board",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00181",
+                          "name": "Button Seal…",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00180",
+                              "name": "Seal…",
+                              "content": "Seal…",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00188",
+                  "name": "Quest details (shared ActiveDetail)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00184",
+                      "name": "Helpers · Test profile · Due dat",
+                      "content": "Helpers · Test profile · Due date",
+                      "fontFamily": "Nunito",
+                      "fontSize": 13,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00185",
+                      "name": "Time on it, checks, effort, file",
+                      "content": "Time on it, checks, effort, files changed",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00186",
+                      "name": "Task activity",
+                      "content": "Task activity",
+                      "fontFamily": "Nunito",
+                      "fontSize": 13,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00187",
+                      "name": "Notes (Q07's recipe panel stays ",
+                      "content": "Notes (Q07's recipe panel stays as it is)",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                }
+              ],
+              "layout": "vertical",
+              "width": 380,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#1E183C59",
+                "offset": {
+                  "x": 0,
+                  "y": 16
+                },
+                "blur": 40
+              },
+              "layoutPosition": "absolute",
+              "x": 640,
+              "y": 120
+            },
+            {
+              "type": "frame",
+              "id": "h00191",
+              "name": "Close the quest details",
+              "gap": 8,
+              "padding": [
+                6,
+                12
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h00190",
+                  "name": "✕",
+                  "content": "✕",
+                  "fontFamily": "Nunito",
+                  "fontSize": 12,
+                  "fontWeight": "800",
+                  "fill": "#2A2218"
+                }
+              ],
+              "fill": "#FFFFFF",
+              "stroke": "#E3CFA6",
+              "strokeWidth": 1,
+              "cornerRadius": 999,
+              "layoutPosition": "absolute",
+              "x": 980,
+              "y": 126
+            }
+          ],
+          "layout": "vertical",
+          "width": "fill_container"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "h00218",
+      "x": 2480,
+      "y": 0,
+      "name": "3 · Below 900 px: the details are a page",
+      "width": 760,
+      "height": 900,
+      "clip": true,
+      "fill": "#E9F1EC",
+      "layout": "vertical",
+      "gap": 0,
+      "padding": 0,
+      "children": [
+        {
+          "type": "frame",
+          "id": "h00220",
+          "name": "Title bar and tabs",
+          "gap": 8,
+          "padding": [
+            12,
+            20
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "h00219",
+              "name": "Queue-tea · Home  Quests  Design",
+              "content": "Queue-tea · Home  Quests  Designs  Branches  Chronicle  …",
+              "fontFamily": "Nunito",
+              "fontSize": 12,
+              "fontWeight": "800",
+              "fill": "#54473A"
+            }
+          ],
+          "layout": "vertical",
+          "width": "fill_container",
+          "height": 40,
+          "fill": "#F4EFE2"
+        },
+        {
+          "type": "frame",
+          "id": "h00217",
+          "name": "Main",
+          "gap": 12,
+          "padding": [
+            12,
+            16,
+            20,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "h00196",
+              "name": "‹ Home",
+              "content": "‹ Home",
+              "fontFamily": "Nunito",
+              "fontSize": 14,
+              "fontWeight": "800",
+              "fill": "#8E2A1E"
+            },
+            {
+              "type": "frame",
+              "id": "h00216",
+              "name": "Detail column (sticky, scrolls on its own)",
+              "gap": 14,
+              "padding": 0,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00210",
+                  "name": "Active quest card (shared ActiveCard, full)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00197",
+                      "name": "Active quest · In progress · 43m",
+                      "content": "Active quest · In progress · 43m so far",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "800",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00198",
+                      "name": "Mana tracking overhaul",
+                      "content": "Mana tracking overhaul",
+                      "fontFamily": "Nunito",
+                      "fontSize": 22,
+                      "fontWeight": "700",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00199",
+                      "name": "task/mana-tracking · Hard · +50 ",
+                      "content": "task/mana-tracking · Hard · +50 XP",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00200",
+                      "name": "Claude Code is working on it · a",
+                      "content": "Claude Code is working on it · a turn is running",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00209",
+                      "name": "Actions",
+                      "gap": 8,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "h00202",
+                          "name": "Button Open terminal",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00201",
+                              "name": "Open terminal",
+                              "content": "Open terminal",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#E2BC66",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00204",
+                          "name": "Button Finish quest…",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00203",
+                              "name": "Finish quest…",
+                              "content": "Finish quest…",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00206",
+                          "name": "Button Back to the board",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00205",
+                              "name": "Back to the board",
+                              "content": "Back to the board",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        },
+                        {
+                          "type": "frame",
+                          "id": "h00208",
+                          "name": "Button Seal…",
+                          "gap": 8,
+                          "padding": [
+                            9,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "h00207",
+                              "name": "Seal…",
+                              "content": "Seal…",
+                              "fontFamily": "Nunito",
+                              "fontSize": 14,
+                              "fontWeight": "800",
+                              "fill": "#2A2218"
+                            }
+                          ],
+                          "fill": "#FFFFFF",
+                          "stroke": "#B8893A",
+                          "strokeWidth": 1,
+                          "cornerRadius": 8
+                        }
+                      ],
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h00215",
+                  "name": "Quest details (shared ActiveDetail)",
+                  "gap": 8,
+                  "padding": [
+                    16,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00211",
+                      "name": "Helpers · Test profile · Due dat",
+                      "content": "Helpers · Test profile · Due date",
+                      "fontFamily": "Nunito",
+                      "fontSize": 13,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00212",
+                      "name": "Time on it, checks, effort, file",
+                      "content": "Time on it, checks, effort, files changed",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#54473A"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00213",
+                      "name": "Task activity",
+                      "content": "Task activity",
+                      "fontFamily": "Nunito",
+                      "fontSize": 13,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00214",
+                      "name": "Notes (Q07's recipe panel stays ",
+                      "content": "Notes (Q07's recipe panel stays as it is)",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container",
+                  "fill": "#FFFAEE",
+                  "stroke": "#B8893A",
+                  "strokeWidth": 1,
+                  "cornerRadius": 10
+                }
+              ],
+              "layout": "vertical",
+              "width": "fill_container"
+            }
+          ],
+          "layout": "vertical",
+          "width": "fill_container"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "h00269",
+      "x": 3320,
+      "y": 0,
+      "name": "4 · States",
+      "width": 1180,
+      "height": 900,
+      "clip": true,
+      "fill": "#E9F1EC",
+      "layout": "vertical",
+      "gap": 0,
+      "padding": 0,
+      "children": [
+        {
+          "type": "frame",
+          "id": "h00271",
+          "name": "Title bar and tabs",
+          "gap": 8,
+          "padding": [
+            12,
+            20
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "h00270",
+              "name": "Queue-tea · Home  Quests  Design",
+              "content": "Queue-tea · Home  Quests  Designs  Branches  Chronicle  …",
+              "fontFamily": "Nunito",
+              "fontSize": 12,
+              "fontWeight": "800",
+              "fill": "#54473A"
+            }
+          ],
+          "layout": "vertical",
+          "width": "fill_container",
+          "height": 40,
+          "fill": "#F4EFE2"
+        },
+        {
+          "type": "frame",
+          "id": "h00268",
+          "name": "States grid",
+          "gap": 20,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "h00233",
+              "name": "Nothing active",
+              "gap": 8,
+              "padding": [
+                16,
+                18
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h00221",
+                  "name": "No active quest",
+                  "content": "No active quest",
+                  "fontFamily": "Nunito",
+                  "fontSize": 22,
+                  "fontWeight": "700",
+                  "fill": "#2A2218"
+                },
+                {
+                  "type": "text",
+                  "id": "h00222",
+                  "name": "Next up: Fix the documentation",
+                  "content": "Next up: Fix the documentation",
+                  "fontFamily": "Nunito",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                  "fill": "#54473A"
+                },
+                {
+                  "type": "text",
+                  "id": "h00223",
+                  "name": "★ urgent",
+                  "content": "★ urgent",
+                  "fontFamily": "Nunito",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "fill": "#665848"
+                },
+                {
+                  "type": "frame",
+                  "id": "h00228",
+                  "name": "Actions",
+                  "gap": 8,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00225",
+                      "name": "Button Start ★ Fix the documentation",
+                      "gap": 8,
+                      "padding": [
+                        9,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00224",
+                          "name": "Start ★ Fix the documentation",
+                          "content": "Start ★ Fix the documentation",
+                          "fontFamily": "Nunito",
+                          "fontSize": 14,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "fill": "#E2BC66",
+                      "stroke": "#B8893A",
+                      "strokeWidth": 1,
+                      "cornerRadius": 8
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00227",
+                      "name": "Button Start in Codex",
+                      "gap": 8,
+                      "padding": [
+                        9,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00226",
+                          "name": "Start in Codex",
+                          "content": "Start in Codex",
+                          "fontFamily": "Nunito",
+                          "fontSize": 14,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "fill": "#FFFFFF",
+                      "stroke": "#B8893A",
+                      "strokeWidth": 1,
+                      "cornerRadius": 8
+                    }
+                  ],
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "h00232",
+                  "name": "Group Active",
+                  "gap": 6,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00231",
+                      "name": "Group header",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00230",
+                          "name": "▾ Active · 0",
+                          "content": "▾ Active · 0",
+                          "fontFamily": "Nunito",
+                          "fontSize": 14,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "justifyContent": "space_between",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00229",
+                      "name": "Nothing is in hand right now.",
+                      "content": "Nothing is in hand right now.",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container"
+                }
+              ],
+              "layout": "vertical",
+              "width": 360,
+              "fill": "#FFFAEE",
+              "stroke": "#B8893A",
+              "strokeWidth": 1,
+              "cornerRadius": 10
+            },
+            {
+              "type": "frame",
+              "id": "h00238",
+              "name": "A start under way (flow card in Next up's place)",
+              "gap": 8,
+              "padding": [
+                16,
+                18
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h00234",
+                  "name": "Starting Fix the documentation",
+                  "content": "Starting Fix the documentation",
+                  "fontFamily": "Nunito",
+                  "fontSize": 16,
+                  "fontWeight": "800",
+                  "fill": "#2A2218"
+                },
+                {
+                  "type": "text",
+                  "id": "h00235",
+                  "name": "Checking the branch and the fold",
+                  "content": "Checking the branch and the folder…",
+                  "fontFamily": "Nunito",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "fill": "#54473A"
+                },
+                {
+                  "type": "frame",
+                  "id": "h00237",
+                  "name": "Button Cancel",
+                  "gap": 8,
+                  "padding": [
+                    6,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00236",
+                      "name": "Cancel",
+                      "content": "Cancel",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    }
+                  ],
+                  "fill": "#FFFFFF",
+                  "stroke": "#E3CFA6",
+                  "strokeWidth": 1,
+                  "cornerRadius": 999
+                }
+              ],
+              "layout": "vertical",
+              "width": 360,
+              "fill": "#FFFAEE",
+              "stroke": "#B8893A",
+              "strokeWidth": 1,
+              "cornerRadius": 10
+            },
+            {
+              "type": "frame",
+              "id": "h00247",
+              "name": "Empty board",
+              "gap": 8,
+              "padding": [
+                16,
+                18
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h00239",
+                  "name": "No active quest",
+                  "content": "No active quest",
+                  "fontFamily": "Nunito",
+                  "fontSize": 22,
+                  "fontWeight": "700",
+                  "fill": "#2A2218"
+                },
+                {
+                  "type": "text",
+                  "id": "h00240",
+                  "name": "Nothing is waiting either.",
+                  "content": "Nothing is waiting either.",
+                  "fontFamily": "Nunito",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                  "fill": "#54473A"
+                },
+                {
+                  "type": "frame",
+                  "id": "h00246",
+                  "name": "Group Up next",
+                  "gap": 6,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00245",
+                      "name": "Group header",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00244",
+                          "name": "▾ Up next · 0",
+                          "content": "▾ Up next · 0",
+                          "fontFamily": "Nunito",
+                          "fontSize": 14,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "justifyContent": "space_between",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00241",
+                      "name": "Nothing on the quest board. Add ",
+                      "content": "Nothing on the quest board. Add one here, or file it in Claude Code with /steep.",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00243",
+                      "name": "Button New quest",
+                      "gap": 8,
+                      "padding": [
+                        6,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00242",
+                          "name": "New quest",
+                          "content": "New quest",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "fill": "#E2BC66",
+                      "stroke": "#B8893A",
+                      "strokeWidth": 1,
+                      "cornerRadius": 999
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container"
+                }
+              ],
+              "layout": "vertical",
+              "width": 360,
+              "fill": "#FFFAEE",
+              "stroke": "#B8893A",
+              "strokeWidth": 1,
+              "cornerRadius": 10
+            },
+            {
+              "type": "frame",
+              "id": "h00255",
+              "name": "Everything sealed",
+              "gap": 8,
+              "padding": [
+                16,
+                18
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00251",
+                  "name": "Group Up next",
+                  "gap": 6,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00250",
+                      "name": "Group header",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00249",
+                          "name": "▾ Up next · 0",
+                          "content": "▾ Up next · 0",
+                          "fontFamily": "Nunito",
+                          "fontSize": 14,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "justifyContent": "space_between",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "h00248",
+                      "name": "Nothing can start: every quest w",
+                      "content": "Nothing can start: every quest waiting is sealed.",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "600",
+                      "fill": "#665848"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "h00254",
+                  "name": "Group Sealed",
+                  "gap": 6,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00253",
+                      "name": "Group header",
+                      "gap": 10,
+                      "padding": 0,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00252",
+                          "name": "▸ Sealed · 4",
+                          "content": "▸ Sealed · 4",
+                          "fontFamily": "Nunito",
+                          "fontSize": 14,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "justifyContent": "space_between",
+                      "width": "fill_container"
+                    }
+                  ],
+                  "layout": "vertical",
+                  "width": "fill_container"
+                }
+              ],
+              "layout": "vertical",
+              "width": 360,
+              "fill": "#FFFAEE",
+              "stroke": "#B8893A",
+              "strokeWidth": 1,
+              "cornerRadius": 10
+            },
+            {
+              "type": "frame",
+              "id": "h00262",
+              "name": "Nothing matches",
+              "gap": 8,
+              "padding": [
+                16,
+                18
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h00260",
+                  "name": "Search and filters",
+                  "gap": 10,
+                  "padding": 0,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h00257",
+                      "name": "Search box",
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00256",
+                          "name": "⌕ Search quests",
+                          "content": "⌕ Search quests",
+                          "fontFamily": "Nunito",
+                          "fontSize": 13,
+                          "fontWeight": "600",
+                          "fill": "#665848"
+                        }
+                      ],
+                      "layout": "vertical",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "stroke": "#E3CFA6",
+                      "strokeWidth": 1,
+                      "cornerRadius": 8
+                    },
+                    {
+                      "type": "frame",
+                      "id": "h00259",
+                      "name": "Button Filters",
+                      "gap": 8,
+                      "padding": [
+                        6,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h00258",
+                          "name": "Filters",
+                          "content": "Filters",
+                          "fontFamily": "Nunito",
+                          "fontSize": 12,
+                          "fontWeight": "800",
+                          "fill": "#2A2218"
+                        }
+                      ],
+                      "fill": "#FFFFFF",
+                      "stroke": "#E3CFA6",
+                      "strokeWidth": 1,
+                      "cornerRadius": 999
+                    }
+                  ],
+                  "alignItems": "center",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "text",
+                  "id": "h00261",
+                  "name": "No quests match \"zebra\".  Clear ",
+                  "content": "No quests match \"zebra\".  Clear search",
+                  "fontFamily": "Nunito",
+                  "fontSize": 12,
+                  "fontWeight": "700",
+                  "fill": "#54473A"
+                }
+              ],
+              "layout": "vertical",
+              "width": 360,
+              "fill": "#FFFAEE",
+              "stroke": "#B8893A",
+              "strokeWidth": 1,
+              "cornerRadius": 10
+            },
+            {
+              "type": "frame",
+              "id": "h00267",
+              "name": "Details can't be read",
+              "gap": 8,
+              "padding": [
+                16,
+                18
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h00263",
+                  "name": "Mana tracking overhaul",
+                  "content": "Mana tracking overhaul",
+                  "fontFamily": "Nunito",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "fill": "#2A2218"
+                },
+                {
+                  "type": "text",
+                  "id": "h00264",
+                  "name": "Couldn't read this quest's activ",
+                  "content": "Couldn't read this quest's activity.",
+                  "fontFamily": "Nunito",
+                  "fontSize": 12,
+                  "fontWeight": "700",
+                  "fill": "#9E1F12"
+                },
+                {
+                  "type": "frame",
+                  "id": "h00266",
+                  "name": "Button Try again",
+                  "gap": 8,
+                  "padding": [
+                    6,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h00265",
+                      "name": "Try again",
+                      "content": "Try again",
+                      "fontFamily": "Nunito",
+                      "fontSize": 12,
+                      "fontWeight": "800",
+                      "fill": "#2A2218"
+                    }
+                  ],
+                  "fill": "#FFFFFF",
+                  "stroke": "#E3CFA6",
+                  "strokeWidth": 1,
+                  "cornerRadius": 999
+                }
+              ],
+              "layout": "vertical",
+              "width": 360,
+              "fill": "#FFFAEE",
+              "stroke": "#B8893A",
+              "strokeWidth": 1,
+              "cornerRadius": 10
+            }
+          ],
+          "width": "fill_container"
+        }
+      ]
+    }
+  ]
+}

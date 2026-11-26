@@ -76,6 +76,8 @@ const session = async (over: { isTurnRunning?: boolean } = {}) =>
 const noSession = () => rm(join(home, '.queue-tea/sessions/s-1.json'), { force: true })
 const button = (name: string | RegExp) => page.getByRole('button', { name })
 const heading = (name: string | RegExp) => page.getByRole('heading', { name })
+// A quest's own card, above the details that name it again.
+const questHeading = (name: string) => page.getByRole('heading', { name, level: 1 })
 const toast = (text: string | RegExp) => page.locator('.toast-item').filter({ hasText: text }).last()
 const shot = async (name: string) => {
   if (SHOTS !== undefined) await page.screenshot({ path: join(SHOTS, `${name}.png`) })
@@ -138,7 +140,7 @@ test.afterAll(async () => {
 test('Start creates its own branch and terminal while the original checkout is dirty', async () => {
   await writeFile(join(repo, 'uncommitted.txt'), 'x\n')
   await button('Start ★ First quest').click()
-  await expect(heading('First quest')).toBeVisible()
+  await expect(questHeading('First quest')).toBeVisible()
   await expect(toast('Set out: First quest · task/first-quest')).toBeVisible()
   expect(await git('branch', '--show-current')).toBe('main')
   const first = await stored('one')
@@ -162,7 +164,7 @@ test('Judgement comes up within 2 s of the mod setting it, and Not yet clears it
 
   await page.keyboard.press('n')
 
-  await expect(heading('First quest')).toBeVisible()
+  await expect(questHeading('First quest')).toBeVisible()
   await expect.poll(async () => (await stored('one')).review).toBeNull()
 })
 
@@ -217,7 +219,7 @@ test('with no session, Back to the board goes at once and keeps the branch', asy
   // Starting another quest leaves the first quest's uncommitted log intact.
 
   await page.keyboard.press('s')
-  await expect(heading('Second quest')).toBeVisible()
+  await expect(questHeading('Second quest')).toBeVisible()
   await noRequests()
   await expect(page.getByText('No Claude Code session')).toBeVisible()
   const { branch, startCommit } = await stored('two')
@@ -323,7 +325,7 @@ test('c opens Claude Code from Home', async () => {
   await page.getByRole('link', { name: 'Home' }).click()
   await expect(button('Start ★ Third quest')).toBeVisible()
   await page.keyboard.press('s')
-  await expect(heading('Third quest')).toBeVisible()
+  await expect(questHeading('Third quest')).toBeVisible()
   const before = await terminals()
 
   await page.keyboard.press('c')

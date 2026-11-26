@@ -114,10 +114,10 @@ test('the sidebar lists the realm and hides the dot-file', async () => {
 
 test('Home shows the record, the session and the game', async () => {
   await page.locator('.realm').filter({ hasText: 'Demo realm' }).click()
-  await expect(page.getByRole('heading', { name: 'Finish the insole bridge' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Finish the insole bridge', level: 1 })).toBeVisible()
   await expect(page.locator('.rm')).toHaveClass(/m-working/)
   await expect(page.getByText('Claude Code is working on it')).toBeVisible()
-  await expect(page.getByText('Fix the documentation')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Show Fix the documentation' })).toBeVisible()
   await expect(page.getByText('38% mana')).toBeVisible()
 })
 

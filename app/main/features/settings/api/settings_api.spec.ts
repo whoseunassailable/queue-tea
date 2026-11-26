@@ -62,6 +62,26 @@ describe('settings', () => {
     expect(await readSettings(deps)).toMatchObject({ ok: true, data: { realmAccounts: { 'a-000001': 'first-account' } } })
   })
 
+  it('keeps what Home remembers for each realm', async () => {
+    const homeNav = { 'a-000001': { open: 'q-1', folded: ['sealed' as const] } }
+
+    await saveSettings(deps, { homeNav })
+
+    expect(await readSettings(deps)).toMatchObject({ ok: true, data: { homeNav } })
+  })
+
+  it('drops a realm\'s Home it cannot read and keeps the others', async () => {
+    await writeFile(deps.file, JSON.stringify({ homeNav: { 'a-000001': { open: null, folded: ['active', 'active'] }, 'b-000002': { open: 7, folded: [] }, 'c-000003': { open: null, folded: ['nowhere'] } } }))
+
+    expect(await readSettings(deps)).toMatchObject({ ok: true, data: { homeNav: { 'a-000001': { open: null, folded: ['active'] } } } })
+  })
+
+  it('reads a settings file from before Home remembered anything', async () => {
+    await writeFile(deps.file, JSON.stringify({ sky: 'night', isCalm: true }))
+
+    expect(await readSettings(deps)).toMatchObject({ ok: true, data: { sky: 'night', homeNav: {} } })
+  })
+
   it('a broken settings file falls back to the defaults', async () => {
     await writeFile(deps.file, '{oops')
 

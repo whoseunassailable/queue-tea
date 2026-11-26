@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ActiveQuest, EngineApi, GitHold, ProjectRow, ProjectView, Reply, SessionState, Settings, StartCheck, Victory } from '../../../../shared/engine_api'
+import type { ActiveQuest, EngineApi, GitHold, Handover, ProjectRow, ProjectView, Reply, SessionState, Settings, StartCheck, Victory } from '../../../../shared/engine_api'
 import { App } from '../../../app/app'
 import { dayAndTime, refillTime } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
@@ -253,7 +253,18 @@ describe('the active quest', () => {
   it('offers its four actions', async () => {
     await open(withActive())
 
-    for (const name of [t.actions.openClaude, t.actions.finish, t.actions.back, t.actions.seal]) expect(button(name)).toBeTruthy()
+    for (const name of [t.actions.openTerminal, t.actions.finish, t.actions.back, t.actions.seal]) expect(button(name)).toBeTruthy()
+  })
+
+  it('with no session open, its first button starts Claude Code; with one, it opens that terminal', async () => {
+    await open(withActive({}, 'none'))
+    expect(button(t.actions.openClaude)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t.actions.openTerminal })).toBeNull()
+    cleanup()
+
+    await open(withActive({}, 'working'))
+    expect(button(t.actions.openTerminal)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: t.actions.openClaude })).toBeNull()
   })
 
   it.each([
@@ -279,15 +290,39 @@ describe('the active quest', () => {
     await waitFor(() => expect(engine.putBackNow).toHaveBeenCalledWith(KEY, 'active'))
   })
 
-  it('Open in Claude Code opens it, as does c and ⌘↩', async () => {
+  it('Open terminal brings its session forward, as do c and ⌘↩', async () => {
     const { engine } = await open(withActive())
 
-    await press(t.actions.openClaude)
+    await press(t.actions.openTerminal)
     await waitFor(() => expect(engine.openClaude).toHaveBeenCalledTimes(1))
     await key('c')
     await waitFor(() => expect(engine.openClaude).toHaveBeenCalledTimes(2))
     await key('Enter', { metaKey: true })
     await waitFor(() => expect(engine.openClaude).toHaveBeenCalledTimes(3))
+  })
+
+  it('says so, with Try again, when the terminal holding its session is not found', async () => {
+    const openClaude = vi.fn<EngineApi['openClaude']>(async () => ({ ok: true, data: { kind: 'notFound', terminal: 'iterm' } }))
+    await open(withActive(), { openClaude })
+
+    await press(t.actions.openTerminal)
+
+    expect(await screen.findByText(t.flow.terminalNotFound('Active one', 'iTerm2'))).toBeTruthy()
+    expect(screen.queryByText(t.flow.pasteLine)).toBeNull()
+    await press(t.failed.tryAgain)
+    await waitFor(() => expect(openClaude).toHaveBeenCalledTimes(2))
+  })
+
+  it('says what it is doing while it brings the terminal forward', async () => {
+    let answer: (reply: Reply<Handover>) => void = () => {}
+    const openClaude = vi.fn<EngineApi['openClaude']>(() => new Promise(resolve => { answer = resolve }))
+    await open(withActive(), { openClaude })
+
+    await press(t.actions.openTerminal)
+
+    expect(await screen.findByText(t.flow.bringingForward)).toBeTruthy()
+    await act(async () => answer({ ok: true, data: { kind: 'opened', terminal: 'terminal' } }))
+    await waitFor(() => expect(screen.queryByText(t.flow.bringingForward)).toBeNull())
   })
 
   it('Back to the board and b both put it back', async () => {
@@ -654,7 +689,7 @@ describe('the active quest and Codex', () => {
   it('with Claude Code, offers Continue in Codex, which moves it', async () => {
     const { engine } = await open(withActive())
 
-    expect(button(t.actions.openClaude)).toBeTruthy()
+    expect(button(t.actions.openTerminal)).toBeTruthy()
     expect(screen.queryByRole('button', { name: t.actions.reopenCodex })).toBeNull()
     await press(t.actions.continueCodex)
 
@@ -667,6 +702,7 @@ describe('the active quest and Codex', () => {
     expect(screen.getByText(t.quest.withCodex(dayAndTime(SINCE)))).toBeTruthy()
     expect(screen.queryByText(t.session.open)).toBeNull()
     expect(screen.queryByRole('button', { name: t.actions.openClaude })).toBeNull()
+    expect(screen.queryByRole('button', { name: t.actions.openTerminal })).toBeNull()
     await press(t.actions.showCodex)
 
     await waitFor(() => expect(engine.openClaude).toHaveBeenCalledWith(KEY, 'active'))

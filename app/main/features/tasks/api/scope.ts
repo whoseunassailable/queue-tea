@@ -16,8 +16,9 @@ import { isProjectKey } from '../../projects/api/projects_api'
 import type { ProjectsDeps } from '../../projects/api/projects_api'
 import { budgetOf } from '../../projects/data/budgets'
 import { scanRecord } from '../../projects/data/projects_source'
-import { sessionsIn, viewOf } from '../../projects/domain/project_views'
-import type { ClaudeDeps } from '../data/claude_code'
+import { sessionFor, sessionsIn, viewOf } from '../../projects/domain/project_views'
+import { openSessionOf } from '../data/claude_code'
+import type { ClaudeDeps, OpenSession } from '../data/claude_code'
 
 export type TasksDeps = ProjectsDeps & ClaudeDeps & { offsetMinutes: () => number; newId: () => string }
 
@@ -51,6 +52,13 @@ export const realmView = async (d: TasksDeps, key: string, record: ProjectRecord
 
 export const isSessionOpen = async (d: TasksDeps, path: string): Promise<boolean> =>
   sessionsIn(await sessionsRepositoryImpl(d.host, d.home).list(), path, d.now()).some(s => (s.workingPath ?? s.projectPath) === path)
+
+// The session open in a quest's folder and where its terminal is, or null.
+export const openSessionIn = async (d: TasksDeps, path: string, taskId: string | null): Promise<OpenSession | null> => {
+  const session = sessionFor(await sessionsRepositoryImpl(d.host, d.home).list(), path, taskId, d.now())
+
+  return session === null ? null : openSessionOf(session)
+}
 
 // One edit: the record changes under its lock, and the window gets the realm
 // as it is now.

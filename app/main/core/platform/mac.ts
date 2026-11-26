@@ -45,10 +45,68 @@ export const openLineArgv = (terminal: TerminalChoice, path: string, shellLine: 
   return openVsCode(path)
 }
 
-// A session is open already, so its terminal only comes forward.
-export const bringForwardArgv = (terminal: TerminalChoice, path: string): string[] => {
-  if (terminal === 'terminal') return script('tell application "Terminal"', 'activate', 'repeat with queueTeaWindow in windows', 'repeat with queueTeaTab in tabs of queueTeaWindow', `if custom title of queueTeaTab is ${appleScriptText(path)} then`, 'set selected of queueTeaTab to true', 'set frontmost of queueTeaWindow to true', 'return', 'end if', 'end repeat', 'end repeat', 'end tell')
-  if (terminal === 'iterm') return script('tell application "iTerm"', 'activate', 'repeat with queueTeaWindow in windows', 'repeat with queueTeaTab in tabs of queueTeaWindow', 'repeat with queueTeaSession in sessions of queueTeaTab', `if name of queueTeaSession is ${appleScriptText(path)} then`, 'select queueTeaSession', 'select queueTeaTab', 'select queueTeaWindow', 'return', 'end if', 'end repeat', 'end repeat', 'end repeat', 'end tell')
+// What the bring-forward script prints, so a tab it didn't find isn't taken
+// for one it brought forward.
+export const FORWARD_FOUND = 'found'
+export const FORWARD_MISSING = 'missing'
+
+// The terminal a session's TERM_PROGRAM names, or null for one Queue-tea can't
+// bring forward, where the chosen terminal is tried.
+export const terminalOfProgram = (program: string | null): TerminalChoice | null =>
+  program === 'Apple_Terminal' ? 'terminal' : program === 'iTerm.app' ? 'iterm' : program === 'vscode' ? 'vscode' : null
+
+const found = `return "${FORWARD_FOUND}"`
+const missing = `return "${FORWARD_MISSING}"`
+// A terminal that isn't running holds no session, so it isn't started for one.
+const unlessRunning = (app: string) => `if application "${app}" is not running then ${missing}`
+
+// Each Terminal tab once, bringing forward the first that passes the test.
+const terminalPass = (test: string): string[] => [
+  'repeat with queueTeaWindow in windows',
+  'repeat with queueTeaTab in tabs of queueTeaWindow',
+  `if ${test} then`,
+  'set selected of queueTeaTab to true',
+  'set frontmost of queueTeaWindow to true',
+  'activate',
+  found,
+  'end if',
+  'end repeat',
+  'end repeat',
+]
+
+// Each iTerm2 session once, bringing forward the first that passes the test.
+const itermPass = (test: string): string[] => [
+  'repeat with queueTeaWindow in windows',
+  'repeat with queueTeaTab in tabs of queueTeaWindow',
+  'repeat with queueTeaSession in sessions of queueTeaTab',
+  `if ${test} then`,
+  'select queueTeaSession',
+  'select queueTeaTab',
+  'select queueTeaWindow',
+  'activate',
+  found,
+  'end if',
+  'end repeat',
+  'end repeat',
+  'end repeat',
+]
+
+// A session is open already, so only its own tab comes forward: first the one
+// on its tty, which no title the session sets can hide, then the one named
+// after its folder, as the app names the tabs it opens. When neither is there
+// the script prints missing and brings nothing forward.
+export const bringForwardArgv = (terminal: TerminalChoice, path: string, tty: string | null = null): string[] => {
+  const title = appleScriptText(path)
+  if (terminal === 'terminal') {
+    const byTty = tty === null ? [] : terminalPass(`tty of queueTeaTab is ${appleScriptText(tty)}`)
+
+    return script(unlessRunning('Terminal'), 'tell application "Terminal"', ...byTty, ...terminalPass(`custom title of queueTeaTab is ${title}`), 'end tell', missing)
+  }
+  if (terminal === 'iterm') {
+    const byTty = tty === null ? [] : itermPass(`tty of queueTeaSession is ${appleScriptText(tty)}`)
+
+    return script(unlessRunning('iTerm'), 'tell application "iTerm"', ...byTty, ...itermPass(`name of queueTeaSession is ${title}`), 'end tell', missing)
+  }
 
   return openVsCode(path)
 }

@@ -2,9 +2,9 @@ import { expect, test } from 'claude-code/testing'
 
 import { beat, endBeat } from '../../../../hooks/app/session/session_beat'
 import { live } from '../../../../hooks/core/session/live'
-import { readSessions, removeSessionFile, writeSessionFile } from '../../../../hooks/shared/sessions/data/datasources/session_source'
+import { readSessions, readTerminal, removeSessionFile, TERMINAL_LINE, writeSessionFile } from '../../../../hooks/shared/sessions/data/datasources/session_source'
 import type { SessionFile } from '../../../../hooks/shared/sessions/domain/entities/session_file'
-import { isFresh, parseSession, sessionPath, sessionsFolder, STALE_MS } from '../../../../hooks/shared/sessions/domain/services/session_rules'
+import { isFresh, parseSession, sessionPath, sessionsFolder, STALE_MS, terminalOf } from '../../../../hooks/shared/sessions/domain/services/session_rules'
 import { CTX, fakePorts, makeTask, memoryHost } from '../../../helpers'
 
 const session = (over: Partial<SessionFile> = {}): SessionFile => ({
@@ -26,7 +26,10 @@ const fresh = () => {
   live.isTurnRunning = false
   live.sessionId = null
   live.startedAt = null
+  live.terminal = null
 }
+
+const SHELL = `sh -c ${TERMINAL_LINE}`
 
 test('a session is fresh up to 90 s and stale past it', () => {
   expect(STALE_MS).toBe(90_000)
@@ -135,4 +138,60 @@ test('a beat that cannot write leaves the session going', async () => {
   await beat(ports)
 
   expect(done.logs.some(line => line.includes('session file'))).toBe(true)
+})
+
+test("a session's terminal is its program and its tty, as the shell printed them", () => {
+  expect(terminalOf('Apple_Terminal\nttys004\n')).toEqual({ program: 'Apple_Terminal', tty: '/dev/ttys004' })
+  expect(terminalOf('iTerm.app\n  ttys012  \n')).toEqual({ program: 'iTerm.app', tty: '/dev/ttys012' })
+  expect(terminalOf('\npts/3\n')).toEqual({ program: null, tty: '/dev/pts/3' })
+})
+
+test('a session with no terminal, or one that printed nonsense, reads as unknown', () => {
+  expect(terminalOf('vscode\n??\n')).toEqual({ program: 'vscode', tty: null })
+  expect(terminalOf('')).toEqual({ program: null, tty: null })
+  expect(terminalOf('"; rm -rf /\n/dev/../etc\n')).toEqual({ program: null, tty: null })
+})
+
+test('the terminal is read through one shell line, and a failing shell throws', async () => {
+  const mem = memoryHost()
+  mem.git[SHELL] = { stdout: 'Apple_Terminal\nttys004\n' }
+
+  expect(await readTerminal(mem.host)).toEqual({ program: 'Apple_Terminal', tty: '/dev/ttys004' })
+  expect(mem.runs).toEqual([['sh', '-c', TERMINAL_LINE]])
+  mem.git[SHELL] = { exitCode: 1 }
+  await expect(readTerminal(mem.host)).rejects.toThrow('reading the terminal failed')
+})
+
+test('a beat says which terminal the session is in, read only once', async () => {
+  fresh()
+  const mem = memoryHost()
+  mem.git[SHELL] = { stdout: 'iTerm.app\nttys007\n' }
+  const { ports } = fakePorts(mem)
+
+  await beat(ports)
+  await beat(ports)
+
+  const [written] = await readSessions(mem.host, CTX.home)
+  expect(written?.terminal).toEqual({ program: 'iTerm.app', tty: '/dev/ttys007' })
+  expect(mem.runs.filter(argv => argv[0] === 'sh')).toHaveLength(1)
+})
+
+test("a terminal that can't be read is unknown, and the beat still writes", async () => {
+  fresh()
+  const mem = memoryHost()
+  const { ports, done } = fakePorts(mem)
+
+  await beat(ports)
+
+  const [written] = await readSessions(mem.host, CTX.home)
+  expect(written?.terminal).toEqual({ program: null, tty: null })
+  expect(done.logs.some(line => line.includes('where the terminal is'))).toBe(true)
+})
+
+test('a session file from an older mod reads without a terminal, and a broken one loses only it', () => {
+  expect(parseSession(JSON.stringify(session()))?.terminal).toBe(undefined)
+  const broken = parseSession(JSON.stringify({ ...session(), terminal: { program: 4, tty: 'ttys001' } }))
+  expect(broken?.id).toBe('s-1')
+  expect(broken?.terminal).toBe(undefined)
+  expect(parseSession(JSON.stringify({ ...session(), terminal: { program: 'Apple_Terminal', tty: '/dev/ttys001' } }))?.terminal).toEqual({ program: 'Apple_Terminal', tty: '/dev/ttys001' })
 })

@@ -1,3 +1,4 @@
+import type { SessionTerminal } from '../../shared/sessions/domain/entities/session_file'
 import type { Ctx } from '../env/env'
 import { readOptions } from './options'
 
@@ -10,4 +11,6 @@ export const live = {
   sessionId: null as string | null,
   startedAt: null as number | null,
   recordSeenAt: null as number | null,
+  // The terminal it runs in, read at its first beat.
+  terminal: null as SessionTerminal | null,
 }

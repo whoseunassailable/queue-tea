@@ -6,6 +6,7 @@ import { PALETTE_NOTE_ROWS, PALETTE_SNIPPET } from '../../../core/constants/cons
 import { t } from '../../../l10n/en'
 import { matches } from '../../notes/domain/notes_view'
 import { rowsOf } from '../../quests/domain/board'
+import { openLabel } from '../../quests/domain/flow_lines'
 import type { Load } from '../../workspace/state_management/workspace_store'
 
 export type PaletteSection = 'suggested' | 'quests' | 'actions' | 'goto' | 'realms' | 'notes' | 'create'
@@ -91,12 +92,15 @@ const questEntries = (view: Readable, input: PaletteInput): PaletteEntry[] => {
   )
 }
 
+// What ⌘↩ does to the quest in hand, named as its card names it.
+const openName = (view: Readable): string => (view.active === null ? t.actions.openClaude : openLabel(view.active, (view.active.session ?? view.session).state))
+
 const suggestions = (view: Readable, input: PaletteInput): PaletteEntry[] => {
   const main = allQuests(view).find(quest => quest.isStar)
   const newQuest = entry({ id: 'suggest:new', section: 'suggested', label: t.actions.newQuest, keys: '⌘N', run: () => input.onNewQuest('') })
   if (view.active !== null) {
     return [
-      entry({ id: 'suggest:open', section: 'suggested', label: t.actions.openClaude, keys: '⌘↩', run: input.onOpenClaude }),
+      entry({ id: 'suggest:open', section: 'suggested', label: openName(view), keys: '⌘↩', run: input.onOpenClaude }),
       entry({ id: 'suggest:finish', section: 'suggested', label: `${t.actions.finish} ${view.active.title}`, keys: 'd', run: input.onFinish }),
       newQuest,
     ]
@@ -120,7 +124,7 @@ const actions = (view: Readable, input: PaletteInput): PaletteEntry[] => {
       reason: main === undefined ? t.palette.nothingToStart : null,
       run: () => main !== undefined && input.onStart(main),
     }),
-    entry({ id: 'action:open', section: 'actions', label: t.actions.openClaude, keys: '⌘↩', reason: noActive, run: input.onOpenClaude }),
+    entry({ id: 'action:open', section: 'actions', label: openName(view), keys: '⌘↩', reason: noActive, run: input.onOpenClaude }),
     entry({ id: 'action:finish', section: 'actions', label: t.actions.finish, keys: 'd', reason: noActive, run: input.onFinish }),
     entry({ id: 'action:back', section: 'actions', label: t.actions.back, keys: 'b', reason: noActive, run: input.onBack }),
     entry({ id: 'action:new-note', section: 'actions', label: t.notebook.newNote, keys: t.notebook.newNoteKeys, run: input.onNewNote }),

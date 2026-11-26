@@ -4,7 +4,8 @@ import type { Ports } from '../../core/ports/ports'
 import { live } from '../../core/session/live'
 import { readCup } from '../../features/tea_cup/presentation/state_management/tea_cup_controller'
 import { currentTask } from '../../shared/records/domain/services/queue_rules'
-import { isFresh } from '../../shared/sessions/domain/services/session_rules'
+import type { SessionsRepository } from '../../shared/sessions/domain/repositories/sessions_repository'
+import { isFresh, UNKNOWN_TERMINAL } from '../../shared/sessions/domain/services/session_rules'
 import { sessionsRepositoryOf } from '../../shared/sessions/sessions_providers'
 
 // What sessions that crashed left behind, gone at the next session's start.
@@ -13,6 +14,20 @@ const clearCrashed = async (p: Ports, ctx: Ctx, now: number): Promise<void> => {
   for (const session of await sessions.list()) {
     if (!isFresh(session, now)) await sessions.remove(session.id)
   }
+}
+
+// Read once: a session never moves to another tab. Unknown is fine, since the
+// app then finds the tab by its title, as it did before sessions said.
+const terminalOf = async (p: Ports, sessions: SessionsRepository) => {
+  if (live.terminal !== null) return live.terminal
+  try {
+    live.terminal = await sessions.terminal()
+  } catch (err) {
+    debug(p, 'reading where the terminal is failed', err)
+    live.terminal = UNKNOWN_TERMINAL
+  }
+
+  return live.terminal
 }
 
 const writeBeat = async (p: Ports, ctx: Ctx): Promise<void> => {
@@ -36,6 +51,7 @@ const writeBeat = async (p: Ports, ctx: Ctx): Promise<void> => {
     cup: { mood: cup.mood, line: cup.line },
     allowance: await p.get('allowance'),
     warning: await p.get('warning'),
+    terminal: await terminalOf(p, sessions),
     options: ctx.options,
     heartbeat: now,
     startedAt: live.startedAt,

@@ -40,6 +40,15 @@ describe('what the palette offers', () => {
     expect(labels(filterPalette(paletteEntries(input({ view })), ''), 'suggested')).toEqual(['Open in Claude Code', 'Finish quest… Active one', 'New quest'])
   })
 
+  it("names ⌘↩ Open terminal while the active quest's session is open, as its card does", () => {
+    const view = { ...BOARD, active: activeQuest({ session: { state: 'working', allowance: null } }) } as PaletteInput['view']
+    const entries = paletteEntries(input({ view }))
+
+    expect(labels(filterPalette(entries, ''), 'suggested')[0]).toBe('Open terminal')
+    expect(labels(entries, 'actions')).toContain('Open terminal')
+    expect(labels(entries, 'actions')).not.toContain('Open in Claude Code')
+  })
+
   it('with no realm picked, still goes places', () => {
     const entries = filterPalette(paletteEntries(input({ view: null, selected: null })), '')
 

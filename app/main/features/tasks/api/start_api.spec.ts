@@ -31,6 +31,7 @@ let terminalRuns: string[][]
 let allRuns: string[][]
 let copied: string[]
 let terminalExit: number
+let terminalOut: string
 
 const git = async (...args: string[]) => (await run('git', args, { cwd: repo })).stdout.trim()
 const seed = (over: Partial<ProjectRecord>) => writeFile(file, JSON.stringify({ ...emptyRecord('demo', repo), ...over }))
@@ -60,9 +61,10 @@ const started = (outcome: StartOutcome) => {
 
   return outcome
 }
-const session = async (over: { heartbeat?: number; isTurnRunning?: boolean; workingPath?: string } = {}) => {
+const session = async (over: { id?: string; heartbeat?: number; isTurnRunning?: boolean; workingPath?: string; currentTaskId?: string; terminal?: { program: string | null; tty: string | null } } = {}) => {
+  const id = over.id ?? 's-1'
   await mkdir(join(home, '.queue-tea/sessions'), { recursive: true })
-  await writeFile(join(home, '.queue-tea/sessions/s-1.json'), JSON.stringify({ id: 's-1', projectPath: repo, recordFile: file, currentTaskId: null, isTurnRunning: false, cup: { mood: 'idle', line: '' }, allowance: null, options: {}, heartbeat: NOW, startedAt: NOW, ...over }))
+  await writeFile(join(home, `.queue-tea/sessions/${id}.json`), JSON.stringify({ id, projectPath: repo, recordFile: file, currentTaskId: null, isTurnRunning: false, cup: { mood: 'idle', line: '' }, allowance: null, options: {}, heartbeat: NOW, startedAt: NOW, ...over }))
 }
 
 // A record kept beside a real repository that matches its remote, so nothing
@@ -87,6 +89,7 @@ beforeEach(async () => {
   allRuns = []
   copied = []
   terminalExit = 0
+  terminalOut = ''
   const log = createLogger('dev', () => {})
   const real = nodeHost(log, async () => ({ exitCode: 0, stdout: '', stderr: '' }))
   const host: Host = {
@@ -96,7 +99,7 @@ beforeEach(async () => {
       if (argv[0] !== 'git') {
         terminalRuns.push(argv)
 
-        return { exitCode: terminalExit, stdout: '', stderr: terminalExit === 0 ? '' : 'no such app' }
+        return { exitCode: terminalExit, stdout: terminalOut, stderr: terminalExit === 0 ? '' : 'no such app' }
       }
 
       return real.run(argv, cwd)
@@ -317,6 +320,37 @@ describe('Open in Claude Code', () => {
     await openClaude(deps, KEY)
 
     expect(terminalRuns[0]!.join(' ')).not.toContain('claude')
+  })
+
+  it("Open terminal brings forward the quest's own tab, by its tty, in the app its session runs in", async () => {
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current' })] })
+    await session({ currentTaskId: 'one', workingPath: repo, terminal: { program: 'iTerm.app', tty: '/dev/ttys009' } })
+    terminalOut = 'found\n'
+
+    expect(data(await openClaude(deps, KEY, 'one'))).toEqual({ kind: 'opened', terminal: 'iterm' })
+    expect(terminalRuns).toHaveLength(1)
+    expect(terminalRuns[0]!.join(' ')).toContain('tty of queueTeaSession is "/dev/ttys009"')
+    expect(terminalRuns[0]!.join(' ')).not.toContain('claude')
+  })
+
+  it('with two sessions in the folder, the one that has the quest is the one brought forward', async () => {
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current' })] })
+    await session({ id: 's-1', heartbeat: NOW - 10, currentTaskId: 'one', workingPath: repo, terminal: { program: 'Apple_Terminal', tty: '/dev/ttys001' } })
+    await session({ id: 's-2', heartbeat: NOW, workingPath: repo, terminal: { program: 'Apple_Terminal', tty: '/dev/ttys002' } })
+
+    await openClaude(deps, KEY, 'one')
+
+    expect(terminalRuns[0]!.join(' ')).toContain('"/dev/ttys001"')
+    expect(terminalRuns[0]!.join(' ')).not.toContain('"/dev/ttys002"')
+  })
+
+  it("says so when no tab holds the quest's session, and starts no second one", async () => {
+    await seed({ tasks: [makeTask({ id: 'one', state: 'current' })] })
+    await session({ currentTaskId: 'one', workingPath: repo, terminal: { program: 'Apple_Terminal', tty: '/dev/ttys001' } })
+    terminalOut = 'missing\n'
+
+    expect(data(await openClaude(deps, KEY, 'one'))).toEqual({ kind: 'notFound', terminal: 'terminal' })
+    expect(terminalRuns).toHaveLength(1)
   })
 })
 

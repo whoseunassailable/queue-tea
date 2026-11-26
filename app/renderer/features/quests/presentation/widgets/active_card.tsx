@@ -3,7 +3,7 @@ import { dayAndTime, formatMinutes } from '../../../../core/domain/format'
 import { Spinner } from '../../../../core/widgets/states'
 import { GoldReward, XpReward } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
-import { askingLine } from '../../domain/flow_lines'
+import { askingLine, openLabel } from '../../domain/flow_lines'
 import { ClaudeOut } from './claude_out'
 import type { QuestActions } from '../state_management/flow_keys'
 
@@ -72,7 +72,7 @@ export const ActiveCard = ({ active, session, actions, kind, onDetail }: CardPro
       ) : (
         <div class="q-actions">
           <button type="button" class="btn primary" onClick={() => actions.onOpenClaude(active)}>
-            {isWithCodex ? t.actions.showCodex : t.actions.openClaude}
+            {openLabel(active, session.state)}
           </button>
           <button type="button" class="btn go" onClick={() => actions.onFinish(active)}>
             {t.actions.finish}

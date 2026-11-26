@@ -20,6 +20,14 @@ const difficultyOf = (task: Task) => task.difficulty.actual ?? task.difficulty.e
 export const sessionsIn = (sessions: SessionFile[], projectPath: string, nowMs: number): SessionFile[] =>
   sessions.filter(s => (s.projectPath === projectPath || s.workingPath === projectPath) && isFresh(s, nowMs)).sort((a, b) => b.heartbeat - a.heartbeat)
 
+// The live session working in this very folder, for a quest's terminal: the
+// one that has the quest, or else the newest. Null when none is open there.
+export const sessionFor = (sessions: SessionFile[], path: string, taskId: string | null, nowMs: number): SessionFile | null => {
+  const here = sessionsIn(sessions, path, nowMs).filter(s => (s.workingPath ?? s.projectPath) === path)
+
+  return here.find(s => taskId !== null && s.currentTaskId === taskId) ?? here[0] ?? null
+}
+
 export const sessionInfoOf = (sessions: SessionFile[], projectPath: string, nowMs: number): SessionInfo => {
   const alive = sessionsIn(sessions, projectPath, nowMs)
   const newest = alive[0]

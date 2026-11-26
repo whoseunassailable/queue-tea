@@ -76,6 +76,17 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     if (!isBusy(key)) workspace.setFlow(key, null)
   }
 
+  // True when the quest has a Claude Code session open in its folder, so
+  // opening it only brings that session's terminal forward.
+  const hasSession = (id: string) => {
+    const { project } = workspace.getState()
+
+    if (project.status !== 'ready' || project.data.kind !== 'readable') return false
+    const quest = project.data.activeQuests.find(q => q.id === id)
+
+    return quest !== undefined && (quest.session ?? project.data.session).state !== 'none' && quest.codexSince === null
+  }
+
   const needsClaudeCommand = (id: string) => {
     const { project } = workspace.getState()
 
@@ -87,7 +98,7 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
 
   const openClaude = async (key: string, quest: Named): Promise<void> => {
     if (isBusy(key)) return
-    work(key, quest, t.flow.opening)
+    work(key, quest, hasSession(quest.id) ? t.flow.bringingForward : t.flow.opening)
     const answer = await ask(engine, () => engine.openClaude(key, quest.id))
     workspace.setFlow(key, null)
     if (!answer.ok) {
@@ -97,6 +108,7 @@ export const questFlows = (engine: EngineApi, workspace: Workspace) => {
     }
     const { data } = answer
     if (data.kind === 'failed') workspace.setFlow(key, { kind: 'openFailed', questId: quest.id, title: quest.title, platform: null, terminal: data.terminal, command: data.command })
+    else if (data.kind === 'notFound') workspace.say({ tone: 'error', text: t.flow.terminalNotFound(quest.title, t.terminal[data.terminal]), isLong: true, action: { label: t.failed.tryAgain, run: () => void openClaude(key, quest) } })
     else if (data.kind === 'opened' && data.terminal === 'vscode' && needsClaudeCommand(quest.id)) workspace.say({ tone: 'info', text: t.flow.pasteVsCode })
   }
 

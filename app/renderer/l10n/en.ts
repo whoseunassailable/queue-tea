@@ -1152,6 +1152,9 @@ export const t = {
     making: (branch: string, from: string | null) => (from === null ? `Making ${branch}…` : `Making ${branch} from ${from}…`),
     settingOut: 'Setting out…',
     opening: 'Opening Claude Code…',
+    bringingForward: 'Bringing its terminal forward…',
+    terminalNotFound: (title: string, terminal: string) =>
+      `Couldn't find the terminal for ${title} in ${terminal}. If its session runs in another app, switch to it there. If you closed it, Open in Claude Code starts a new one once Queue-tea sees it has ended.`,
     putting: 'Putting it back on the board…',
     handing: 'Handing it to Claude Code… it clears the conversation and sends the first message',
     takesWhenTurnEnds: 'Claude Code takes it when this turn ends.',
@@ -1237,6 +1240,7 @@ export const t = {
     startMain: 'Start ★',
     startNamed: (title: string) => `Start ★ ${title}`,
     openClaude: 'Open in Claude Code',
+    openTerminal: 'Open terminal',
     startCodex: 'Start in Codex',
     continueCodex: 'Continue in Codex',
     continueClaude: 'Continue in Claude Code',

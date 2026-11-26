@@ -318,6 +318,34 @@ test('Up next is in priority order with the suggestion marked', async ($, on) =>
   }
 })
 
+test('/steep for work already waiting names it on the band, and Add to it adds the message there', async ($, on) => {
+  const waiting = makeTask({ title: 'Dark mode', state: 'queued' })
+  const current = makeTask({ title: 'Retry button', state: 'current', branch: 'task/retry-button' })
+  const { mem } = await startSession($, on, { file: record({ tasks: [current, waiting] }) })
+  await $.command.run({ command: 'steep', args: 'dark mode', ...COMMAND })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+
+  expect(await band.find({ type: 'Text', text: 'Already waiting: "Dark mode". Add this message to it, or Save it as a task of its own.' })).toBeDefined()
+  await band.press({ key: 'add-to-alike' })
+  await band.unmount()
+
+  const saved = recordOf(mem).tasks
+  expect(saved).toHaveLength(2)
+  expect(saved.find(t => t.id === waiting.id)?.messages).toEqual(['dark mode'])
+})
+
+test('work that looks done already is named on the band with no Add to it', async ($, on) => {
+  const done = makeTask({ title: 'Export CSV', state: 'done', finished: '2026-11-02T10:00:00+02:00' })
+  const current = makeTask({ title: 'Retry button', state: 'current', branch: 'task/retry-button' })
+  await startSession($, on, { file: record({ tasks: [current, done] }) })
+  await $.command.run({ command: 'steep', args: 'export csv', ...COMMAND })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+
+  expect(await band.find({ type: 'Text', text: 'Looks done already: "Export CSV", finished 2026-11-02. Save only if this is more work.' })).toBeDefined()
+  expect(await band.find({ key: 'add-to-alike' })).toBeUndefined()
+  await band.unmount()
+})
+
 test('a held start shows what is left and Check again', async ($, on) => {
   const { mem } = await startSession($, on, { file: record(), status: DIRTY })
   await $.command.run({ command: 'steep', args: 'add dark mode', ...COMMAND })
@@ -1753,6 +1781,30 @@ test('a Tea-DD run through the Agent tool counts at done', async ($, on) => {
   await $.tool.call({ tool: 'Agent', subagent_type: 'queue-tea:tea-dd' } as never)
 
   expect(JSON.stringify(await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' }))).toContain('Rohan is asked')
+})
+
+test('a Tea-DD run that fails through the Agent tool does not count at done, and its failure is kept', async ($, on) => {
+  on('tool.call', () => ({ isError: true, result: "Agent type 'queue-tea:tea-dd' not found" }) as never)
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login', helpers: { on: ['tea-dd'], ran: [], reminded: false } })
+  const { mem } = await startSession($, on, { file: record({ tasks: [task] }) })
+
+  await $.tool.call({ tool: 'Agent', subagent_type: 'queue-tea:tea-dd' } as never)
+
+  expect(recordOf(mem).tasks[0]?.helperUsage?.['tea-dd']).toMatchObject({ runs: 1, failed: 1, counted: 0 })
+  expect(JSON.stringify(await $.tool.call({ tool: 'mcp__queue-tea__task_looks_done' }))).toContain("hasn't run yet")
+})
+
+test("a helper run's duration and tokens from the Agent tool's answer are kept on the quest", async ($, on) => {
+  on('tool.call', () => ({ result: { status: 'completed', totalDurationMs: 64_000, totalTokens: 23_500 } }) as never)
+  const task = makeTask({ title: 'Fix login', state: 'current', branch: 'task/fix-login', helpers: { on: ['chai-pter'], ran: [], reminded: false } })
+  const { mem } = await startSession($, on, { file: record({ tasks: [task] }) })
+
+  await $.tool.call({ tool: 'Agent', subagent_type: 'queue-tea:chai-pter' } as never)
+  await $.tool.call({ tool: 'Agent', subagent_type: 'general-purpose' } as never)
+
+  const saved = recordOf(mem).tasks[0]!
+  expect(saved.helpers.ran).toEqual(['chai-pter'])
+  expect(saved.helperUsage).toEqual({ 'chai-pter': { runs: 1, failed: 0, timed: 1, ms: 64_000, counted: 1, tokens: 23_500 } })
 })
 
 test('a helper run during /brew does not count', async ($, on) => {

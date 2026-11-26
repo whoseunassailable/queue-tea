@@ -1,4 +1,5 @@
 import type { Difficulty, HelperId, Task } from '../../../../../types'
+import { routeHelpers } from '../../../../shared/records/domain/services/helper_policy'
 
 export const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
@@ -25,6 +26,11 @@ export const logFileIn = (projectPath: string, logPath: string): string | null =
   return file.startsWith(`${root}/`) ? file : null
 }
 
-// The helper Claude must run before asking Rohan: Tea-DD first, then Commit Chai-n.
-export const helperToRemind = (t: Task): HelperId | null =>
-  (['tea-dd', 'commit-chai-n'] as const).find(id => t.helpers.on.includes(id) && !t.helpers.ran.includes(id)) ?? null
+// The helper Claude must run before asking Rohan: Tea-DD first, then Commit
+// Chai-n, of those the quest's route runs. A Quick change skips Tea-DD, since
+// Claude runs its checks itself.
+export const helperToRemind = (t: Task): HelperId | null => {
+  const { run } = routeHelpers(t)
+
+  return (['tea-dd', 'commit-chai-n'] as const).find(id => run.includes(id) && !t.helpers.ran.includes(id)) ?? null
+}

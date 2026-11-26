@@ -513,3 +513,25 @@ test('a record the host will not open says so, and what to check, with no copy o
 
   expect(await readProblem(mem.host, FILE)).toEqual({ reason: RECORD_TEXT.cannotOpen, canRestore: false, fix: RECORD_TEXT.cannotOpenFix(FILE) })
 })
+
+test('a task saved before helper usage reads with none, and the totals survive a write and a read', async () => {
+  expect(Object.keys(readFirst({ title: 'Old', created: '2026-10-01' }) ?? {})).not.toContain('helperUsage')
+
+  const mem = memoryHost()
+  const usage = { 'tea-dd': { runs: 3, failed: 1, timed: 2, ms: 95_000, counted: 1, tokens: 21_000 } }
+  await updateRecord(mem.host, FILE, r => ({ ...r, tasks: [makeTask({ id: 'a', helperUsage: usage })] }), 'p', '/p')
+  const read = await readRecord(mem.host, FILE, 'p', '/p')
+
+  if (read === 'unreadable') throw new Error('should read')
+  expect(read.tasks[0]?.helperUsage).toEqual(usage)
+})
+
+test('hand-edited helper usage keeps the helpers whose totals add up, and the realm still reads', () => {
+  const usage = (helperUsage: unknown) => readFirst({ title: 'Old', created: '2026-10-01', helperUsage })?.helperUsage
+  const good = { runs: 2, failed: 0, timed: 2, ms: 10, counted: 2, tokens: 30 }
+
+  for (const bad of [null, 'x', [], {}, { 'tea-dd': null }, { nobody: good }, { 'tea-dd': { ...good, runs: -1 } }, { 'tea-dd': { ...good, failed: 3 } }, { 'tea-dd': { ...good, tokens: '30' } }]) {
+    expect(usage(bad)).toBeUndefined()
+  }
+  expect(usage({ 'tea-dd': good, 'chai-pter': { ...good, counted: 9 } })).toEqual({ 'tea-dd': good })
+})

@@ -36,7 +36,7 @@ When an item is built, tick it here, so a fresh conversation can carry on from t
 
 - [ ] Edit the title in the band before Save. Today it is only shown.
 - [ ] Rename a queued task.
-- [ ] At filing, say when a waiting task looks the same, and offer to add the message to it.
+- [x] At filing, say when a waiting task looks the same, and offer to add the message to it.
 - [ ] Add a message to a queued task.
 - [ ] When a feature's last task is done, offer to finish the feature.
 

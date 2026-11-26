@@ -45,7 +45,7 @@ Each piece has one job, and only it touches its own data.
 | Piece | Its job |
 | --- | --- |
 | Record | Reads and writes the project's record file. Nothing else touches the file |
-| Message check | Before each typed message reaches Claude: same task, new task, quick question or can't tell; understanding or improving; for a new task, a title and a difficulty guess |
+| Message check | Before each typed message reaches Claude: same task, new task, quick question, command or can't tell; understanding or improving; for a new task, a title and a difficulty guess |
 | Task flow | The queue order; starting and finishing tasks; the git check and the branch; the handoff note and the fresh conversation |
 | Display | The tea cup in the band above the prompt, its menu, the status line, the commands |
 | Git guard | Refuses every command of Claude's that commits or pushes |
@@ -69,6 +69,8 @@ A message the check judges new is held back: Claude never sees it. The band abov
 A held message is counted (understanding or improving) and its time goes to the current task only once **Same task** sends it.
 
 When nothing is current, the saved task starts straight away.
+
+When a task that isn't removed looks like the same work, the band says so in the warning colour, under the title. Two titles look alike when most of their words match, once filler words ("the", "add", "please") and plurals are set aside; the closest wins, and on a tie the current task, then a queued one, then a done one. For a queued task it reads "Already waiting: "<title>". Add this message to it, or Save it as a task of its own." with **Add to it**, which adds the message to that task's filed messages (once) and closes the band with a toast, "Added to: <title>". For the current task it reads "Looks like the task under way: "<title>". Same task sends it there." For a done task it reads "Looks done already: "<title>", finished <day>. Save only if this is more work." **Save** still files a task of its own in every case. When the queued task started in the meantime, **Add to it** adds nothing and the band says so.
 
 When there are features to offer (the active feature, the current task or its feature, other features with open tasks), the band also asks what the task is **Part of**: **On its own**, one of them, or **New feature…**, which takes a name and files the feature with the task under it. One is picked beforehand when the message names a feature (its whole title, or its id), or when the message check says it is part of one. When the check can't tell, two features are named, or a feature is active and nothing says the task belongs to it, nothing is picked and **Save** waits until Rohan picks. The check is also shown the five newest open tasks on their own, so a broad task with nothing under it yet ("Fix the documentation") can take its first piece: when the check says the message is part of one, that task is offered and picked, and becomes a feature once the task is saved; when it can't tell, they are offered too. See [Features](#features).
 
@@ -141,10 +143,11 @@ In the workspace app ([workspace-app.md](workspace-app.md)), a task can run on O
   | Same task | The message goes to Claude |
   | New task | Held back; [Filing a task](#filing-a-task) |
   | Quick question | A side question that isn't work to queue ("what does this error mean?"). It goes to Claude and is not filed |
+| Command | An ask for the tools rather than a change: run the tests, commit, push, open, restart or show something. It goes to Claude and is not filed. It isn't counted as understanding or improving, and its time goes to the current task |
   | Can't tell | The band shows **Same task**, **New task**, **Quick question** (sent as a quick question: not counted, its time to the project) and **Cancel** |
 
 - **Also answers:** understanding or improving, for every message; a short title and a difficulty guess for a new task.
-- **With nothing current:** a message that is work becomes a new task; a quick question goes through.
+- **With nothing current:** a message that is work becomes a new task; a quick question or a command goes through.
 - **While it runs:** the status line says "Queue-tea: checking your message…".
 - **When it fails** (a model error, or no answer within 10 seconds): the can't-tell buttons, with a line saying the check didn't run. It never guesses. The error goes to the debug log.
 - **`/steep <message>`** files the message as a new task with no check.
@@ -182,6 +185,8 @@ When the handoff note cannot be written, the conversation is not cleared. The st
 The mod registers a tool for Claude (`$.tool.register`, listed from the start) and adds a short section to the system prompt saying when to call it: when a reply has finished what the current task asked. Calling it opens the "done for now?" question in the menu. This costs no extra model call, which a check after every reply would.
 
 The tool takes one optional argument, `checked`: a line on what Claude checked before calling ("ran the tests: 143 pass"). The menu shows it under the question as "Claude checked: …".
+
+When a helper the quest needs is on and hasn't run, the first call asks Claude to run it instead, and the next call goes to Rohan with "<helper> is on and didn't run." after what Claude checked. A helper whose run failed hasn't run ([When a helper fails](helper-policies.md#when-a-helper-fails)).
 
 ## What Rohan sees
 
@@ -328,6 +333,7 @@ Claude Code lets a mod read or write a file in one go only up to 4 MiB (4,194,30
 - created, started and finished dates
 - time, per day, and its testing time: when its checks ran (`testPeriods`) and how many of its minutes fell inside them (`minutesInChecks`). Both are absent until a check finishes
 - its test profile (`testProfile`), absent until Tea-DD or Rohan picks one ([Test profiles](#test-profiles))
+- which helpers are on and which have run (`helpers`), and what its helper runs took (`helperUsage`): runs, failed runs, time and tokens by helper, absent until one runs ([Helper policies](helper-policies.md#what-is-measured))
 - effort (below)
 - when it went to Codex (`codexSince`), or null while Claude Code has it. A record from before Codex reads as Claude Code's
 - the step it is on now, or did last (`step`): its kind, what it acts on (cut to 200 characters), when it started and ended, and how it went; and the background checks it waits on (`waiting`, up to 10). No command or test output is kept, and no list of past steps. A record that still holds the old step log (`activity`) loses it on its next save, from the mod or the app
@@ -427,6 +433,8 @@ Each has a logo in `.claude-plugin/helpers/<name>.svg`, drawn alike so they read
 - **Tea-DD** (`queue-tea:tea-dd`): tests for each feature and fix in the project's own runner and style, at the lowest level that shows the behaviour; for a bug, the failing test first. Before running anything it picks a [test profile](#test-profiles) and records it. It runs the new tests and the tests of what changed first, then the rest of the profile's checks, and before writing an end-to-end test it looks for one that already walks the flow to extend. It reports the profile, its reason and who chose it, and the counts. It never skips, deletes or loosens a test to get to green.
 
 Each also follows the project's graphify rule: with `graphify-out/graph.json` present, `graphify query` comes before its first search.
+
+Which helpers a quest uses depends on the chips Rohan pressed and its test profile: Claude classifies the change first, and a Quick change goes implement, Quick checks, review, without Mocha Mockup, Chai-pter or Tea-DD. Each helper's policy, the routing, what happens when one fails and what is measured are in [Helper policies](helper-policies.md).
 
 ### Test profiles
 

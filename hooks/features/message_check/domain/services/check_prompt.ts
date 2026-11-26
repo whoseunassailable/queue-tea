@@ -2,7 +2,7 @@ import { firstObject } from '../../../../shared/checkpoints/domain/services/firs
 import type { CheckAnswer } from '../../../../shared/assistant/domain/entities/check_answer'
 import type { Difficulty, Intent, Task } from '../../../../../types'
 
-const KINDS = ['same', 'new', 'quick', 'unsure'] as const
+const KINDS = ['same', 'new', 'quick', 'command', 'unsure'] as const
 const INTENTS: readonly Intent[] = ['understanding', 'improving']
 const DIFFICULTIES: readonly Difficulty[] = ['light', 'medium', 'hard']
 
@@ -20,11 +20,12 @@ export const checkPrompt = (
   [
     'You sort a message Rohan just typed for a task queue. Answer with one JSON object only, no other text:',
     features.length + lone.length === 0
-      ? '{"kind":"same|new|quick|unsure","intent":"understanding|improving","title":"…","difficulty":"light|medium|hard"}'
-      : '{"kind":"same|new|quick|unsure","intent":"understanding|improving","title":"…","difficulty":"light|medium|hard","parent":"<feature id>|none|unsure"}',
+      ? '{"kind":"same|new|quick|command|unsure","intent":"understanding|improving","title":"…","difficulty":"light|medium|hard"}'
+      : '{"kind":"same|new|quick|command|unsure","intent":"understanding|improving","title":"…","difficulty":"light|medium|hard","parent":"<feature id>|none|unsure"}',
     '- same: it continues the current task.',
     '- new: it is other work, to do later.',
     "- quick: a side question that isn't work to queue.",
+    '- command: an operational ask for the tools, such as run the tests, commit, push, open, restart or show something. It is not a change to make and not work to queue.',
     '- unsure: you cannot tell.',
     '- intent: understanding when it asks how or why or explores; improving when it asks for a change.',
     '- title (at most 60 characters) and difficulty only for new. A bug fix is usually light, a new feature hard.',

@@ -1,9 +1,13 @@
 import type { Difficulty, ParentPick, Priority } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import type { Ports } from '../../../../core/ports/ports'
+import { debug } from '../../../../core/logger/logger'
 import { live } from '../../../../core/session/live'
 import { closeBand, showBand } from '../../../../core/store/band_queue'
 import { guessParent } from '../../../../shared/backlog/domain/services/families'
+import { alikeOf } from '../../../../shared/backlog/domain/services/duplicates'
+import { addMessageUseCase } from '../../domain/usecases/add_message'
+import { FILE_BAND_TEXT } from '../constants/file_band_text'
 import { currentTask } from '../../../../shared/records/domain/services/queue_rules'
 import { markUnreadable } from '../../../../shared/records/presentation/state_management/records_controller'
 import { startTask } from './tasks_controller'
@@ -70,6 +74,33 @@ export async function saveFile(p: Ports) {
   await fileTask(p, live.ctx, band)
 }
 
+// Add to it: the held message joins the waiting task it looks like, instead
+// of being filed twice. Claude never sees it now, as with Save.
+export async function addToAlike(p: Ports) {
+  const band = await p.get('band')
+  const ctx = live.ctx
+  if (band.kind !== 'file' || band.alike === undefined || ctx === null) return
+  try {
+    const result = await addMessageUseCase(tasksDepsOf(p, ctx), band.alike, band.text)
+    if (result.kind === 'not_waiting') {
+      await p.set('notice', FILE_BAND_TEXT.notWaiting)
+
+      return
+    }
+    if (result.saved === 'unreadable') {
+      await markUnreadable(p, ctx)
+
+      return
+    }
+    await p.set('record', result.saved)
+    await closeBand(p)
+    p.toast(FILE_BAND_TEXT.added(result.title))
+  } catch (err) {
+    debug(p, 'adding the message to a task failed', err)
+    await p.set('notice', FILE_BAND_TEXT.addFailed)
+  }
+}
+
 // The name of the new feature a held message goes under.
 export async function nameNewFeature(p: Ports, title: string) {
   const band = await p.get('band')
@@ -81,7 +112,7 @@ export async function nameNewFeature(p: Ports, title: string) {
 async function parentFor(p: Ports, text: string) {
   const record = await p.get('record')
 
-  return record === null ? null : guessParent(record, text, null)
+  return record === null ? null : { ...guessParent(record, text, null), ...alikeOf(record.tasks, text.slice(0, 60)) }
 }
 
 export async function fileFromCommand(p: Ports, text: string) {

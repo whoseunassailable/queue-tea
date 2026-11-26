@@ -1,12 +1,13 @@
 import type { Band, Intent, ProjectRecord } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import { activeFeature, filingCandidates, guessParent, loneTasks } from '../../../../shared/backlog/domain/services/families'
+import { alikeOf } from '../../../../shared/backlog/domain/services/duplicates'
 import { currentTask, orderQueue } from '../../../../shared/records/domain/services/queue_rules'
 import type { CheckRepository } from '../repositories/check_repository'
 import { checkPrompt } from '../services/check_prompt'
 
 export type TypedVerdict =
-  | { kind: 'same' | 'quick'; intent: Intent }
+  | { kind: 'same' | 'quick' | 'command'; intent: Intent }
   | { kind: 'new'; band: Band; intent: Intent }
   | { kind: 'unsure'; band: Band; intent: Intent | null; wasChecked: boolean }
 
@@ -23,19 +24,24 @@ export const checkTypedMessage = async (check: CheckRepository, ctx: Ctx, record
   )
   const answer = await check.check(prompt, ctx.options.checkTimeoutSeconds * 1000)
 
-  if (answer?.kind === 'same' || answer?.kind === 'quick') return { kind: answer.kind, intent: answer.intent }
+  // A follow-up, a question or an operational command goes through: none of them is filed.
+  if (answer?.kind === 'same' || answer?.kind === 'quick' || answer?.kind === 'command') return { kind: answer.kind, intent: answer.intent }
   if (answer?.kind === 'new') {
+    const title = answer.title ?? text.slice(0, 60)
+
     return {
       kind: 'new',
       intent: answer.intent,
       band: {
         kind: 'file',
         text,
-        title: answer.title ?? text.slice(0, 60),
+        title,
         priority: 'mid',
         difficulty: answer.difficulty ?? 'medium',
         intent: answer.intent,
         ...guessParent(record, text, answer.parent),
+        // Work already waiting or done is offered before it is filed again.
+        ...alikeOf(record.tasks, title),
       },
     }
   }

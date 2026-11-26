@@ -1,4 +1,4 @@
-import type { Difficulty, ProjectRecord } from '../../../../../types'
+import type { Difficulty, HelperId, ProjectRecord, Task } from '../../../../../types'
 import type { Ctx } from '../../../../core/env/env'
 import { debug } from '../../../../core/logger/logger'
 import type { Ports } from '../../../../core/ports/ports'
@@ -13,6 +13,8 @@ import { currentTask } from '../../../../shared/records/domain/services/queue_ru
 import { isoLocal } from '../../../../shared/time/domain/services/time'
 import { applySaved, markUnreadable } from '../../../../shared/records/presentation/state_management/records_controller'
 import { isHelperId } from '../../../../shared/records/domain/services/helpers'
+import { isQuickRoute, routeHelpers } from '../../../../shared/records/domain/services/helper_policy'
+import type { HelperRunSeen } from '../../../../shared/records/domain/services/helper_usage'
 import { helperToRemind } from '../../domain/services/task_rules'
 import type { Block } from '../../domain/services/task_rules'
 import { markRemindedUseCase, noteHelperUseCase } from '../../domain/usecases/helpers_run'
@@ -27,7 +29,7 @@ import { startTaskUseCase } from '../../domain/usecases/start_task'
 import { switchToTaskUseCase } from '../../domain/usecases/switch_to_task'
 import { takeRequestUseCase } from '../../domain/usecases/take_request'
 import { tasksDepsOf } from '../../tasks_providers'
-import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, PROFILE_LINE, PROFILE_TEXT, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
+import { ASKED, BACK_IN_BACKLOG, BLOCKED, CHECKPOINT_FAILED, CLASSIFY_LINE, CODEX_TIME_LOST, DIDNT_RUN, HELPER_LINES, HELPER_NAMES, PROFILE_LINE, PROFILE_TEXT, QUICK_LINE, REMIND, SAVING_CHECKPOINT, TASK_LINE, WRONG_BRANCH } from '../constants/tasks_text'
 import { clearHold } from './hold'
 import { gitModeOf } from '../../../../shared/records/domain/services/git_mode'
 
@@ -40,12 +42,26 @@ export const taskSection = (record: ProjectRecord | null) => {
   return {
     id: 'queue-tea:task',
     scope: 'session' as const,
-    text: [
-      TASK_LINE(current.title, gitModeOf(record)),
-      ...HELPER_LINES.filter(([id]) => current.helpers.on.includes(id)).map(([, line]) => line),
-      ...(current.testProfile === undefined ? [] : [PROFILE_LINE(current.testProfile)]),
-    ].join('\n'),
+    text: [TASK_LINE(current.title, gitModeOf(record)), ...helperLines(current)].join('\n'),
   }
+}
+
+// The brief's helper lines, routed by the quest's profile. Before one is
+// picked, the classify step comes first. A Quick change gets its own route
+// and the lines of what still runs (Commit Chai-n); every other profile gets
+// the line of each helper that is on, in work order.
+const helperLines = (t: Task): string[] => {
+  const route = routeHelpers(t)
+  const isOn = route.run.length + route.skipped.length > 0
+  const lines = HELPER_LINES.filter(([id]) => route.run.includes(id)).map(([, line]) => line)
+  const quick = isQuickRoute(t) ? [QUICK_LINE(route.skipped.map(id => HELPER_NAMES[id]))] : []
+
+  return [
+    ...(isOn && t.testProfile === undefined ? [CLASSIFY_LINE] : []),
+    ...quick,
+    ...lines,
+    ...(t.testProfile === undefined ? [] : [PROFILE_LINE(t.testProfile)]),
+  ]
 }
 
 // The git check, the branch, then a fresh conversation for the task.
@@ -133,8 +149,9 @@ export const setTestProfile = async (p: Ports, input: unknown): Promise<string> 
     if (set.kind === 'rohans') return PROFILE_TEXT.rohans(set.id)
     if (set.kind !== 'saved') return PROFILE_TEXT[set.kind]
     await applySaved(p, ctx, set.record)
+    const saved = set.record.tasks.find(t => t.id === current.id)
 
-    return PROFILE_TEXT.saved(pick.id)
+    return PROFILE_TEXT.saved(pick.id, saved === undefined ? [] : routeHelpers(saved).skipped.map(id => HELPER_NAMES[id]))
   } catch (err) {
     debug(p, 'saving the test profile failed', err)
 
@@ -156,16 +173,26 @@ const markReminded = async (p: Ports, taskId: string): Promise<boolean> => {
   }
 }
 
-// Notes a helper the Agent tool ran, for the current task.
-export const noteHelperRun = async (p: Ports, agent: unknown): Promise<void> => {
+// A helper the Agent tool is about to run, and the task current as it starts;
+// null for any other agent or with no task current.
+export type HelperCall = { helper: HelperId; taskId: string }
+
+export const helperCallOf = async (p: Ports, agent: unknown): Promise<HelperCall | null> => {
   const id = typeof agent === 'string' && agent.startsWith('queue-tea:') ? agent.slice('queue-tea:'.length) : null
-  const ctx = live.ctx
-  if (!isHelperId(id) || ctx === null) return
+  if (!isHelperId(id) || live.ctx === null) return null
   const record = await p.get('record')
   const current = record === null ? null : currentTask(record.tasks, live.ctx)
-  if (current === null) return
+
+  return current === null ? null : { helper: id, taskId: current.id }
+}
+
+// Notes how the run went on the task it started on, once the Agent tool has
+// answered: its time and tokens, and, unless it failed, that it ran.
+export const noteHelperRun = async (p: Ports, call: HelperCall | null, run: HelperRunSeen): Promise<void> => {
+  const ctx = live.ctx
+  if (call === null || ctx === null) return
   try {
-    await applySaved(p, ctx, await noteHelperUseCase(tasksDepsOf(p, ctx), current.id, id))
+    await applySaved(p, ctx, await noteHelperUseCase(tasksDepsOf(p, ctx), call.taskId, call.helper, run))
   } catch (err) {
     debug(p, 'noting the helper run failed', err)
   }

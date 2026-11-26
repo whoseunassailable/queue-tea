@@ -11,7 +11,8 @@ import type { Register } from 'claude-code'
 
 import { DONE_ASKED, DONE_NONE, ERRAND_RUNNING, MENU_OPENED, PROFILE_TEXT, PROFILE_TOOL, STEEP_PICK, STEEP_USAGE } from './features/tasks/presentation/constants/tasks_text'
 import { toggleMenu } from './app/menu/menu_controller'
-import { askDone, noteHelperRun, setTestProfile, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
+import { askDone, helperCallOf, noteHelperRun, setTestProfile, taskLooksDone, taskSection } from './features/tasks/presentation/state_management/tasks_controller'
+import { helperRunOf } from './shared/records/domain/services/helper_usage'
 import { fileFromCommand } from './features/tasks/presentation/state_management/filing_controller'
 import { runFeature } from './features/tasks/presentation/state_management/queue_controller'
 import { MENU, menuClosed, openMenu } from './core/store/menu'
@@ -71,11 +72,22 @@ export const register: Register = (on, options) => {
   on('tool.call', { tool: `mcp__queue-tea__${PROFILE_TOOL.name}` }, async ($, e) =>
     ({ result: errandState.errand?.isRunning === true ? PROFILE_TEXT.errand : await setTestProfile(portsOf($), e) }))
 
-  // Each helper Claude runs, noted on the task; a /brew or /tea errand is outside it.
+  // Each helper Claude runs, noted on the task once the Agent tool answers:
+  // how long it took, its tokens where the answer gives them, and whether it
+  // ran or failed. A /brew or /tea errand is outside the task.
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
-    if (errandState.errand?.isRunning !== true) await noteHelperRun(portsOf($), (e as { subagent_type?: unknown }).subagent_type)
+    const call = errandState.errand?.isRunning === true ? null : await helperCallOf(portsOf($), (e as { subagent_type?: unknown }).subagent_type)
+    if (call === null) return next(e)
+    const started = await $.clock.now()
+    try {
+      const result = await next(e)
+      await noteHelperRun(portsOf($), call, helperRunOf(result, (await $.clock.now()) - started))
 
-    return next(e)
+      return result
+    } catch (err) {
+      await noteHelperRun(portsOf($), call, helperRunOf({ isError: true }, (await $.clock.now()) - started))
+      throw err
+    }
   })
 
   on('tool.call', async ($, e, next) => {

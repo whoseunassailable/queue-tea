@@ -111,3 +111,15 @@ test('the prompt names the current task and the queue', () => {
 test('with no current task, the prompt says work is new', () => {
   expect(checkPrompt(null, [], 'add dark mode')).toContain('No task is current')
 })
+
+test('an operational command parses as its own kind, with no title', () => {
+  expect(parseCheckAnswer('{"kind":"command","intent":"improving","title":"Push"}')).toEqual({ kind: 'command', intent: 'improving' })
+})
+
+test('the prompt tells an operational command from new work', () => {
+  const prompt = checkPrompt(makeTask({ title: 'Retry button', state: 'current' }), [], 'push it')
+
+  expect(prompt).toContain('same|new|quick|command|unsure')
+  expect(prompt).toContain('- command: an operational ask for the tools')
+  expect(prompt).toContain('not work to queue')
+})

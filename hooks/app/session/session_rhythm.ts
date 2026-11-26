@@ -171,8 +171,9 @@ export async function checkTyped($: EngineInterface, text: string): Promise<'pas
   const { verdict, intent, kind } = await onMessage(p, ctx, text)
   // A held message counts once it is sent on from the band.
   if (verdict === 'pass') {
+    // A command's time is the task's, but it is neither understanding nor improving.
     effortState.tracker?.route(kind === 'quick' ? 'project' : 'task')
-    if (intent !== null && kind !== 'quick') effortState.tracker?.intent(intent)
+    if (intent !== null && kind !== 'quick' && kind !== 'command') effortState.tracker?.intent(intent)
   }
 
   return verdict

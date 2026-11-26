@@ -546,10 +546,10 @@ describe('filing quests from a note', () => {
     )
     const tasks = (await record()).tasks
 
-    expect(tasks.map(t => [t.id, t.title, t.parentId])).toEqual([
-      ['t-2', 'Bug Bounty Helper', null],
-      ['t-3', 'Scan', 't-2'],
-      ['t-4', 'Report', 't-2'],
+    expect(tasks.map(t => [t.id, t.title, t.parentIds])).toEqual([
+      ['t-2', 'Bug Bounty Helper', []],
+      ['t-3', 'Scan', ['t-2']],
+      ['t-4', 'Report', ['t-2']],
     ])
     expect(tasks[1]).toMatchObject({ priority: 'high', description: 'From the note "Bug Bounty Helper" in Notes.' })
     expect(only(filed.view, id).quests).toEqual([
@@ -564,7 +564,7 @@ describe('filing quests from a note', () => {
     const { id } = await created({ title: 'Idea', body: '# Idea\n\nWhy it matters.' })
     await api.fileNoteQuests(KEY, id, { parent: { kind: 'none' }, quests: [{ title: 'Idea', priority: 'mid', difficulty: 'medium', item: null }] })
 
-    expect((await record()).tasks[0]).toMatchObject({ title: 'Idea', parentId: null, description: 'From the note "Idea" in Notes.\n\nWhy it matters.' })
+    expect((await record()).tasks[0]).toMatchObject({ title: 'Idea', parentIds: [], description: 'From the note "Idea" in Notes.\n\nWhy it matters.' })
   })
 
   it('checks the quests and files nothing when one is wrong', async () => {
@@ -581,10 +581,10 @@ describe('filing quests from a note', () => {
     await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [a] })
     const again = data(await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [a, { ...a, title: 'B', item: 'B' }] }))
 
-    expect((await record()).tasks.map(t => [t.title, t.parentId])).toEqual([
-      ['Saga', null],
-      ['A', 't-2'],
-      ['B', 't-2'],
+    expect((await record()).tasks.map(t => [t.title, t.parentIds])).toEqual([
+      ['Saga', []],
+      ['A', ['t-2']],
+      ['B', ['t-2']],
     ])
     expect(only(again.view, id).quests.map(q => q.item)).toEqual([null, 'A', 'B'])
   })
@@ -599,11 +599,11 @@ describe('filing quests from a note', () => {
     await api.fileNoteQuests(KEY, id, { parent: { kind: 'new', title: 'Saga' }, quests: [{ title: 'B', priority: 'mid', difficulty: 'medium', item: 'B' }] })
 
     const tasks = (await record()).tasks
-    expect(tasks.map(t => [t.title, t.parentId])).toEqual([
-      ['Saga', null],
-      ['A', 't-2'],
-      ['Saga', null],
-      ['B', 't-4'],
+    expect(tasks.map(t => [t.title, t.parentIds])).toEqual([
+      ['Saga', []],
+      ['A', ['t-2']],
+      ['Saga', []],
+      ['B', ['t-4']],
     ])
   })
 

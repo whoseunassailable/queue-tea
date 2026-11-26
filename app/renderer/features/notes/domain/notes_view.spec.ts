@@ -271,7 +271,7 @@ describe('the list', () => {
 describe('where a filed quest is now', () => {
   it('reads it from the queue: waiting, sealed, in progress, done, or gone', () => {
     const view = projectView('a-000001', {
-      ready: [{ kind: 'saga', quest: quest({ id: 'p' }), chapters: [quest({ id: 'c' })], progress: { done: 0, total: 1 } as never, hasStar: false }],
+      ready: [{ kind: 'saga', quest: quest({ id: 'p' }), chapters: [quest({ id: 'c' })], progress: { done: 0, total: 1 } as never, hasStar: false, shared: [] }],
       sealed: [{ kind: 'quest', quest: quest({ id: 's' }) }],
       activeQuests: [activeQuest({ id: 'c', title: 'c' })],
       victories: [{ id: 'd', title: 'Done one', finished: '', minutes: 1, xp: 1 }],

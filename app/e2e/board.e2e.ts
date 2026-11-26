@@ -39,7 +39,7 @@ const task = (over: Partial<Task> & { id: string; title: string }): Task =>
     minutesByDay: {},
     effort: { understandingMessages: 0, improvingMessages: 0, filesRead: 0, filesChanged: 0, linesAdded: 0, linesRemoved: 0, filesTouched: 0 },
     files: { read: [], changed: [] },
-    parentId: null,
+    parentIds: [],
     description: null,
     criteria: [],
     review: null,
@@ -81,8 +81,8 @@ test.beforeAll(async () => {
       task({ id: 'long', title: 'A long hard quest', priority: 'urgent', difficulty: { expected: 'hard', actual: null } }),
       task({ id: 'short', title: 'A short light quest', priority: 'low', difficulty: { expected: 'light', actual: null }, branch: 'task/needle' }),
       task({ id: 'saga', title: 'The saga', priority: 'low' }),
-      task({ id: 'hay', title: 'Hay', priority: 'low', parentId: 'saga' }),
-      task({ id: 'pin', title: 'Pin', priority: 'low', parentId: 'saga' }),
+      task({ id: 'hay', title: 'Hay', priority: 'low', parentIds: ['saga'] }),
+      task({ id: 'pin', title: 'Pin', priority: 'low', parentIds: ['saga'] }),
     ],
     unassignedMinutesByDay: {},
     requests: [],
@@ -163,14 +163,14 @@ test('dragging a quest onto a saga asks first, then moves it', async () => {
   await row('A short light quest').dragTo(row('The saga'))
 
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText('A short light quest moves to The saga.', { exact: false })).toBeVisible()
-  expect((await stored('short')).parentId).toBeNull()
+  await expect(dialog.getByText('A short light quest will be part of The saga.', { exact: false })).toBeVisible()
+  expect((await stored('short')).parentIds).toEqual([])
   await shot('drag-move')
 
   await dialog.getByRole('button', { name: 'Move' }).click()
 
   await expect(dialog).toBeHidden()
-  await expect.poll(async () => (await stored('short')).parentId).toBe('saga')
+  await expect.poll(async () => (await stored('short')).parentIds).toEqual(['saga'])
 })
 
 test('a drop the engine refuses shows its sentence, and moves nothing', async () => {
@@ -180,7 +180,7 @@ test('a drop the engine refuses shows its sentence, and moves nothing', async ()
   await dialog.getByRole('button', { name: 'Move' }).click()
 
   await expect(dialog.locator('.field-error')).toBeVisible()
-  expect((await stored('long')).parentId).toBeNull()
+  expect((await stored('long')).parentIds).toEqual([])
   await page.keyboard.press('Escape')
 })
 

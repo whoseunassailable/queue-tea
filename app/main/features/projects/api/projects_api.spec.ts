@@ -39,7 +39,7 @@ const task = (over: Partial<Task> & { id: string }): Task =>
     minutesByDay: {},
     effort: { understandingMessages: 0, improvingMessages: 0, filesRead: 0, filesChanged: 0, linesAdded: 0, linesRemoved: 0, filesTouched: 0 },
     files: { read: [], changed: [] },
-    parentId: null,
+    parentIds: [],
     description: null,
     criteria: [],
     review: null,
@@ -200,7 +200,7 @@ describe('reading a realm', () => {
       task({ id: 'low', title: 'Low', priority: 'low' }),
       task({ id: 'urgent', title: 'Urgent', priority: 'urgent' }),
       task({ id: 'saga', title: 'Saga', priority: 'high' }),
-      task({ id: 'chapter', title: 'Chapter', priority: 'mid', parentId: 'saga' }),
+      task({ id: 'chapter', title: 'Chapter', priority: 'mid', parentIds: ['saga'] }),
       task({ id: 'stuck', title: 'Stuck', blockedReason: 'waiting for the clinic' }),
     ])
     await putRecord('a-000001', r)
@@ -223,9 +223,9 @@ describe('reading a realm', () => {
       'a-000001',
       record('a', [
         task({ id: 'saga', title: 'Saga' }),
-        task({ id: 'one', parentId: 'saga' }),
-        task({ id: 'two', parentId: 'saga', blockedReason: 'later' }),
-        task({ id: 'three', parentId: 'saga', state: 'done', finished: '2026-10-21T09:00:00+02:00' }),
+        task({ id: 'one', parentIds: ['saga'] }),
+        task({ id: 'two', parentIds: ['saga'], blockedReason: 'later' }),
+        task({ id: 'three', parentIds: ['saga'], state: 'done', finished: '2026-10-21T09:00:00+02:00' }),
       ]),
     )
 

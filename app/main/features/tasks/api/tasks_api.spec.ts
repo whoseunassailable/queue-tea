@@ -40,7 +40,7 @@ const task = (over: Partial<Task> & { id: string }): Task =>
     minutesByDay: {},
     effort: { understandingMessages: 0, improvingMessages: 0, filesRead: 0, filesChanged: 0, linesAdded: 0, linesRemoved: 0, filesTouched: 0 },
     files: { read: [], changed: [] },
-    parentId: null,
+    parentIds: [],
     description: null,
     criteria: [],
     review: null,
@@ -66,7 +66,7 @@ const viewOf = (reply: { ok: boolean; data?: ProjectView }) => {
   return reply.data
 }
 
-const quest = (over: Partial<NewQuest> = {}): NewQuest => ({ title: 'New one', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], helpers: ['tea-dd'], ...over })
+const quest = (over: Partial<NewQuest> = {}): NewQuest => ({ title: 'New one', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], criteriaByParent: null, helpers: ['tea-dd'], ...over })
 
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'queue-tea-tasks-'))
@@ -151,7 +151,7 @@ describe('filing', () => {
 
     await api.fileQuest(deps, KEY, quest({ parent: { kind: 'task', id: 'saga' } }))
 
-    expect((await onDisk()).tasks[1]?.parentId).toBe('saga')
+    expect((await onDisk()).tasks[1]?.parentIds).toEqual(['saga'])
   })
 
   it('files a new saga with its first chapter', async () => {
@@ -161,7 +161,7 @@ describe('filing', () => {
 
     const { tasks } = await onDisk()
     expect(tasks.map(t => t.title)).toEqual(['Saga', 'Chapter'])
-    expect(tasks[1]?.parentId).toBe(tasks[0]?.id)
+    expect(tasks[1]?.parentIds).toEqual([tasks[0]?.id])
   })
 
   it('a saga that went since the sheet opened is refused, in the engine’s words', async () => {
@@ -189,20 +189,20 @@ describe('moving', () => {
   it('moves a quest under a saga and back', async () => {
     await seed([task({ id: 'saga' }), task({ id: 'a' })])
 
-    await api.moveQuest(deps, KEY, 'a', 'saga')
-    expect((await stored('a')).parentId).toBe('saga')
+    await api.moveQuest(deps, KEY, 'a', ['saga'])
+    expect((await stored('a')).parentIds).toEqual(['saga'])
 
-    await api.moveQuest(deps, KEY, 'a', null)
-    expect((await stored('a')).parentId).toBe(null)
+    await api.moveQuest(deps, KEY, 'a', [])
+    expect((await stored('a')).parentIds).toEqual([])
   })
 
   it('a move the engine refuses shows its sentence and changes nothing', async () => {
-    await seed([task({ id: 'saga' }), task({ id: 'chapter', parentId: 'saga' }), task({ id: 'other' })])
+    await seed([task({ id: 'saga' }), task({ id: 'chapter', parentIds: ['saga'] }), task({ id: 'other' })])
 
-    const reply = await api.moveQuest(deps, KEY, 'saga', 'other')
+    const reply = await api.moveQuest(deps, KEY, 'saga', ['other'])
 
     expect(reply).toEqual({ ok: false, error: { message: "saga has chapters of its own, so it can't be part of another saga." } })
-    expect((await stored('saga')).parentId).toBe(null)
+    expect((await stored('saga')).parentIds).toEqual([])
   })
 })
 
@@ -257,11 +257,11 @@ describe('removing', () => {
   })
 
   it('removing a saga sets its chapters free', async () => {
-    await seed([task({ id: 'saga' }), task({ id: 'chapter', parentId: 'saga' })])
+    await seed([task({ id: 'saga' }), task({ id: 'chapter', parentIds: ['saga'] })])
 
     await api.removeQuest(deps, KEY, 'saga')
 
-    expect((await stored('chapter')).parentId).toBe(null)
+    expect((await stored('chapter')).parentIds).toEqual([])
   })
 
   it('leaves the active quest alone', async () => {
@@ -370,7 +370,7 @@ describe('the rest', () => {
   })
 
   it('a chapter cannot be the active saga', async () => {
-    await seed([task({ id: 'saga' }), task({ id: 'chapter', parentId: 'saga' })])
+    await seed([task({ id: 'saga' }), task({ id: 'chapter', parentIds: ['saga'] })])
 
     expect(await api.setActiveSaga(deps, KEY, 'chapter')).toMatchObject({ ok: false })
     expect((await onDisk()).feature).toBe(null)
@@ -381,7 +381,7 @@ describe('what the forms offer', () => {
   it('offers open sagas, lone quests, and for a quest only what it can take', async () => {
     await seed([
       task({ id: 'saga', title: 'Saga' }),
-      task({ id: 'chapter', parentId: 'saga' }),
+      task({ id: 'chapter', parentIds: ['saga'] }),
       task({ id: 'lone' }),
       task({ id: 'won', state: 'done' }),
       task({ id: 'waits', blockedBy: ['lone'] }),
@@ -403,9 +403,9 @@ describe('what the forms offer', () => {
 
 describe('the engine in the game\'s words', () => {
   it('leaves a title that holds the same words alone', async () => {
-    await seed([task({ id: 'x', title: 'Fix the task log' }), task({ id: 'chapter', parentId: 'x' }), task({ id: 'other' })])
+    await seed([task({ id: 'x', title: 'Fix the task log' }), task({ id: 'chapter', parentIds: ['x'] }), task({ id: 'other' })])
 
-    expect(await api.moveQuest(deps, KEY, 'x', 'other')).toEqual({ ok: false, error: { message: "Fix the task log has chapters of its own, so it can't be part of another saga." } })
+    expect(await api.moveQuest(deps, KEY, 'x', ['other'])).toEqual({ ok: false, error: { message: "Fix the task log has chapters of its own, so it can't be part of another saga." } })
   })
 })
 

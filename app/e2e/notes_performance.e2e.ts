@@ -15,7 +15,7 @@ let page: Page
 const errors: string[] = []
 const recordPath = () => join(home, '.queue-tea/projects', `${KEY}.json`)
 const vault = () => join(home, '.queue-tea/notes', KEY)
-const record = async () => JSON.parse(await readFile(recordPath(), 'utf8')) as { tasks: { id: string; title: string; parentId: string | null; priority: string; difficulty: { expected: string }; description: string }[] }
+const record = async () => JSON.parse(await readFile(recordPath(), 'utf8')) as { tasks: { id: string; title: string; parentIds: string[]; priority: string; difficulty: { expected: string }; description: string }[] }
 
 test.beforeAll(async () => {
   home = await mkdtemp(join(tmpdir(), 'queue-tea-notes-performance-'))
@@ -70,7 +70,7 @@ test('a vague captured idea becomes a reviewed saga, saved and reopened in a lar
   await expect(sheet).toBeHidden({ timeout: 15_000 })
   const tasks = (await record()).tasks
   expect(tasks.map(task => task.title)).toEqual(['Understand missed steps', 'Reproduce a missed step on a short walk', 'Compare sensor recordings'])
-  expect(tasks.slice(1).map(task => task.parentId)).toEqual([tasks[0]!.id, tasks[0]!.id])
+  expect(tasks.slice(1).map(task => task.parentIds)).toEqual([[tasks[0]!.id], [tasks[0]!.id]])
   expect(tasks[1]!.priority).toBe('high')
   expect(tasks[2]!.difficulty.expected).toBe('hard')
   expect(tasks[1]!.description).toBe(`From the note "${TITLE}" in Notes.`)

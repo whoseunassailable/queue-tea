@@ -21,6 +21,7 @@ import type { QuestKey } from '../state_management/quest_keys'
 import { ActiveCard } from '../widgets/active_card'
 import { ActiveDetail } from '../widgets/active_detail'
 import { AddChapter } from '../widgets/add_chapter'
+import { SharedRow } from '../widgets/shared_row'
 import { SearchAndFilters, TimeControl } from '../widgets/board_tools'
 import { EmptyBoard } from '../widgets/empty_board'
 import { FlowCard } from '../widgets/flow_card'
@@ -150,7 +151,7 @@ export const QuestsPage = ({ engine, view, picked, initialDetailOpen, folded, sa
     if (open === null) return
     if (key.kind === 'fold' || key.kind === 'unfold') {
       if (open.sagaOf !== null && (key.kind === 'fold') !== open.isFolded) onFold(open.quest.id)
-      else if (key.kind === 'fold' && open.quest.parentId !== null) onOpen(open.quest.parentId)
+      else if (key.kind === 'fold' && open.quest.parents[0] !== undefined) onOpen(open.quest.parents[0].id)
     } else if (key.kind === 'priority') {
       if (key.priority !== open.quest.priority) void edits.setPriority(view.key, open.quest, key.priority)
     } else if (key.kind === 'playNext') void edits.togglePlayNext(view.key, open.quest)
@@ -179,14 +180,17 @@ export const QuestsPage = ({ engine, view, picked, initialDetailOpen, folded, sa
       onDrop={drop}
     />
   )
-  // Each unfolded saga ends with its Add a chapter row.
+  // Each unfolded saga ends with the chapters it shares with another saga,
+  // whose rows stand there, then its Add a chapter row.
   const withAdds = (list: Row[]) =>
     list.flatMap((row, i) => {
       const next = list[i + 1]
       const saga = row.isChapter ? [...list.slice(0, i)].reverse().find(r => r.sagaOf !== null) : row
       const endsSaga = saga?.sagaOf != null && !saga.isFolded && next?.isChapter !== true
+      if (!endsSaga || saga?.sagaOf == null) return [rowOf(row)]
+      const shared = saga.sagaOf.shared.map(chapter => <SharedRow key={`shared-${saga.quest.id}-${chapter.id}`} chapter={chapter} onOpen={openDetail} />)
 
-      return endsSaga ? [rowOf(row), <AddChapter key={`add-${saga.quest.id}`} realm={view.key} saga={saga.quest} edits={edits} />] : [rowOf(row)]
+      return [rowOf(row), ...shared, <AddChapter key={`add-${saga.quest.id}`} realm={view.key} saga={saga.quest} edits={edits} />]
     })
 
   return (

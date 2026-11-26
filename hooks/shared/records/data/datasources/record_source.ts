@@ -4,6 +4,7 @@ import type { Host } from '../../../../core/host/host'
 import { fromOldLog, stepOf, waitingOf } from '../../../activity/domain/services/activity'
 import { mergePeriods } from '../../../time/domain/services/realm_time'
 import { readHelpers } from '../../domain/services/helpers'
+import { foldCriteria } from '../../domain/services/queue_rules'
 import { readTestProfile } from '../../domain/services/test_profile'
 import { RECORD_TEXT } from '../../domain/constants/record_text'
 
@@ -59,27 +60,32 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
 // task without an id gets one from its creation and title, the same at every
 // read until it is written back. An older record's step log, with the output
 // of every command, is dropped: only the step it was on, and the background
-// shells it still waited on, are kept.
-type StoredTask = Partial<Task> & { activity?: unknown }
-const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, activity, step, waiting, ...t }: StoredTask): Task => {
+// shells it still waited on, are kept. An older task's one `parentId` is
+// read as a list of one.
+type StoredTask = Partial<Task> & { activity?: unknown; parentId?: unknown }
+const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, activity, step, waiting, parentId, parentIds, criteriaByParent, ...t }: StoredTask): Task => {
   const profile = readTestProfile(testProfile)
   const old = fromOldLog(activity)
   const now = stepOf(step) ?? old.step
   const waits = waiting === undefined ? old.waiting ?? [] : waitingOf(waiting)
+  const parents = parentsRead(parentIds, parentId)
+  const sets = criteriaSetsRead(criteriaByParent)
 
-  return {
+  return foldCriteria({
     id: `t-${fnv1a(`${t.created ?? ''}|${t.title ?? ''}`)}`,
     baseBranch: null,
     blockedBy: [],
     blockedReason: null,
     checkpoint: null,
-    parentId: null,
     description: null,
     criteria: [],
     review: null,
     codexSince: null,
     worktreePath: null,
     ...t,
+    parentIds: parents,
+    // Hand-editable too: a malformed set is dropped, never the task.
+    ...(sets === null ? {} : { criteriaByParent: sets }),
     helpers: readHelpers(t.helpers),
     // Testing time is optional and hand-editable: a malformed field is dropped, never the realm.
     ...(profile === undefined ? {} : { testProfile: profile }),
@@ -90,8 +96,22 @@ const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, activity
     // So are the step and the shells it waits on: a malformed one is no step.
     ...(now === null || now === undefined ? {} : { step: now }),
     ...(waits.length === 0 ? {} : { waiting: waits }),
-  } as Task
+  } as Task)
 }
+
+const isLines = (value: unknown): value is string[] => Array.isArray(value) && value.every(line => typeof line === 'string')
+
+// The features a stored task is part of: its list, each once, or the one an
+// older record kept; none when neither reads.
+const parentsRead = (list: unknown, one: unknown): string[] => {
+  if (Array.isArray(list)) return [...new Set(list.filter((id): id is string => typeof id === 'string' && id !== ''))]
+
+  return typeof one === 'string' && one !== '' ? [one] : []
+}
+
+// A criteria set for each feature, or null when it is absent or doesn't read.
+const criteriaSetsRead = (value: unknown): Record<string, string[]> | null =>
+  isObject(value) && Object.values(value).every(isLines) ? (value as Record<string, string[]>) : null
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)

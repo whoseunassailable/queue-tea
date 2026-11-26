@@ -114,7 +114,7 @@ describe('an edit', () => {
   it('a form that shows its own error gets no toast', async () => {
     const { workspace, edits } = await open({ fileQuest: async () => fail })
 
-    const answer = await edits.file(KEY, { title: 'x', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], helpers: ['tea-dd'] }, null)
+    const answer = await edits.file(KEY, { title: 'x', priority: 'mid', difficulty: 'medium', parent: { kind: 'none' }, description: null, criteria: [], criteriaByParent: null, helpers: ['tea-dd'] }, null)
 
     expect(answer).toEqual({ ok: false, message: 'Could not save.' })
     expect(workspace.getState().toasts).toEqual([])
@@ -151,10 +151,11 @@ describe('Undo', () => {
   it('moves a quest back where it was', async () => {
     const { engine, workspace, edits } = await open()
 
-    await edits.move(KEY, { ...ROW, parentId: 'old' }, 'new', 'New saga')
+    await edits.move(KEY, { ...ROW, parents: [{ id: 'old', title: 'Old saga' }, { id: 'other', title: 'Other saga' }] }, ['new'], ['New saga'])
+    expect(engine.moveQuest).toHaveBeenLastCalledWith(KEY, 'x', ['new'])
     await workspace.undo()
 
-    expect(engine.moveQuest).toHaveBeenLastCalledWith(KEY, 'x', 'old')
+    expect(engine.moveQuest).toHaveBeenLastCalledWith(KEY, 'x', ['old', 'other'])
   })
 
   it('goes back one edit at a time, newest first', async () => {
@@ -206,7 +207,7 @@ describe('what an edit looks like before the reply', () => {
   const view = (): ReadableView => {
     const board = projectView(KEY, {
       ready: [
-        { kind: 'saga', quest: quest({ id: 'saga' }), chapters: [quest({ id: 'chapter' })], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false },
+        { kind: 'saga', quest: quest({ id: 'saga' }), chapters: [quest({ id: 'chapter' })], progress: { done: 0, total: 1, current: 0, blocked: 0 }, hasStar: false, shared: [] },
         { kind: 'quest', quest: ROW },
       ],
     })

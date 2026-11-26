@@ -112,7 +112,7 @@ export type Ranked = {
 export const rankBacklog = (record: Pick<ProjectRecord, 'tasks' | 'playNext'>, budget: number | null): Ranked[] => {
   const tasks = record.tasks
   // Features with tasks still open under them.
-  const leading = new Set(tasks.filter(t => t.parentId !== null && isOpen(t)).map(t => t.parentId))
+  const leading = new Set(tasks.filter(isOpen).flatMap(t => t.parentIds))
   const rows = tasks
     .filter(t => t.state === 'queued' && !isBlocked(t, tasks))
     .map(task => {

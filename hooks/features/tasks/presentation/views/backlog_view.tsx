@@ -6,7 +6,7 @@ import { capital, total } from '../../../../core/widgets/format'
 import { KEYS } from '../../../../core/widgets/keys'
 import type { MenuContext } from '../../../../core/widgets/menu_context'
 import { cut } from '../../../../core/widgets/text'
-import { childrenOf, groupBacklog, progressOf, progressText } from '../../../../shared/backlog/domain/services/families'
+import { childrenOf, groupBacklog, homeOf, progressOf, progressText, sharedInto } from '../../../../shared/backlog/domain/services/families'
 import type { Group } from '../../../../shared/backlog/domain/services/families'
 import type { Ranked } from '../../../../shared/backlog/domain/services/ranking'
 import { PRIORITY_ORDER } from '../../../../shared/records/domain/services/queue_rules'
@@ -118,7 +118,8 @@ export async function drawBacklog($: EngineInterface, c: MenuContext): Promise<R
   )
   // A feature: ▸ shows its tasks under it and ▾ folds them away. Its title
   // opens its own buttons while it is queued, and folds it otherwise. Under
-  // it, how far its tasks are, and while folded the ★ task in it.
+  // it, how far its tasks are, and while folded the ★ task in it. A task
+  // also part of another feature has its row under the first, and a line here.
   const groupRows = (g: Group) => {
     const parent = g.parent
     const isOpen = openParents.includes(parent.id)
@@ -152,6 +153,10 @@ export async function drawBacklog($: EngineInterface, c: MenuContext): Promise<R
         {openRow === parent.id && isQueued && rowButtons(parent, isBlocked(parent, tasks))}
         {isOpen && g.rows.filter(r => r.task !== parent).map(r => readyRow(r, '  '))}
         {isOpen && g.blocked.filter(t => t !== parent).map(t => blockedRow(t, '  '))}
+        {isOpen &&
+          sharedInto(parent, tasks).map(t => (
+            <Text dimColor>{cut(`      ↔ ${t.title} · listed under ${homeOf(t, tasks)?.title ?? ''}`, cols)}</Text>
+          ))}
         {isOpen &&
           finished.map(t => (
             <Text dimColor>{cut(`      ${t.state === 'current' ? '▶' : '✓'} ${t.title}${t.state === 'current' ? ' · in progress' : ''}`, cols)}</Text>

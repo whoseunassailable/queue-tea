@@ -4,7 +4,7 @@ import type { BoardEntry } from '../../../../shared/engine_api'
 import { quest } from '../../../test_support'
 import { isTyping, questKeyOf } from '../presentation/state_management/quest_keys'
 import { openRow, rowsOf, stepFrom } from './board'
-import { emptyQuestForm, questOf, sealError, sealOf, titleError, validateQuest } from './quest_form'
+import { asksCriteriaMode, emptyQuestForm, questOf, sealError, sealOf, tickPart, titleError, validateQuest, withCriteriaMode } from './quest_form'
 
 const press = (key: string, over: Partial<KeyboardEvent> = {}) => ({ key, metaKey: false, ctrlKey: false, altKey: false, ...over })
 
@@ -16,21 +16,52 @@ describe('the New quest form', () => {
   })
 
   it('wants Part of answered when the answer was left open', () => {
-    expect(validateQuest({ ...emptyQuestForm('unset'), title: 'A' })).toEqual({ part: 'Pick what it is part of first, or On its own.' })
-    expect(validateQuest({ ...emptyQuestForm('none'), title: 'A' })).toEqual({})
+    expect(validateQuest({ ...emptyQuestForm([]), title: 'A' })).toEqual({ part: 'Pick what it is part of first, or On its own.' })
+    expect(validateQuest({ ...emptyQuestForm(['none']), title: 'A' })).toEqual({})
   })
 
   it('wants a saga title only once New saga is picked', () => {
-    expect(validateQuest({ ...emptyQuestForm('new'), title: 'A' })).toEqual({ sagaTitle: 'Saga title is required.' })
-    expect(validateQuest({ ...emptyQuestForm('new'), title: 'A', sagaTitle: 'S' })).toEqual({})
+    expect(validateQuest({ ...emptyQuestForm(['new']), title: 'A' })).toEqual({ sagaTitle: 'Saga title is required.' })
+    expect(validateQuest({ ...emptyQuestForm(['new']), title: 'A', sagaTitle: 'S' })).toEqual({})
   })
 
   it('turns the form into a quest', () => {
-    const form = { ...emptyQuestForm('t-1'), title: ' A ', description: ' Why ', criteria: 'One\n\n  Two  \n' }
+    const form = { ...emptyQuestForm(['t-1']), title: ' A ', description: ' Why ', criteria: 'One\n\n  Two  \n' }
 
-    expect(questOf(form)).toEqual({ title: 'A', priority: 'mid', difficulty: 'medium', parent: { kind: 'task', id: 't-1' }, description: 'Why', criteria: ['One', 'Two'], helpers: ['tea-dd'] })
-    expect(questOf({ ...emptyQuestForm('none'), title: 'A' }).parent).toEqual({ kind: 'none' })
-    expect(questOf({ ...emptyQuestForm('new'), title: 'A', sagaTitle: ' S ' }).parent).toEqual({ kind: 'new', title: 'S' })
+    expect(questOf(form)).toEqual({ title: 'A', priority: 'mid', difficulty: 'medium', parent: { kind: 'task', id: 't-1' }, description: 'Why', criteria: ['One', 'Two'], criteriaByParent: null, helpers: ['tea-dd'] })
+    expect(questOf({ ...emptyQuestForm(['none']), title: 'A' }).parent).toEqual({ kind: 'none' })
+    expect(questOf({ ...emptyQuestForm(['new']), title: 'A', sagaTitle: ' S ' }).parent).toEqual({ kind: 'new', title: 'S' })
+  })
+
+  it('ticks: On its own clears the sagas, a saga clears On its own, and sagas keep the order they were ticked', () => {
+    expect(tickPart(['t-1'], 'none')).toEqual(['none'])
+    expect(tickPart(['none'], 't-2')).toEqual(['t-2'])
+    expect(tickPart(['t-2'], 't-1')).toEqual(['t-2', 't-1'])
+    expect(tickPart(['t-2', 't-1'], 't-2')).toEqual(['t-1'])
+    expect(tickPart(['none'], 'none')).toEqual([])
+  })
+
+  it('asks one set or a set each only with two sagas or more, a new one counted', () => {
+    expect(asksCriteriaMode(emptyQuestForm(['t-1']))).toBe(false)
+    expect(asksCriteriaMode(emptyQuestForm(['t-1', 'new']))).toBe(true)
+    expect(asksCriteriaMode(emptyQuestForm(['none']))).toBe(false)
+  })
+
+  it('files two sagas and a new one as several, with one set of criteria for all of them', () => {
+    const form = { ...emptyQuestForm(['t-1', 't-2', 'new']), title: 'Sign in', sagaTitle: ' Guests ', criteria: 'Tests pass' }
+
+    expect(questOf(form)).toMatchObject({ parent: { kind: 'several', ids: ['t-1', 't-2'], title: 'Guests' }, criteria: ['Tests pass'], criteriaByParent: null })
+    expect(questOf({ ...form, parts: ['t-1', 't-2'] }).parent).toEqual({ kind: 'several', ids: ['t-1', 't-2'], title: null })
+  })
+
+  it('a set for each saga starts from what was written for all, and files a list for each, the new one by its key', () => {
+    const form = withCriteriaMode({ ...emptyQuestForm(['t-1', 'new']), title: 'Sign in', sagaTitle: 'Admins', criteria: 'Tests pass' }, 'each')
+
+    expect(form.criteriaFor).toEqual({ 't-1': 'Tests pass', new: 'Tests pass' })
+    const quest = questOf({ ...form, criteriaFor: { 't-1': 'Users land on home\n', new: ' Admins see the log ' } })
+    expect([quest.criteria, quest.criteriaByParent]).toEqual([[], { 't-1': ['Users land on home'], new: ['Admins see the log'] }])
+    // Back to one saga, the sets aren't asked and the one box is used.
+    expect(questOf({ ...form, parts: ['t-1'] })).toMatchObject({ parent: { kind: 'task', id: 't-1' }, criteria: ['Tests pass'], criteriaByParent: null })
   })
 })
 
@@ -54,6 +85,7 @@ describe('the board as rows', () => {
     chapters: [quest({ id: 'star', title: 'Star', isStar: true, why: 'urgent' }), quest({ id: 'two' })],
     progress: { done: 0, total: 2, current: 0, blocked: 0 },
     hasStar: true,
+    shared: [],
   }
 
   it('puts chapters directly under their saga', () => {

@@ -39,7 +39,7 @@ export const makeTask = (over: Partial<Task> = {}): Task => {
       filesTouched: 0,
     },
     files: { read: [], changed: [] },
-    parentId: null,
+    parentIds: [],
     description: null,
     criteria: [],
     review: null,

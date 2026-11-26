@@ -92,7 +92,7 @@ const handOver = async (d: TasksDeps, scope: Scope, taskId: string, started: Pro
 const toCodex = async (d: TasksDeps, scope: Scope, task: Task): Promise<Handover> => {
   const checked = await checkNowUseCase(scope.deps.git, text => d.log.debug(text), task)
 
-  return openCodex(d, scope.ctx.cwd, task.id, codexBrief(task, scope.ctx.cwd, checked, notesFolderOf(scope.ctx)))
+  return openCodex(d, scope.ctx.cwd, task.id, codexBrief(task, scope.ctx.cwd, checked, notesFolderOf(scope.ctx), scope.record.tasks))
 }
 
 export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform: unknown): Promise<Reply<StartOutcome>> =>
@@ -138,7 +138,7 @@ export const openClaude = (d: TasksDeps, key: unknown, taskId?: unknown): Promis
     const selected = await scopeOf(d, key, task?.id)
     await needFolder(d, selected)
     const { ctx } = selected
-    if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.cwd, codexBrief(task, ctx.cwd, null, notesFolderOf(ctx)))
+    if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.cwd, codexBrief(task, ctx.cwd, null, notesFolderOf(ctx), selected.record.tasks))
 
     return openClaudeCode(d, ctx.cwd, await openSessionIn(d, ctx.cwd, task?.id ?? null))
   })

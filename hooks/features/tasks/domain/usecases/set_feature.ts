@@ -1,4 +1,4 @@
-import { parentOf } from '../../../../shared/backlog/domain/services/families'
+import { homeOf } from '../../../../shared/backlog/domain/services/families'
 import type { Saved } from '../../../../shared/records/domain/repositories/records_repository'
 import type { Deps } from './deps'
 
@@ -13,7 +13,7 @@ export const setFeatureUseCase = async (d: Deps, taskId: string | null): Promise
       return { ...r, feature: null }
     }
     const task = r.tasks.find(t => t.id === taskId)
-    const above = task === undefined ? null : parentOf(task, r.tasks)
+    const above = task === undefined ? null : homeOf(task, r.tasks)
     if (task === undefined || (task.state !== 'queued' && task.state !== 'current')) {
       said = 'That task is no longer open.'
 

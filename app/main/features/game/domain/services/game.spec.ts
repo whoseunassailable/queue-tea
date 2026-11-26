@@ -18,7 +18,7 @@ const won = (finished: string, actual: Difficulty, over: Partial<Task> = {}): Ta
     difficulty: { expected: 'medium', actual },
     finished,
     created: finished,
-    parentId: null,
+    parentIds: [],
     minutesByDay: {},
     ...over,
   }) as Task
@@ -135,7 +135,7 @@ describe('badges', () => {
 
   it("Saga's End needs the saga and every chapter", () => {
     const saga = won('2026-10-20T12:00:00+01:00', 'light', { id: 'saga' })
-    const chapter = won('2026-10-21T12:00:00+01:00', 'light', { parentId: 'saga' })
+    const chapter = won('2026-10-21T12:00:00+01:00', 'light', { parentIds: ['saga'] })
     const open = { ...chapter, id: 'open', state: 'queued', finished: null } as Task
 
     expect(badge([record([saga, chapter])], 'sagasEnd').earnedOn).toBe('2026-10-21')

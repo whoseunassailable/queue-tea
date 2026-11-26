@@ -81,7 +81,7 @@ describe('Queue-tea MCP operations', () => {
     const result = await call('steep', { message: 'Add a keyboard shortcut', parentId: 'feature' })
     expect(result.error).toBe(false)
     const filed = JSON.parse(result.text).task
-    expect(filed).toMatchObject({ state: 'queued', parentId: 'feature', messages: ['Add a keyboard shortcut'] })
+    expect(filed).toMatchObject({ state: 'queued', parentIds: ['feature'], messages: ['Add a keyboard shortcut'] })
     expect((await read()).tasks.filter(t => t.state === 'current').map(t => t.id)).toEqual(['other', 'ours'])
     await call('feature', { args: 'off' })
     expect((await read()).feature).toBe(null)

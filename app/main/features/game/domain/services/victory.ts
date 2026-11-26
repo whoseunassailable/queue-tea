@@ -1,14 +1,17 @@
 import type { ProjectRecord, Task } from '../../../../../../types'
-import { childrenOf } from '../../../../../../hooks/shared/backlog/domain/services/families'
+import { childrenOf, parentsOf } from '../../../../../../hooks/shared/backlog/domain/services/families'
 import type { BadgeId, GameState, Victory, VictoryKind } from '../../../../../shared/engine_api'
 import { gameOf, xpOf } from './game'
 
+// A chapter under several sagas can win any of them.
 const isSagaWon = (task: Task, tasks: Task[]): boolean => {
-  const saga = task.parentId === null ? task : tasks.find(t => t.id === task.parentId)
-  if (saga === undefined) return false
-  const chapters = childrenOf(saga, tasks)
+  const sagas = task.parentIds.length === 0 ? [task] : parentsOf(task, tasks)
 
-  return chapters.length > 0 && [saga, ...chapters].every(t => t.state === 'done')
+  return sagas.some(saga => {
+    const chapters = childrenOf(saga, tasks)
+
+    return chapters.length > 0 && [saga, ...chapters].every(t => t.state === 'done')
+  })
 }
 
 const kindOf = (task: Task, tasks: Task[]): VictoryKind => {

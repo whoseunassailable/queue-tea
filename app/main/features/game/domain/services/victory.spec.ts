@@ -55,14 +55,14 @@ describe('what a win earned', () => {
 
   it('calls the win that ends a saga a saga won', () => {
     const saga = won({ id: 'saga' })
-    const chapter = won({ id: 'one', parentId: 'saga' })
+    const chapter = won({ id: 'one', parentIds: ['saga'] })
 
     expect(victoryOf([record([saga, chapter])], PATH, 'one', 60, NOW).kind).toBe('saga')
   })
 
   it('keeps a chapter a quest while the saga goes on', () => {
     const saga = makeTask({ id: 'saga' })
-    const chapter = won({ id: 'one', parentId: 'saga' })
+    const chapter = won({ id: 'one', parentIds: ['saga'] })
 
     expect(victoryOf([record([saga, chapter])], PATH, 'one', 60, NOW).kind).toBe('quest')
   })

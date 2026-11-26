@@ -10,9 +10,10 @@ const one = (id: string, over = {}): BoardEntry => ({ kind: 'quest', quest: ques
 const saga = (id: string, chapters: string[], over = {}): BoardEntry => ({
   kind: 'saga',
   quest: quest({ id, title: id, ...over }),
-  chapters: chapters.map(title => quest({ id: title, title, parentId: id })),
+  chapters: chapters.map(title => quest({ id: title, title, parents: [{ id, title: id }] })),
   progress: { done: 0, total: chapters.length, current: 0, blocked: 0 },
   hasStar: false,
+  shared: [],
 })
 const board = (over: Partial<BoardView>): BoardView => ({ ...EMPTY_BOARD, ...over, filters: { ...EMPTY_BOARD.filters, ...over.filters } })
 const ids = (entries: BoardEntry[]) => rowsOf(entries).map(row => row.quest.id)

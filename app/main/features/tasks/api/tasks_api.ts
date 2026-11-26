@@ -14,7 +14,7 @@ import { canWaitFor } from '../../../../../hooks/shared/backlog/domain/services/
 import type { Choices, QuestChoice, Reply } from '../../../../shared/engine_api'
 import { inGameWords, MESSAGES } from '../../../core/messages'
 import { Refusal, reply } from '../../../core/reply'
-import { newQuestOf, priorityOf, questEditOf, questIdOf, sealOf } from '../domain/task_input'
+import { newQuestOf, priorityOf, questEditOf, questIdOf, questIdsOf, sealOf } from '../domain/task_input'
 import { edit, scopeOf } from './scope'
 import type { TasksDeps } from './scope'
 
@@ -28,15 +28,16 @@ export const togglePlayNext = (d: TasksDeps, key: unknown, taskId: unknown) =>
 export const fileQuest = (d: TasksDeps, key: unknown, input: unknown) =>
   edit(d, key, MESSAGES.fileQuest, async ({ deps, ctx }) => {
     const quest = newQuestOf(input)
-    const filed = await fileTaskUseCase(deps, ctx, { ...quest, text: quest.title, intent: 'improving' })
+    const { criteriaByParent, ...rest } = quest
+    const filed = await fileTaskUseCase(deps, ctx, { ...rest, ...(criteriaByParent === null ? {} : { criteriaByParent }), text: quest.title, intent: 'improving' })
     if (filed.kind === 'refused') throw new Refusal(inGameWords(filed.notice))
 
     return filed.kind === 'unreadable' ? 'unreadable' : filed.record
   })
 
-export const moveQuest = (d: TasksDeps, key: unknown, taskId: unknown, parentId: unknown) =>
+export const moveQuest = (d: TasksDeps, key: unknown, taskId: unknown, parentIds: unknown) =>
   edit(d, key, MESSAGES.moveQuest, async ({ deps }) => {
-    const moved = await moveTaskUseCase(deps, questIdOf(taskId), parentId === null ? null : questIdOf(parentId))
+    const moved = await moveTaskUseCase(deps, questIdOf(taskId), questIdsOf(parentIds))
     if (moved.kind === 'refused') throw new Refusal(inGameWords(moved.notice))
 
     return moved.kind === 'unreadable' ? 'unreadable' : moved.record

@@ -1,28 +1,41 @@
 import type { ParentPick, ProjectRecord, Task } from '../../../../../types'
+import { foldCriteria } from '../../../records/domain/services/queue_rules'
 import { isBlocked } from './ranking'
 import type { Ranked } from './ranking'
 
-// Features and their tasks: a task can be filed under another, one level
-// deep, and the backlog shows each feature with its tasks under it. Pure; the
-// flow, the message check and the menu call it.
+// Features and their tasks: a task can be filed under one feature or more,
+// one level deep, and the backlog shows each feature with its tasks under it.
+// A task under several stands under the first of them and is named under the
+// others. Pure; the flow, the message check and the menu call it.
 
 const isOpen = (t: Task) => t.state === 'queued' || t.state === 'current'
 
 // At most this many features are offered when a task is filed.
 const MAX_CHOICES = 5
 
-// The task a task is part of; null when it is on its own or its feature was
-// removed.
-export const parentOf = (task: Task, tasks: Task[]): Task | null => {
-  if (task.parentId === null) return null
-  const parent = tasks.find(t => t.id === task.parentId)
+// The tasks a task is part of, in its order, the removed ones left out.
+export const parentsOf = (task: Task, tasks: Task[]): Task[] =>
+  task.parentIds.flatMap(id => {
+    const parent = tasks.find(t => t.id === id)
 
-  return parent === undefined || parent.state === 'removed' ? null : parent
-}
+    return parent === undefined || parent.state === 'removed' ? [] : [parent]
+  })
+
+// The first of them, where its row stands; null when it is on its own or its
+// features were removed.
+export const homeOf = (task: Task, tasks: Task[]): Task | null => parentsOf(task, tasks)[0] ?? null
 
 // The tasks filed under a task, the removed ones left out.
 export const childrenOf = (task: Task, tasks: Task[]): Task[] =>
-  tasks.filter(t => t.parentId === task.id && t.state !== 'removed')
+  tasks.filter(t => t.parentIds.includes(task.id) && t.state !== 'removed')
+
+// The waiting tasks under a feature whose rows stand under another of theirs.
+export const sharedInto = (parent: Task, tasks: Task[]): Task[] =>
+  childrenOf(parent, tasks).filter(t => t.state === 'queued' && homeOf(t, tasks)?.id !== parent.id)
+
+// "Users", "Users and Admins", "Users, Admins and Guests".
+export const titlesText = (titles: string[]): string =>
+  titles.length <= 1 ? (titles[0] ?? '') : `${titles.slice(0, -1).join(', ')} and ${titles.at(-1)}`
 
 export type Progress = { done: number; total: number; current: number; blocked: number }
 
@@ -52,7 +65,7 @@ export const progressText = (p: Progress): string => {
 export const activeFeature = (record: Pick<ProjectRecord, 'tasks' | 'feature'>): Task | null => {
   const task = record.feature === null ? undefined : record.tasks.find(t => t.id === record.feature)
 
-  return task !== undefined && isOpen(task) && parentOf(task, record.tasks) === null ? task : null
+  return task !== undefined && isOpen(task) && parentsOf(task, record.tasks).length === 0 ? task : null
 }
 
 // Why `childId` can't be filed under `parentId`, in plain words; null when it
@@ -62,7 +75,7 @@ export const parentRefusal = (tasks: Task[], childId: string, parentId: string):
   const child = tasks.find(t => t.id === childId)
   if (parent === undefined || !isOpen(parent)) return 'That feature is no longer open.'
   if (childId === parentId) return "A task can't be part of itself."
-  const above = parentOf(parent, tasks)
+  const above = homeOf(parent, tasks)
   if (above !== null) return `${parent.title} is part of ${above.title}, so its tasks go under that.`
   if (child !== undefined && childrenOf(child, tasks).length > 0) {
     return `${child.title} has tasks of its own, so it can't be part of another.`
@@ -71,16 +84,40 @@ export const parentRefusal = (tasks: Task[], childId: string, parentId: string):
   return null
 }
 
+// Why a task can't be filed under all of `parentIds`: the first refusal, in
+// plain words; null when it can.
+export const parentsRefusal = (tasks: Task[], childId: string, parentIds: string[]): string | null => {
+  for (const id of parentIds) {
+    const refused = parentRefusal(tasks, childId, id)
+    if (refused !== null) return refused
+  }
+
+  return null
+}
+
 // The features a task can be moved under: every open task that would take
-// it, but the one it is under now.
+// it, but those it is under now.
 export const parentChoices = (tasks: Task[], taskId: string): Task[] => {
   const task = tasks.find(t => t.id === taskId)
 
-  return tasks.filter(t => t.id !== task?.parentId && parentRefusal(tasks, taskId, t.id) === null)
+  return tasks.filter(t => !(task?.parentIds ?? []).includes(t.id) && parentRefusal(tasks, taskId, t.id) === null)
 }
 
-export const setParent = (tasks: Task[], taskId: string, parentId: string | null): Task[] =>
-  tasks.map(t => (t.id === taskId ? { ...t, parentId } : t))
+export const setParents = (tasks: Task[], taskId: string, parentIds: string[]): Task[] =>
+  tasks.map(t => (t.id === taskId ? foldCriteria({ ...t, parentIds: [...new Set(parentIds)] }) : t))
+
+// What a task has to meet: the criteria for every feature it is part of, then,
+// when it has a set for each, each feature's own set. Features it left are not
+// shown; their sets wait in the record.
+export type CriteriaGroup = { parent: Task | null; lines: string[] }
+
+export const criteriaSetsOf = (task: Task, tasks: Task[]): CriteriaGroup[] => {
+  const own = task.criteria.length === 0 ? [] : [{ parent: null, lines: task.criteria }]
+  const byParent = task.criteriaByParent
+  if (byParent === undefined) return own
+
+  return [...own, ...parentsOf(task, tasks).map(parent => ({ parent, lines: byParent[parent.id] ?? [] })).filter(set => set.lines.length > 0)]
+}
 
 // The features a new task is offered under: the active feature, the current
 // task (or the feature it is part of), then the other open features, newest
@@ -92,8 +129,8 @@ export const filingCandidates = (record: Pick<ProjectRecord, 'tasks' | 'feature'
     .filter(t => isOpen(t) && childrenOf(t, tasks).some(isOpen))
     .sort((a, b) => Date.parse(b.created) - Date.parse(a.created))
   const offered: Task[] = []
-  for (const t of [activeFeature(record), current === null ? null : (parentOf(current, tasks) ?? current), ...features]) {
-    if (t !== null && isOpen(t) && parentOf(t, tasks) === null && !offered.includes(t)) offered.push(t)
+  for (const t of [activeFeature(record), current === null ? null : (homeOf(current, tasks) ?? current), ...features]) {
+    if (t !== null && isOpen(t) && parentsOf(t, tasks).length === 0 && !offered.includes(t)) offered.push(t)
   }
 
   return offered.slice(0, MAX_CHOICES)
@@ -106,7 +143,7 @@ export const loneTasks = (record: Pick<ProjectRecord, 'tasks' | 'feature'>): Tas
   const offered = filingCandidates(record)
 
   return record.tasks
-    .filter(t => isOpen(t) && parentOf(t, record.tasks) === null && !offered.includes(t))
+    .filter(t => isOpen(t) && parentsOf(t, record.tasks).length === 0 && !offered.includes(t))
     .sort((a, b) => Date.parse(b.created) - Date.parse(a.created))
     .slice(0, MAX_CHOICES)
 }
@@ -120,7 +157,7 @@ export const namedTasks = (text: string, tasks: Task[]): Task[] => {
   const lower = text.toLowerCase()
 
   return tasks.filter(t => {
-    if (!isOpen(t) || parentOf(t, tasks) !== null) return false
+    if (!isOpen(t) || parentsOf(t, tasks).length > 0) return false
     const title = words(t.title)
 
     return lower.includes(t.id.toLowerCase()) || (title.trim().includes(' ') && said.includes(title))
@@ -164,10 +201,10 @@ export type Group = { parent: Task; rows: Ranked[]; blocked: Task[]; hasStar: bo
 
 export type Entry = { kind: 'task'; row: Ranked } | { kind: 'blocked'; task: Task } | { kind: 'group'; group: Group }
 
-// The feature a backlog row is shown under: its own, or itself when tasks are
-// under it; null on its own.
+// The feature a backlog row is shown under: the first it is part of, or
+// itself when tasks are under it; null on its own.
 const groupOf = (task: Task, tasks: Task[]): Task | null =>
-  parentOf(task, tasks) ?? (childrenOf(task, tasks).length > 0 ? task : null)
+  homeOf(task, tasks) ?? (childrenOf(task, tasks).length > 0 ? task : null)
 
 // The backlog with each feature's tasks under it. A feature stands where the
 // first of its tasks stands in the order, so the order of what can start is

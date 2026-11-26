@@ -1328,9 +1328,9 @@ test('with no mouse, no Client or little room, the band still works from the key
 
 test('Backlog: a feature folds its tasks under it with their progress; tasks on their own stay in the list', async ($, on) => {
   const menu = makeTask({ title: 'Menu parity', priority: 'mid' })
-  const keys = makeTask({ title: 'Keys hint', priority: 'high', parentId: menu.id })
-  const close = makeTask({ title: 'Close button', parentId: menu.id, state: 'done' })
-  const docs = makeTask({ title: 'Menu docs', parentId: menu.id, blockedReason: 'waiting for copy' })
+  const keys = makeTask({ title: 'Keys hint', priority: 'high', parentIds: [menu.id] })
+  const close = makeTask({ title: 'Close button', parentIds: [menu.id], state: 'done' })
+  const docs = makeTask({ title: 'Menu docs', parentIds: [menu.id], blockedReason: 'waiting for copy' })
   const typo = makeTask({ title: 'Typo', priority: 'low' })
   const stuck = makeTask({ title: 'Stuck', blockedReason: 'no key' })
   await startSession($, on, { file: record({ tasks: [menu, keys, close, docs, typo, stuck] }) })
@@ -1373,9 +1373,32 @@ test('Backlog: a feature folds its tasks under it with their progress; tasks on 
   }
 })
 
+test('Backlog: a task under two features stands under the first, and the second names it', async ($, on) => {
+  const users = makeTask({ title: 'Users', priority: 'high' })
+  const admins = makeTask({ title: 'Admins', priority: 'mid' })
+  const login = makeTask({ title: 'Sign in', parentIds: [users.id, admins.id] })
+  const list = makeTask({ title: 'User list', parentIds: [admins.id] })
+  await startSession($, on, { file: record({ tasks: [users, admins, login, list] }) })
+  const ui = await mountView($, 'terminal', 'backlog')
+
+  // It counts in both.
+  expect(await ui.find({ type: 'Text', text: /◆ 0\/1 done/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /◆ 0\/2 done/ })).toBeDefined()
+  await ui.press({ key: `fold:${users.id}` })
+  await ui.press({ key: `fold:${admins.id}` })
+  expect((await ui.find({ key: `row:${login.id}` }))?.text).toMatch(/Sign in/)
+  expect(await ui.find({ type: 'Text', text: /↔ Sign in · listed under Users/ })).toBeDefined()
+
+  // Part of… names both, and a pick there makes it part of that one alone.
+  await ui.press({ key: `row:${login.id}` })
+  await ui.press({ key: `part-of:${login.id}` })
+  expect(await ui.find({ type: 'Text', text: /Now part of Users and Admins\./ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('Backlog: Part of… puts a task under a feature, and On its own takes it out again', async ($, on) => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys hint', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys hint', parentIds: [menu.id] })
   const docs = makeTask({ title: 'Docs', priority: 'high' })
   const { mem } = await startSession($, on, { file: record({ tasks: [menu, keys, docs] }) })
   const ui = await mountView($, 'terminal', 'backlog')
@@ -1390,14 +1413,14 @@ test('Backlog: Part of… puts a task under a feature, and On its own takes it o
 
   await ui.press({ key: `part-of:${docs.id}` })
   await ui.press({ key: `parent:${menu.id}` })
-  expect(recordOf(mem).tasks.find(t => t.id === docs.id)?.parentId).toBe(menu.id)
+  expect(recordOf(mem).tasks.find(t => t.id === docs.id)?.parentIds).toEqual([menu.id])
   expect(await ui.find({ type: 'Text', text: /◆ 0\/2 done/ })).toBeDefined()
 
   await ui.press({ key: `fold:${menu.id}` })
   await ui.press({ key: `part-of:${docs.id}` })
   expect(await ui.find({ type: 'Text', text: /Now part of Menu parity\./ })).toBeDefined()
   await ui.press({ key: 'parent:none' })
-  expect(recordOf(mem).tasks.find(t => t.id === docs.id)?.parentId).toBeNull()
+  expect(recordOf(mem).tasks.find(t => t.id === docs.id)?.parentIds).toEqual([])
   expect((await ui.find({ key: `row:${docs.id}` }))?.text).toMatch(/^★ \[high\] Docs/)
   await ui.unmount()
 })
@@ -1425,10 +1448,10 @@ test('with a feature active, /steep asks what the task is part of; Save files it
   await band.unmount()
 
   expect(seen.toasts).toEqual(['Queued: arrow keys (mid) · part of Menu parity'])
-  expect(recordOf(mem).tasks.map(t => [t.title, t.state, t.branch, t.parentId])).toEqual([
-    ['Login', 'current', 'task/login', null],
-    ['Menu parity', 'queued', null, null],
-    ['arrow keys', 'queued', null, menu.id],
+  expect(recordOf(mem).tasks.map(t => [t.title, t.state, t.branch, t.parentIds])).toEqual([
+    ['Login', 'current', 'task/login', []],
+    ['Menu parity', 'queued', null, []],
+    ['arrow keys', 'queued', null, [menu.id]],
   ])
   expect(mem.runs.slice(runs).filter(isBranchRun)).toEqual([])
   expect([seen.clears, seen.prompts]).toEqual([0, []])
@@ -1447,9 +1470,9 @@ test('with no feature active, unrelated work is on its own and Save files it as 
   expect((await band.find({ key: 'parent:none' }))?.text).toContain('On its own')
   await band.press({ key: 'save' })
   await band.unmount()
-  expect(recordOf(mem).tasks.map(t => [t.title, t.parentId])).toEqual([
-    ['Login', null],
-    ['CI cache', null],
+  expect(recordOf(mem).tasks.map(t => [t.title, t.parentIds])).toEqual([
+    ['Login', []],
+    ['CI cache', []],
   ])
 })
 
@@ -1470,8 +1493,8 @@ test('New feature… names a feature, and Save files it with the task under it',
 
   const tasks = recordOf(mem).tasks
   const feature = tasks.find(t => t.title === 'Menu parity')
-  expect(feature?.parentId).toBeNull()
-  expect(tasks.find(t => t.title === 'Arrow keys')?.parentId).toBe(feature?.id)
+  expect(feature?.parentIds).toEqual([])
+  expect(tasks.find(t => t.title === 'Arrow keys')?.parentIds).toEqual([feature?.id])
   expect(tasks.find(t => t.id === now.id)?.state).toBe('current')
 })
 
@@ -1508,8 +1531,8 @@ test('/brew with a feature active files no task and leaves the feature, the task
   await runTurn($, clock, 'add a test for the menu parity feature')
 
   expect(seen.forks).toBe(0)
-  expect(recordOf(mem).tasks.map(t => [t.title, t.state, t.branch, t.parentId])).toEqual([
-    ['Menu parity', 'current', 'task/menu-parity', null],
+  expect(recordOf(mem).tasks.map(t => [t.title, t.state, t.branch, t.parentIds])).toEqual([
+    ['Menu parity', 'current', 'task/menu-parity', []],
   ])
   expect(recordOf(mem).feature).toBe(menu.id)
   expect(mem.runs.slice(runs).filter(isBranchRun)).toEqual([])
@@ -1520,8 +1543,8 @@ test('/brew with a feature active files no task and leaves the feature, the task
 
 test('Current task: the feature it is part of, how far that is, and Part of… from there', async ($, on) => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys hint', parentId: menu.id, state: 'current', branch: 'task/keys-hint' })
-  const close = makeTask({ title: 'Close button', parentId: menu.id, state: 'done' })
+  const keys = makeTask({ title: 'Keys hint', parentIds: [menu.id], state: 'current', branch: 'task/keys-hint' })
+  const close = makeTask({ title: 'Close button', parentIds: [menu.id], state: 'done' })
   await startSession($, on, { file: record({ tasks: [menu, keys, close] }) })
   const ui = await mountView($, 'terminal', 'current')
 
@@ -1536,7 +1559,7 @@ test('Current task: the feature it is part of, how far that is, and Part of… f
 
 test('features and their tasks are all there after a restart, the active feature too', async ($, on) => {
   const menu = makeTask({ title: 'Menu parity' })
-  const keys = makeTask({ title: 'Keys hint', parentId: menu.id })
+  const keys = makeTask({ title: 'Keys hint', parentIds: [menu.id] })
   const now = makeTask({ title: 'Login', state: 'current', branch: 'task/login' })
   const { mem, clock } = await startSession($, on, { file: record({ tasks: [now, menu, keys], feature: menu.id }) })
   // The message names the feature, so it is picked.
@@ -1549,11 +1572,11 @@ test('features and their tasks are all there after a restart, the active feature
   await clock.settle()
 
   expect(recordOf(mem).feature).toBe(menu.id)
-  expect(recordOf(mem).tasks.map(t => [t.title, t.parentId])).toEqual([
-    ['Login', null],
-    ['Menu parity', null],
-    ['Keys hint', menu.id],
-    ['Arrows for menu parity', menu.id],
+  expect(recordOf(mem).tasks.map(t => [t.title, t.parentIds])).toEqual([
+    ['Login', []],
+    ['Menu parity', []],
+    ['Keys hint', [menu.id]],
+    ['Arrows for menu parity', [menu.id]],
   ])
   const ui = await mountView($, 'terminal', 'backlog')
   expect(await ui.find({ type: 'Text', text: /◆ 0\/2 done/ })).toBeDefined()

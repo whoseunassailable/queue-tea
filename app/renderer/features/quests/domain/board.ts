@@ -1,3 +1,4 @@
+import { titlesText } from '../../../../../hooks/shared/backlog/domain/services/families'
 import type { BoardEntry, QuestRow } from '../../../../shared/engine_api'
 import { formatAge, formatSpan } from '../../../core/domain/format'
 import { t } from '../../../l10n/en'
@@ -44,7 +45,11 @@ export const metaOf = (entry: Pick<Row, 'quest' | 'sagaOf'>): string => {
   const waited = formatAge(quest.waitedMs)
   if (sagaOf !== null) return t.quest.sagaMeta(sagaOf.progress.done, sagaOf.progress.total, difficulty, estimate, waited)
 
-  return quest.sealedBecause === null ? t.quest.meta(difficulty, estimate, waited) : `⊘ ${quest.sealedBecause}`
+  const meta = quest.sealedBecause === null ? t.quest.meta(difficulty, estimate, waited) : `⊘ ${quest.sealedBecause}`
+  // The row stands under its first saga; the others are named.
+  const others = quest.parents.slice(1).map(parent => parent.title)
+
+  return others.length === 0 ? meta : `${meta} · ${t.quest.alsoPartOf(titlesText(others))}`
 }
 
 // The quest the detail pane opens on: the one picked, else the ★, else the first.

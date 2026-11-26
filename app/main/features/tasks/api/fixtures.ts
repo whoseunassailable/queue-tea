@@ -21,7 +21,7 @@ export const makeTask = (over: Partial<Task> & { id: string }): Task =>
     minutesByDay: {},
     effort: { understandingMessages: 0, improvingMessages: 0, filesRead: 0, filesChanged: 0, linesAdded: 0, linesRemoved: 0, filesTouched: 0 },
     files: { read: [], changed: [] },
-    parentId: null,
+    parentIds: [],
     description: null,
     criteria: [],
     review: null,

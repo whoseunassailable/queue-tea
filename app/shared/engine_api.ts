@@ -31,6 +31,11 @@ export type ProjectRow =
   | { kind: 'readable'; key: string; name: string; path: string; waiting: number; status: ProjectStatus; session: SessionState }
   | { kind: 'unreadable'; key: string; name: string }
 
+// A saga a quest is part of, as the board names it.
+export type QuestParent = { id: string; title: string }
+// A quest's criteria as part of one of its sagas.
+export type CriteriaSet = { parent: QuestParent; lines: string[] }
+
 export type QuestRow = {
   id: string
   title: string
@@ -43,12 +48,16 @@ export type QuestRow = {
   why: string | null
   isStar: boolean
   isPlayNext: boolean
-  parentId: string | null
+  // The sagas it is part of, the first where its row stands; empty on its own.
+  parents: QuestParent[]
   sealedBecause: string | null
   branch: string | null
   created: string
   description: string | null
+  // What counts under every saga it is part of.
   criteria: string[]
+  // A set for each of its sagas, in their order; null while one set serves them all.
+  criteriaByParent: CriteriaSet[] | null
   // Whether it fits Time I have; null with no time set.
   fits: boolean | null
   // What the checkpoint can fill the description and criteria with.
@@ -64,7 +73,10 @@ export type QuestRow = {
 
 export type BoardEntry =
   | { kind: 'quest'; quest: QuestRow }
-  | { kind: 'saga'; quest: QuestRow; chapters: QuestRow[]; progress: Progress; hasStar: boolean }
+  | { kind: 'saga'; quest: QuestRow; chapters: QuestRow[]; progress: Progress; hasStar: boolean; shared: SharedChapter[] }
+
+// A waiting chapter of a saga whose row stands under another of its sagas.
+export type SharedChapter = { id: string; title: string; listedUnder: string }
 
 export type ActiveQuest = {
   id: string
@@ -80,6 +92,7 @@ export type ActiveQuest = {
   filesChanged: number
   review: Task['review']
   criteria: string[]
+  criteriaByParent: CriteriaSet[] | null
   helpers: HelperId[]
   testProfile: TestProfile | null
   due: string | null
@@ -92,7 +105,7 @@ export type ActiveQuest = {
   codexSince: string | null
   worktreePath: string | null
   baseBranch: string | null
-  parentId: string | null
+  parentIds: string[]
   session?: SessionInfo
 }
 
@@ -241,7 +254,9 @@ export type Opened = { kind: 'folder'; pick: FolderPick } | { kind: 'judgement';
 export type QuestChoice = { id: string; title: string; detail: string | null }
 export type Choices = { features: QuestChoice[]; lone: QuestChoice[]; parents: QuestChoice[]; waitFor: QuestChoice[] }
 
-export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[]; helpers: HelperId[] }
+// criteriaByParent keys each saga's set by its id, and a new saga's by 'new';
+// null while one set serves them all.
+export type NewQuest = { title: string; priority: Priority; difficulty: Difficulty; parent: ParentPick; description: string | null; criteria: string[]; criteriaByParent: Record<string, string[]> | null; helpers: HelperId[] }
 export type Seal = { waitFor: string } | { reason: string }
 
 // What a quest carries, for its detail pane. active is only set for the quest
@@ -271,7 +286,9 @@ export type QuestFacts = { note: QuestNote | null; messages: string[]; branchToB
 export type LiveFacts = { drift: string[]; mismatch: { on: string | null; branch: string; uncommitted: string | null } | null; warning: string | null }
 // testProfile is Rohan's pick; null lets Tea-DD pick again.
 // due is a day such as 2026-12-01; null clears it.
-export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; difficulty?: Difficulty; helpers?: HelperId[]; testProfile?: TestProfileId | null; due?: string | null }
+// criteriaByParent sets some sagas' own criteria, by their ids; null goes back
+// to one set, with criteria carrying the lines to keep.
+export type QuestEdit = { title?: string; description?: string | null; criteria?: string[]; criteriaByParent?: Record<string, string[]> | null; difficulty?: Difficulty; helpers?: HelperId[]; testProfile?: TestProfileId | null; due?: string | null }
 
 // What keeps a quest from starting. The reason is the engine's own sentence,
 // and a command is only ever text to copy.
@@ -439,7 +456,8 @@ export type EngineApi = {
   setPriority: (key: string, taskId: string, priority: Priority) => Promise<Reply<ProjectView>>
   togglePlayNext: (key: string, taskId: string) => Promise<Reply<ProjectView>>
   fileQuest: (key: string, quest: NewQuest) => Promise<Reply<ProjectView>>
-  moveQuest: (key: string, taskId: string, parentId: string | null) => Promise<Reply<ProjectView>>
+  // The sagas it is to be part of, in order; none puts it on its own.
+  moveQuest: (key: string, taskId: string, parentIds: string[]) => Promise<Reply<ProjectView>>
   sealQuest: (key: string, taskId: string, seal: Seal) => Promise<Reply<ProjectView>>
   unsealQuest: (key: string, taskId: string) => Promise<Reply<ProjectView>>
   removeQuest: (key: string, taskId: string) => Promise<Reply<ProjectView>>

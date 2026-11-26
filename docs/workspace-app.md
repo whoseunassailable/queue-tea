@@ -213,6 +213,18 @@ The files go in the realm's notes vault, `~/.queue-tea/notes/<realm key>/attachm
 
 For developers: the window uses the same attach control and preview as Notes, from `app/renderer/core/widgets/` ([Attachment boundaries](notes.md#attachment-boundaries-and-design-choice)). `attachNoteFile` with `null` for the note id stores a file for a quest's description. A refused file gets the Notes messages; any other failure says "Couldn't attach this file. Your quest is unchanged. Try again." Finding and rewriting the links is in `hooks/shared/records/domain/services/description_files.ts`, which also holds `NOTES_FOLDER`; `app/shared/notes.ts` re-exports it.
 
+### Several sagas
+
+Added 2026-11-26. A quest can be part of several sagas, for logic two sagas share: Users and Admins check a password the same way, and only what counts as done differs.
+
+- **In the New quest sheet,** Part of is a list of ticks: **On its own**, each saga offered, and **New saga…**. Tick as many sagas as it is part of; On its own clears them, and a saga clears On its own. With two or more ticked, **Completion criteria** asks **One set for every saga** (picked to start with) or **A set for each saga**, which shows a box for each, "Completion criteria as part of Users, one a line". The toast names every saga.
+- **Part of… (the Move dialog)** has the same ticks, with the quest's sagas ticked to start. Tick more, untick one, or tick On its own. Nothing changed closes it without a move, and Undo puts back the sagas it had. Dragging a quest onto a saga still makes it part of that saga alone.
+- **On the board,** the quest's row stands under the first saga it was given. Each other saga shows a dim line in its place, "↔ Check the password · listed under Users", which opens the quest, and counts it in its progress. Its meta line says "also part of Admins".
+- **In the detail pane,** a quest part of two or more sagas asks the same one-set-or-a-set-for-each question. A set for each starts every box with the shared criteria; going back to one set keeps every line once. Each saga's box saves only its own set. A saga the quest leaves keeps its set, in case it comes back; with fewer than two sagas left, the sets fold back into one, losing no line.
+- **Review and the first message** give each saga's set under "As part of Users:" in the app and "Acceptance criteria as part of Users:" in what Claude Code and Codex get.
+
+In the record, `parentIds` lists the sagas (the first is where the row stands) and `criteriaByParent` holds the sets by saga id. A record with the older single `parentId` reads as a list of one, so old records keep loading, and the record version stays 2. An older app or mod reads a quest saved only with `parentIds` as on its own until it is updated, and a move it makes isn't seen by the newer one. The menu's Part of… in Claude Code picks one saga.
+
 ## Data
 
 Section 6 of the design lists every field: what each screen reads, the new fields with their defaults, the session file and the app's own settings. The rules:

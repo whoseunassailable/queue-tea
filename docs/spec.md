@@ -89,11 +89,13 @@ This happens when nothing is current and a task is filed, or when Rohan picks th
 
 ### Features
 
-A task can be filed under another, its feature (`parentId` in the record). One level deep: a task with tasks under it is part of none, and a task under a feature has none under it. Records written before features read as every task on its own.
+A task can be filed under another, its feature (`parentIds` in the record). One level deep: a task with tasks under it is part of none, and a task under a feature has none under it. Records written before features read as every task on its own.
+
+A task can be part of several features at once, for logic two features share (the same change for Users and for Admins). Its row stands under the first of them; each other one shows a dim line in its place ("↔ Check the password · listed under Users") and counts it in its progress, so it is done once and done for both. Its criteria can be one set for every feature, or a set for each (`criteriaByParent`), and the first message and the brief give each feature's set under "Acceptance criteria as part of <feature>:". Several features are picked in the app ([Several sagas](workspace-app.md#several-sagas)); the menu's **Part of…** picks one. A record written before this keeps loading: its single `parentId` reads as a list of one.
 
 - **Active feature.** `/feature <title>` (or the task's id) makes an open task on its own the active feature; `/feature` says which it is, `/feature off` clears it. **Active feature** on a backlog row or the current task does the same, and pressed again clears it; **Clear** beside the backlog's "◆ Active feature" line too. It is kept in the record, so it outlasts a restart, and it is cleared only by Rohan or when its task is removed.
 - **Filing.** See [Filing a task](#filing-a-task). The active feature is offered first, but a task is never filed under it without a sign or Rohan's pick. Filing a task under a feature changes nothing about the current task, its branch or the conversation. With nothing current, the task filed starts, never a new feature filed with it.
-- **Moving.** **Part of…** on a backlog row or the current task lists the features the task can go under, **On its own** when it is under one, and **Cancel**. A move that would nest deeper than one level is refused, saying why.
+- **Moving.** **Part of…** on a backlog row or the current task lists the features the task can go under, **On its own** when it is under one, and **Cancel**. A pick makes it part of that feature only; a task part of several says so ("Now part of Users and Admins."). A move that would nest deeper than one level is refused, saying why. A feature it leaves keeps its criteria set, in case it comes back.
 - **Starting.** A task under a feature starts like any other: the git check first, and only while nothing else is current. Between tasks of the same priority, a feature's own tasks come before the feature.
 - **Removing** a feature leaves its tasks on their own; if it was the active feature, none is.
 - **`/brew`** files nothing, feature or not.
@@ -322,7 +324,7 @@ Claude Code lets a mod read or write a file in one go only up to 4 MiB (4,194,30
 - state: queued, current, done, removed
 - the messages filed with it, and its latest handoff note with its date
 - its branch and the commit it started from
-- the feature it is part of (`parentId`), or null
+- the features it is part of (`parentIds`), the first being where its row stands, or none; and, when it has a set of criteria for each of them, those sets (`criteriaByParent`, by feature id). A record with the older `parentId` reads as a list of that one
 - created, started and finished dates
 - time, per day, and its testing time: when its checks ran (`testPeriods`) and how many of its minutes fell inside them (`minutesInChecks`). Both are absent until a check finishes
 - its test profile (`testProfile`), absent until Tea-DD or Rohan picks one ([Test profiles](#test-profiles))

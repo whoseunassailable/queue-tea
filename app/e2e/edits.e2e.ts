@@ -35,7 +35,7 @@ const task = (over: Partial<Task> & { id: string; title: string }): Task =>
     minutesByDay: {},
     effort: { understandingMessages: 0, improvingMessages: 0, filesRead: 0, filesChanged: 0, linesAdded: 0, linesRemoved: 0, filesTouched: 0 },
     files: { read: [], changed: [] },
-    parentId: null,
+    parentIds: [],
     description: null,
     criteria: [],
     review: null,
@@ -52,7 +52,7 @@ const SEED: ProjectRecord = {
     task({ id: 'one', title: 'First quest', priority: 'high' }),
     task({ id: 'two', title: 'Second quest', priority: 'low' }),
     task({ id: 'saga', title: 'The saga', priority: 'low', created: '2026-10-21T09:00:00+02:00' }),
-    task({ id: 'chapter', title: 'A chapter', priority: 'low', parentId: 'saga', created: '2026-10-22T09:00:00+02:00' }),
+    task({ id: 'chapter', title: 'A chapter', priority: 'low', parentIds: ['saga'], created: '2026-10-22T09:00:00+02:00' }),
   ],
   unassignedMinutesByDay: {},
   requests: [],
@@ -129,7 +129,7 @@ test('New quest checks its fields, files the quest, and never starts it', async 
   await expect(dialog()).toBeHidden()
 
   await expect(page.locator('.qrow').filter({ hasText: 'Filed from the app' })).toBeVisible()
-  expect(await titled('Filed from the app')).toMatchObject({ state: 'queued', priority: 'urgent', started: null, branch: null, parentId: null })
+  expect(await titled('Filed from the app')).toMatchObject({ state: 'queued', priority: 'urgent', started: null, branch: null, parentIds: [] })
 })
 
 test('a chapter goes in under its saga, inline', async () => {
@@ -138,7 +138,7 @@ test('a chapter goes in under its saga, inline', async () => {
   await page.keyboard.press('Enter')
 
   await expect(page.locator('.qrow.child').filter({ hasText: 'Filed under the saga' })).toBeVisible()
-  expect((await titled('Filed under the saga'))?.parentId).toBe('saga')
+  expect((await titled('Filed under the saga'))?.parentIds).toEqual(['saga'])
 })
 
 test('sagas fold, and the fold stays', async () => {
@@ -167,12 +167,12 @@ test('seal with a reason, then unseal', async () => {
 test('Part of asks first, then moves the quest', async () => {
   await pickRow('Second quest')
   await page.keyboard.press('p')
-  await dialog().getByRole('radio', { name: /The saga/ }).check()
+  await dialog().getByRole('checkbox', { name: /The saga/ }).check()
   await expect(dialog().getByText('Its priority, branch and time stay as they are.')).toBeVisible()
   await dialog().getByRole('button', { name: 'Move' }).click()
   await expect(dialog()).toBeHidden()
 
-  await expect.poll(async () => (await stored('two')).parentId).toBe('saga')
+  await expect.poll(async () => (await stored('two')).parentIds).toEqual(['saga'])
   await expect(page.locator('.qrow.child').filter({ hasText: 'Second quest' })).toBeVisible()
 })
 
@@ -226,14 +226,14 @@ test('the plus inside a newly filed quest saves its first child under that quest
   const add = row.getByRole('button', { name: `Add a child task to ${parent.title}`, exact: true })
   await expect(add).toHaveText('+')
   await add.click()
-  await expect(dialog().getByRole('radio', { name: parent.title, exact: true })).toBeChecked()
+  await expect(dialog().getByRole('checkbox', { name: parent.title, exact: true })).toBeChecked()
   await dialog().getByLabel('Title *').fill('First child from the card')
   await dialog().getByRole('button', { name: 'Add to the board' }).click()
   await expect(dialog()).toBeHidden()
 
   const child = page.locator('.qrow.child').filter({ hasText: 'First child from the card' })
   await expect(child).toBeVisible()
-  expect(await titled('First child from the card')).toMatchObject({ parentId: parent.id, state: 'queued', started: null, branch: null })
+  expect(await titled('First child from the card')).toMatchObject({ parentIds: [parent.id], state: 'queued', started: null, branch: null })
   await expect(child.getByRole('button', { name: /Add a child task/ })).toHaveCount(0)
   await expect(add).toBeVisible()
   await row.getByRole('button', { name: `Fold ${parent.title}`, exact: true }).click()
@@ -241,6 +241,25 @@ test('the plus inside a newly filed quest saves its first child under that quest
   await expect(add).toBeVisible()
   await row.getByRole('button', { name: `Unfold ${parent.title}`, exact: true }).click()
   await expect(child).toBeVisible()
+})
+
+test('a quest ticked under two sagas keeps a set of criteria for each, and both sagas list it', async () => {
+  const other = (await titled('Filed from the app'))!
+  await page.getByRole('button', { name: 'New quest', exact: true }).first().click()
+  await dialog().getByLabel('Title *').fill('Check the password')
+  // A saga's tick also reads its progress, "The saga 0/3 done".
+  await dialog().getByRole('checkbox', { name: /^The saga / }).check()
+  await dialog().getByRole('checkbox', { name: new RegExp(`^${other.title} `) }).check()
+  await dialog().getByRole('radio', { name: 'A set for each saga' }).check()
+  await dialog().getByLabel('Completion criteria as part of The saga, one a line').fill('Users see the check')
+  await dialog().getByLabel(`Completion criteria as part of ${other.title}, one a line`).fill('Admins see the check')
+  await dialog().getByRole('button', { name: 'Add to the board' }).click()
+  await expect(dialog()).toBeHidden()
+
+  await expect.poll(async () => (await titled('Check the password'))?.parentIds).toEqual(['saga', other.id])
+  expect(await titled('Check the password')).toMatchObject({ criteria: [], criteriaByParent: { saga: ['Users see the check'], [other.id]: ['Admins see the check'] } })
+  await expect(page.locator('.qrow.child:not(.shared)').filter({ hasText: 'Check the password' })).toHaveCount(1)
+  await expect(page.locator('.qrow.shared').filter({ hasText: 'Check the password' })).toContainText('listed under The saga')
 })
 
 test('every edit left a record the mod can read, with a good copy beside it', async () => {

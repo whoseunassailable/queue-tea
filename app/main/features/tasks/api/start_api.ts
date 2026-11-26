@@ -20,7 +20,7 @@ import { Refusal, reply } from '../../../core/reply'
 import { focusCodex, openClaudeCode, openCodex } from '../data/claude_code'
 import { holdCommandOf, holdKindOf } from '../domain/hold'
 import { platformOf, questIdOf } from '../domain/task_input'
-import { isSessionOpen, realmView, scopeOf } from './scope'
+import { isSessionOpen, openSessionIn, realmView, scopeOf } from './scope'
 import type { Scope, TasksDeps } from './scope'
 
 // A folder that has moved answers git like one that was never a repository,
@@ -85,7 +85,7 @@ const handOver = async (d: TasksDeps, scope: Scope, taskId: string, started: Pro
     d.log.error('asking a session to begin failed', err)
   }
 
-  return { record, handover: isOpen ? { kind: 'session' } : await openClaudeCode(d, scope.ctx.cwd, false) }
+  return { record, handover: isOpen ? { kind: 'session' } : await openClaudeCode(d, scope.ctx.cwd, null) }
 }
 
 // Codex opens with the brief; no session is asked, since Claude Code isn't on it.
@@ -127,7 +127,9 @@ export const startQuest = (d: TasksDeps, key: unknown, taskId: unknown, platform
   })
 
 // A quest with Codex only brings its terminal forward: Codex can't be found
-// running from here, and a second one must not start.
+// running from here, and a second one must not start. A quest with a session
+// open brings that session's own tab forward (Open terminal); with none, a
+// new terminal runs claude (Open in Claude Code).
 export const openClaude = (d: TasksDeps, key: unknown, taskId?: unknown): Promise<Reply<Handover>> =>
   reply(d.log, MESSAGES.openClaude, async () => {
     const initial = await scopeOf(d, key)
@@ -138,7 +140,7 @@ export const openClaude = (d: TasksDeps, key: unknown, taskId?: unknown): Promis
     const { ctx } = selected
     if (task !== null && task.codexSince !== null) return focusCodex(d, ctx.cwd, codexBrief(task, ctx.cwd, null, notesFolderOf(ctx)))
 
-    return openClaudeCode(d, ctx.cwd, await isSessionOpen(d, ctx.cwd))
+    return openClaudeCode(d, ctx.cwd, await openSessionIn(d, ctx.cwd, task?.id ?? null))
   })
 
 const isClaudeWorking = async (d: TasksDeps, scope: Scope): Promise<boolean> => {

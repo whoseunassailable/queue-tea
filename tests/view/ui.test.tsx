@@ -4,6 +4,7 @@ import type { Engine } from 'claude-code/testing'
 
 import { emptyCheckpoint } from '../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { emptyRecord, projectKey, recordPath } from '../../hooks/shared/records/data/datasources/record_source'
+import { TERMINAL_LINE } from '../../hooks/shared/sessions/data/datasources/session_source'
 import { HELP_COMMANDS } from '../../hooks/app/menu/help_view'
 import { GUARD_TEXT, PROPOSAL_TEXT } from '../../hooks/features/commit_guard/presentation/constants/commit_guard_text'
 import { PROFILE_TEXT } from '../../hooks/features/tasks/presentation/constants/tasks_text'
@@ -60,6 +61,8 @@ const startSession = async (
     git: {
       'git rev-parse --show-toplevel': { stdout: '/p\n' },
       'date +%z': { stdout: '+0200\n' },
+      // Where the session's terminal is, read at its first beat.
+      [`sh -c ${TERMINAL_LINE}`]: { stdout: 'Apple_Terminal\nttys001\n' },
       'git rev-parse --is-inside-work-tree': { stdout: 'true\n' },
       ...(options.status === 'missing' ? {} : { 'git status --porcelain=v2 --branch': { stdout: options.status ?? CLEAN } }),
       'git branch --format=%(refname:short)': { stdout: 'main\n' },

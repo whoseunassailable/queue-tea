@@ -153,7 +153,13 @@ Settings offers Terminal (the default), iTerm2 and VS Code.
 - **Terminal and iTerm2:** a new window running `claude` in the project, opened through `osascript`.
 - **VS Code:** the folder opened with `open -a "Visual Studio Code"`, `claude` copied to the clipboard, and the toast "Paste it in VS Code's terminal". Not `code`, because an app opened from the Finder doesn't get the shell's `PATH`.
 
-Open in Claude Code never starts a second session: with one open it only brings the chosen terminal forward. The choice is kept in the app's settings, with Terminal as the default.
+The choice is kept in the app's settings, with Terminal as the default.
+
+**Open terminal.** While a quest's session is open, its button reads **Open terminal** instead of Open in Claude Code, on the quest's card, the Judgement card, the Branches page and in the palette (⌘↩ and `c` too). It never starts a second session: it brings that session's own terminal forward.
+
+- **Which terminal.** The mod writes `terminal: { program, tty }` into the session file, read once per session from `$TERM_PROGRAM` and the tty of the shell that started Claude Code. The app opens the app the session runs in (`Apple_Terminal` is Terminal, `iTerm.app` is iTerm2, `vscode` is VS Code), not the one chosen in Settings, and falls back to Settings when it can't tell.
+- **Which tab.** Terminal and iTerm2 select the tab whose tty matches, then fall back to the title the app gave its own tabs. With several sessions in the folder, it picks the one on this quest. VS Code only comes forward, as before.
+- **When it can't find it.** Nothing is activated, and the toast says "Couldn't find the terminal for <title> in <terminal>. If its session runs in another app, switch to it there. If you closed it, Open in Claude Code starts a new one once Queue-tea sees it has ended.", with Try again. A session file from an older mod has no `terminal`, so only the title match runs.
 
 ### Codex: a quest without Claude Code
 

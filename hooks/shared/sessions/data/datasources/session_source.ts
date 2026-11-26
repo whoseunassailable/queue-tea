@@ -1,6 +1,10 @@
 import type { Host } from '../../../../core/host/host'
-import type { SessionFile } from '../../domain/entities/session_file'
-import { parseSession, sessionPath, sessionsFolder } from '../../domain/services/session_rules'
+import type { SessionFile, SessionTerminal } from '../../domain/entities/session_file'
+import { parseSession, sessionPath, sessionsFolder, terminalOf } from '../../domain/services/session_rules'
+
+// The terminal app's name for itself, then the tty of the process that ran
+// this shell: Claude Code, whose tty a tab keeps whatever its title becomes.
+export const TERMINAL_LINE = 'printf "%s\\n" "$TERM_PROGRAM"; ps -o tty= -p "$PPID"'
 
 // Through a temp file, so the app never reads half a session.
 export const writeSessionFile = async (host: Host, home: string, session: SessionFile): Promise<void> => {
@@ -31,4 +35,13 @@ export const readSessions = async (host: Host, home: string): Promise<SessionFil
   }
 
   return sessions
+}
+
+// Where this session's terminal is. A shell that fails throws, like any other
+// data source; the caller decides that unknown will do.
+export const readTerminal = async (host: Host): Promise<SessionTerminal> => {
+  const ran = await host.run(['sh', '-c', TERMINAL_LINE])
+  if (ran.exitCode !== 0) throw new Error(`reading the terminal failed: ${ran.stderr}`)
+
+  return terminalOf(ran.stdout)
 }

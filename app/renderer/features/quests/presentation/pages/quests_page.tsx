@@ -194,7 +194,7 @@ export const QuestsPage = ({ engine, view, picked, initialDetailOpen, folded, sa
       {!(isPaged && isDetailOpen) && <div class="qlist">
         {flow !== undefined && <FlowCard flow={flow} actions={actions} />}
         {flow === undefined && view.activeQuests.map(active => active.review !== null
-          ? showsSection(filters, 'judgement') && <JudgementCard key={active.id} active={active} actions={actions} kind="compact" />
+          ? showsSection(filters, 'judgement') && <JudgementCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="compact" />
           : showsSection(filters, 'active') && <ActiveCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="compact" onDetail={() => openDetail(active.id)} />)}
         <SearchAndFilters
           view={shown}

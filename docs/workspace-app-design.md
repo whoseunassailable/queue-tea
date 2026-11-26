@@ -356,7 +356,7 @@ Edits are optimistic. The UI changes in the same frame, the record write follows
 | ← → | fold or unfold a feature; ← on a child jumps to its feature |
 | Return / Space | open the detail |
 | s | Start the selected row, or ★ when none is selected |
-| ⌘↩ / c | Open in Claude Code |
+| ⌘↩ / c | Open in Claude Code, or Open terminal while a session is open |
 | d | Done… |
 | y / n | Yes / Not yet, in Review |
 | b | Back to queue |
@@ -1396,9 +1396,10 @@ The game layer adds no fields: XP, levels, the stage, the streak, gold and badge
 
 ### New files outside the record
 
-- **The session file** `~/.queue-tea/sessions/<id>.json` holds `{ id, projectPath, recordFile, currentTaskId, isTurnRunning, cup: { mood, line }, allowance, options, heartbeat, startedAt }`. That's the plan's list plus two fields:
+- **The session file** `~/.queue-tea/sessions/<id>.json` holds `{ id, projectPath, recordFile, currentTaskId, isTurnRunning, cup: { mood, line }, allowance, options, heartbeat, startedAt, terminal }`. That's the plan's list plus three fields:
   - `options`, so Settings shows the real /config values;
-  - `cup.mood`, so the pill can mirror "needs you".
+  - `cup.mood`, so the pill can mirror "needs you";
+  - `terminal: { program, tty }`, so Open terminal brings that session's own tab forward. Either can be null, and an older mod leaves it out.
 - **Designs** live in the realm, at `docs/designs/<version folder>/`, in the format in [design-tab.md](design-tab.md). The last good copy of each file is kept at `~/.queue-tea/designs/<realm key>/`.
 - **App settings** (Electron `userData`): terminal (`terminal | iterm2 | vscode`), sky (`auto | morning | day | evening | night`), Calm mode on or off, pane widths, folded features per project, single-letter keys on or off, window bounds.
 

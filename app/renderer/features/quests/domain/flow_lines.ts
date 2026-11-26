@@ -18,3 +18,12 @@ export const askingLine = (active: ActiveQuest, session: SessionState): string |
 
   return isBegin ? t.flow.handing : t.flow.saving
 }
+
+// The button that takes Rohan to the quest's terminal says what it will do:
+// bring an open session's own tab forward, start Claude Code in a new one, or
+// show the quest's Codex.
+export const openLabel = (active: ActiveQuest, session: SessionState): string => {
+  if (active.codexSince !== null) return t.actions.showCodex
+
+  return session === 'none' ? t.actions.openClaude : t.actions.openTerminal
+}

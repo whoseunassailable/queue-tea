@@ -142,7 +142,7 @@ const QuestCard = ({ view, flow, actions }: { view: View; flow: QuestFlow | unde
   if (flow !== undefined) return <FlowCard flow={flow} actions={actions} />
   if (view.active === null) return <NoActive view={view} actions={actions} />
   return <>{view.activeQuests.map(active => active.review !== null
-    ? <JudgementCard key={active.id} active={active} actions={actions} kind="full" />
+    ? <JudgementCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="full" />
     : <ActiveCard key={active.id} active={active} session={active.session ?? view.session} actions={actions} kind="full" />)}</>
 }
 

@@ -283,7 +283,14 @@ export type StartStep = { kind: 'noRepo' } | { kind: 'switch'; branch: string } 
 export type StartCheck = { kind: 'held'; hold: GitHold } | { kind: 'clear'; step: StartStep }
 
 // How the quest reached Claude Code. Failed keeps the line to copy.
-export type Handover = { kind: 'session' } | { kind: 'opened'; terminal: TerminalChoice } | { kind: 'failed'; terminal: TerminalChoice; command: string }
+// notFound: a session is open, but no tab of that terminal holds it, so
+// nothing came forward; there is no line to copy, since a second session must
+// not start.
+export type Handover =
+  | { kind: 'session' }
+  | { kind: 'opened'; terminal: TerminalChoice }
+  | { kind: 'notFound'; terminal: TerminalChoice }
+  | { kind: 'failed'; terminal: TerminalChoice; command: string }
 export type StartOutcome = { kind: 'held'; hold: GitHold } | { kind: 'started'; view: ProjectView; branch: string | null; notice: string | null; handover: Handover }
 export type ContinueOutcome = { view: ProjectView; handover: Handover; isCodexTimeLost: boolean }
 

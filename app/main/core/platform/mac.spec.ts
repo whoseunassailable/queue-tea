@@ -6,7 +6,7 @@ import { promisify } from 'node:util'
 
 import { describe, expect, it } from 'vitest'
 
-import { appleScriptText, bringForwardArgv, claudeLine, codexLine, codexPasteLine, openLineArgv, shellQuote } from './mac'
+import { appleScriptText, bringForwardArgv, claudeLine, codexLine, codexPasteLine, FORWARD_MISSING, openLineArgv, shellQuote, terminalOfProgram } from './mac'
 import { codexConfigArgs } from '../../features/codex/data/setup'
 
 const run = promisify(execFile)
@@ -129,6 +129,63 @@ describe('opening Claude Code', () => {
       expect(bringForwardArgv(terminal, '/p/demo').join(' ')).not.toContain('claude')
       expect(bringForwardArgv(terminal, '/p/demo').join(' ')).not.toContain('codex')
     }
+  })
+
+  it("Terminal brings forward the tab on the session's tty before the one titled with its folder", () => {
+    const lines = bringForwardArgv('terminal', '/p/demo', '/dev/ttys004').filter(part => part !== '-e')
+    const byTty = lines.indexOf('if tty of queueTeaTab is "/dev/ttys004" then')
+    const byTitle = lines.indexOf('if custom title of queueTeaTab is "/p/demo" then')
+
+    expect(byTty).toBeGreaterThan(0)
+    expect(byTitle).toBeGreaterThan(byTty)
+  })
+
+  it('iTerm2 does the same with its sessions', () => {
+    const lines = bringForwardArgv('iterm', '/p/demo', '/dev/ttys004').filter(part => part !== '-e')
+
+    expect(lines.indexOf('if name of queueTeaSession is "/p/demo" then')).toBeGreaterThan(lines.indexOf('if tty of queueTeaSession is "/dev/ttys004" then'))
+    expect(lines.indexOf('if tty of queueTeaSession is "/dev/ttys004" then')).toBeGreaterThan(0)
+  })
+
+  it('with no tty known, only the title is looked for', () => {
+    const script = bringForwardArgv('terminal', '/p/demo').join(' ')
+
+    expect(script).not.toContain('tty of')
+    expect(script).toContain('custom title of queueTeaTab is "/p/demo"')
+  })
+
+  it.each(['terminal', 'iterm'] as const)('%s brings nothing forward and starts nothing when no tab matches', terminal => {
+    const lines = bringForwardArgv(terminal, '/p/demo', '/dev/ttys004').slice(1).filter(part => part !== '-e')
+    const app = terminal === 'terminal' ? 'Terminal' : 'iTerm'
+
+    expect(lines[0]).toBe(`if application "${app}" is not running then return "${FORWARD_MISSING}"`)
+    expect(lines.at(-1)).toBe(`return "${FORWARD_MISSING}"`)
+    // activate only inside a match, right before it says found.
+    lines.forEach((line, i) => {
+      if (line === 'activate') expect(lines[i + 1]).toBe('return "found"')
+    })
+  })
+
+  it('a tty or folder with quotes stays one AppleScript string', () => {
+    expect(bringForwardArgv('terminal', '/p/say "hi"', '/dev/ttys004').join(' ')).toContain('custom title of queueTeaTab is "/p/say \\"hi\\""')
+  })
+
+  it.runIf(process.platform === 'darwin')("Terminal's bring-forward script compiles", async () => {
+    const out = join(await mkdtemp(join(tmpdir(), 'queue-tea-forward-')), 'forward.scpt')
+    try {
+      // Compiled, not run: it asks Terminal nothing, so macOS shows no prompt.
+      await run('osacompile', ['-o', out, ...bringForwardArgv('terminal', '/p/demo', '/dev/ttys004').slice(1)])
+    } finally {
+      await rm(out, { force: true })
+    }
+  })
+
+  it('a session in Terminal, iTerm2 or VS Code is brought forward there; any other app is not known', () => {
+    expect(terminalOfProgram('Apple_Terminal')).toBe('terminal')
+    expect(terminalOfProgram('iTerm.app')).toBe('iterm')
+    expect(terminalOfProgram('vscode')).toBe('vscode')
+    expect(terminalOfProgram('WarpTerminal')).toBe(null)
+    expect(terminalOfProgram(null)).toBe(null)
   })
 
   it('Terminal runs the Codex line in a new window, its quotes kept for AppleScript', () => {

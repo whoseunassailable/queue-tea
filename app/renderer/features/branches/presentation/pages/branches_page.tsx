@@ -5,6 +5,7 @@ import { hrefOf, ROUTES } from '../../../../config/routing/routes'
 import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { ReadView } from '../../../../core/widgets/read_view'
 import { t } from '../../../../l10n/en'
+import { openLabel } from '../../../quests/domain/flow_lines'
 import type { QuestActions } from '../../../quests/presentation/state_management/flow_keys'
 import { FlowCard } from '../../../quests/presentation/widgets/flow_card'
 import type { QuestFlow, ReadableView } from '../../../workspace/state_management/workspace_store'
@@ -44,7 +45,7 @@ export const BranchesPage = ({ view, actions, engine, flow, onOpen }: { view: Re
             {quest.latest && <p class="branch-latest mono">{quest.latest}</p>}
             <div class="q-actions">
               <button type="button" class="btn primary" onClick={() => setSelected(quest.id)}>{t.branches.review}</button>
-              {active && <button type="button" class="btn" disabled={flow?.kind === 'working'} onClick={() => actions.onOpenClaude(active)}>{active.codexSince ? t.actions.showCodex : t.actions.openClaude}</button>}
+              {active && <button type="button" class="btn" disabled={flow?.kind === 'working'} onClick={() => actions.onOpenClaude(active)}>{openLabel(active, (active.session ?? view.session).state)}</button>}
               {quest.state === 'queued' && <button type="button" class="btn" onClick={() => onOpen(quest.id)}>{t.nav.quests}</button>}
             </div>
           </article></li>

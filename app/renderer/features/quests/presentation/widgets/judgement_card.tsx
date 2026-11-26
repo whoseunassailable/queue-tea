@@ -1,11 +1,12 @@
-import type { ActiveQuest } from '../../../../../shared/engine_api'
+import type { ActiveQuest, SessionInfo } from '../../../../../shared/engine_api'
 import { formatMinutes } from '../../../../core/domain/format'
 import { PriorityTag } from '../../../../core/widgets/tags'
 import { t } from '../../../../l10n/en'
+import { openLabel } from '../../domain/flow_lines'
 import type { QuestActions } from '../state_management/flow_keys'
 
 // Claude says the quest looks done, and only Rohan can say so.
-export const JudgementCard = ({ active, actions, kind }: { active: ActiveQuest; actions: QuestActions; kind: 'full' | 'compact' }) => {
+export const JudgementCard = ({ active, session, actions, kind }: { active: ActiveQuest; session: SessionInfo; actions: QuestActions; kind: 'full' | 'compact' }) => {
   const checked = active.review?.checked ?? null
 
   return (
@@ -35,7 +36,7 @@ export const JudgementCard = ({ active, actions, kind }: { active: ActiveQuest; 
           {t.judgement.no}
         </button>
         <button type="button" class="btn" onClick={() => actions.onOpenClaude(active)}>
-          {active.codexSince !== null ? t.actions.showCodex : t.actions.openClaude}
+          {openLabel(active, session.state)}
         </button>
       </div>
     </section>

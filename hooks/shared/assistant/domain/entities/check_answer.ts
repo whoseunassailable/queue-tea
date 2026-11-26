@@ -1,7 +1,8 @@
 import type { Difficulty, Intent } from '../../../../../types'
 
 export type CheckAnswer = {
-  kind: 'same' | 'new' | 'quick' | 'unsure'
+  // command: an operational ask (run, push, open, show), neither a change nor work to queue.
+  kind: 'same' | 'new' | 'quick' | 'command' | 'unsure'
   intent: Intent
   title?: string
   difficulty?: Difficulty

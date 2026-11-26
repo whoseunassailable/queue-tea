@@ -5,9 +5,11 @@ import { getView } from '../../../../core/store/view_store'
 import { cut } from '../../../../core/widgets/text'
 import { PRIORITY_ORDER } from '../../../../shared/records/domain/services/queue_rules'
 import { DIFFICULTIES } from '../../domain/services/task_rules'
-import { nameNewFeature, pickBand, saveFile } from '../state_management/filing_controller'
+import { addToAlike, nameNewFeature, pickBand, saveFile } from '../state_management/filing_controller'
+import { FILE_BAND_TEXT as T } from '../constants/file_band_text'
 
 const FEATURE_LABEL = 24
+const ALIKE_LABEL = 48
 
 export async function drawFileBand(
   $: EngineInterface,
@@ -39,19 +41,27 @@ export async function drawFileBand(
       return (
         <Input
           key="feature-title"
-          label="New feature"
-          placeholder="its name, then Enter"
+          label={T.featureLabel}
+          placeholder={T.featurePlaceholder}
           value={pick.title}
-          submitLabel="Set"
+          submitLabel={T.featureSet}
           onSubmit={value => void nameNewFeature(portsOf($), value)}
         />
       )
     })()
   const canSave = pick !== null && !(pick?.kind === 'new' && pick.title === '')
+  const alike = band.alike === undefined ? undefined : record?.tasks.find(t => t.id === band.alike)
+  const alikeLine =
+    alike === undefined ? null
+    : alike.state === 'queued' ? T.alikeQueued(cut(alike.title, ALIKE_LABEL))
+    : alike.state === 'current' ? T.alikeCurrent(cut(alike.title, ALIKE_LABEL))
+    : alike.state === 'done' ? T.alikeDone(cut(alike.title, ALIKE_LABEL), (alike.finished ?? '').slice(0, 10))
+    : null
 
   return (
     <Box flexDirection="column">
-      <Text>New task: {band.title}</Text>
+      <Text>{T.newTask(band.title)}</Text>
+      {alikeLine !== null && <Text key="alike" color="warning">{alikeLine}</Text>}
       <Box>
         {PRIORITY_ORDER.map(p =>
           p === band.priority ? (
@@ -72,18 +82,19 @@ export async function drawFileBand(
       </Box>
       {band.choices !== undefined && (
         <Box flexWrap="wrap">
-          <Text>Part of </Text>
-          {choice('parent:none', 'On its own', { kind: 'none' })}
+          <Text>{T.partOf}</Text>
+          {choice('parent:none', T.onItsOwn, { kind: 'none' })}
           {offered.map(t => choice(`parent:${t.id}`, cut(t.title, FEATURE_LABEL), { kind: 'task', id: t.id }))}
-          {e.surface !== 'mobile' && choice('parent:new', 'New feature…', { kind: 'new', title: pick?.kind === 'new' ? pick.title : '' })}
+          {e.surface !== 'mobile' && choice('parent:new', T.newFeature, { kind: 'new', title: pick?.kind === 'new' ? pick.title : '' })}
         </Box>
       )}
-      {pick === null && <Text color="warning">Is it part of a feature? Pick one, or On its own.</Text>}
+      {pick === null && <Text color="warning">{T.askParent}</Text>}
       {naming}
       <Box>
-        {canSave && <Button key="save" label="Save" variant="primary" onPress={() => void saveFile(portsOf($))} />}
-        <Button key="same-task" label="Same task" onPress={held.sameTask} />
-        <Button key="cancel" label="Cancel" onPress={held.cancel} />
+        {alike?.state === 'queued' && <Button key="add-to-alike" label={T.addToIt} onPress={() => void addToAlike(portsOf($))} />}
+        {canSave && <Button key="save" label={T.save} variant="primary" onPress={() => void saveFile(portsOf($))} />}
+        <Button key="same-task" label={T.sameTask} onPress={held.sameTask} />
+        <Button key="cancel" label={T.cancel} onPress={held.cancel} />
       </Box>
     </Box>
   )

@@ -1,12 +1,13 @@
 import { expect, test } from 'claude-code/testing'
 
-import { fileTask } from '../../../hooks/features/tasks/presentation/state_management/filing_controller'
-import { finishDocs, finishTask, noteHelperRun, startTask, taskLooksDone, taskSection } from '../../../hooks/features/tasks/presentation/state_management/tasks_controller'
+import { addToAlike, fileTask } from '../../../hooks/features/tasks/presentation/state_management/filing_controller'
+import { FILE_BAND_TEXT } from '../../../hooks/features/tasks/presentation/constants/file_band_text'
+import { finishDocs, finishTask, helperCallOf, noteHelperRun, startTask, taskLooksDone, taskSection } from '../../../hooks/features/tasks/presentation/state_management/tasks_controller'
 import { firstMessage } from '../../../hooks/shared/checkpoints/domain/services/checkpoints'
 import { onMessage } from '../../../hooks/features/message_check/presentation/state_management/message_check_controller'
 import { shouldCheck } from '../../../hooks/features/message_check/domain/services/check_prompt'
 import { emptyRecord } from '../../../hooks/shared/records/data/datasources/record_source'
-import { ASKED, DIDNT_RUN, HELPER_LINES, REMIND, TASK_LINE } from '../../../hooks/features/tasks/presentation/constants/tasks_text'
+import { ASKED, CLASSIFY_LINE, DIDNT_RUN, HELPER_LINES, PROFILE_LINE, QUICK_LINE, REMIND, TASK_LINE } from '../../../hooks/features/tasks/presentation/constants/tasks_text'
 import { helperToRemind } from '../../../hooks/features/tasks/domain/services/task_rules'
 import { live } from '../../../hooks/core/session/live'
 import type { HelperId, ProjectRecord } from '../../../types'
@@ -61,6 +62,49 @@ test('a new message is held and the band asks for its priority', async () => {
   expect(view.isChecking).toBe(false)
 })
 
+test('new work that is already waiting is held with that task offered on the band', async () => {
+  const waiting = makeTask({ title: 'Dark mode', state: 'queued' })
+  const r = { ...emptyRecord('p', '/p'), tasks: [waiting] }
+  const { ports, view } = fakePorts(memoryHost({ files: withRecord(r) }), {
+    reply: '{"kind":"new","intent":"improving","title":"Add dark mode","difficulty":"hard"}',
+    view: { record: r },
+  })
+
+  expect((await onMessage(ports, CTX, 'add dark mode please')).verdict).toBe('drop')
+  expect(view.band).toMatchObject({ kind: 'file', title: 'Add dark mode', alike: waiting.id })
+})
+
+test('Add to it puts the held message on the waiting task, once, and files nothing', async () => {
+  live.ctx = CTX
+  const waiting = makeTask({ title: 'Dark mode', state: 'queued', messages: ['dark mode'] })
+  const r = { ...emptyRecord('p', '/p'), tasks: [waiting] }
+  const mem = memoryHost({ files: withRecord(r) })
+  const band = { kind: 'file' as const, text: 'also a dark sidebar', title: 'Dark sidebar mode', priority: 'mid' as const, difficulty: 'medium' as const, intent: 'improving' as const, alike: waiting.id }
+  const { ports, view, done } = fakePorts(mem, { view: { record: r, band } })
+
+  await addToAlike(ports)
+
+  expect(stored(mem).tasks).toHaveLength(1)
+  expect(stored(mem).tasks[0]?.messages).toEqual(['dark mode', 'also a dark sidebar'])
+  expect(view.band).toEqual({ kind: 'none' })
+  expect(done.toasts).toEqual(['Added to: Dark mode'])
+})
+
+test('Add to it on a task that has started since keeps the band and says why', async () => {
+  live.ctx = CTX
+  const started = makeTask({ title: 'Dark mode', state: 'current' })
+  const r = { ...emptyRecord('p', '/p'), tasks: [started] }
+  const mem = memoryHost({ files: withRecord(r) })
+  const band = { kind: 'file' as const, text: 'dark mode', title: 'Dark mode', priority: 'mid' as const, difficulty: 'medium' as const, intent: 'improving' as const, alike: started.id }
+  const { ports, view } = fakePorts(mem, { view: { record: r, band } })
+
+  await addToAlike(ports)
+
+  expect(stored(mem).tasks[0]?.messages).toEqual([])
+  expect(view.band).toEqual(band)
+  expect(view.notice).toBe(FILE_BAND_TEXT.notWaiting)
+})
+
 test('a same-task message goes through', async () => {
   const { ports, view } = fakePorts(memoryHost(), {
     reply: '{"kind":"same","intent":"understanding"}',
@@ -78,6 +122,16 @@ test('a quick question goes through', async () => {
   })
 
   expect((await onMessage(ports, CTX, 'what does this error mean?')).verdict).toBe('pass')
+})
+
+test('an operational command goes through and is never filed', async () => {
+  const { ports, view } = fakePorts(memoryHost(), {
+    reply: '{"kind":"command","intent":"improving"}',
+    view: { record: emptyRecord('p', '/p') },
+  })
+
+  expect(await onMessage(ports, CTX, 'push it to origin')).toEqual({ verdict: 'pass', intent: 'improving', kind: 'command' })
+  expect(view.band).toEqual({ kind: 'none' })
 })
 
 test('a failed check holds the message and says the check did not run', async () => {
@@ -281,12 +335,44 @@ test('an Assisted realm’s brief asks for propose_commit', () => {
   expect(TASK_LINE('Retry button', 'assisted')).toContain('propose_commit')
 })
 
-test('the compose section adds a line for each helper that is on, in work order', () => {
+test('before a profile is picked, the brief asks to classify first, then adds a line for each helper that is on, in work order', () => {
   const current = makeTask({ title: 'Retry button', state: 'current', helpers: { on: ['commit-chai-n', 'tea-dd'], ran: [], reminded: false } })
   const line = (id: HelperId) => HELPER_LINES.find(([h]) => h === id)![1]
 
   expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
-    [TASK_LINE('Retry button', 'assisted'), line('tea-dd'), line('commit-chai-n')].join('\n'),
+    [TASK_LINE('Retry button', 'assisted'), CLASSIFY_LINE, line('tea-dd'), line('commit-chai-n')].join('\n'),
+  )
+})
+
+test('a Quick change skips Mocha Mockup, Chai-pter and Tea-DD in the brief and keeps Commit Chai-n for review', () => {
+  const profile = { id: 'quick' as const, by: 'tea-dd' as const, reason: 'Notes moves to fourth on the toolbar' }
+  const current = makeTask({ title: 'Notes fourth', state: 'current', helpers: { on: ['commit-chai-n', 'mocha-mockup', 'chai-pter', 'tea-dd'], ran: [], reminded: false }, testProfile: profile })
+  const text = taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text
+
+  expect(text).toBe(
+    [TASK_LINE('Notes fourth', 'assisted'), QUICK_LINE(['Mocha Mockup', 'Chai-pter', 'Tea-DD']), HELPER_LINES.find(([h]) => h === 'commit-chai-n')![1], PROFILE_LINE(profile)].join('\n'),
+  )
+  expect(text).not.toContain('Before writing code, work out the design')
+  expect(text).not.toContain('update the docs')
+  expect(QUICK_LINE(['Mocha Mockup', 'Chai-pter', 'Tea-DD'])).toContain('Mocha Mockup, Chai-pter and Tea-DD are on but not needed for it, so skip them.')
+})
+
+test('a Quick profile Rohan picked routes the same way, and a lone skipped helper reads in the singular', () => {
+  const current = makeTask({ title: 'Padding', state: 'current', helpers: { on: ['tea-dd'], ran: [], reminded: false }, testProfile: { id: 'quick', by: 'rohan' } })
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
+    [TASK_LINE('Padding', 'assisted'), QUICK_LINE(['Tea-DD']), 'Test profile: Quick, chosen by Rohan. Tea-DD keeps to it.'].join('\n'),
+  )
+  expect(QUICK_LINE(['Tea-DD'])).toContain('Tea-DD is on but not needed for it, so skip it.')
+})
+
+test('a Standard change keeps every helper that is on', () => {
+  const profile = { id: 'standard' as const, by: 'tea-dd' as const, reason: 'a filter inside one feature' }
+  const on: HelperId[] = ['commit-chai-n', 'mocha-mockup', 'chai-pter', 'tea-dd']
+  const current = makeTask({ title: 'Quest filter', state: 'current', helpers: { on, ran: [], reminded: false }, testProfile: profile })
+
+  expect(taskSection({ ...emptyRecord('p', '/p'), tasks: [current] })?.text).toBe(
+    [TASK_LINE('Quest filter', 'assisted'), ...HELPER_LINES.map(([, l]) => l), PROFILE_LINE(profile)].join('\n'),
   )
 })
 
@@ -367,6 +453,14 @@ test('helperToRemind picks Tea-DD, then Commit Chai-n, and never the other two',
   expect(helperToRemind(t(['tea-dd'], ['tea-dd']))).toBeNull()
 })
 
+test('at a Quick profile done asks for Commit Chai-n but never Tea-DD', () => {
+  const quick = (on: HelperId[], ran: HelperId[] = []) => makeTask({ helpers: helpersOf(on, ran), testProfile: { id: 'quick', by: 'tea-dd', reason: 'padding' } })
+
+  expect(helperToRemind(quick(['tea-dd']))).toBeNull()
+  expect(helperToRemind(quick(['tea-dd', 'commit-chai-n']))).toBe('commit-chai-n')
+  expect(helperToRemind(makeTask({ helpers: helpersOf(['tea-dd']), testProfile: { id: 'standard', by: 'rohan' } }))).toBe('tea-dd')
+})
+
 test("task_looks_done reminds once, then asks Rohan with the didn't-run line", async () => {
   const { mem, ports, view } = doneSetup(['tea-dd'])
 
@@ -405,20 +499,50 @@ test('an unreadable record on the reminder save asks Rohan instead', async () =>
   expect(view.checked).toBe(DIDNT_RUN('Tea-DD'))
 })
 
-test('noteHelperRun notes a helper once', async () => {
+test('noteHelperRun notes a helper once, and adds each run to its totals', async () => {
+  const { mem, ports } = doneSetup(['tea-dd'])
+  const call = await helperCallOf(ports, 'queue-tea:tea-dd')
+
+  await noteHelperRun(ports, call, { outcome: 'done', ms: 42_000, tokens: 18_000 })
+  await noteHelperRun(ports, call, { outcome: 'done', ms: 30_000, tokens: null })
+
+  const task = stored(mem).tasks[0]!
+  expect(task.helpers.ran).toEqual(['tea-dd'])
+  expect(task.helperUsage).toEqual({ 'tea-dd': { runs: 2, failed: 0, timed: 2, ms: 72_000, counted: 1, tokens: 18_000 } })
+})
+
+test('a failed helper run is counted as a failure, never as run, so done still asks for it', async () => {
   const { mem, ports } = doneSetup(['tea-dd'])
 
-  await noteHelperRun(ports, 'queue-tea:tea-dd')
-  await noteHelperRun(ports, 'queue-tea:tea-dd')
+  await noteHelperRun(ports, await helperCallOf(ports, 'queue-tea:tea-dd'), { outcome: 'failed', ms: 900, tokens: null })
 
-  expect(stored(mem).tasks[0]?.helpers.ran).toEqual(['tea-dd'])
+  const task = stored(mem).tasks[0]!
+  expect(task.helpers.ran).toEqual([])
+  expect(task.helperUsage?.['tea-dd']).toEqual({ runs: 1, failed: 1, timed: 1, ms: 900, counted: 0, tokens: 0 })
+  expect(await taskLooksDone(ports)).toBe(REMIND('Tea-DD'))
+  expect(REMIND('Tea-DD')).toContain('say why in checked')
+})
+
+test('a run is noted only on the task it started for', async () => {
+  const { mem, ports } = doneSetup(['tea-dd'])
+  const call = await helperCallOf(ports, 'queue-tea:tea-dd')
+  const other = { ...call!, taskId: 't-elsewhere' }
+
+  await noteHelperRun(ports, other, { outcome: 'done', ms: 1, tokens: 1 })
+
+  expect(stored(mem).tasks[0]?.helpers.ran).toEqual([])
+  expect(stored(mem).tasks[0]?.helperUsage).toBeUndefined()
 })
 
 test('other agents and odd input are ignored', async () => {
   const { mem, ports, done } = doneSetup(['tea-dd'])
   const before = mem.files.get(CTX.file)
 
-  for (const agent of ['general-purpose', 'queue-tea:nobody', undefined, 42]) await noteHelperRun(ports, agent)
+  for (const agent of ['general-purpose', 'queue-tea:nobody', undefined, 42]) {
+    const call = await helperCallOf(ports, agent)
+    expect(call).toBeNull()
+    await noteHelperRun(ports, call, { outcome: 'done', ms: 1, tokens: 1 })
+  }
 
   expect(stored(mem).tasks[0]?.helpers.ran).toEqual([])
   expect(mem.files.get(CTX.file)).toBe(before)

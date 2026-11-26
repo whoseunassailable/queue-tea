@@ -4,6 +4,7 @@ import type { Host } from '../../../../core/host/host'
 import { fromOldLog, stepOf, waitingOf } from '../../../activity/domain/services/activity'
 import { mergePeriods } from '../../../time/domain/services/realm_time'
 import { readHelpers } from '../../domain/services/helpers'
+import { readHelperUsage } from '../../domain/services/helper_usage'
 import { foldCriteria } from '../../domain/services/queue_rules'
 import { readTestProfile } from '../../domain/services/test_profile'
 import { RECORD_TEXT } from '../../domain/constants/record_text'
@@ -63,8 +64,9 @@ export const emptyRecord = (name: string, path: string): ProjectRecord => ({
 // shells it still waited on, are kept. An older task's one `parentId` is
 // read as a list of one.
 type StoredTask = Partial<Task> & { activity?: unknown; parentId?: unknown }
-const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, activity, step, waiting, parentId, parentIds, criteriaByParent, ...t }: StoredTask): Task => {
+const withDefaults = ({ testProfile, helperUsage, testPeriods, minutesInChecks, due, activity, step, waiting, parentId, parentIds, criteriaByParent, ...t }: StoredTask): Task => {
   const profile = readTestProfile(testProfile)
+  const usage = readHelperUsage(helperUsage)
   const old = fromOldLog(activity)
   const now = stepOf(step) ?? old.step
   const waits = waiting === undefined ? old.waiting ?? [] : waitingOf(waiting)
@@ -89,6 +91,7 @@ const withDefaults = ({ testProfile, testPeriods, minutesInChecks, due, activity
     helpers: readHelpers(t.helpers),
     // Testing time is optional and hand-editable: a malformed field is dropped, never the realm.
     ...(profile === undefined ? {} : { testProfile: profile }),
+    ...(usage === undefined ? {} : { helperUsage: usage }),
     ...(arePeriods(testPeriods) ? { testPeriods: mergePeriods(testPeriods) } : {}),
     ...(typeof minutesInChecks === 'number' && Number.isFinite(minutesInChecks) && minutesInChecks >= 0 ? { minutesInChecks } : {}),
     // A due date is hand-editable too: one that isn't a real day is dropped.

@@ -4,6 +4,7 @@ import type { Ports } from '../../../../core/ports/ports'
 import { closeBand, showBand } from '../../../../core/store/band_queue'
 import type { CheckAnswer } from '../../../../shared/assistant/domain/entities/check_answer'
 import { guessParent } from '../../../../shared/backlog/domain/services/families'
+import { alikeOf } from '../../../../shared/backlog/domain/services/duplicates'
 import { effortState } from '../../../../shared/effort/presentation/state_management/effort_controller'
 import { checkTypedMessage } from '../../domain/usecases/check_typed_message'
 import type { TypedVerdict } from '../../domain/usecases/check_typed_message'
@@ -103,5 +104,6 @@ export async function unsureToNew(p: Ports) {
     difficulty: 'medium',
     intent: band.intent,
     ...(record === null ? null : guessParent(record, band.text, null)),
+    ...(record === null ? null : alikeOf(record.tasks, band.text.slice(0, 60))),
   })
 }

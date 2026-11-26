@@ -28,6 +28,23 @@ export const HELPER_LINES: readonly (readonly [HelperId, string])[] = [
   ],
 ]
 
+// "A", "A and B", "A, B and C".
+export const joinNames = (names: readonly string[]): string =>
+  names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+
+// Before a profile is picked: the classify step, so a Quick change sheds the
+// helpers it doesn't need before any of them starts.
+export const CLASSIFY_LINE =
+  'First classify the change: pick its test profile (set_test_profile says which is which) and record it before you design or write code, so only the helpers it needs run.'
+
+// A Quick change's route: classify, implement, Quick checks, review.
+export const QUICK_LINE = (skipped: readonly string[]): string =>
+  [
+    "This is a Quick change: implement it, run the Quick checks yourself (the type check, and the changed files' own tests or a look at the screen, as the project's CLAUDE.md names them), then review.",
+    ...(skipped.length === 0 ? [] : [`${joinNames(skipped)} ${skipped.length === 1 ? 'is' : 'are'} on but not needed for it, so skip ${skipped.length === 1 ? 'it' : 'them'}.`]),
+    'If a doc names what you changed, such as a label or an order, fix that line too. If the change reaches further, record a higher profile and the other helpers come back.',
+  ].join(' ')
+
 export const PROFILE_NAMES: Record<TestProfileId, string> = {
   quick: 'Quick',
   standard: 'Standard',
@@ -45,14 +62,15 @@ export const PROFILE_LINE = (profile: TestProfile): string =>
 export const PROFILE_TOOL = {
   name: 'set_test_profile',
   description:
-    "Record the test profile for the current Queue-tea task before running its checks: quick, standard, deep, critical or release, with the reason. Rohan sees it on the quest. Call it again to move up when the change reaches further than you thought. If Rohan chose the profile, his choice stands and nothing changes.",
+    "Record the test profile for the current Queue-tea task before running its checks: quick, standard, deep, critical or release, with the reason. Quick: only how it looks, its text or its order. Standard: logic inside one feature. Deep: a new shared piece, tool or API, a stored field old data must still read, or more than one feature. Critical: git, merges, branches, saving or locking stored data, installing and updating. Release: publishing a version. When you can't tell, take the one above. Rohan sees it on the quest, and it sets which helpers run. Call it again to move up when the change reaches further than you thought. If Rohan chose the profile, his choice stands and nothing changes.",
   profile: 'The profile: quick, standard, deep, critical or release.',
   reason: `Why, in one line Rohan can read, at most ${TEST_PROFILE_LIMITS.reason} characters: what the change reaches.`,
 } as const
 
 // What the tool answers. Claude reads it.
 export const PROFILE_TEXT = {
-  saved: (id: TestProfileId) => `Recorded ${PROFILE_NAMES[id]} on the quest. Run the checks it asks for.`,
+  saved: (id: TestProfileId, skipped: readonly string[] = []) =>
+    `Recorded ${PROFILE_NAMES[id]} on the quest. Run the checks it asks for.${skipped.length === 0 ? '' : ` ${joinNames(skipped)} ${skipped.length === 1 ? 'is' : 'are'} not needed for it: run the Quick checks yourself and skip ${skipped.length === 1 ? 'it' : 'them'}.`}`,
   rohans: (id: TestProfileId) => `Rohan chose ${PROFILE_NAMES[id]} for this quest, so it stands. Run its checks; say in your report if you think it should differ.`,
   noTask: 'No Queue-tea task is current in this folder, so no profile was recorded.',
   notCurrent: 'That task is no longer current, so the profile was not recorded.',
@@ -67,7 +85,8 @@ export const PROFILE_TEXT = {
 
 export const ASKED = 'Rohan is asked in the Queue-tea menu whether the task is done for now.'
 
-export const REMIND = (name: string): string => `${name} is on for this task and hasn't run yet. Run it, then call task_looks_done again.`
+export const REMIND = (name: string): string =>
+  `${name} is on for this task and hasn't run yet. Run it, then call task_looks_done again. If it failed or can't run here, say why in checked when you call again.`
 
 export const DIDNT_RUN = (name: string): string => `${name} is on and didn't run.`
 

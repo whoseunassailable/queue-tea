@@ -45,6 +45,8 @@ Four subagents come with Queue-tea, each with a job, the skills for it and a log
 
 Queue-tea brings one skill of its own, **Tea-concile** (`queue-tea:tea-concile`), which reconciles two branches. Use it when a merge stops on conflicts: Branches in the app shows **Resolve conflicts** on a prepared merge, or a merge you ran yourself reports CONFLICT. Ask Claude to resolve them. It works only in that merge's folder, reads what each branch was for, keeps the higher version number, keeps both sides' rows in logs and lists, regenerates lockfiles and generated files, combines code so both changes survive, and asks when the two sides really disagree. It stages the result for you to review and merge in Branches, or hands you the commit command for a merge you ran; it never commits. The other skills come from the agent-skills, superpowers and frontend-design plugins; a helper without one of them installed starts without it. Each helper's shell commands go through the same commit and push guard as Claude's.
 
+A quest uses the helpers whose chips are pressed in its pane, Tea-DD by default, and only the ones its test profile needs: a Quick change (a label, a text or an order) goes implement, Quick checks, review, with no design, docs or full test run. When each helper runs, what happens when one fails and what Queue-tea records about their runs are in [Helper policies](docs/helper-policies.md).
+
 ## Settings
 
 Change these in `/config`.

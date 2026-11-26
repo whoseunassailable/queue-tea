@@ -50,6 +50,12 @@ export type Checkpoint = {
 export type HelperId = 'commit-chai-n' | 'mocha-mockup' | 'chai-pter' | 'tea-dd'
 export type TaskHelpers = { on: HelperId[]; ran: HelperId[]; reminded: boolean }
 
+// A helper's runs on one quest, for the helper performance audit. `timed` and
+// `counted` are how many runs gave a duration and a token count; the rest were
+// unknown (a run sent to the background, or an answer without usage).
+export type HelperUsage = { runs: number; failed: number; timed: number; ms: number; counted: number; tokens: number }
+export type HelperUsageById = Partial<Record<HelperId, HelperUsage>>
+
 // How much checking a quest's change gets, from a look at the screen to the
 // whole suite. Tea-DD picks one with a reason; Rohan's pick always stands.
 export type TestProfileId = 'quick' | 'standard' | 'deep' | 'critical' | 'release'
@@ -117,6 +123,9 @@ export type Task = {
   commitProposal?: CommitProposal
   // Absent until Tea-DD or Rohan picks one, and in older records.
   testProfile?: TestProfile
+  // Each helper's runs on this quest, from the Agent tool; absent before the
+  // first and in older records.
+  helperUsage?: HelperUsageById
   // When the quest's checks ran, merged, and how many of its clock minutes fell
   // inside them; the rest is building time. Absent before any check finished.
   testPeriods?: WorkPeriod[]
@@ -182,6 +191,9 @@ export type Band =
       // Left out when there is nothing to offer: the task goes on its own.
       parent?: ParentPick | null
       choices?: string[]
+      // A task waiting, under way or done that looks like the same work;
+      // left out when none does.
+      alike?: string
     }
   | { kind: 'unsure'; text: string; intent: Intent; didCheckRun: boolean }
   | { kind: 'difficulty'; taskId: string; picked: Difficulty }

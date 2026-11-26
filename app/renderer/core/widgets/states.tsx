@@ -9,6 +9,8 @@ export const Spinner = () => (
   </svg>
 )
 
+// The three states every view that waits shows: loading, failed and empty.
+// They share one panel, so a page's states look alike wherever they appear.
 export const Loading = ({ line, children }: { line: string; children?: ComponentChildren }) => (
   <div class="state panel" role="status">
     <Spinner />
@@ -17,12 +19,19 @@ export const Loading = ({ line, children }: { line: string; children?: Component
   </div>
 )
 
-export const Failed = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+// What went wrong, in plain words, and a way to try again. A screen that has
+// another way to put it right, such as showing the folder, passes it as a
+// child, and it sits beside Try again.
+export const Failed = ({ title, message, onRetry, children }: { title?: string; message: string; onRetry: () => void; children?: ComponentChildren }) => (
   <div class="state panel" role="alert">
+    {title !== undefined && <h2 class="state-title">{title}</h2>}
     <p class="state-line">{message}</p>
-    <button type="button" class="btn" onClick={onRetry}>
-      {t.failed.tryAgain}
-    </button>
+    <div class="state-actions">
+      <button type="button" class="btn" onClick={onRetry}>
+        {t.failed.tryAgain}
+      </button>
+      {children}
+    </div>
   </div>
 )
 

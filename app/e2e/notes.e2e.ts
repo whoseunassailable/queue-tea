@@ -46,8 +46,8 @@ test.afterAll(async () => {
   await rm(home, { recursive: true, force: true })
 })
 
-test('⌘7 opens Notes on the newest note, read from its Markdown file', async () => {
-  await page.keyboard.press('Meta+7')
+test('⌘4 opens Notes on the newest note, read from its Markdown file', async () => {
+  await page.keyboard.press('Meta+4')
 
   expect(page.url()).toContain('#/notes')
   await expect(page.getByLabel('Title *')).toHaveValue('Threat model')

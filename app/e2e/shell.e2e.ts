@@ -184,6 +184,16 @@ test('the window drags from a strip across its top, with nothing to press under 
   await page.keyboard.press('Escape')
 })
 
+test('the HUD row drags the window between its chips, and each chip stays pressable', async () => {
+  const regions = await page.evaluate(() => {
+    const hud = document.querySelector<HTMLElement>('.top > .hud')!
+    const chips = [...hud.children].map(chip => getComputedStyle(chip).getPropertyValue('-webkit-app-region'))
+    return { row: getComputedStyle(hud).getPropertyValue('-webkit-app-region'), chips: [...new Set(chips)] }
+  })
+
+  expect(regions).toEqual({ row: 'drag', chips: ['no-drag'] })
+})
+
 test('below 1180 px the detail floats over the list, and closes', async () => {
   await resize(1000, 700)
   await expect(page.locator('.detail')).toBeHidden()

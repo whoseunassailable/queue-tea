@@ -72,17 +72,17 @@ describe('what the palette offers', () => {
     expect(entries.find(e => e.label === 'Home')?.keys).toBe('⌘1')
   })
 
-  it('gives the tabs the same keys as the menu, with Designs on ⌘3', () => {
+  it('gives the tabs the same keys as the menu, with Designs on ⌘3 and Notes on ⌘4', () => {
     const goTo = filterPalette(paletteEntries(input()), '').filter(e => e.section === 'goto' && e.keys?.match(/^⌘\d$/))
 
     expect(goTo.map(e => [e.label, e.keys])).toEqual([
       ['Home', '⌘1'],
       ['Quests', '⌘2'],
       ['Designs', '⌘3'],
-      ['Branches', '⌘4'],
-      ['Chronicle', '⌘5'],
-      ['Mana & time', '⌘6'],
-      ['Notes', '⌘7'],
+      ['Notes', '⌘4'],
+      ['Branches', '⌘5'],
+      ['Chronicle', '⌘6'],
+      ['Mana & time', '⌘7'],
       ['Calendar', '⌘8'],
     ])
   })

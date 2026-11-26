@@ -66,17 +66,17 @@ describe('the menu bar', () => {
     expect(send).toHaveBeenCalledWith({ kind: 'showRecord' })
   })
 
-  it('numbers the tabs ⌘1 to ⌘6, with Designs third', () => {
+  it('numbers the tabs ⌘1 to ⌘8, with Designs third and Notes fourth', () => {
     const tabs = items('View').filter(item => /^CmdOrCtrl\+\d$/.test(String(item.accelerator)))
 
     expect(tabs.map(item => [item.label, item.accelerator])).toEqual([
       ['Home', 'CmdOrCtrl+1'],
       ['Quests', 'CmdOrCtrl+2'],
       ['Designs', 'CmdOrCtrl+3'],
-      ['Branches', 'CmdOrCtrl+4'],
-      ['Chronicle', 'CmdOrCtrl+5'],
-      ['Mana & time', 'CmdOrCtrl+6'],
-      ['Notes', 'CmdOrCtrl+7'],
+      ['Notes', 'CmdOrCtrl+4'],
+      ['Branches', 'CmdOrCtrl+5'],
+      ['Chronicle', 'CmdOrCtrl+6'],
+      ['Mana & time', 'CmdOrCtrl+7'],
       ['Calendar', 'CmdOrCtrl+8'],
     ])
   })

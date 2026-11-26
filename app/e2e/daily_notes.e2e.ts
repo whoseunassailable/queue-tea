@@ -48,7 +48,7 @@ test.beforeAll(async () => {
   page.on('pageerror', err => errors.push(String(err)))
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.getByRole('button', { name: /^Diary/ }).click()
-  await page.keyboard.press('Meta+7')
+  await page.keyboard.press('Meta+4')
 })
 
 test.afterAll(async () => {

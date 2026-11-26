@@ -48,7 +48,7 @@ test.afterAll(async () => {
 
 test('a vague captured idea becomes a reviewed saga, saved and reopened in a large vault', async () => {
   const started = Date.now()
-  await page.keyboard.press('Meta+7')
+  await page.keyboard.press('Meta+4')
   await expect(page.getByLabel('Title *')).toHaveValue(/^Note /)
   const opened = Date.now() - started
   process.stdout.write(`Open 4,999-note vault: ${opened} ms\n`)

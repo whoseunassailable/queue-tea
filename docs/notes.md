@@ -7,7 +7,7 @@ Spec for **Notes 1**, the first slice of Rohan's Notes workspace epic. Mocha Moc
 
 ## What the user can do
 
-Open **Notes** (after Mana & time, ⌘7) and keep notes for the selected realm. Jot an idea in one line and it becomes a note in Inbox. Write longer notes in Markdown, file them in folders, tag them, and link them to each other with `[[Note title]]`, or to one of the realm's quests. The inspector shows each note's links, the notes that link back to it, and the quests filed from it. **BrewQuest**, a small robot in the editor's corner, turns a note's open checklist lines into quests in the realm's queue. You check the proposal before anything is filed. A note you no longer need is archived, not deleted. Only an archived note can be deleted forever.
+Open **Notes** (after Designs, ⌘4) and keep notes for the selected realm. Jot an idea in one line and it becomes a note in Inbox. Write longer notes in Markdown, file them in folders, tag them, and link them to each other with `[[Note title]]`, or to one of the realm's quests. The inspector shows each note's links, the notes that link back to it, and the quests filed from it. **BrewQuest**, a small robot in the editor's corner, turns a note's open checklist lines into quests in the realm's queue. You check the proposal before anything is filed. A note you no longer need is archived, not deleted. Only an archived note can be deleted forever.
 
 ```mermaid
 flowchart LR
@@ -22,7 +22,7 @@ flowchart LR
 
 Settled before the design:
 
-- **One Notes tab per realm**, after Mana & time, at `/notes`, opened with ⌘7. Notes belong to the selected realm only.
+- **One Notes tab per realm**, fourth on the toolbar after Designs, at `/notes`, opened with ⌘4. It moved there in 2.25.0 because it is used more often than the screens that look back. Notes belong to the selected realm only.
 - **One Markdown file per note**, in `~/.queue-tea/notes/<realm key>/`, outside the realm's repository. An uncommitted file in the realm holds Start, and notes change all the time. The folder opens in Obsidian as a vault, as it is.
 - **Three panes:** the note list, the editor and the inspector. The editor is a Markdown source editor (a text area), with a Read view beside it (see [The Read view](#the-read-view)).
 - **Links are Obsidian's**: `[[Note title]]`, `[[Note title|shown text]]` and `[[Note title#heading]]`. Typing `[[` opens a picker. Renaming a note rewrites the links to it in the realm's other notes. A quest is linked by its id, as `[[quest:t-e84dd5ab|Write the parser]]`, so the link still works when the quest is renamed. The text after `|` is the quest's title when it was linked, with `[`, `]`, `|` and line breaks turned into spaces. Quest links aren't note links: they count as no backlinks, and renaming a note never rewrites them.
@@ -130,7 +130,7 @@ The screens are in `docs/notes.pen`, numbered as below, at the app's window size
 
 | Key | Where | What it does |
 | --- | --- | --- |
-| ⌘7 | Anywhere | Opens Notes. The View menu and the palette's Go to list it |
+| ⌘4 | Anywhere | Opens Notes. The View menu and the palette's Go to list it |
 | ⌘K | Anywhere | Finds notes by title, text and tags; offers New note and Jot into Inbox |
 | ⇧⌘N | Anywhere | A new "Untitled" note in Inbox, title selected (File › New note) |
 | ⌘J | Notes | Puts the cursor in the capture line |
@@ -193,11 +193,11 @@ The feature follows `docs/architecture.md` and the app's layers:
 | Graph controller | `app/renderer/features/notes/presentation/state_management/graph_layout.ts`, `note_graph.worker.ts` | Runs the layout in a worker, passes on its progress and turns a failure into the failed state |
 | Graph screen | `app/renderer/features/notes/presentation/widgets/note_graph_view.tsx`, `note_graph_draw.ts` | The controls, the canvas and its drawing, pan and zoom, clicks and keys |
 
-Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook` and `palette`, with attaching and previewing files under `files`, and main's messages in `app/main/core/messages.ts`. The route `/notes` is in `app/renderer/config/routing/routes.ts`. The tab and ⌘7 are in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts`. The values are `NOTE_AUTOSAVE_MS` (800), `NOTE_PICKER_ROWS` (8), `NOTE_PICKER_QUEST_ROWS` (3), `PALETTE_NOTE_ROWS` (5) and `PALETTE_SNIPPET` (60); for the graph's layout `GRAPH_LINK_DISTANCE` (60), `GRAPH_CHARGE` (-120), `GRAPH_GRAVITY` (0.04), `GRAPH_TICKS` (150), `GRAPH_THETA` (1.2), `GRAPH_WARM_ALPHA` (0.1) and `GRAPH_PROGRESS_TICKS` (20), and for its screen `GRAPH_SPINNER_MS` (150), `GRAPH_LABEL_ZOOM` (1.5), `GRAPH_HIT_PX` (10), `GRAPH_LABEL_CHARS` (40), `GRAPH_ZOOM_MIN` (0.05), `GRAPH_ZOOM_MAX` (4), `GRAPH_DRAG_PX` (3) and `GRAPH_FIT_PX` (40); and the widths are `DETAIL_FLOATS_BELOW` (1,180) and `DETAIL_IS_PAGE_BELOW` (900), all in `app/renderer/core/constants/constants.ts`. ⇧⌘N and the palette's new, open and jot requests go through `app/renderer/features/notes/presentation/state_management/notes_asks.ts`. File › New note sends the same key. A jot that stays on another screen is saved by `note_flows.ts` in that same folder.
+Text the user reads goes in `app/renderer/l10n/en.ts` under `notebook` and `palette`, with attaching and previewing files under `files`, and main's messages in `app/main/core/messages.ts`. The route `/notes` is in `app/renderer/config/routing/routes.ts`. The tab order and ⌘4 come from `TAB_ORDER` in `app/shared/tabs.ts`, which the tabs in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts` all number from. The values are `NOTE_AUTOSAVE_MS` (800), `NOTE_PICKER_ROWS` (8), `NOTE_PICKER_QUEST_ROWS` (3), `PALETTE_NOTE_ROWS` (5) and `PALETTE_SNIPPET` (60); for the graph's layout `GRAPH_LINK_DISTANCE` (60), `GRAPH_CHARGE` (-120), `GRAPH_GRAVITY` (0.04), `GRAPH_TICKS` (150), `GRAPH_THETA` (1.2), `GRAPH_WARM_ALPHA` (0.1) and `GRAPH_PROGRESS_TICKS` (20), and for its screen `GRAPH_SPINNER_MS` (150), `GRAPH_LABEL_ZOOM` (1.5), `GRAPH_HIT_PX` (10), `GRAPH_LABEL_CHARS` (40), `GRAPH_ZOOM_MIN` (0.05), `GRAPH_ZOOM_MAX` (4), `GRAPH_DRAG_PX` (3) and `GRAPH_FIT_PX` (40); and the widths are `DETAIL_FLOATS_BELOW` (1,180) and `DETAIL_IS_PAGE_BELOW` (900), all in `app/renderer/core/constants/constants.ts`. ⇧⌘N and the palette's new, open and jot requests go through `app/renderer/features/notes/presentation/state_management/notes_asks.ts`. File › New note sends the same key. A jot that stays on another screen is saved by `note_flows.ts` in that same folder.
 
 ## Acceptance checks
 
-1. Notes sits after Mana & time, at `/notes`, and opens with ⌘7. The View menu and the palette list it. Its notes belong to the selected realm.
+1. Notes sits fourth, after Designs, at `/notes`, and opens with ⌘4. The View menu and the palette list it. Its notes belong to the selected realm.
 2. Return in the capture line makes a note in Inbox, and an empty line shows "Type an idea first.". A file with the note's front matter appears in `~/.queue-tea/notes/<realm key>/`, and nothing changes in the realm's folder.
 3. A note opened, edited and left alone for 800 ms is saved. Reading the file back gives the same title, folder, tags and body, and front-matter lines Queue-tea doesn't own are kept.
 4. A file with no front matter, as Obsidian makes them, lists with its file name as the title. The front matter is added when it's first saved.

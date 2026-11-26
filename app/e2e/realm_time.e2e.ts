@@ -42,13 +42,13 @@ test('Realm totals merge parallel task work and survive restarting the app', asy
       })
       const page = await app.firstWindow()
       await page.getByRole('button', { name: /^overlap/ }).click()
-      await page.keyboard.press('Meta+6')
+      await page.keyboard.press('Meta+7')
       await expect(page.locator('[aria-labelledby="today-h"] .big')).toHaveText('4h 0m')
       await expect(page.locator('[aria-labelledby="week-h"] .big')).toHaveText('4h 0m')
       for (const id of ['one', 'two']) {
         await expect(page.locator('.bar-row').filter({ hasText: `Task ${id}` }).locator('.num')).toHaveText('3h 0m')
       }
-      await page.keyboard.press('Meta+5')
+      await page.keyboard.press('Meta+6')
       await expect(page.locator('.summary')).toContainText('4h 0m')
       await app.close()
       app = undefined

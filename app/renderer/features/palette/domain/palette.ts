@@ -1,5 +1,6 @@
 import type { ProjectRow, ProjectView, QuestRow } from '../../../../shared/engine_api'
 import type { Note, NotesView } from '../../../../shared/notes'
+import { TAB_ORDER, tabKeyOf } from '../../../../shared/tabs'
 import { ROUTES } from '../../../config/routing/routes'
 import type { Route } from '../../../config/routing/routes'
 import { PALETTE_NOTE_ROWS, PALETTE_SNIPPET } from '../../../core/constants/constants'
@@ -60,14 +61,7 @@ export type PaletteInput = {
 const entry = (over: Pick<PaletteEntry, 'id' | 'section' | 'label' | 'run'> & Partial<PaletteEntry>): PaletteEntry => ({ also: '', keys: null, reason: null, start: null, fill: null, note: null, detail: null, isBusy: false, ...over })
 
 const GO_TO: readonly { route: Route; label: string; keys: string | null }[] = [
-  { route: ROUTES.home, label: t.nav.home, keys: '⌘1' },
-  { route: ROUTES.quests, label: t.nav.quests, keys: '⌘2' },
-  { route: ROUTES.designs, label: t.nav.designs, keys: '⌘3' },
-  { route: ROUTES.branches, label: t.nav.branches, keys: '⌘4' },
-  { route: ROUTES.chronicle, label: t.nav.chronicle, keys: '⌘5' },
-  { route: ROUTES.mana, label: t.nav.mana, keys: '⌘6' },
-  { route: ROUTES.notes, label: t.nav.notes, keys: '⌘7' },
-  { route: ROUTES.calendar, label: t.nav.calendar, keys: '⌘8' },
+  ...TAB_ORDER.map(tab => ({ route: ROUTES[tab], label: t.nav[tab], keys: `⌘${tabKeyOf(tab)}` })),
   { route: ROUTES.guild, label: t.nav.guild, keys: null },
   { route: ROUTES.hoard, label: t.nav.hoard, keys: null },
   { route: ROUTES.library, label: t.nav.library, keys: null },

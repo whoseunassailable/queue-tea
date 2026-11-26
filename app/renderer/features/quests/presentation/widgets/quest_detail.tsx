@@ -228,7 +228,7 @@ const Facts = ({ engine, realm, row, filedOn }: { engine: EngineApi; realm: stri
       {read.load.status === 'loading' && <p class="hint" role="status"><Spinner />{t.loading.stillReading}</p>}
       {failure !== null && <p class="hint" role="alert">{failure}</p>}
       <button type="button" class="link-btn" disabled={read.isRefreshing || read.load.status === 'loading'} onClick={read.load.status === 'failed' ? read.retry : read.refresh}>
-        {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.activity.refreshing : t.activity.refresh}
+        {read.isRefreshing && <Spinner />}{read.isRefreshing ? t.detail.refreshing : t.detail.refresh}
       </button>
       <dl class="facts">
         <dt>{t.detail.branch}</dt>

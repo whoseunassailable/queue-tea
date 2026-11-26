@@ -32,7 +32,7 @@ test.beforeAll(async () => {
   page = await app.firstWindow()
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.getByRole('button', { name: /^Board notes/ }).click()
-  await page.keyboard.press('Meta+7')
+  await page.keyboard.press('Meta+4')
   await expect(page.getByLabel('Title *')).not.toHaveValue('')
   await page.getByRole('button', { name: 'Canvas', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Canvas: 3 cards, 0 lines' })).toBeVisible()

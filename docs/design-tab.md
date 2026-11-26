@@ -24,7 +24,7 @@ flowchart LR
 - **Designs live in the realm's own repository**, in `docs/designs/`, so git keeps their history and Claude writes them without permission prompts. Editing in the app leaves uncommitted files, and Queue-tea holds Start until they are committed, as it does for any change.
 - **Only merged versions show.** The tab reads the realm's own folder. A draft on a quest's branch appears once that branch is merged.
 - **Next version needs at least one open comment.** With none, pressing it says "Add a comment first: the next version is built from your feedback." and files nothing. The first version of an empty realm is the exception (see the empty state).
-- **⌘3 opens Designs.** Branches moves to ⌘4, Chronicle to ⌘5, Mana & time to ⌘6.
+- **⌘3 opens Designs.** Since 2.25.0 Notes follows it at ⌘4, then Branches ⌘5, Chronicle ⌘6, Mana & time ⌘7 and Calendar ⌘8.
 - **Mocha Mockup knows the format.** `agents/mocha-mockup.md` teaches it. The quest turns on Mocha Mockup as well as Tea-DD, and its description names Mocha Mockup, so Claude can ask it for files the editor can open.
 - **Backup copies stay out of the realm.** The last good copy of each file is kept at `~/.queue-tea/designs/<realm key>/<version folder>/<file>`. A copy beside the file would count as an uncommitted file and hold Start.
 
@@ -149,11 +149,11 @@ The feature follows `docs/architecture.md` and the app's layers:
 | Window rules | `app/renderer/features/designs/domain/` | The editor's scene edits (move, resize, nudge, duplicate, delete, text and fill changes), the undo stack, the form checks, the quest's text |
 | Screens | `app/renderer/features/designs/presentation/` | The page, rail, cards, editor canvas, inspector, comments, dialog, and autosave in `state_management/` |
 
-Text the user reads goes in `app/renderer/l10n/en.ts`, and main's messages in `app/main/core/messages.ts`, where `MESSAGES.designFaults` holds the reasons a file doesn't read. The route is `/designs` in `app/renderer/config/routing/routes.ts`. The tab and its ⌘3 are in the tab list in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts`.
+Text the user reads goes in `app/renderer/l10n/en.ts`, and main's messages in `app/main/core/messages.ts`, where `MESSAGES.designFaults` holds the reasons a file doesn't read. The route is `/designs` in `app/renderer/config/routing/routes.ts`. The tab and its ⌘3 come from `TAB_ORDER` in `app/shared/tabs.ts`, which the tab list in `app/renderer/app/app.tsx`, the View menu in `app/main/core/app_menu.ts` and the palette's Go to in `app/renderer/features/palette/domain/palette.ts` all number from.
 
 ## Acceptance checks
 
-1. Designs sits after Quests at `/designs` and opens with ⌘3. Branches, Chronicle and Mana & time open with ⌘4, ⌘5 and ⌘6.
+1. Designs sits after Quests at `/designs` and opens with ⌘3. Notes, Branches, Chronicle, Mana & time and Calendar open with ⌘4 to ⌘8.
 2. The rail lists the selected realm's versions newest first, by date, with free-text labels. Clicking one shows its designs.
 3. The editor moves, resizes, edits text and changes fill, colour, radius and size. It undoes, redoes and autosaves, and a file round-trips without losing unknown fields or layers.
 4. Every design has a comments box, validated inline. Comments resolve and reopen.

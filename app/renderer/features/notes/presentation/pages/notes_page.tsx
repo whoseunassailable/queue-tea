@@ -9,7 +9,7 @@ import { useEngineRead } from '../../../../core/api/use_engine_read'
 import { DETAIL_FLOATS_BELOW, DETAIL_IS_PAGE_BELOW } from '../../../../core/constants/constants'
 import { Dialog } from '../../../../core/widgets/dialog'
 import { Field } from '../../../../core/widgets/field'
-import { Empty, Spinner } from '../../../../core/widgets/states'
+import { Empty, Loading, Spinner } from '../../../../core/widgets/states'
 import { useWindowKeys } from '../../../../core/widgets/window_keys'
 import { useWindowWidth } from '../../../../core/widgets/window_width'
 import { t } from '../../../../l10n/en'
@@ -303,11 +303,9 @@ export const NotesPage = ({ engine, realm, isCovered, onProject, onOpenQuest, on
   if (read.load.status === 'loading') {
     return (
       <main class="page nt">
-        <div class="state panel" role="status">
-          <Spinner />
-          <p class="state-line">{t.loading.notes}</p>
+        <Loading line={t.loading.notes}>
           <p class="hint">{t.notebook.loadingWhere(where)}</p>
-        </div>
+        </Loading>
       </main>
     )
   }

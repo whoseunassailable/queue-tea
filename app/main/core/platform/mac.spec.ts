@@ -6,8 +6,9 @@ import { promisify } from 'node:util'
 
 import { describe, expect, it } from 'vitest'
 
-import { appleScriptText, bringForwardArgv, claudeLine, codexLine, codexPasteLine, FORWARD_MISSING, openLineArgv, shellQuote, terminalOfProgram } from './mac'
+import { appleScriptText, bringForwardArgv, claudeLine, codexLine, codexPasteLine, FORWARD_MISSING, openLineArgv, shellQuote, terminalOfProgram, TRAFFIC_LIGHTS_PX, windowChrome } from './mac'
 import { codexConfigArgs } from '../../features/codex/data/setup'
+import { TITLE_BAR_PX } from '../../../shared/window_chrome'
 
 const run = promisify(execFile)
 
@@ -192,5 +193,17 @@ describe('opening Claude Code', () => {
     const argv = openLineArgv('terminal', '/p/demo', codexLine('/p/demo', '/h/.queue-tea/briefs/t-1.md'))
 
     expect(argv.join(' ')).toContain(`do script "cd '/p/demo' && codex --sandbox workspace-write --ask-for-approval on-request \\"$(cat '/h/.queue-tea/briefs/t-1.md')\\""`)
+  })
+})
+
+describe('the window\'s title strip', () => {
+  it('has the traffic lights in its middle, as much room above them as below', () => {
+    const { x, y } = windowChrome.trafficLightPosition!
+    const below = TITLE_BAR_PX - (y + TRAFFIC_LIGHTS_PX)
+
+    expect(windowChrome.titleBarStyle).toBe('hiddenInset')
+    expect(x).toBe(20)
+    expect(y).toBeGreaterThan(0)
+    expect(below).toBe(y)
   })
 })

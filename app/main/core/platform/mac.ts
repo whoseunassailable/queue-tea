@@ -1,12 +1,16 @@
 import type { BrowserWindowConstructorOptions } from 'electron'
 
 import type { TerminalChoice } from '../../../shared/engine_api'
+import { TITLE_BAR_PX } from '../../../shared/window_chrome'
+
+// The traffic lights are this tall, and sit in the middle of the title strip.
+export const TRAFFIC_LIGHTS_PX = 14
 
 // Everything that differs between the Mac and Windows lives under platform/.
 // Windows gets a file beside this one, with the same exports.
 export const windowChrome: BrowserWindowConstructorOptions = {
   titleBarStyle: 'hiddenInset',
-  trafficLightPosition: { x: 20, y: 18 },
+  trafficLightPosition: { x: 20, y: (TITLE_BAR_PX - TRAFFIC_LIGHTS_PX) / 2 },
 }
 
 // One word to the shell, whatever the folder is called.

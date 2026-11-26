@@ -6,6 +6,7 @@ import type { EngineApi, MenuItem, ProjectView, Reply } from '../../shared/engin
 import type { NotesView } from '../../shared/notes'
 import { createWorkspace } from '../features/workspace/state_management/workspace_store'
 import { t } from '../l10n/en'
+import { TITLE_BAR_PX } from '../../shared/window_chrome'
 import { activeQuest, fakeEngine, note, NOTES, projectRow, projectView, quest } from '../test_support'
 import { App } from './app'
 
@@ -424,6 +425,38 @@ describe('the menu bar', () => {
     await menu({ kind: 'showRecord' })
 
     expect(engine.showRecord).not.toHaveBeenCalled()
+  })
+})
+
+// Where its CSS draws it, the strip is a drag region across the window's top.
+describe('the title strip', () => {
+  const strip = () => screen.getByTestId('title-bar')
+  const follows = (first: Node, second: Node) => (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+
+  it('is there to drag the window by, holds nothing, and lays the window out at the height main gives the traffic lights', async () => {
+    await open('/home')
+
+    expect(strip().getAttribute('aria-hidden')).toBe('true')
+    expect(strip().childNodes).toHaveLength(0)
+    expect(screen.getByTestId('root').style.getPropertyValue('--title-bar')).toBe(`${TITLE_BAR_PX}px`)
+  })
+
+  it('comes after the panels, so nothing scrolled up behind it takes its drag away, and before a dialog, which stays pressable over it', async () => {
+    await open('/home')
+    await act(() => void fireEvent.click(screen.getByRole('button', { name: t.actions.newQuest })))
+
+    expect(follows(screen.getByRole('navigation', { name: t.nav.realms }), strip())).toBe(true)
+    expect(follows(document.querySelector('.main')!, strip())).toBe(true)
+    expect(follows(strip(), screen.getByRole('dialog'))).toBe(true)
+  })
+
+  it('stays the one strip below 900 px, where the realms come back as an overlay', async () => {
+    await open('/home')
+    await resize(760)
+    await act(() => void fireEvent.click(screen.getByRole('button', { name: t.narrow.showRealms })))
+
+    expect(screen.getAllByTestId('title-bar')).toHaveLength(1)
+    expect(follows(screen.getByRole('navigation', { name: t.nav.realms }), strip())).toBe(true)
   })
 })
 
